@@ -1,0 +1,1157 @@
+SQL> 
+SQL> --Global Config
+SQL> @install_global_config
+SQL> define namepref=opas60dev
+SQL> 
+SQL> @@version.sql
+SQL> -- Oracle Performance Analytic Suite version
+SQL> define OPASVER=6.0.0
+SQL> 
+SQL> -- Oracle Performance Analytic Suite scheme for local database
+SQL> define localscheme=&namepref.
+SQL> 
+SQL> -- Tablespace name for Oracle Performance Analytic Suite
+SQL> define tblspc_name=&namepref.tbs
+SQL> 
+SQL> -- Local database connection string host:port/service_name
+SQL> define localdb=localhost:1521/pdb1.localdomain
+SQL> 
+SQL> -- Local SYS password (can be empty)
+SQL> define localsys=qazwsx
+SQL> 
+SQL> -- module configs
+SQL> @../modules/awr_warehouse/install/install_config
+SP2-0310: unable to open file "../modules/awr_warehouse/install/install_config.sql"
+SQL> 
+SQL> --Module installation
+SQL> @install_modules
+SQL> -- Module list installation
+SQL> 
+SQL> --Core
+SQL> @../modules/core/install/install.sql
+SQL> define MODNM=OPASCORE
+SQL> 
+SQL> @@version.sql
+SQL> rem prev define MODVER=""
+SQL> define MODVER="2.0.0"
+SQL> @@install_config.sql
+SQL> rem Path for directory object for EXP/IMP operations
+SQL> rem Make sure the directory already exists and accessible
+SQL> define OPASEXPIMP_DIRPATH="/u01/oracle/files/opasexpimp/"
+SQL> define OPASEXPIMP_DIR=&namepref._EXPIMP
+SQL> 
+SQL> --Core installation script
+SQL> conn sys/&localsys.@&localdb. as sysdba
+Connected.
+SQL> 
+SQL> @@scheme_setup.sql
+SQL> create bigfile tablespace &tblspc_name. datafile size 100m autoextend on next 100m maxsize 1000m;
+old   1: create bigfile tablespace &tblspc_name. datafile size 100m autoextend on next 100m maxsize 1000m
+new   1: create bigfile tablespace opas60devtbs datafile size 100m autoextend on next 100m maxsize 1000m
+
+Tablespace created.
+
+SQL> 
+SQL> create user &localscheme. identified by &localscheme.
+  2  default tablespace &tblspc_name.
+  3  temporary tablespace temp;
+old   1: create user &localscheme. identified by &localscheme.
+new   1: create user opas60dev identified by opas60dev
+old   2: default tablespace &tblspc_name.
+new   2: default tablespace opas60devtbs
+
+User created.
+
+SQL> alter user &localscheme. quota unlimited on &tblspc_name.;
+old   1: alter user &localscheme. quota unlimited on &tblspc_name.
+new   1: alter user opas60dev quota unlimited on opas60devtbs
+
+User altered.
+
+SQL> 
+SQL> grant connect, resource to &localscheme.;
+old   1: grant connect, resource to &localscheme.
+new   1: grant connect, resource to opas60dev
+
+Grant succeeded.
+
+SQL> grant select_catalog_role to &localscheme.;
+old   1: grant select_catalog_role to &localscheme.
+new   1: grant select_catalog_role to opas60dev
+
+Grant succeeded.
+
+SQL> grant select any table to &localscheme.;
+old   1: grant select any table to &localscheme.
+new   1: grant select any table to opas60dev
+
+Grant succeeded.
+
+SQL> grant execute on dbms_lock to &localscheme.;
+old   1: grant execute on dbms_lock to &localscheme.
+new   1: grant execute on dbms_lock to opas60dev
+
+Grant succeeded.
+
+SQL> grant execute on dbms_workload_repository to &localscheme.;
+old   1: grant execute on dbms_workload_repository to &localscheme.
+new   1: grant execute on dbms_workload_repository to opas60dev
+
+Grant succeeded.
+
+SQL> grant create view to &localscheme.;
+old   1: grant create view to &localscheme.
+new   1: grant create view to opas60dev
+
+Grant succeeded.
+
+SQL> grant create synonym to &localscheme.;
+old   1: grant create synonym to &localscheme.
+new   1: grant create synonym to opas60dev
+
+Grant succeeded.
+
+SQL> grant create job to &localscheme.;
+old   1: grant create job to &localscheme.
+new   1: grant create job to opas60dev
+
+Grant succeeded.
+
+SQL> grant execute on dbms_xplan to &localscheme.;
+old   1: grant execute on dbms_xplan to &localscheme.
+new   1: grant execute on dbms_xplan to opas60dev
+
+Grant succeeded.
+
+SQL> grant create database link to &localscheme.;
+old   1: grant create database link to &localscheme.
+new   1: grant create database link to opas60dev
+
+Grant succeeded.
+
+SQL> grant alter session to &localscheme.;
+old   1: grant alter session to &localscheme.
+new   1: grant alter session to opas60dev
+
+Grant succeeded.
+
+SQL> grant create materialized view to &localscheme.;
+old   1: grant create materialized view to &localscheme.
+new   1: grant create materialized view to opas60dev
+
+Grant succeeded.
+
+SQL> grant execute on dbms_log to &localscheme.;
+old   1: grant execute on dbms_log to &localscheme.
+new   1: grant execute on dbms_log to opas60dev
+
+Grant succeeded.
+
+SQL> 
+SQL> --APEX 18.1 uploading files
+SQL> grant update on apex_180100.WWV_FLOW_TEMP_FILES to &localscheme.;
+old   1: grant update on apex_180100.WWV_FLOW_TEMP_FILES to &localscheme.
+new   1: grant update on apex_180100.WWV_FLOW_TEMP_FILES to opas60dev
+
+Grant succeeded.
+
+SQL> --APEX 19.1 uploading files
+SQL> grant update on apex_190100.WWV_FLOW_TEMP_FILES to &localscheme.;
+old   1: grant update on apex_190100.WWV_FLOW_TEMP_FILES to &localscheme.
+new   1: grant update on apex_190100.WWV_FLOW_TEMP_FILES to opas60dev
+grant update on apex_190100.WWV_FLOW_TEMP_FILES to opas60dev
+                            *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> grant select on v_$session to &localscheme.;
+old   1: grant select on v_$session to &localscheme.
+new   1: grant select on v_$session to opas60dev
+
+Grant succeeded.
+
+SQL> grant select on gv_$session to &localscheme.;
+old   1: grant select on gv_$session to &localscheme.
+new   1: grant select on gv_$session to opas60dev
+
+Grant succeeded.
+
+SQL> grant select on v_$parameter to &localscheme.;
+old   1: grant select on v_$parameter to &localscheme.
+new   1: grant select on v_$parameter to opas60dev
+
+Grant succeeded.
+
+SQL> grant select on dba_hist_sqltext to &localscheme.;
+old   1: grant select on dba_hist_sqltext to &localscheme.
+new   1: grant select on dba_hist_sqltext to opas60dev
+
+Grant succeeded.
+
+SQL> 
+SQL> begin
+  2  DBMS_SCHEDULER.CREATE_JOB_CLASS (
+  3  	job_class_name		  => 'OPASLIGHTJOBS',
+  4  	logging_level		  => DBMS_SCHEDULER.LOGGING_FAILED_RUNS,
+  5  	log_history		  => 1,
+  6  	comments		  => 'Low logging level for coordinator jobs');
+  7  end;
+  8  /
+begin
+*
+ERROR at line 1:
+ORA-27477: "SYS"."OPASLIGHTJOBS" already exists 
+ORA-06512: at "SYS.DBMS_ISCHED", line 491 
+ORA-06512: at "SYS.DBMS_SCHEDULER", line 922 
+ORA-06512: at line 2 
+
+
+SQL> 
+SQL> grant execute on OPASLIGHTJOBS to &localscheme.;
+old   1: grant execute on OPASLIGHTJOBS to &localscheme.
+new   1: grant execute on OPASLIGHTJOBS to opas60dev
+
+Grant succeeded.
+
+SQL> 
+SQL> set serveroutput on
+SQL> begin
+  2    for i in (select * from dba_tab_privs where grantee='SELECT_CATALOG_ROLE')
+  3    loop
+  4    begin
+  5  	 execute immediate 'grant '||i.privilege||' on '||i.table_name||' to &localscheme.';
+  6    exception
+  7  	 when others then null; -- dbms_output.put_line(i.table_name||':'||i.privilege||': '||sqlerrm);
+  8    end;
+  9    end loop;
+ 10  end;
+ 11  /
+old   5:     execute immediate 'grant '||i.privilege||' on '||i.table_name||' to &localscheme.';
+new   5:     execute immediate 'grant '||i.privilege||' on '||i.table_name||' to opas60dev';
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+SQL> 
+SQL> create or replace directory &OPASEXPIMP_DIR. as '&OPASEXPIMP_DIRPATH.';
+old   1: create or replace directory &OPASEXPIMP_DIR. as '&OPASEXPIMP_DIRPATH.'
+new   1: create or replace directory opas60dev_EXPIMP as '/u01/oracle/files/opasexpimp/'
+
+Directory created.
+
+SQL> grant read, write on directory &OPASEXPIMP_DIR. to &localscheme.;
+old   1: grant read, write on directory &OPASEXPIMP_DIR. to &localscheme.
+new   1: grant read, write on directory opas60dev_EXPIMP to opas60dev
+
+Grant succeeded.
+
+SQL> 
+SQL> grant create table to &localscheme.;
+old   1: grant create table to &localscheme.
+new   1: grant create table to opas60dev
+
+Grant succeeded.
+
+SQL> 
+SQL> grant MANAGE SCHEDULER to &localscheme.;
+old   1: grant MANAGE SCHEDULER to &localscheme.
+new   1: grant MANAGE SCHEDULER to opas60dev
+
+Grant succeeded.
+
+SQL> 
+SQL> conn &localscheme./&localscheme.@&localdb.
+Connected.
+SQL> 
+SQL> @../modules/core/struct/create_struct.sql
+SQL> ---------------------------------------------------------------------------------------------
+SQL> -- Module registry
+SQL> ---------------------------------------------------------------------------------------------
+SQL> create table opas_modules (
+  2  MODNAME		 varchar2(128) primary key,
+  3  MODDESCR		 varchar2(4000),
+  4  MODVER		 varchar2(32)	not null,
+  5  INSTALLED		 date		not null default sysdate
+  6  );
+INSTALLED           date           not null default sysdate
+                                            *
+ERROR at line 5:
+ORA-00907: missing right parenthesis 
+
+
+SQL> 
+SQL> ---------------------------------------------------------------------------------------------
+SQL> -- Module Metadata
+SQL> ---------------------------------------------------------------------------------------------
+SQL> create table opas_config (
+  2  modname		 varchar2(128) references opas_modules(modname) on delete cascade,
+  3  cgroup		 varchar2(128),
+  4  ckey		 varchar2(100),
+  5  cvalue		 varchar2(4000),
+  6  descr		 varchar2(200)
+  7  );
+modname             varchar2(128) references opas_modules(modname) on delete cascade,
+                                             *
+ERROR at line 2:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> alter table opas_config add constraint opas_config_pk primary key (modname,ckey);
+alter table opas_config add constraint opas_config_pk primary key (modname,ckey)
+*
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> create table opas_dictionary (
+  2  modname		 varchar2(128) references opas_modules(modname) on delete cascade,
+  3  dic_name		 varchar2(20) NOT NULL,
+  4  val		 varchar2(20) NOT NULL,
+  5  display_val	 varchar2(256) not null,
+  6  sparse1		 varchar2(100),
+  7  sparse2		 varchar2(100),
+  8  sparse3		 varchar2(100),
+  9  dic_ordr		 number);
+modname             varchar2(128) references opas_modules(modname) on delete cascade,
+                                             *
+ERROR at line 2:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> create index idx_opas_dictionary_mod on opas_dictionary(modname,dic_name);
+create index idx_opas_dictionary_mod on opas_dictionary(modname,dic_name)
+                                        *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> ---------------------------------------------------------------------------------------------
+SQL> -- Known query storage
+SQL> ---------------------------------------------------------------------------------------------
+SQL> create table opas_query_storage (
+  2  sql_id		 varchar2(128),
+  3  sql_text		 clob,
+  4  created		 timestamp default systimestamp)
+  5  lob (file_contentb) store as (compress high)
+  6  ;
+lob (file_contentb) store as (compress high)
+     *
+ERROR at line 5:
+ORA-00904: "FILE_CONTENTB": invalid identifier 
+
+
+SQL> 
+SQL> alter table opas_query_storage add constraint xpk_opas_query_storage primary key(sql_id);
+alter table opas_query_storage add constraint xpk_opas_query_storage primary key(sql_id)
+*
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> -- Text index TBD
+SQL> 
+SQL> ---------------------------------------------------------------------------------------------
+SQL> -- Database link dictionary
+SQL> ---------------------------------------------------------------------------------------------
+SQL> create table opas_db_links (
+  2  db_link_name	 varchar2(128) primary key,
+  3  owner		 varchar2(128),
+  4  username		 varchar2(128),
+  5  password		 varchar2(128),
+  6  connstr		 varchar2(1000),
+  7  STATUS		 varchar2(32) default 'NEW',
+  8  is_public		 varchar2(1) default 'Y');
+
+Table created.
+
+SQL> 
+SQL> CREATE OR REPLACE FORCE VIEW V$OPAS_DB_LINKS AS
+  2  with gn as (select value from v$parameter where name like '%domain%')
+  3  select DB_LINK_NAME,
+  4  	    case
+  5  	      when DB_LINK_NAME = '$LOCAL$' then DB_LINK_NAME
+  6  	      else l.db_link
+  7  	    end ORA_DB_LINK,
+  8  	    case
+  9  	      when DB_LINK_NAME = '$LOCAL$' then DISPLAY_NAME
+ 10  	      else
+ 11  		case when l.username is not null then DISPLAY_NAME||' ('||l.username||'@'||l.host||')' else DISPLAY_NAME||' (SUSPENDED)' end
+ 12  	      end DISPLAY_NAME,
+ 13  	    OWNER,
+ 14  	    STATUS,
+ 15  	    IS_PUBLIC
+ 16    from OPAS_DB_LINKS o, user_db_links l, gn
+ 17   where owner =
+ 18  	    decode(owner,
+ 19  		   'PUBLIC',
+ 20  		   owner,
+ 21  		   decode(is_public, 'Y', owner, nvl(V('APP_USER'), '~^')))
+ 22  	and l.db_link(+) = case when gn.value is null then upper(o.DB_LINK_NAME) else upper(o.DB_LINK_NAME ||'.'|| gn.value) end;
+
+Warning: View created with compilation errors.
+
+SQL> 
+SQL> ---------------------------------------------------------------------------------------------
+SQL> -- File storage
+SQL> ---------------------------------------------------------------------------------------------
+SQL> create table opas_files (
+  2  file_id		 NUMBER GENERATED ALWAYS AS IDENTITY primary key,
+  3  modname		 varchar2(128) references opas_modules(modname) on delete cascade,
+  4  file_type		 varchar2(100) not null,
+  5  file_name		 varchar2(1000) not null,
+  6  file_mimetype	 varchar2(30),
+  7  file_contentb	 blob, --download form of reports
+  8  --file_contentc	   clob, -- will be converted to clob on the fly for html preview
+  9  created		 timestamp default systimestamp,
+ 10  owner		 varchar2(128) default 'PUBLIC' not null
+ 11  )
+ 12  lob (file_contentb) store as (compress high)
+ 13  lob (file_contentc) store as (compress high);
+lob (file_contentc) store as (compress high)
+     *
+ERROR at line 13:
+ORA-00904: "FILE_CONTENTC": invalid identifier 
+
+
+SQL> 
+SQL> create index idx_opas_files_mod on opas_files(modname);
+create index idx_opas_files_mod on opas_files(modname)
+                                   *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> ---------------------------------------------------------------------------------------------
+SQL> -- Authorization
+SQL> ---------------------------------------------------------------------------------------------
+SQL> -- Authorization group_id - is an access level
+SQL> -- 0 - admin; 1 - rw; 2 - RO; 3 - noaccess;
+SQL> create table opas_groups (
+  2  group_id		 number primary key check (group_id in (0,1,2,3)),
+  3  group_name 	 varchar2(100) not null,
+  4  group_descr	 varchar2(1000));
+
+Table created.
+
+SQL> 
+SQL> create table opas_groups2apexusr (
+  2  group_id		 number not null references opas_groups(group_id),
+  3  modname		 varchar2(128) references opas_modules(modname) on delete cascade,
+  4  apex_user		 varchar2(100));
+modname             varchar2(128) references opas_modules(modname) on delete cascade,
+                                             *
+ERROR at line 3:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> create index opas_groups2apexusr_usr on opas_groups2apexusr(apex_user);
+create index opas_groups2apexusr_usr on opas_groups2apexusr(apex_user)
+                                        *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> create unique index opas_groups2apexusr_usr2grp on opas_groups2apexusr(modname,apex_user,group_id);
+create unique index opas_groups2apexusr_usr2grp on opas_groups2apexusr(modname,apex_user,group_id)
+                                                   *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> ---------------------------------------------------------------------------------------------
+SQL> -- Navigator
+SQL> ---------------------------------------------------------------------------------------------
+SQL> create table opas_object_types (
+  2    ot_id		 number 		 primary key,
+  3    ot_name		 varchar2(100)	not null,
+  4    ot_descr 	 varchar2(4000),
+  5    ot_sortordr	 number 	not null default 0,
+  6    ot_icon		 varchar2(100)	not null default 'def_icon'
+  7  );
+  ot_sortordr       number         not null default 0,
+                                            *
+ERROR at line 5:
+ORA-00907: missing right parenthesis 
+
+
+SQL> 
+SQL> create table opas_object_pages (
+  2    ot_app_page	 number 		 primary key,
+  3    ot_id		 number 	not null references opas_object_types(ot_id) on delete cascade,
+  4    ot_page_type	 varchar2(32)	not null, --OPEN, NEW, DELETE ...
+  5    ot_page_descr	 varchar2(4000)
+  6  );
+  ot_id             number         not null references opas_object_types(ot_id) on delete cascade,
+                                                       *
+ERROR at line 3:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> create index idx_opas_object_pages_ot on opas_object_pages(ot_id);
+create index idx_opas_object_pages_ot on opas_object_pages(ot_id)
+                                         *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> create table opas_object_page_pars (
+  2    ot_par_name	 varchar2(100)		 primary key,
+  3    ot_app_page	 number 	not null references opas_object_pages(ot_app_page) on delete cascade,
+  4    ot_par_def_val	 varchar2(512),
+  5    ot_par_mandat	 varchar2(1)	not null default 'N',
+  6    ot_par_sortordr	 number 	not null
+  7  );
+  ot_par_mandat     varchar2(1)    not null default 'N',
+                                            *
+ERROR at line 5:
+ORA-00907: missing right parenthesis 
+
+
+SQL> 
+SQL> create index idx_opas_object_page_pars_pg on opas_object_page_pars(ot_app_page);
+create index idx_opas_object_page_pars_pg on opas_object_page_pars(ot_app_page)
+                                             *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> create table opas_objects (
+  2    obj_id		 number 		 generated always as identity primary key,
+  3    obj_prnt 	 number 		 references opas_objects(obj_id),
+  4    obj_ot		 number 	not null references opas_object_types(ot_id),
+  5    obj_created	 date,
+  6    obj_expired	 date,
+  7    obj_name 	 varchar2(100),
+  8    obj_descr	 varchar2(4000),
+  9    obj_sortordr	 number 	not null default 0,
+ 10    obj_owner	 varchar2(128),
+ 11    obj_is_private	 varchar2(1)	default 'N'
+ 12  );
+  obj_sortordr      number         not null default 0,
+                                            *
+ERROR at line 9:
+ORA-00907: missing right parenthesis 
+
+
+SQL> 
+SQL> create index idx_opas_objects_ot on opas_objects(ot_id);
+create index idx_opas_objects_ot on opas_objects(ot_id)
+                                    *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> create index idx_opas_objects_prnt on opas_objects(obj_prnt);
+create index idx_opas_objects_prnt on opas_objects(obj_prnt)
+                                      *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> create table opas_object_references (
+  2    obj_id_src	 number 	not null references opas_objects(obj_id) on delete cascade,
+  3    obj_id_trg	 number 	not null references opas_objects(obj_id) on delete cascade
+  4  );
+  obj_id_src        number         not null references opas_objects(obj_id) on delete cascade,
+                                                       *
+ERROR at line 2:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> create index idx_opas_object_references_src on opas_object_pages(obj_id_src);
+create index idx_opas_object_references_src on opas_object_pages(obj_id_src)
+                                               *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> create index idx_opas_object_references_trg on opas_object_pages(obj_id_trg);
+create index idx_opas_object_references_trg on opas_object_pages(obj_id_trg)
+                                               *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> ---------------------------------------------------------------------------------------------
+SQL> -- Task execution infrasrtucture
+SQL> ---------------------------------------------------------------------------------------------
+SQL> create table opas_cleanup_tasks (
+  2  taskname		 varchar2(128)		 primary key,
+  3  modname		 varchar2(128)	not null references opas_modules(modname) on delete cascade,
+  4  created		 timestamp	default systimestamp,
+  5  task_body		 clob
+  6  );
+modname             varchar2(128)  not null references opas_modules(modname) on delete cascade,
+                                                       *
+ERROR at line 3:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> create index idx_opas_cleanup_tasks_mod on opas_cleanup_tasks(modname);
+create index idx_opas_cleanup_tasks_mod on opas_cleanup_tasks(modname)
+                                           *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> create table opas_task (
+  2  taskname		 varchar2(128)		 primary key,
+  3  modname		 varchar2(128)	not null references opas_modules(modname) on delete cascade,
+  4  created		 timestamp	default systimestamp,
+  5  is_public		 varchar2(1)	default 'Y',
+  6  task_body		 clob
+  7  );
+modname             varchar2(128)  not null references opas_modules(modname) on delete cascade,
+                                                       *
+ERROR at line 3:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> create index idx_opas_task_mod on opas_task(modname);
+create index idx_opas_task_mod on opas_task(modname)
+                                  *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> create table opas_task_queue (
+  2  tq_id		 number 		 generated always as identity primary key,
+  3  taskname		 varchar2(128)	not null references opas_task(taskname) on delete cascade,
+  4  task_subname	 varchar2(128),
+  5  trg_obj_id 	 number 		 references opas_objects(obj_id) on delete cascade,
+  6  queued		 timestamp,
+  7  started		 timestamp,
+  8  finished		 timestamp,
+  9  cpu_time		 number, --seconds
+ 10  elapsed_time	 number,
+ 11  status		 varchar2(32)	default 'NEW',
+ 12  owner		 varchar2(128)	not null,
+ 13  sid		 number,
+ 14  serial#		 number,
+ 15  inst_id		 number,
+ 16  job_name		 varchar2(128)
+ 17  );
+taskname            varchar2(128)  not null references opas_task(taskname) on delete cascade,
+                                                       *
+ERROR at line 3:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> create index idx_opas_task_exec_tsk on opas_task_queue(taskname);
+create index idx_opas_task_exec_tsk on opas_task_queue(taskname)
+                                       *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> create index idx_opas_task_exec_obj on opas_task_queue(trg_obj_id);
+create index idx_opas_task_exec_obj on opas_task_queue(trg_obj_id)
+                                       *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> create table opas_task_pars (
+  2  tq_id		 number 	not null references opas_task_queue(tq_id) on delete cascade,
+  3  PAR_NAME		 varchar2(100)	not null,
+  4  num_par		 number,
+  5  varchar_par	 varchar2(4000),
+  6  date_par		 date,
+  7  list_par		 varchar2(4000)
+  8  );
+tq_id               number         not null references opas_task_queue(tq_id) on delete cascade,
+                                                       *
+ERROR at line 2:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> create index idx_opas_task_parstske on opas_task_pars(tq_id);
+create index idx_opas_task_parstske on opas_task_pars(tq_id)
+                                       *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> create table opas_log (
+  2  created		 timestamp	default systimestamp,
+  3  msg		 varchar2(4000),
+  4  tq_id		 number 		 references opas_task_queue(tq_id) on delete cascade,
+  5  msg_long		 clob
+  6  );
+tq_id               number                  references opas_task_queue(tq_id) on delete cascade,
+                                                       *
+ERROR at line 4:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> create index idx_opas_task_logtske on opas_log(tq_id);
+create index idx_opas_task_logtske on opas_log(tq_id)
+                                      *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> create index idx_opas_task_created on opas_log(created);
+create index idx_opas_task_created on opas_log(created)
+                                      *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> CREATE OR REPLACE FORCE VIEW V$OPAS_TASK_QUEUE AS
+  2  select
+  3    t.taskname, t.modname, q.task_subname, t.is_public, q.tq_id, q.queued, q.started, q.finished, q.cpu_time, nvl(q.elapsed_time,round((sysdate-(q.started+0))*3600*24)) elapsed_time, q.status, q.owner, q.sid, q.serial#, q.inst_id , q.job_name
+  4  from opas_task t left outer join opas_task_queue q on (t.taskname = q.taskname and q.owner=decode(t.is_public,'Y',q.owner,nvl(V('APP_USER'),'~^')))
+  5  where 1=decode(t.is_public,'Y',1, COREMOD_SEC.is_role_assigned_n(t.modname,'Reas-write users'))
+  6  ;
+
+Warning: View created with compilation errors.
+
+SQL> 
+SQL> CREATE OR REPLACE FORCE VIEW V$OPAS_TASK_QUEUE_LONGOPS AS
+  2  select tq.*,
+  3  	    case
+  4  	      when message is null then 'N/A'
+  5  	      else opname || ':' || message || '; elapsed: ' || elapsed_seconds || '; remaining: ' || nvl(to_char(time_remaining), 'N/A') end msg,
+  6  	    round(100 * (sofar / decode(totalwork,0,1,totalwork))) pct_done,
+  7  	    units,opname,module,action
+  8    from V$OPAS_TASK_QUEUE		tq,
+  9  	    gv$session_longops		 lo,
+ 10  	    gv$session			 s
+ 11    where tq.sid = lo.sid(+)
+ 12  	 and tq.serial# = lo.serial#(+)
+ 13  	 and tq.inst_id = lo.inst_id(+)
+ 14  	 and tq.sid = s.sid(+)
+ 15  	 and tq.serial# = s.serial#(+)
+ 16  	 and tq.inst_id = s.inst_id(+)
+ 17  ;
+
+Warning: View created with compilation errors.
+
+SQL> 
+SQL> ---------------------------------------------------------------------------------------------
+SQL> -- Export/Import
+SQL> ---------------------------------------------------------------------------------------------
+SQL> create table opas_expimp_sessions (
+  2  sess_id		 number 		 generated always as identity primary key,
+  3  tq_id		 number 		 references opas_task_queue(tq_id) on delete set null,
+  4  expimp_file	 number 		 references opas_files ( file_id ),
+  5  created		 timestamp	default systimestamp,
+  6  owner		 varchar2(128)	default 'PUBLIC' not null,
+  7  sess_type		 varchar2(3)	check (sess_type in ('IMP','EXP')),
+  8  status		 varchar2(32)	not null default 'NEW'
+  9  )
+ 10  ;
+status              varchar2(32)   not null default 'NEW'
+                                            *
+ERROR at line 8:
+ORA-00907: missing right parenthesis 
+
+
+SQL> create index idx_opas_expimp_sessions_tq	on opas_expimp_sessions(tq_id);
+create index idx_opas_expimp_sessions_tq   on opas_expimp_sessions(tq_id)
+                                              *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> create table opas_expimp_metadata (
+  2  sess_id		 number 	not null references opas_expimp_sessions(sess_id) on delete cascade,
+  3  modname		 varchar2(128)	not null references opas_modules(modname) on delete cascade,
+  4  import_prc 	 varchar2(128),
+  5  file_descr 	 varchar2(4000),
+  6  src_version	 varchar2(128)	not null,
+  7  src_core_version	 varchar2(128)	not null
+  8  );
+sess_id             number         not null references opas_expimp_sessions(sess_id) on delete cascade,
+                                                       *
+ERROR at line 2:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> create index idx_opas_expimp_metadata_mod	 on opas_expimp_metadata(modname);
+create index idx_opas_expimp_metadata_mod   on opas_expimp_metadata(modname)
+                                               *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> create index idx_opas_expimp_metadata_sess   on opas_expimp_metadata(sess_id);
+create index idx_opas_expimp_metadata_sess   on opas_expimp_metadata(sess_id)
+                                                *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> create table opas_expimp_params (
+  2  sess_id		 number 	not null references opas_expimp_sessions(sess_id) on delete cascade,
+  3  par_name		 varchar2(128)	not null,
+  4  par_value		 varchar2(4000)
+  5  );
+sess_id             number         not null references opas_expimp_sessions(sess_id) on delete cascade,
+                                                       *
+ERROR at line 2:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> create index idx_opas_expimp_params_sess	on opas_expimp_params(sess_id);
+create index idx_opas_expimp_params_sess   on opas_expimp_params(sess_id)
+                                              *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> create table opas_expimp_compat (
+  2  modname		 varchar2(128)	not null references opas_modules(modname) on delete cascade,
+  3  src_version	 varchar2(100)	not null,
+  4  trg_version	 varchar2(100)	not null
+  5  );
+modname             varchar2(128)  not null references opas_modules(modname) on delete cascade,
+                                                       *
+ERROR at line 2:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> create or replace force view v$opas_expimp_sessions as
+  2  select
+  3  	 x.sess_id,
+  4  	 x.tq_id,
+  5  	 x.expimp_file file_id,
+  6  	 x.created,
+  7  	 x.owner,
+  8  	 decode(x.sess_type,'EXP','Export','IMP','Import','Unknown: '||x.sess_type) sess_type,
+  9  	 x.status,
+ 10  	 m.modname,
+ 11  	 m.import_prc,
+ 12  	 m.file_descr,
+ 13  	 m.src_version,
+ 14  	 m.src_core_version,
+ 15  	 dbms_lob.getlength(f.file_contentb) fsize,
+ 16  	 f.file_name,
+ 17  	     case when m.MODNAME is not null then to_char(x.created + to_number(COREMOD_API.getconf('EXPIMPSESS',m.MODNAME)),'YYYY-MON-DD HH24:MI' ) else null end expiration
+ 18  from opas_expimp_sessions x, opas_expimp_metadata m, opas_files f
+ 19  where x.owner=decode(x.owner,'PUBLIC',x.owner,nvl(V('APP_USER'),'~^'))
+ 20  and x.sess_id=m.sess_id and x.expimp_file=f.file_id(+);
+
+Warning: View created with compilation errors.
+
+SQL> 
+SQL> ---------------------------------------------------------------------------------------------
+SQL> -- Miscelaneous
+SQL> ---------------------------------------------------------------------------------------------
+SQL> CREATE OR REPLACE TYPE tableofnumbers as table of number(20)
+  2  /
+
+Type created.
+
+SQL> CREATE OR REPLACE TYPE tableofstrings as table of varchar2(4000)
+  2  /
+
+Type created.
+
+SQL> 
+SQL> --Clob2row representation
+SQL> --https://jonathanlewis.wordpress.com/2008/11/19/lateral-lobs/
+SQL> create or replace type clob_line as object (
+  2  	 line_number number,
+  3  	 payload varchar2(4000)
+  4  )
+  5  /
+
+Type created.
+
+SQL> 
+SQL> create or replace type clob_page as table of clob_line
+  2  /
+
+Type created.
+
+SQL> 
+SQL> ---------------------------------------------------------------------------------------------
+SQL> -- Core Objects
+SQL> ---------------------------------------------------------------------------------------------
+SQL> -- Reports
+SQL> create table opas_reports (
+  2  report_id		 number 		 primary key,
+  3  parent_id		 number 		 references opas_reports(report_id) on delete set null,
+  4  modname		 varchar2(128)	not null references opas_modules(modname) on delete cascade,
+  5  tq_id		 number 		 references opas_task_queue(tq_id) on delete set null,
+  6  report_content	 number 		 references opas_files ( file_id ),
+  7  report_params_displ varchar2(1000),
+  8  report_type	 varchar2(100)	not null);
+modname             varchar2(128)  not null references opas_modules(modname) on delete cascade,
+                                                       *
+ERROR at line 4:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> alter table opas_reports add constraint fk_o_reports_obj foreign key references opas_objects(obj_id)
+  2  
+SQL> create index idx_opas_reports_mod	 on opas_reports(modname);
+create index idx_opas_reports_mod   on opas_reports(modname)
+                                       *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> create index idx_opas_reports_fcntn on opas_reports(report_content);
+create index idx_opas_reports_fcntn on opas_reports(report_content)
+                                       *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> create table opas_reports_pars (
+  2  report_id		 number 	not null references opas_reports(report_id) on delete cascade,
+  3  par_name		 varchar2(100)	not null,
+  4  num_par		 number,
+  5  varchar_par	 varchar2(4000),
+  6  date_par		 date
+  7  );
+report_id           number         not null references opas_reports(report_id) on delete cascade,
+                                                       *
+ERROR at line 2:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> create index idx_opas_reports_parstske on opas_reports_pars(report_id);
+create index idx_opas_reports_parstske on opas_reports_pars(report_id)
+                                          *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> ---------------------------------------------------------------------------------------------
+SQL> -- DB Links assignments
+SQL> create table opas_dblinks2obj (
+  2  trg_obj_id 	 number 	not null references opas_objects(obj_id) on delete cascade,
+  3  dblink		 varchar2(128)	not null references opas_db_links (DB_LINK_NAME) on delete cascade,
+  4  default_dblink	 varchar2(1)	not null,
+  5  sortordr		 number 	not null default 0);
+sortordr            number         not null default 0)
+                                            *
+ERROR at line 5:
+ORA-00907: missing right parenthesis 
+
+
+SQL> 
+SQL> create unique index idx_opas_dblinks2obj_trg on opas_dblinks2obj(trg_obj_id,src_dblink);
+create unique index idx_opas_dblinks2obj_trg on opas_dblinks2obj(trg_obj_id,src_dblink)
+                                                *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> create index idx_opas_dblinks2obj_dbl  on opas_dblinks2obj(src_dblink);
+create index idx_opas_dblinks2obj_dbl  on opas_dblinks2obj(src_dblink)
+                                          *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> 
+SQL> ---------------------------------------------------------------------------------------------
+SQL> -- SQL Lists
+SQL> 
+SQL> /*
+SQL> @../modules/core/source/create_stored.sql
+SQL> */
+SQL> 
+SQL> exec COREMOD.register(p_modname => 'OPASAPP', p_moddescr => 'Oracle Performance Analytic Suite Application', p_modver => '&OPASVER.', p_installed => sysdate);
+BEGIN COREMOD.register(p_modname => 'OPASAPP', p_moddescr => 'Oracle Performance Analytic Suite Application', p_modver => '6.0.0', p_installed => sysdate); END;
+
+      *
+ERROR at line 1:
+ORA-06550: line 1, column 7: 
+PLS-00201: identifier 'COREMOD.REGISTER' must be declared 
+ORA-06550: line 1, column 7: 
+PL/SQL: Statement ignored 
+
+
+SQL> exec COREMOD.register(p_modname => '&MODNM.', p_moddescr => 'Core Module', p_modver => '&MODVER.', p_installed => sysdate);
+BEGIN COREMOD.register(p_modname => 'OPASCORE', p_moddescr => 'Core Module', p_modver => '2.0.0', p_installed => sysdate); END;
+
+      *
+ERROR at line 1:
+ORA-06550: line 1, column 7: 
+PLS-00201: identifier 'COREMOD.REGISTER' must be declared 
+ORA-06550: line 1, column 7: 
+PL/SQL: Statement ignored 
+
+
+SQL> 
+SQL> /*
+SQL> @../modules/core/data/load.sql
+SQL> 
+SQL> exec coremod_tasks.create_task_job;
+SQL> exec coremod_cleanup.create_cleanup_job;
+SQL> 
+SQL> 
+SQL> begin
+SQL>   coremod_cleanup.register_cleanup_tasks (  P_TASKNAME => 'CLEANUPLOGS',
+SQL> 						 P_MODNAME => '&MODNM.',
+SQL> 						 p_task_body => 'begin COREMOD_LOG.cleanup_logs; end;');
+SQL>   coremod_cleanup.register_cleanup_tasks (  P_TASKNAME => 'CLEANUPTASKSDATA',
+SQL> 						 P_MODNAME => '&MODNM.',
+SQL> 						 p_task_body => 'begin coremod_tasks.cleanup_tasks; end;');
+SQL>   coremod_cleanup.register_cleanup_tasks (  P_TASKNAME => 'CLEANUPCACHE',
+SQL> 						 P_MODNAME => '&MODNM.',
+SQL> 						 p_task_body => 'begin COREMOD_REPORT_UTILS.CLEANUP_CACHE; end;');
+SQL> 
+SQL> end;
+SQL> /
+SQL> 
+SQL> begin
+SQL>   COREMOD_TASKS.create_task (  p_taskname	=> 'OPAS_REPORT',
+SQL> 				    p_modname	=> '&MODNM.',
+SQL> 				    p_is_public => 'Y',
+SQL> 				    p_task_body => 'begin coremod_report_utils.execute_report (p_report_id => <B1>) ; end;');
+SQL> end;
+SQL> /
+SQL> 
+SQL> begin
+SQL>   COREMOD_TASKS.create_task (  p_taskname	=> 'OPAS_UPLOAD_IMP_FILE',
+SQL> 				    p_modname	=> '&MODNM.',
+SQL> 				    p_is_public => 'Y',
+SQL> 				    p_task_body => 'begin COREMOD_EXPIMP.import_file (p_exp_sess_id => <B1>) ; end;');
+SQL> end;
+SQL> /
+SQL> 
+SQL> commit;
+SQL> 
+SQL> begin
+SQL>   COREMOD_EXPIMP.init();
+SQL> end;
+SQL> /
+SQL> 
+SQL> */
+SQL> 
+SQL> --SQL Trace
+SQL> --@../modules/sql_trace/install/install.sql
+SQL> 
+SQL> --ASH Analyzer
+SQL> --@../modules/ash_analyzer/install/install.sql
+SQL> 
+SQL> --AWR WareHouse
+SQL> --@../modules/awr_warehouse/install/install.sql
+SQL> 
+SQL> --DB Growth Tracker
+SQL> --@../modules/db_growth/install/install.sql
+SQL> 
+SQL> 
+SQL> conn &localscheme./&localscheme.@&localdb.
+Connected.
+SQL> 
+SQL> set pages 999
+SQL> set lines 200
+SQL> 
+SQL> select * from user_errors order by 1,2,3,4,5;
+
+NAME                                                                                                                             TYPE                  SEQUENCE       LINE   POSITION                   
+-------------------------------------------------------------------------------------------------------------------------------- ------------------- ---------- ---------- ----------                   
+TEXT                                                                                                                                                                                                    
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ATTRIBUTE MESSAGE_NUMBER                                                                                                                                                                                
+--------- --------------                                                                                                                                                                                
+V$OPAS_DB_LINKS                                                                                                                  VIEW                         1          0          0                   
+ORA-00904: "DISPLAY_NAME": invalid identifier                                                                                                                                                           
+ERROR                  0                                                                                                                                                                                
+                                                                                                                                                                                                        
+V$OPAS_EXPIMP_SESSIONS                                                                                                           VIEW                         1          0          0                   
+ORA-00942: table or view does not exist                                                                                                                                                                 
+ERROR                  0                                                                                                                                                                                
+                                                                                                                                                                                                        
+V$OPAS_TASK_QUEUE                                                                                                                VIEW                         1          0          0                   
+ORA-00942: table or view does not exist                                                                                                                                                                 
+ERROR                  0                                                                                                                                                                                
+                                                                                                                                                                                                        
+V$OPAS_TASK_QUEUE_LONGOPS                                                                                                        VIEW                         1          0          0                   
+ORA-04063: view "OPAS60DEV.V$OPAS_TASK_QUEUE" has errors                                                                                                                                                
+ERROR                  0                                                                                                                                                                                
+                                                                                                                                                                                                        
+
+SQL> 
+SQL> begin
+  2    dbms_utility.compile_schema(user);
+  3  end;
+  4  /
+
+PL/SQL procedure successfully completed.
+
+SQL> 
+SQL> select * from user_errors order by 1,2,3,4,5;
+
+NAME                                                                                                                             TYPE                  SEQUENCE       LINE   POSITION                   
+-------------------------------------------------------------------------------------------------------------------------------- ------------------- ---------- ---------- ----------                   
+TEXT                                                                                                                                                                                                    
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ATTRIBUTE MESSAGE_NUMBER                                                                                                                                                                                
+--------- --------------                                                                                                                                                                                
+V$OPAS_DB_LINKS                                                                                                                  VIEW                         1          0          0                   
+ORA-00904: "DISPLAY_NAME": invalid identifier                                                                                                                                                           
+ERROR                  0                                                                                                                                                                                
+                                                                                                                                                                                                        
+V$OPAS_EXPIMP_SESSIONS                                                                                                           VIEW                         1          0          0                   
+ORA-00942: table or view does not exist                                                                                                                                                                 
+ERROR                  0                                                                                                                                                                                
+                                                                                                                                                                                                        
+V$OPAS_TASK_QUEUE                                                                                                                VIEW                         1          0          0                   
+ORA-00942: table or view does not exist                                                                                                                                                                 
+ERROR                  0                                                                                                                                                                                
+                                                                                                                                                                                                        
+V$OPAS_TASK_QUEUE_LONGOPS                                                                                                        VIEW                         1          0          0                   
+ORA-04063: view "OPAS60DEV.V$OPAS_TASK_QUEUE" has errors                                                                                                                                                
+ERROR                  0                                                                                                                                                                                
+                                                                                                                                                                                                        
+
+SQL> 
+SQL> set pages 999
+SQL> set lines 200
+SQL> column MODNAME format a32 word_wrapped
+SQL> column MODDESCR format a100 word_wrapped
+SQL> select t.modname, t.modver, to_char(t.installed,'YYYY/MON/DD HH24:MI:SS') installed, t.moddescr from opas_modules t order by t.installed;
+select t.modname, t.modver, to_char(t.installed,'YYYY/MON/DD HH24:MI:SS') installed, t.moddescr from opas_modules t order by t.installed
+                                                                                                     *
+ERROR at line 1:
+ORA-00942: table or view does not exist 
+
+
+SQL> disc
+Disconnected from Oracle Database 18c Enterprise Edition Release 18.0.0.0.0 - Production
+SQL> 
+SQL> spool off

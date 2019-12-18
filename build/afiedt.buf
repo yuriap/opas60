@@ -1,0 +1,3 @@
+alter table opas_ot_sql_sqlmon add constraint fk_hst_rep foreign key (sql_mon_hst_report)
+references opas_files ( file_id )
+/

@@ -1,0 +1,980 @@
+CREATE OR REPLACE
+PACKAGE BODY COREOBJ_SQL_UTILS AS
+
+  procedure is_section_ready(p_sess_id                opas_ot_sql_data.sess_id%type,
+                             p_section_name           varchar2,
+                             p_status             out opas_ot_sql_data_sect.gathering_status%type,
+                             p_errm               out opas_ot_sql_data_sect.error_message%type)
+  is
+  begin
+    select gathering_status, error_message into p_status, p_errm
+      from opas_ot_sql_data_sect x
+     where sess_id = p_sess_id and section_name = p_section_name;
+  exception
+    when no_data_found then p_status := null; p_errm := null;
+  end;
+
+  procedure start_processing(p_sess_id   opas_ot_sql_data.sess_id%type,
+                             p_data  out opas_ot_sql_data%rowtype)
+  is
+    pragma autonomous_transaction;
+  begin
+    begin
+      select * into p_data from opas_ot_sql_data where sess_id = p_sess_id and gathering_status = COREOBJ_SQL.sdoInQueue for update wait 60;
+    exception
+      when others then
+        raise_application_error(-20000,'Unable to lock SQL Data Object '||p_sess_id||': '||sqlerrm);
+    end;
+
+    update opas_ot_sql_data set gathering_status = COREOBJ_SQL.sdoInProgress, start_gathering_dt = systimestamp where sess_id = p_sess_id;
+    commit;
+  end;
+
+  procedure start_processing2(p_sess_id   opas_ot_sql_data.sess_id%type,
+                              p_data  out opas_ot_sql_data%rowtype)
+  is
+  begin
+    select * into p_data from opas_ot_sql_data where sess_id = p_sess_id;
+  end;
+
+  procedure finish_processing(p_sess_id   opas_ot_sql_data.sess_id%type, p_status opas_ot_sql_data.gathering_status%type default COREOBJ_SQL.sdoREADY)
+  is
+    pragma autonomous_transaction;
+  begin
+    update opas_ot_sql_data set gathering_status = p_status, end_gathering_dt = systimestamp where sess_id = p_sess_id;
+    commit;
+  end;
+
+  procedure wait_processing(p_sess_id   opas_ot_sql_data.sess_id%type)
+  is
+    pragma autonomous_transaction;
+  begin
+    update opas_ot_sql_data set gathering_status = COREOBJ_SQL.sdoWaitFor2 where sess_id = p_sess_id;
+    commit;
+  end;
+
+  procedure init_section_statuses(p_sess_id      opas_ot_sql_data.sess_id%type)
+  is
+    --pragma autonomous_transaction;
+  begin
+    INSERT INTO opas_ot_sql_data_sect
+        (  sess_id,   section_name, start_gathering_dt, end_gathering_dt, gathering_status)
+    select p_sess_id, x.val,        null,               null,             sstNotStarted
+      from opas_dictionary x where dic_name='SQLREPSECT';
+    --commit;
+  end;
+
+
+  procedure start_section(p_sess_id      opas_ot_sql_data.sess_id%type,
+                          p_section_name varchar2)
+  is
+    pragma autonomous_transaction;
+  begin
+    update opas_ot_sql_data_sect
+       set start_gathering_dt = systimestamp,
+           gathering_status = sstInProgress
+     where sess_id = p_sess_id and section_name = p_section_name;
+    commit;
+  end;
+
+  procedure finish_section(p_sess_id      opas_ot_sql_data.sess_id%type,
+                           p_section_name varchar2,
+                           p_exception    varchar2 default null,
+                           p_rows_processed number default 1)
+  is
+    pragma autonomous_transaction;
+  begin
+    update opas_ot_sql_data_sect
+       set end_gathering_dt = systimestamp,
+           gathering_status = case when p_exception is null then case when p_rows_processed > 0 then sstReady else sstEmpty end else sstFailed end,
+           error_message    = p_exception
+     where sess_id = p_sess_id and section_name = p_section_name;
+    commit;
+  end;
+
+  procedure finalize_section_statuses(p_sess_id      opas_ot_sql_data.sess_id%type)
+  is
+    pragma autonomous_transaction;
+  begin
+    delete from opas_ot_sql_data_sect
+     where sess_id = p_sess_id and gathering_status = sstNotStarted;
+    commit;
+  end;
+
+  procedure load_sql_text(p_data   opas_ot_sql_data%rowtype)
+  is
+    l_sql clob;
+    l_file_id opas_files.file_id%type;
+    l_rows number := 1;
+  begin
+    start_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQL_TEXT);
+
+    for i in (select * from opas_ot_sql_descriptions where sql_id=p_data.sql_id and sql_text is null) loop
+      if p_data.dblink <> '$LOCAL$' then
+        COREMOD_UTILS.get_clob_remotelly(q'[select sql_fulltext into l_out from gv$sql where sql_id=']' || p_data.sql_id || q'[' and rownum=1;]',
+                                         COREMOD_API.get_ora_dblink(p_data.dblink),
+                                         l_sql);
+        if l_sql = '<NO_DATA_FOUND>' then
+          COREMOD_UTILS.get_clob_remotelly(q'[select sql_text into l_out from dba_hist_sqltext where sql_id=']' || p_data.sql_id || q'[';]',
+                                           COREMOD_API.get_ora_dblink(p_data.dblink),
+                                           l_sql);
+        end if;
+      else
+        begin
+          select sql_text into l_sql from
+            (
+              select sql_fulltext sql_text from gv$sql where sql_id=p_data.sql_id
+              union all
+              select sql_text from dba_hist_sqltext where sql_id=p_data.sql_id
+            )
+          where rownum = 1;
+        exception
+          when no_data_found then l_sql := '<NO_DATA_FOUND>';
+        end;
+      end if;
+      if l_sql != '<NO_DATA_FOUND>' then
+        l_file_id := COREMOD_FILE_UTILS.create_file(P_MODNAME => COREMOD_API.gMODNAME,
+                                                    P_FILE_TYPE => 'SQL Text',
+                                                    P_FILE_NAME => i.sql_id,
+                                                    P_MIMETYPE  => COREMOD_FILE_UTILS.mtTEXT,
+                                                    P_OWNER     => i.created_by);
+        COREMOD_FILE_UTILS.store_content(l_file_id,l_sql);
+        update opas_ot_sql_descriptions set sql_text = l_file_id, FIRST_DISCOVERED_AT = p_data.dblink where sql_id = p_data.sql_id;
+      else
+        l_rows := 0;
+      end if;
+    end loop;
+
+    finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQL_TEXT, p_rows_processed => l_rows);
+  exception
+    when others then
+      rollback;
+      coremod_tasks.log('Error load_sql_text ('||p_data.sess_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQL_TEXT, sqlerrm);
+  end;
+
+  procedure load_non_shared(p_data   opas_ot_sql_data%rowtype)
+  is
+    l_sql varchar2(32765);
+    l_rows number;
+  begin
+    start_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSHARING);
+
+    -- https://timurakhmadeev.wordpress.com/2012/03/15/vsql-is_obsolete/
+    l_sql :=
+        q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_NONSHARED */ INTO opas_ot_sql_nonshared (
+              sess_id, sql_id, inst_id, nonshared_reason, cnt)
+           select :p_sess_id, sql_id, inst_id, nonshared_reason, cnt from
+          (select inst_id, sql_id, nonshared_reason, count(*) cnt from (select inst_id,sql_id,
+             UNBOUND_CURSOR,SQL_TYPE_MISMATCH,OPTIMIZER_MISMATCH,OUTLINE_MISMATCH,STATS_ROW_MISMATCH,LITERAL_MISMATCH,FORCE_HARD_PARSE,
+             EXPLAIN_PLAN_CURSOR,BUFFERED_DML_MISMATCH,PDML_ENV_MISMATCH,INST_DRTLD_MISMATCH,SLAVE_QC_MISMATCH,TYPECHECK_MISMATCH,
+             AUTH_CHECK_MISMATCH,BIND_MISMATCH,DESCRIBE_MISMATCH,LANGUAGE_MISMATCH,TRANSLATION_MISMATCH,BIND_EQUIV_FAILURE,INSUFF_PRIVS,
+             INSUFF_PRIVS_REM,REMOTE_TRANS_MISMATCH,LOGMINER_SESSION_MISMATCH,INCOMP_LTRL_MISMATCH,OVERLAP_TIME_MISMATCH,EDITION_MISMATCH,
+             MV_QUERY_GEN_MISMATCH,USER_BIND_PEEK_MISMATCH,TYPCHK_DEP_MISMATCH,NO_TRIGGER_MISMATCH,FLASHBACK_CURSOR,ANYDATA_TRANSFORMATION,
+             PDDL_ENV_MISMATCH,TOP_LEVEL_RPI_CURSOR,DIFFERENT_LONG_LENGTH,LOGICAL_STANDBY_APPLY,DIFF_CALL_DURN,BIND_UACS_DIFF,PLSQL_CMP_SWITCHS_DIFF,
+             CURSOR_PARTS_MISMATCH,STB_OBJECT_MISMATCH,CROSSEDITION_TRIGGER_MISMATCH,PQ_SLAVE_MISMATCH,TOP_LEVEL_DDL_MISMATCH,MULTI_PX_MISMATCH,
+             BIND_PEEKED_PQ_MISMATCH,MV_REWRITE_MISMATCH,ROLL_INVALID_MISMATCH,OPTIMIZER_MODE_MISMATCH,PX_MISMATCH,MV_STALEOBJ_MISMATCH,FLASHBACK_TABLE_MISMATCH,
+             LITREP_COMP_MISMATCH,PLSQL_DEBUG,LOAD_OPTIMIZER_STATS,ACL_MISMATCH,FLASHBACK_ARCHIVE_MISMATCH,LOCK_USER_SCHEMA_FAILED,REMOTE_MAPPING_MISMATCH,
+             LOAD_RUNTIME_HEAP_FAILED,HASH_MATCH_FAILED,PURGED_CURSOR,BIND_LENGTH_UPGRADEABLE,USE_FEEDBACK_STATS
+          from gv$sql_shared_cursor]' || COREMOD_API.get_dblink_for_query(p_data.dblink) ||
+          q'[ where sql_id = :p_sql_id) unpivot
+            (nonshared_value for nonshared_reason in (
+               UNBOUND_CURSOR as 'UNBOUND_CURSOR', SQL_TYPE_MISMATCH as 'SQL_TYPE_MISMATCH', OPTIMIZER_MISMATCH as 'OPTIMIZER_MISMATCH', OUTLINE_MISMATCH as 'OUTLINE_MISMATCH',
+               STATS_ROW_MISMATCH as 'STATS_ROW_MISMATCH', LITERAL_MISMATCH as 'LITERAL_MISMATCH', FORCE_HARD_PARSE as 'FORCE_HARD_PARSE', EXPLAIN_PLAN_CURSOR as 'EXPLAIN_PLAN_CURSOR',
+               BUFFERED_DML_MISMATCH as 'BUFFERED_DML_MISMATCH', PDML_ENV_MISMATCH as 'PDML_ENV_MISMATCH', INST_DRTLD_MISMATCH as 'INST_DRTLD_MISMATCH', SLAVE_QC_MISMATCH as 'SLAVE_QC_MISMATCH',
+               TYPECHECK_MISMATCH as 'TYPECHECK_MISMATCH', AUTH_CHECK_MISMATCH as 'AUTH_CHECK_MISMATCH', BIND_MISMATCH as 'BIND_MISMATCH', DESCRIBE_MISMATCH as 'DESCRIBE_MISMATCH',
+               LANGUAGE_MISMATCH as 'LANGUAGE_MISMATCH', TRANSLATION_MISMATCH as 'TRANSLATION_MISMATCH', BIND_EQUIV_FAILURE as 'BIND_EQUIV_FAILURE', INSUFF_PRIVS as 'INSUFF_PRIVS',
+               INSUFF_PRIVS_REM as 'INSUFF_PRIVS_REM', REMOTE_TRANS_MISMATCH as 'REMOTE_TRANS_MISMATCH', LOGMINER_SESSION_MISMATCH as 'LOGMINER_SESSION_MISMATCH', INCOMP_LTRL_MISMATCH as 'INCOMP_LTRL_MISMATCH',
+               OVERLAP_TIME_MISMATCH as 'OVERLAP_TIME_MISMATCH', EDITION_MISMATCH as 'EDITION_MISMATCH', MV_QUERY_GEN_MISMATCH as 'MV_QUERY_GEN_MISMATCH', USER_BIND_PEEK_MISMATCH as 'USER_BIND_PEEK_MISMATCH',
+               TYPCHK_DEP_MISMATCH as 'TYPCHK_DEP_MISMATCH', NO_TRIGGER_MISMATCH as 'NO_TRIGGER_MISMATCH', FLASHBACK_CURSOR as 'FLASHBACK_CURSOR', ANYDATA_TRANSFORMATION as 'ANYDATA_TRANSFORMATION',
+               PDDL_ENV_MISMATCH as 'PDDL_ENV_MISMATCH', TOP_LEVEL_RPI_CURSOR as 'TOP_LEVEL_RPI_CURSOR', DIFFERENT_LONG_LENGTH as 'DIFFERENT_LONG_LENGTH', LOGICAL_STANDBY_APPLY as 'LOGICAL_STANDBY_APPLY',
+               DIFF_CALL_DURN as 'DIFF_CALL_DURN', BIND_UACS_DIFF as 'BIND_UACS_DIFF', PLSQL_CMP_SWITCHS_DIFF as 'PLSQL_CMP_SWITCHS_DIFF', CURSOR_PARTS_MISMATCH as 'CURSOR_PARTS_MISMATCH',
+               STB_OBJECT_MISMATCH as 'STB_OBJECT_MISMATCH', CROSSEDITION_TRIGGER_MISMATCH as 'CROSSEDITION_TRIGGER_MISMATCH', PQ_SLAVE_MISMATCH as 'PQ_SLAVE_MISMATCH', TOP_LEVEL_DDL_MISMATCH as 'TOP_LEVEL_DDL_MISMATCH',
+               MULTI_PX_MISMATCH as 'MULTI_PX_MISMATCH', BIND_PEEKED_PQ_MISMATCH as 'BIND_PEEKED_PQ_MISMATCH', MV_REWRITE_MISMATCH as 'MV_REWRITE_MISMATCH', ROLL_INVALID_MISMATCH as 'ROLL_INVALID_MISMATCH',
+               OPTIMIZER_MODE_MISMATCH as 'OPTIMIZER_MODE_MISMATCH', PX_MISMATCH as 'PX_MISMATCH', MV_STALEOBJ_MISMATCH as 'MV_STALEOBJ_MISMATCH', FLASHBACK_TABLE_MISMATCH as 'FLASHBACK_TABLE_MISMATCH',
+               LITREP_COMP_MISMATCH as 'LITREP_COMP_MISMATCH', PLSQL_DEBUG as 'PLSQL_DEBUG', LOAD_OPTIMIZER_STATS as 'LOAD_OPTIMIZER_STATS', ACL_MISMATCH as 'ACL_MISMATCH',
+               FLASHBACK_ARCHIVE_MISMATCH as 'FLASHBACK_ARCHIVE_MISMATCH', LOCK_USER_SCHEMA_FAILED as 'LOCK_USER_SCHEMA_FAILED', REMOTE_MAPPING_MISMATCH as 'REMOTE_MAPPING_MISMATCH',
+               LOAD_RUNTIME_HEAP_FAILED as 'LOAD_RUNTIME_HEAP_FAILED', HASH_MATCH_FAILED as 'HASH_MATCH_FAILED', PURGED_CURSOR as 'PURGED_CURSOR', BIND_LENGTH_UPGRADEABLE as 'BIND_LENGTH_UPGRADEABLE',
+               USE_FEEDBACK_STATS as 'USE_FEEDBACK_STATS'))
+         where nonshared_value = 'Y'
+         group by inst_id,sql_id, nonshared_reason)]';
+    execute immediate l_sql using p_data.sess_id, p_data.sql_id;
+    l_rows := sql%rowcount;
+
+    finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSHARING, p_rows_processed => l_rows);
+  exception
+    when others then
+      rollback;
+      if l_sql is not null then coremod_tasks.log('Error load_non_shared ('||p_data.sess_id||'): '||l_sql); end if;
+      coremod_tasks.log('Error load_non_shared ('||p_data.sess_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSHARING, sqlerrm);
+  end;
+
+  procedure load_vsql(p_data   opas_ot_sql_data%rowtype)
+  is
+    l_sql  varchar2(32765);
+    l_rows number;
+  begin
+    start_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsVSQL);
+    start_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsEXADATA);
+
+    l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_VSQL */ INTO opas_ot_sql_vsql (
+              sess_id,
+              sql_id, child_number, plan_hash_value, optimizer_env_hash_value, inst_id, force_matching_signature, old_hash_value, program_id, program_line#,
+              parsing_schema_name, module, action, first_load_time, last_load_time, last_active_time, is_obsolete, is_bind_sensitive, is_bind_aware, is_shareable,
+              sql_profile, sql_patch, sql_plan_baseline, px_servers_executions, physical_read_requests, physical_read_bytes, physical_write_requests, physical_write_bytes,
+              parse_calls, executions, fetches, rows_processed, end_of_fetch_count, cpu_time, elapsed_time, disk_reads, buffer_gets, direct_writes, application_wait_time,
+              concurrency_wait_time, cluster_wait_time, user_io_wait_time, plsql_exec_time, java_exec_time, io_cell_offload_eligible_bytes, IO_INTERCONNECT_BYTES,
+              optimized_phy_read_requests, io_cell_uncompressed_bytes, io_cell_offload_returned_bytes)
+           select
+              :p_sess_id,
+              sql_id, child_number, plan_hash_value, optimizer_env_hash_value, inst_id, force_matching_signature, old_hash_value, program_id, program_line#,
+              parsing_schema_name, module, action, first_load_time, last_load_time, last_active_time, is_obsolete, is_bind_sensitive, is_bind_aware, is_shareable,
+              sql_profile, sql_patch, sql_plan_baseline, px_servers_executions, physical_read_requests, physical_read_bytes, physical_write_requests, physical_write_bytes,
+              parse_calls, executions, fetches, rows_processed, end_of_fetch_count, cpu_time, elapsed_time, disk_reads, buffer_gets, direct_writes, application_wait_time,
+              concurrency_wait_time, cluster_wait_time, user_io_wait_time, plsql_exec_time, java_exec_time, io_cell_offload_eligible_bytes, IO_INTERCONNECT_BYTES,
+              optimized_phy_read_requests, io_cell_uncompressed_bytes, io_cell_offload_returned_bytes
+           from gv$sql]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || ' where sql_id=:p_sql_id';
+
+    execute immediate l_sql using p_data.sess_id, p_data.sql_id;
+    l_rows := sql%rowcount;
+    l_sql:=null;
+
+    for i in (select program_id, CHILD_NUMBER from opas_ot_sql_vsql where sess_id = p_data.sess_id) loop
+      l_sql := q'[INSERT INTO opas_ot_sql_vsql_objs
+                   ( sess_id,   CHILD_NUMBER, object_id, owner, object_type, object_name)
+           select :p_sess_id,  :CHILD_NUMBER, object_id, owner, object_type, object_name from dba_objects]' ||
+             COREMOD_API.get_dblink_for_query(p_data.dblink)
+             || ' s where s.object_id=:program_id';
+      execute immediate l_sql using p_data.sess_id, i.CHILD_NUMBER, i.program_id;
+      l_sql:=null;
+    end loop;
+
+    finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsVSQL,    p_rows_processed => l_rows);
+    finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsEXADATA, p_rows_processed => l_rows);
+  exception
+    when others then
+      rollback;
+      if l_sql is not null then coremod_tasks.log('Error load_vsql ('||p_data.sess_id||'): '||l_sql); end if;
+      coremod_tasks.log('Error load_vsql ('||p_data.sess_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsVSQL, sqlerrm);
+      finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsEXADATA, sqlerrm);
+  end;
+
+  procedure load_sql_mon(p_data   opas_ot_sql_data%rowtype)
+  is
+    l_sql        varchar2(32765);
+    l_rows       number;
+    l_report     clob;
+    l_file_id    opas_files.file_id%type;
+  begin
+    start_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMON);
+
+    l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_SQLMON */ INTO opas_ot_tmp_gv$sql_monitor (<SRC_DB_COL_LICT>)
+              select <SRC_DB_COL_LICT> from gv$sql_monitor]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || q'[ where sql_id = :p_sql_id]';
+    l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_GV_$SQL_MONITOR'));
+
+    execute immediate l_sql using p_data.sql_id;
+    l_sql := null;
+
+    INSERT ALL
+      WHEN op = 'I' THEN
+      INTO opas_ot_sql_sqlmon (
+        sqlmon_id, sql_id, sql_mon_report, plan_id, source, report_id, status, first_refresh_time,
+        last_refresh_time, refresh_count, sql_exec_start, sql_exec_id, sid, session_serial#, con_id,
+        con_name, ecid, snap_id, dbid, instance_number, con_dbid,
+        dblink)
+      values (
+        opas_ot_sq_sqlmon_id.nextval, sql_id, null, null, 'V$', report_id, status, first_refresh_time,
+        last_refresh_time, refresh_count, sql_exec_start, sql_exec_id, sid, session_serial#, con_id,
+        con_name, ecid, null, null, inst_id, null,
+        p_data.dblink)
+      WHEN op = 'I' THEN
+      INTO opas_ot_sql_sqlmon_data (
+        sqlmon_id, user#, username, module, action, service_name, client_identifier, client_info,
+        program, plsql_entry_object_id, plsql_entry_subprogram_id, plsql_object_id, plsql_subprogram_id,
+        dbop_exec_id, dbop_name, process_name, sql_text, is_full_sqltext, sql_plan_hash_value, sql_full_plan_hash_value,
+        exact_matching_signature, force_matching_signature, px_is_cross_instance, px_maxdop, px_maxdop_instances,
+        px_servers_requested, px_servers_allocated, px_server#, px_server_group, px_server_set, px_qcinst_id,
+        px_qcsid, error_number, error_facility, error_message, elapsed_time, queuing_time, cpu_time, fetches,
+        buffer_gets, disk_reads, direct_writes, io_interconnect_bytes, physical_read_requests, physical_read_bytes,
+        PHYSICAL_WRITE_REQUESTS, physical_write_bytes, application_wait_time, concurrency_wait_time, cluster_wait_time,
+        user_io_wait_time, plsql_exec_time, java_exec_time, rm_last_action, rm_last_action_reason, rm_last_action_time,
+        rm_consumer_group, is_adaptive_plan, is_final_plan, in_dbop_name, in_dbop_exec_id, io_cell_uncompressed_bytes,
+        io_cell_offload_eligible_bytes, io_cell_offload_returned_bytes)
+      values (
+        opas_ot_sq_sqlmon_id.currval, user#, username, module, action, service_name, client_identifier, client_info,
+        program, plsql_entry_object_id, plsql_entry_subprogram_id, plsql_object_id, plsql_subprogram_id,
+        dbop_exec_id, dbop_name, process_name, sql_text, is_full_sqltext, sql_plan_hash_value, sql_full_plan_hash_value,
+        exact_matching_signature, force_matching_signature, px_is_cross_instance, px_maxdop, px_maxdop_instances,
+        px_servers_requested, px_servers_allocated, px_server#, px_server_group, px_server_set, px_qcinst_id,
+        px_qcsid, error_number, error_facility, error_message, elapsed_time, queuing_time, cpu_time, fetches,
+        buffer_gets, disk_reads, direct_writes, io_interconnect_bytes, physical_read_requests, physical_read_bytes,
+        PHYSICAL_WRITE_REQUESTS, physical_write_bytes, application_wait_time, concurrency_wait_time, cluster_wait_time,
+        user_io_wait_time, plsql_exec_time, java_exec_time, rm_last_action, rm_last_action_reason, rm_last_action_time,
+        rm_consumer_group, is_adaptive_plan, is_final_plan, in_dbop_name, in_dbop_exec_id, io_cell_uncompressed_bytes,
+        io_cell_offload_eligible_bytes, io_cell_offload_returned_bytes)
+      WHEN op = 'I' THEN
+      INTO opas_ot_sql_sqlmon_ref ( sess_id, sqlmon_id)
+      values( p_data.sess_id, opas_ot_sq_sqlmon_id.currval)
+      WHEN op = 'L' THEN
+      INTO opas_ot_sql_sqlmon_ref ( sess_id, sqlmon_id)
+      values( p_data.sess_id, sqlmon_id)
+    SELECT 'I' op, t.*, null sqlmon_id FROM opas_ot_tmp_gv$sql_monitor t
+    where report_id = 0 and status = 'EXECUTING'
+    union all
+    SELECT 'I' op, t.*, null sqlmon_id FROM opas_ot_tmp_gv$sql_monitor t
+    where report_id = 0 and status != 'EXECUTING'
+      and not exists (select 1 from opas_ot_sql_sqlmon i
+                       where i.report_id = 0
+                         and t.status = i.status
+                         and t.sql_exec_start = i.sql_exec_start
+                         and t.sql_id = i.sql_id
+                         and i.dblink = p_data.dblink
+                         and t.sid = i.sid
+                         and t.session_serial# = i.session_serial#)
+    union all
+    SELECT 'I' op, t.*, null sqlmon_id FROM opas_ot_tmp_gv$sql_monitor t
+    where report_id <> 0
+      and report_id not in (select report_id from opas_ot_sql_sqlmon where sql_id = p_data.sql_id and dblink = p_data.dblink)
+    union all
+    SELECT 'L' op, t.*, p.sqlmon_id FROM opas_ot_tmp_gv$sql_monitor t, opas_ot_sql_sqlmon p
+    where t.report_id = p.report_id and t.sql_id = p.sql_id and p.dblink = p_data.dblink and t.report_id <> 0
+      and not exists (select 1 from opas_ot_sql_sqlmon_ref i where sess_id = p_data.sess_id and i.sqlmon_id=p.sqlmon_id);
+
+    select count(1) into l_rows from opas_ot_sql_sqlmon_ref where sess_id = p_data.sess_id;
+
+    for i in (select m.* from opas_ot_sql_sqlmon_ref r, opas_ot_sql_sqlmon m where r.sqlmon_id = m.sqlmon_id and r.sess_id = p_data.sess_id and sql_mon_report is null) loop
+      if i.report_id <> 0 then
+        COREMOD_UTILS.get_clob_remotelly(p_sql => replace(replace(
+          q'[begin l_out := dbms_sqltune.report_sql_monitor(sql_id=>'<SQL_ID>', REPORT_ID => <REP_ID>, report_level=>'ALL'); end;]'
+                                                    ,'<SQL_ID>',p_data.sql_id)
+                                                    ,'<REP_ID>',i.report_id),
+                                         p_dblink => p_data.dblink,
+                                         p_output => l_report);
+
+      else
+        COREMOD_UTILS.get_clob_remotelly(p_sql => replace(replace(replace(replace(replace(replace(
+          q'[begin l_out := dbms_sqltune.report_sql_monitor(sql_id=>'<SQL_ID>', SESSION_ID => <SID>, SESSION_SERIAL=> <SER>, SQL_EXEC_ID => <EID>, INST_ID => <IID>, SQL_EXEC_START => to_date('<SDT>','YYYYMMDDHH24MISS'), report_level=>'ALL'); end;]'
+                                                    ,'<SQL_ID>',p_data.sql_id)
+                                                    ,'<SID>',i.sid)
+                                                    ,'<SER>',i.session_serial#)
+                                                    ,'<EID>',i.sql_exec_id)
+                                                    ,'<IID>',i.instance_number)
+                                                    ,'<SDT>',to_char(i.sql_exec_start,'YYYYMMDDHH24MISS')),
+                                         p_dblink => p_data.dblink,
+                                         p_output => l_report);
+      end if;
+      l_file_id := COREMOD_FILE_UTILS.create_file(
+        P_MODNAME => COREMOD_API.gMODNAME,
+        P_FILE_TYPE => 'SQLMON',
+        P_FILE_NAME => p_data.sql_id||'_sqlmon.txt',
+        P_MIMETYPE => COREMOD_FILE_UTILS.mtTEXT,
+        P_OWNER => 'PUBLIC');
+      COREMOD_FILE_UTILS.store_content (
+         P_FILE_ID => l_file_id,
+         P_CONTENT => l_report) ;
+
+      update opas_ot_sql_sqlmon set sql_mon_report = l_file_id where sqlmon_id = i.sqlmon_id;
+    end loop;
+
+    finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMON, p_rows_processed => l_rows);
+  exception
+    when others then
+      rollback;
+      if l_sql is not null then coremod_tasks.log('Error load_sql_mon ('||p_data.sess_id||'): '||l_sql); end if;
+      coremod_tasks.log('Error load_sql_mon ('||p_data.sess_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMON, sqlerrm);
+  end;
+
+  procedure load_sql_mon_hst(p_data   opas_ot_sql_data%rowtype)
+  is
+    l_sql        varchar2(32765);
+    l_rows       number;
+    l_report     clob;
+    l_file_id    opas_files.file_id%type;
+    l_obj_lst    varchar2(32765);
+  begin
+    start_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMONHST);
+
+    l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_SQLMON */ INTO opas_ot_tmp_dba_hist_reports (<SRC_DB_COL_LICT>)
+              select <SRC_DB_COL_LICT> from dba_hist_reports]' || COREMOD_API.get_dblink_for_query(p_data.dblink) ||
+              q'[ r where r.component_name = 'sqlmonitor' and r.key1 = :p_sql_id and period_start_time > add_months(sysdate,-1) and rownum<=20]'; --TODO filter istory reports
+    l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_DBA_HIST_REPORTS'));
+
+    execute immediate l_sql using p_data.sql_id;
+    l_sql := null;
+
+    select listagg(REPORT_ID,',')within group (order by REPORT_ID) into l_obj_lst from (select REPORT_ID from opas_ot_tmp_dba_hist_reports);
+    if l_obj_lst is not null then
+      l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_SQLMON_XML */ INTO opas_ot_tmp_dba_hist_rep_xml (REPORT_ID, REPORT)
+                select d.REPORT_ID, d.REPORT from dba_hist_reports_details]' || COREMOD_API.get_dblink_for_query(p_data.dblink) ||
+                q'[ d where d.REPORT_ID in (<RPT_LST>)]'; --TODO filter istory reports
+      l_sql := replace(l_sql,'<RPT_LST>',l_obj_lst);
+
+      execute immediate l_sql;
+      l_sql := null;
+    end if;
+
+    INSERT ALL
+      WHEN op = 'I' THEN
+      INTO opas_ot_sql_sqlmon (
+        sqlmon_id,                   sql_id, sql_mon_report, plan_id, source, report_id, status, first_refresh_time,
+        last_refresh_time, refresh_count, sql_exec_start, sql_exec_id, sid, session_serial#, con_id,
+        con_name, ecid, snap_id, dbid, instance_number, con_dbid,
+        dblink)
+      values (
+        opas_ot_sq_sqlmon_id.nextval, key1,  null,           null,    'HST',  report_id, STATUS, to_date(first_refresh_time,'MM/DD/YYYY HH24:MI:SS'),
+        to_date(last_refresh_time,'MM/DD/YYYY HH24:MI:SS'), refresh_count, to_date(sql_exec_start,'MM/DD/YYYY HH24:MI:SS'), sql_exec_id, session_id, session_serial#, con_id,
+        null,     null, snap_id, dbid, instance_number, con_dbid,
+        p_data.dblink)
+      WHEN op = 'I' THEN
+      INTO opas_ot_sql_sqlmon_data (
+        sqlmon_id,
+        user#, username, module, action, service_name, client_identifier, client_info,
+        program, plsql_entry_object_id, plsql_entry_subprogram_id, plsql_object_id, plsql_subprogram_id,
+        dbop_exec_id, dbop_name, process_name, sql_text, is_full_sqltext, sql_plan_hash_value, sql_full_plan_hash_value,
+        exact_matching_signature, force_matching_signature, px_is_cross_instance, px_maxdop, px_maxdop_instances,
+        px_servers_requested, px_servers_allocated, px_server#, px_server_group, px_server_set, px_qcinst_id,
+        px_qcsid, error_number, error_facility, error_message, elapsed_time, queuing_time, cpu_time, fetches,
+        buffer_gets, disk_reads, direct_writes, io_interconnect_bytes, physical_read_requests, physical_read_bytes,
+        PHYSICAL_WRITE_REQUESTS, physical_write_bytes, application_wait_time, concurrency_wait_time, cluster_wait_time,
+        user_io_wait_time, plsql_exec_time, java_exec_time, rm_last_action, rm_last_action_reason, rm_last_action_time,
+        rm_consumer_group, is_adaptive_plan, is_final_plan, in_dbop_name, in_dbop_exec_id, io_cell_uncompressed_bytes,
+        io_cell_offload_eligible_bytes, io_cell_offload_returned_bytes)
+      values (
+        opas_ot_sq_sqlmon_id.currval,
+        user#, username, module, action, service_name, null /*client_identifier*/, null /*client_info*/,
+        program, null /*plsql_entry_object_id*/, null /*plsql_entry_subprogram_id*/, null /*plsql_object_id*/, null /*plsql_subprogram_id*/,
+        null /*dbop_exec_id*/, null /*dbop_name*/, null /*process_name*/, sql_text, is_full_sqltext, sql_plan_hash_value, sql_full_plan_hash_value,
+        null /*exact_matching_signature*/, null /*force_matching_signature*/, null /*px_is_cross_instance*/, null /*px_maxdop*/, null /*px_maxdop_instances*/,
+        null /*px_servers_requested*/, null /*px_servers_allocated*/, null /*px_server#*/, null /*px_server_group*/, null /*px_server_set*/, null /*px_qcinst_id*/,
+        null /*px_qcsid*/, null /*error_number*/, null /*error_facility*/, null /*error_message*/, elapsed_time, null /*queuing_time*/, cpu_time, fetches,
+        buffer_gets, disk_reads, null /*direct_writes*/, null /*io_interconnect_bytes*/, physical_read_requests, physical_read_bytes,
+        null /*PHYSICAL_WRITE_REQUESTS*/, null /*physical_write_bytes*/, null /*application_wait_time*/, null /*concurrency_wait_time*/, null /*cluster_wait_time*/,
+        user_io_wait_time, null /*plsql_exec_time*/, null /*java_exec_time*/, null /*rm_last_action*/, null /*rm_last_action_reason*/, null /*rm_last_action_time*/,
+        rm_consumer_group, null /*is_adaptive_plan*/, null /*is_final_plan*/, null /*in_dbop_name*/, null /*in_dbop_exec_id*/, null /*io_cell_uncompressed_bytes*/,
+        null /*io_cell_offload_eligible_bytes*/, null /*io_cell_offload_returned_bytes*/)
+      WHEN op = 'I' THEN
+      INTO opas_ot_sql_sqlmon_ref ( sess_id, sqlmon_id)
+      values( p_data.sess_id, opas_ot_sq_sqlmon_id.currval)
+      WHEN op = 'L' THEN
+      INTO opas_ot_sql_sqlmon_ref ( sess_id, sqlmon_id)
+      values( p_data.sess_id, sqlmon_id)
+    select x.*, x1.*, x2.*
+    from ( SELECT 'I' op, t.*, null sqlmon_id, d.report
+             FROM opas_ot_tmp_dba_hist_reports t, opas_ot_tmp_dba_hist_rep_xml d
+            where not exists (select 1 from opas_ot_sql_sqlmon i
+                               where i.report_id = t.report_id
+                                and t.key1 = i.sql_id
+                                and i.dblink = p_data.dblink)
+             and t.report_id=d.report_id
+           union all
+           SELECT 'L' op, t.*, p.sqlmon_id, d.report
+             FROM opas_ot_tmp_dba_hist_reports t, opas_ot_sql_sqlmon p, opas_ot_tmp_dba_hist_rep_xml d
+            where t.report_id = p.report_id and t.key1 = p.sql_id and p.dblink = p_data.dblink
+              and not exists (select 1 from opas_ot_sql_sqlmon_ref i where sess_id = p_data.sess_id and i.sqlmon_id=p.sqlmon_id)
+              and t.report_id=d.report_id) x,
+           xmltable('/report/sql_monitor_report/target'
+                  PASSING xmlparse(document x.report) COLUMNS
+                  STATUS path 'status'
+                 ,refresh_count path 'refresh_count'
+                 ,rm_consumer_group path 'rminfo/@rmcg'
+                 ,sql_text path 'sql_fulltext'
+                 ,is_full_sqltext path 'sql_fulltext/@is_full'
+                 ,sql_exec_start path '@sql_exec_start'
+                 ,sql_exec_id path '@sql_exec_id'
+                 ,sql_plan_hash_value path '@sql_plan_hash'
+                 ,sql_full_plan_hash_value path '@sql_full_plan_hash'
+                 ,db_unique_name path '@db_unique_name'
+                 ,db_platform_name path '@db_platform_name'
+                 ,report_host_name path '@report_host_name'
+                 ,servers_requested path 'servers_requested'
+                 ,servers_allocated path 'servers_allocated'
+                 ,user# path 'user_id'
+                 ,username path 'user'
+                 ,program path 'program'
+                 ,module path 'module'
+                 ,action path 'action'
+                 ,service_name path 'service'
+                 ,first_refresh_time path 'first_refresh_time'
+                 ,last_refresh_time path 'last_refresh_time'
+                 ,duration path 'duration'
+                 ) x1,
+           xmltable('/report/sql_monitor_report/stats'
+                  PASSING xmlparse(document x.report) COLUMNS
+                  elapsed_time path 'stat[@name="elapsed_time"]'
+                  ,cpu_time path 'stat[@name="cpu_time"]'
+                  ,user_io_wait_time path 'stat[@name="user_io_wait_time"]'
+                  ,other_wait_time path 'stat[@name="other_wait_time"]'
+                  ,fetches path 'stat[@name="user_fetch_count"]'
+                  ,buffer_gets path 'stat[@name="buffer_gets"]'
+                  ,disk_reads path 'stat[@name="disk_reads"]'
+                  ,physical_read_requests path 'stat[@name="read_reqs"]'
+                  ,physical_read_bytes path 'stat[@name="read_bytes"]'
+                  ) x2;
+
+    select count(1) into l_rows from opas_ot_sql_sqlmon_ref where sess_id = p_data.sess_id;
+/*
+    for i in (select unique d.SQL_PLAN_HASH_VALUE,SQL_FULL_PLAN_HASH_VALUE
+                from opas_ot_sql_sqlmon m, OPAS_OT_SQL_SQLMON_DATA d, opas_ot_sql_sqlmon_ref r
+               where m.SQLMON_ID = d.SQLMON_ID and m.SQLMON_ID = r.SQLMON_ID and r.SESS_ID = p_data.sess_id)
+    loop
+
+    end loop;
+*/
+    insert into opas_ot_tmp_gv$sql_plan_stat_all (
+           SQL_ID,PLAN_HASH_VALUE,FULL_PLAN_HASH_VALUE,CHILD_NUMBER,inst_id,
+           OPERATION, OPTIONS, OBJECT_NODE, OBJECT_NAME, OBJECT_ALIAS,
+           ID, DEPTH, POSITION, COST, CARDINALITY, BYTES, PARTITION_START,
+           PARTITION_STOP, PARTITION_ID, DISTRIBUTION, CPU_COST, IO_COST,
+           TEMP_SPACE, ACCESS_PREDICATES, FILTER_PREDICATES, QBLOCK_NAME)
+    select r.sql_id, d.SQL_PLAN_HASH_VALUE, d.SQL_FULL_PLAN_HASH_VALUE, 0, r.instance_number,
+           OPERATION, OPTIONS, OBJECT_NODE, OBJECT_NAME, OBJECT_ALIAS,
+           ID, DEPTH, POSITION, COST, CARDINALITY, BYTES, PARTITION_START,
+           PARTITION_STOP, PARTITION_ID, DISTRIBUTION, CPU_COST, IO_COST,
+           TEMP_SPACE, ACCESS_PREDICATES, FILTER_PREDICATES, QBLOCK_NAME
+    from opas_ot_sql_sqlmon r, opas_ot_sql_sqlmon_data d, opas_ot_tmp_dba_hist_rep_xml x,
+         xmltable('/report/sql_monitor_report/plan/operation'
+                  PASSING xmlparse(document x.report) COLUMNS
+                  OPERATION path '@name'
+                 ,options path '@options'
+                 ,OBJECT_NODE path 'node'
+                 ,OBJECT_NAME path 'object'
+                 ,object_alias path 'object_alias'
+                 ,id path '@id'
+                 ,depth path '@depth'
+                 ,POSITION path '@pos'
+                 ,cost path 'cost'
+                 ,CARDINALITY path 'card'
+                 ,bytes path 'bytes'
+                 ,PARTITION_START PATH 'partition/@start'
+                 ,PARTITION_STOP path 'partition/@stop'
+                 ,PARTITION_ID path 'partition/@id'
+                 ,DISTRIBUTION path 'distrib'
+                 ,cpu_cost path 'cpu_cost'
+                 ,io_cost path 'io_cost'
+                 ,TEMP_SPACE path 'TEMP_SPACE'
+                 ,ACCESS_PREDICATES path 'predicates[@type="access"]'
+                 ,FILTER_PREDICATES path 'predicates[@type="filter"]'
+                 ,QBLOCK_NAME path 'qblock'
+                 ) x1
+     where r.SQLMON_ID=d.SQLMON_ID and r.report_id=x.report_id;
+
+    INSERT INTO opas_ot_tmp_gv$sql_plan_key
+           ( plan_id,                   inst_id, child_number, plan_hash_value, full_plan_hash_value)
+     select opas_ot_sq_plan_id.nextval, inst_id, child_number, plan_hash_value, full_plan_hash_value
+       from (select unique inst_id, child_number, plan_hash_value, full_plan_hash_value from opas_ot_tmp_gv$sql_plan_stat_all);
+
+    insert all
+      into opas_ot_sql_plans    ( plan_id, plan_type, created, sql_id)
+      into opas_ot_sql_plan_ref ( sess_id, plan_id)
+      values( p_data.sess_id, plan_id)
+      select plan_id, 'HST' plan_type, systimestamp created, p_data.sql_id sql_id from opas_ot_tmp_gv$sql_plan_key;
+
+    insert all into opas_ot_sql_plan_det (
+        plan_id,
+        inst_id,address,hash_value,sql_id,plan_hash_value,full_plan_hash_value,child_address,child_number,timestamp,operation,options,object_node,object#,
+        object_owner,object_name,object_alias,object_type,optimizer,id,parent_id,depth,position,search_columns,cost,cardinality,bytes,other_tag,partition_start,
+        partition_stop,partition_id,other,distribution,cpu_cost,io_cost,temp_space,access_predicates,filter_predicates,projection,time,qblock_name,remarks,
+        other_xml, EXECUTIONS,last_starts,starts,last_output_rows,output_rows,last_cr_buffer_gets,cr_buffer_gets,last_cu_buffer_gets,cu_buffer_gets,
+        last_disk_reads,disk_reads,last_disk_writes,disk_writes,last_elapsed_time,elapsed_time,policy,estimated_optimal_size,estimated_onepass_size,
+        last_memory_used,last_execution,last_degree,total_executions,optimal_executions,onepass_executions,multipasses_executions,active_time,
+        max_tempseg_size,last_tempseg_size,con_id,con_dbid)
+      values (
+        plan_id,
+        inst_id,address,hash_value,sql_id,plan_hash_value,full_plan_hash_value,child_address,child_number,timestamp,operation,options,object_node,object#,
+        object_owner,object_name,object_alias,object_type,optimizer,id,parent_id,depth,position,search_columns,cost,cardinality,bytes,other_tag,partition_start,
+        partition_stop,partition_id,other,distribution,cpu_cost,io_cost,temp_space,access_predicates,filter_predicates,projection,time,qblock_name,remarks,
+        other_xml, EXECUTIONS,last_starts,starts,last_output_rows,output_rows,last_cr_buffer_gets,cr_buffer_gets,last_cu_buffer_gets,cu_buffer_gets,
+        last_disk_reads,disk_reads,last_disk_writes,disk_writes,last_elapsed_time,elapsed_time,policy,estimated_optimal_size,estimated_onepass_size,
+        last_memory_used,last_execution,last_degree,total_executions,optimal_executions,onepass_executions,multipasses_executions,active_time,
+        max_tempseg_size,last_tempseg_size,con_id,con_dbid)
+    select p.*, k.plan_id
+      from opas_ot_tmp_gv$sql_plan_stat_all p,
+           opas_ot_tmp_gv$sql_plan_key k
+     where p.inst_id = k.inst_id
+       and p.child_number = k.child_number
+       and p.plan_hash_value = k.plan_hash_value
+       and p.full_plan_hash_value = k.full_plan_hash_value;
+
+
+    for i in (select * from opas_ot_sql_descriptions where sql_id=p_data.sql_id and sql_text is null) loop
+      for j in (select x1.is_full_sqltext,x1.sql_text
+                  from opas_ot_tmp_dba_hist_rep_xml x,
+                       xmltable('/report/sql_monitor_report/target'
+                                PASSING xmlparse(document x.report) COLUMNS
+                                sql_text path 'sql_fulltext'
+                                ,is_full_sqltext path 'sql_fulltext/@is_full') x1)
+      loop
+        if j.is_full_sqltext = 'Y' then
+          l_file_id := COREMOD_FILE_UTILS.create_file(P_MODNAME => COREMOD_API.gMODNAME,
+                                                      P_FILE_TYPE => 'SQL Text',
+                                                      P_FILE_NAME => i.sql_id,
+                                                      P_MIMETYPE  => COREMOD_FILE_UTILS.mtTEXT,
+                                                      P_OWNER     => i.created_by);
+          COREMOD_FILE_UTILS.store_content(l_file_id,j.sql_text);
+          update opas_ot_sql_descriptions set sql_text_approx = l_file_id, FIRST_DISCOVERED_AT = p_data.dblink where sql_id = p_data.sql_id;
+          finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQL_TEXT, p_rows_processed => 1);
+          exit;
+        end if;
+      end loop;
+    end loop;
+
+    for i in (SELECT d.report, p.SQLMON_ID
+                FROM opas_ot_tmp_dba_hist_reports t, opas_ot_sql_sqlmon p, opas_ot_tmp_dba_hist_rep_xml d
+               where t.report_id = p.report_id and t.key1 = p.sql_id and p.dblink = p_data.dblink
+                 and t.report_id = d.report_id
+                 and sql_mon_hst_report is null)
+    loop
+      l_file_id := COREMOD_FILE_UTILS.create_file(
+        P_MODNAME => COREMOD_API.gMODNAME,
+        P_FILE_TYPE => 'SQLMONHST',
+        P_FILE_NAME => p_data.sql_id||'_sqlmonhst.txt',
+        P_MIMETYPE => COREMOD_FILE_UTILS.mtTEXT,
+        P_OWNER => 'PUBLIC');
+      COREMOD_FILE_UTILS.store_content (
+         P_FILE_ID => l_file_id,
+         P_CONTENT => i.report) ;
+
+      update opas_ot_sql_sqlmon set sql_mon_hst_report = l_file_id where sqlmon_id = i.sqlmon_id;
+
+    end loop;
+
+    for i in (select m.* from opas_ot_sql_sqlmon_ref r, opas_ot_sql_sqlmon m where r.sqlmon_id = m.sqlmon_id and r.sess_id = p_data.sess_id and sql_mon_report is null) loop
+      COREMOD_UTILS.get_clob_remotelly(p_sql => replace(
+          q'[begin l_out := DBMS_AUTO_REPORT.REPORT_REPOSITORY_DETAIL(RID => <REP_ID>, TYPE => 'text'); end;]'
+                                                    ,'<REP_ID>',i.report_id),
+                                         p_dblink => p_data.dblink,
+                                         p_output => l_report);
+
+      l_file_id := COREMOD_FILE_UTILS.create_file(
+        P_MODNAME => COREMOD_API.gMODNAME,
+        P_FILE_TYPE => 'SQLMON',
+        P_FILE_NAME => p_data.sql_id||'_sqlmon.txt',
+        P_MIMETYPE => COREMOD_FILE_UTILS.mtTEXT,
+        P_OWNER => 'PUBLIC');
+      COREMOD_FILE_UTILS.store_content (
+         P_FILE_ID => l_file_id,
+         P_CONTENT => l_report) ;
+
+      update opas_ot_sql_sqlmon set sql_mon_report = l_file_id where sqlmon_id = i.sqlmon_id;
+    end loop;
+
+    finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMONHST, p_rows_processed => l_rows);
+  exception
+    when others then
+      rollback;
+      if l_sql is not null then coremod_tasks.log('Error load_sql_mon ('||p_data.sess_id||'): '||l_sql); end if;
+      coremod_tasks.log('Error load_sql_mon ('||p_data.sess_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMONHST, sqlerrm);
+  end;
+
+  procedure load_work_area(p_data   opas_ot_sql_data%rowtype)
+  is
+    l_sql  varchar2(32765);
+    l_rows number;
+  begin
+    start_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsWORKAREA);
+
+    l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_WA */ into opas_ot_sql_wa (
+              sess_id,
+              sql_id, inst_id, child_number, policy, operation_id, operation_type, estimated_optimal_size, estimated_onepass_size, last_memory_used, last_execution,
+              last_degree, total_executions, optimal_executions, onepass_executions, multipasses_executions, active_time, max_tempseg_size, last_tempseg_size)
+           select
+              :p_sess_id,
+              sql_id, inst_id, child_number, policy, operation_id, operation_type, estimated_optimal_size, estimated_onepass_size, last_memory_used, last_execution,
+              last_degree, total_executions, optimal_executions, onepass_executions, multipasses_executions, active_time, max_tempseg_size, last_tempseg_size
+           from gv$sql_workarea]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || ' where sql_id=:p_sql_id';
+
+    execute immediate l_sql using p_data.sess_id, p_data.sql_id;
+    l_rows := sql%rowcount;
+
+    finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsWORKAREA, p_rows_processed => l_rows);
+  exception
+    when others then
+      rollback;
+      coremod_tasks.log('Error load_work_area ('||p_data.sess_id||'): '||l_sql);
+      coremod_tasks.log('Error load_work_area ('||p_data.sess_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsWORKAREA, sqlerrm);
+  end;
+
+  procedure load_opt_env(p_data   opas_ot_sql_data%rowtype)
+  is
+    l_sql  varchar2(32765);
+    l_rows number;
+  begin
+    start_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsOPTENV);
+
+    l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_OE */ into opas_ot_sql_opt_env (
+              sess_id, sql_id,
+              inst_id,child_number,name,isdefault,value)
+           select
+              :p_sess_id, sql_id,
+              inst_id,child_number,name,isdefault,value
+           from gv$sql_optimizer_env]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || ' where sql_id=:p_sql_id';
+
+    execute immediate l_sql using p_data.sess_id, p_data.sql_id;
+    l_rows := sql%rowcount;
+
+    finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsOPTENV, p_rows_processed => l_rows);
+  exception
+    when others then
+      rollback;
+      coremod_tasks.log('Error load_opt_env ('||p_data.sess_id||'): '||l_sql);
+      coremod_tasks.log('Error load_opt_env ('||p_data.sess_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsOPTENV, sqlerrm);
+  end;
+
+  procedure load_sql_plans(p_data   opas_ot_sql_data%rowtype)
+  is
+    l_sql        varchar2(32765);
+    l_rows       number;
+    --l_report     clob;
+    --l_file_id    opas_files.file_id%type;
+  begin
+    start_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLLAST);
+    start_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLADV);
+    start_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLALL);
+    start_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLADAPT);
+
+    l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_PLANS */ INTO opas_ot_tmp_gv$sql_plan_stat_all (<SRC_DB_COL_LICT>)
+              select <SRC_DB_COL_LICT> from gv$sql_plan_statistics_all]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || q'[ where sql_id = :p_sql_id]';
+    l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_GV_$SQL_PLAN_STATISTICS_ALL'));
+    execute immediate l_sql using p_data.sql_id;
+    l_sql := null;
+
+    INSERT INTO opas_ot_tmp_gv$sql_plan_key
+           ( plan_id,                   inst_id, child_number, plan_hash_value, full_plan_hash_value)
+     select opas_ot_sq_plan_id.nextval, inst_id, child_number, plan_hash_value, full_plan_hash_value
+       from (select unique inst_id, child_number, plan_hash_value, full_plan_hash_value from opas_ot_tmp_gv$sql_plan_stat_all);
+
+    insert all
+      into opas_ot_sql_plans    ( plan_id, plan_type, created, sql_id)
+      into opas_ot_sql_plan_ref ( sess_id, plan_id)
+      values( p_data.sess_id, plan_id)
+      select plan_id, 'V$' plan_type, systimestamp created, p_data.sql_id sql_id from opas_ot_tmp_gv$sql_plan_key;
+
+    insert all into opas_ot_sql_plan_det (
+        plan_id,
+        inst_id,address,hash_value,sql_id,plan_hash_value,full_plan_hash_value,child_address,child_number,timestamp,operation,options,object_node,object#,
+        object_owner,object_name,object_alias,object_type,optimizer,id,parent_id,depth,position,search_columns,cost,cardinality,bytes,other_tag,partition_start,
+        partition_stop,partition_id,other,distribution,cpu_cost,io_cost,temp_space,access_predicates,filter_predicates,projection,time,qblock_name,remarks,
+        other_xml, EXECUTIONS,last_starts,starts,last_output_rows,output_rows,last_cr_buffer_gets,cr_buffer_gets,last_cu_buffer_gets,cu_buffer_gets,
+        last_disk_reads,disk_reads,last_disk_writes,disk_writes,last_elapsed_time,elapsed_time,policy,estimated_optimal_size,estimated_onepass_size,
+        last_memory_used,last_execution,last_degree,total_executions,optimal_executions,onepass_executions,multipasses_executions,active_time,
+        max_tempseg_size,last_tempseg_size,con_id,con_dbid)
+      values (
+        plan_id,
+        inst_id,address,hash_value,sql_id,plan_hash_value,full_plan_hash_value,child_address,child_number,timestamp,operation,options,object_node,object#,
+        object_owner,object_name,object_alias,object_type,optimizer,id,parent_id,depth,position,search_columns,cost,cardinality,bytes,other_tag,partition_start,
+        partition_stop,partition_id,other,distribution,cpu_cost,io_cost,temp_space,access_predicates,filter_predicates,projection,time,qblock_name,remarks,
+        other_xml, EXECUTIONS,last_starts,starts,last_output_rows,output_rows,last_cr_buffer_gets,cr_buffer_gets,last_cu_buffer_gets,cu_buffer_gets,
+        last_disk_reads,disk_reads,last_disk_writes,disk_writes,last_elapsed_time,elapsed_time,policy,estimated_optimal_size,estimated_onepass_size,
+        last_memory_used,last_execution,last_degree,total_executions,optimal_executions,onepass_executions,multipasses_executions,active_time,
+        max_tempseg_size,last_tempseg_size,con_id,con_dbid)
+    select p.*, k.plan_id
+      from opas_ot_tmp_gv$sql_plan_stat_all p,
+           opas_ot_tmp_gv$sql_plan_key k
+     where p.inst_id = k.inst_id
+       and p.child_number = k.child_number
+       and p.plan_hash_value = k.plan_hash_value
+       and p.full_plan_hash_value = k.full_plan_hash_value;
+
+    select count(1) into l_rows from opas_ot_sql_plan_ref where sess_id = p_data.sess_id;
+
+    finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLLAST, p_rows_processed => l_rows);
+    finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLADV, p_rows_processed => l_rows);
+    finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLALL, p_rows_processed => l_rows);
+    finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLADAPT, p_rows_processed => l_rows);
+  exception
+    when others then
+      rollback;
+      if l_sql is not null then coremod_tasks.log('Error load_sql_plans ('||p_data.sess_id||'): '||l_sql);  end if;
+      coremod_tasks.log('Error load_sql_plans ('||p_data.sess_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+
+      finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLLAST, sqlerrm);
+      finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLADV, sqlerrm);
+      finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLALL, sqlerrm);
+      finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLADAPT, sqlerrm);
+  end;
+
+  procedure load_sql_vash(p_data   opas_ot_sql_data%rowtype)
+  is
+    l_sql        varchar2(32765);
+    l_rows       number := 0;
+    l_obj_lst    varchar2(32765);
+  begin
+    start_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsVASH);
+
+    l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_VASH */ INTO opas_ot_tmp_gv$ash (sql_id,sample_time,SQL_EXEC_START,sql_plan_hash_value,sql_plan_line_id,sql_plan_operation,sql_plan_options,event,CURRENT_OBJ#,CURRENT_FILE#)
+              select sql_id,sample_time,SQL_EXEC_START,sql_plan_hash_value,sql_plan_line_id,sql_plan_operation,sql_plan_options,event,CURRENT_OBJ#,CURRENT_FILE# from gv$active_session_history]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || q'[ where sql_id = :p_sql_id]';
+    --l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_GV_$ACTIVE_SESSION_HISTORY'));
+    execute immediate l_sql using p_data.sql_id;
+    l_sql := null;
+
+    select listagg(CURRENT_OBJ#,',')within group (order by CURRENT_OBJ#) into l_obj_lst from (select unique CURRENT_OBJ# from opas_ot_tmp_gv$ash);
+    if l_obj_lst is not null then
+      l_sql := q'[INSERT INTO opas_ot_tmp_gv$ash_objs ( object_id, object_type, object_name)
+                 select    object_id, object_type, object_name from dba_objects]' ||
+                COREMOD_API.get_dblink_for_query(p_data.dblink)
+                || ' s where s.object_id in ('||l_obj_lst||')';
+      execute immediate l_sql;
+      l_sql := null;
+    end if;
+
+    select listagg(CURRENT_FILE#,',')within group (order by CURRENT_FILE#) into l_obj_lst from (select unique CURRENT_FILE# from opas_ot_tmp_gv$ash);
+    if l_obj_lst is not null then
+      l_sql := q'[INSERT INTO opas_ot_tmp_gv$ash_objs ( object_id, object_type, object_name)
+             select    FILE_ID, 'TABLESPACE', TABLESPACE_NAME from dba_data_files]' ||
+               COREMOD_API.get_dblink_for_query(p_data.dblink)
+               || ' s where s.FILE_ID in ('||l_obj_lst||')';
+      execute immediate l_sql;
+      l_sql := null;
+    end if;
+
+    INSERT INTO opas_ot_sql_vash1 ( sess_id, sql_id, sql_exec_start, sql_exec_end, plan_hash_value, id, row_src, event, cnt, tim_pct, tim_id_pct, obj, tbs)
+    select p_data.sess_id,p_data.sql_id,
+       SQL_EXEC_START,
+       to_date(to_char(max(sample_time) over(partition by SQL_EXEC_START, plan_hash_value),'YYYYMMDDHH24MISS'),'YYYYMMDDHH24MISS') sql_exec_end,
+       plan_hash_value, id, row_src, event, cnt,
+       round(100 * cnt / sum(cnt) over(partition by SQL_EXEC_START, plan_hash_value), 2) tim_pct,
+       round(100 * sum(cnt) over(partition by id, SQL_EXEC_START, plan_hash_value) / sum(cnt) over(partition by SQL_EXEC_START, plan_hash_value), 2) tim_id_pct,
+       obj, tbs
+       from (select SQL_EXEC_START,
+               sql_plan_hash_value plan_hash_value,
+               sql_plan_line_id id,
+               sql_plan_operation || ' ' || sql_plan_options row_src,
+               obj,tbs,
+               nvl(event, 'CPU') event,
+               count(1) cnt,
+               max(sample_time) sample_time
+          from (select x.*,
+                       case when CURRENT_OBJ#>0 then (select object_type||'.'||object_name from opas_ot_tmp_gv$ash_objs where object_id=CURRENT_OBJ# and object_type!='TABLESPACE') else to_char(CURRENT_OBJ#) end obj,
+                       case when CURRENT_FILE#>0 then (select object_name from opas_ot_tmp_gv$ash_objs where object_id=CURRENT_FILE# and object_type='TABLESPACE') else null end tbs
+            from opas_ot_tmp_gv$ash x)
+         group by SQL_EXEC_START,
+                  sql_plan_hash_value,
+                  sql_plan_line_id,
+                  sql_plan_operation || ' ' || sql_plan_options,
+                  nvl(event, 'CPU'),
+                  obj,tbs) x;
+    l_rows := l_rows + sql%rowcount;
+
+    INSERT INTO opas_ot_sql_vash2 (sess_id, sql_id, plan_hash_value, id, row_src, event, cnt, tim_pct, tim_id_pct, obj, tbs)
+      select p_data.sess_id,p_data.sql_id,
+             plan_hash_value, id, row_src, event, cnt,
+             round(100 * cnt / sum(cnt) over(partition by id), 2),
+             round(100 * sum(cnt) over(partition by id) / sum(cnt) over()),
+             obj, tbs
+        from (select sql_plan_hash_value plan_hash_value,
+               sql_plan_line_id id,
+               sql_plan_operation || ' ' || sql_plan_options row_src,
+               obj,tbs,
+               nvl(event, 'CPU') event,
+               count(1) cnt
+          from (select x.*,
+                       case when CURRENT_OBJ#>0 then (select object_type||'.'||object_name from opas_ot_tmp_gv$ash_objs where object_id=CURRENT_OBJ# and object_type!='TABLESPACE') else to_char(CURRENT_OBJ#) end obj,
+                       case when CURRENT_FILE#>0 then (select object_name from opas_ot_tmp_gv$ash_objs where object_id=CURRENT_FILE# and object_type='TABLESPACE') else null end tbs
+            from opas_ot_tmp_gv$ash x)
+         group by sql_plan_hash_value,
+                  sql_plan_line_id,
+                  sql_plan_operation || ' ' || sql_plan_options,
+                  nvl(event, 'CPU'),
+                  obj,tbs) x;
+    l_rows := l_rows + sql%rowcount;
+
+    finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsVASH, p_rows_processed => l_rows);
+  exception
+    when others then
+      rollback;
+      if l_sql is not null then coremod_tasks.log('Error load_sql_plans ('||p_data.sess_id||'): '||l_sql); end if;
+      coremod_tasks.log('Error load_sql_plans ('||p_data.sess_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsVASH, sqlerrm);
+  end;
+
+  procedure discover_sql(p_sess_id   opas_ot_sql_data.sess_id%type)
+  AS
+    l_data       opas_ot_sql_data%rowtype;
+    L_TASKNAME   OPAS_TASK.TASKNAME%type := 'OPAS_SQL_DISCOVER2';
+    l_tq_id      OPAS_TASK_QUEUE.tq_id%type;
+  BEGIN
+    start_processing(p_sess_id, l_data);
+    --init_section_statuses(p_sess_id);
+
+    l_tq_id:=COREMOD_TASKS.prep_execute_task (  P_TASKNAME => L_TASKNAME) ;
+    COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => 'B1', p_num_par => p_sess_id);
+    COREMOD_TASKS.queue_task ( p_tq_id => l_tq_id ) ;
+    update opas_ot_sql_data set tq_id2 = l_tq_id where sess_id = p_sess_id;
+    commit;
+
+    load_non_shared(l_data);
+    commit;
+    load_vsql(l_data);
+    commit;
+    load_work_area(l_data);
+    commit;
+    load_sql_plans(l_data);
+    commit;
+    load_sql_vash(l_data);
+    commit;
+
+    wait_processing(p_sess_id);
+    begin
+      coremod_tasks.wait_task_finish(l_tq_id, to_number(COREMOD_API.getconf('AWRTASKTIMEOUT',COREMOD_API.gMODNAME)));
+    exception
+      when coremod_tasks.exTimedOutTask then
+        coremod_tasks.cancel_task(l_tq_id);
+    end;
+
+    finalize_section_statuses(p_sess_id);
+    finish_processing(p_sess_id);
+  exception
+    when others then
+      finish_processing(p_sess_id,COREOBJ_SQL.sdoFAILED);
+      coremod_tasks.log('Error discover_sql ('||p_sess_id||'): '||sqlerrm);
+      coremod_tasks.log('Error discover_sql error stack: '||DBMS_UTILITY.FORMAT_ERROR_STACK);
+      raise_application_error(-20000, 'Error discover_sql ('||p_sess_id||'): '||sqlerrm);
+  END discover_sql;
+
+  procedure discover_sql2(p_sess_id   opas_ot_sql_data.sess_id%type)
+  AS
+    l_data opas_ot_sql_data%rowtype;
+  BEGIN
+    start_processing2(p_sess_id, l_data);
+
+    load_sql_text(l_data);
+    commit;
+    load_sql_mon(l_data);
+    commit;
+    load_sql_mon_hst(l_data);
+    commit;
+    load_opt_env(l_data);
+    commit;
+  exception
+    when others then
+      coremod_tasks.log('Error discover_sql2 ('||p_sess_id||'): '||sqlerrm);
+      coremod_tasks.log('Error discover_sql2 error stack: '||DBMS_UTILITY.FORMAT_ERROR_STACK);
+      raise_application_error(-20000, 'Error discover_sql2 ('||p_sess_id||'): '||sqlerrm);
+  END discover_sql2;
+
+  procedure refresh_section(p_sess_id   opas_ot_sql_data.sess_id%type,
+                            p_section_name varchar2)
+  AS
+    l_data  opas_ot_sql_data%rowtype;
+  BEGIN
+    case when p_section_name = COREOBJ_SQL_REPORT_UTILS.repsSQLMON then
+      begin
+        for i in (select * from opas_ot_sql_data where sess_id = p_sess_id and gathering_status = COREOBJ_SQL.sdoREADY) loop
+          load_sql_mon(i);
+          commit;
+        end loop;
+      end;
+    else
+      raise_application_error(-20000,'Not implemented for section: '||p_section_name);
+    end case;
+  END refresh_section;
+
+
+END COREOBJ_SQL_UTILS;
+/
