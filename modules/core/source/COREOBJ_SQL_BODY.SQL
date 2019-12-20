@@ -10,7 +10,7 @@ PACKAGE BODY COREOBJ_SQL AS
                    p_db_link          opas_db_links.db_link_name%type)
   AS
     l_sql_exists number;
-    l_sess_id    opas_ot_sql_data.sess_id%type;
+    l_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type;
   BEGIN
     COREOBJ_API.add (  P_OBJ_ID => P_OBJ_ID,
       P_OBJ_PRNT  => P_OBJ_PRNT,
@@ -22,61 +22,100 @@ PACKAGE BODY COREOBJ_SQL AS
 
     if l_sql_exists = 0 then
       INSERT INTO opas_ot_sql_descriptions
-               (  sql_id,  sql_text,  created,  created_by)
-        VALUES (p_sql_id,      null,  default,  p_owner);
+               (  sql_id,  sql_text,  sql_text_approx, created_by, first_discovered, first_discovered_at )
+        VALUES (p_sql_id,  null,      null,            p_owner,    null,             null);
     end if;
 
     INSERT INTO opas_ot_sql_data
-             ( data_id,  sql_id,   start_gathering_dt,  end_gathering_dt, dblink,    gathering_status, tq_id)
-      VALUES ( P_OBJ_ID, p_sql_id, null,                null,             p_db_link, sdoNotStarted,    null) returning sess_id into l_sess_id;
+             ( sql_data_point_id,     sql_id,   start_gathering_dt,  end_gathering_dt,    dblink,    gathering_status, tq_id, tq_id2)
+      VALUES ( opas_ot_sq_dp.nextval, p_sql_id, null,                null,             p_db_link,    sdoNotStarted,    null,  null) returning sql_data_point_id into l_sql_data_point_id;
 
-    queue_discover_sql(l_sess_id);
+    INSERT INTO opas_ot_sql_data_point_ref
+             ( obj_id,  sql_data_point_id)
+      VALUES ( P_OBJ_ID, l_sql_data_point_id);
+
+    queue_discover_sql(l_sql_data_point_id);
   END add;
 
-  procedure queue_discover_sql(p_sess_id    opas_ot_sql_data.sess_id%type)
+  procedure queue_discover_sql(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type)
   is
     L_TASKNAME   OPAS_TASK.TASKNAME%type := 'OPAS_SQL_DISCOVER';
     l_tq_id      OPAS_TASK_QUEUE.tq_id%type;
 
     l_status     opas_ot_sql_data.gathering_status%type;
   begin
-    select gathering_status into l_status from opas_ot_sql_data where sess_id = p_sess_id for update;
+    select gathering_status into l_status from opas_ot_sql_data where sql_data_point_id = p_sql_data_point_id for update;
     if l_status in (sdoNotStarted, sdoFAILED) then
       l_tq_id:=COREMOD_TASKS.prep_execute_task (  P_TASKNAME => L_TASKNAME) ;
-      COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => 'B1', p_num_par => p_sess_id);
+      COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => 'B1', p_num_par => p_sql_data_point_id);
       COREMOD_TASKS.queue_task ( p_tq_id => l_tq_id ) ;
 
-      update opas_ot_sql_data set tq_id = l_tq_id, gathering_status = sdoInQueue where sess_id = p_sess_id;
+      update opas_ot_sql_data set tq_id = l_tq_id, gathering_status = sdoInQueue where sql_data_point_id = p_sql_data_point_id;
 
-      COREOBJ_SQL_UTILS.init_section_statuses(p_sess_id);
+      COREOBJ_SQL_UTILS.init_section_statuses(p_sql_data_point_id);
     else
-      raise_application_error(-20000,'Inapropriate data object '|| p_sess_id || ' status: '||l_status);
+      raise_application_error(-20000,'Inapropriate data object '|| p_sql_data_point_id || ' status: '||l_status);
     end if;
   end;
 
   procedure remove  (p_obj_id    opas_objects.obj_id%type,
                      p_cascade   varchar2 default 'N') AS
+    l_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type;
   BEGIN
     COREOBJ_API.lock_object(p_obj_id);
     COREOBJ_API.check_remove_ability(p_obj_id);
-    delete from opas_ot_sql_data where data_id = p_obj_id;
+    delete from opas_ot_sql_data_point_ref where obj_id = p_obj_id returning sql_data_point_id into l_sql_data_point_id;
+    if p_cascade = 'Y' then
+      remove_dp(l_sql_data_point_id);
+    end if;
     COREOBJ_API.remove(p_obj_id);
   END remove;
 
-  procedure drop_sql(p_sql_id    opas_ot_sql_descriptions.sql_id%type) AS
-    type t_file_id is table of opas_ot_sql_descriptions.sql_text%type;
-    l_file_id1 t_file_id;
-    l_file_id2 t_file_id;
-    l_sql_text opas_ot_sql_descriptions.sql_text%type;
-    l_sql_text_approx opas_ot_sql_descriptions.SQL_TEXT_APPROX%type;
-  BEGIN
-    delete from OPAS_OT_SQL_SQLMON where sql_id=p_sql_id returning SQL_MON_REPORT, SQL_MON_HST_REPORT bulk collect into l_file_id1, l_file_id2;
-    for i in 1..l_file_id1.count loop
-      COREMOD_FILE_UTILS.delete_file (  P_FILE_ID => l_file_id1(i)) ;
+  procedure remove_dp(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type)
+  is
+    l_files1 tableofnumbers;
+    l_files2 tableofnumbers;
+    l_plans  tableofnumbers;
+  begin
+    --remove objects referencing this datapoint
+    for i in (select * from opas_ot_sql_data_point_ref where sql_data_point_id = p_sql_data_point_id) loop
+      remove(i.obj_id, 'N');
     end loop;
 
-    for i in 1..l_file_id2.count loop
-      COREMOD_FILE_UTILS.delete_file (  P_FILE_ID => l_file_id2(i)) ;
+    --remove SQL Monitor if noone references it
+    delete from opas_ot_sql_sqlmon
+     where sqlmon_id in (select sqlmon_id from opas_ot_sql_sqlmon_ref o
+                          where sql_data_point_id = p_sql_data_point_id
+                            and not exists (select 1 from opas_ot_sql_sqlmon_ref i where o.sqlmon_id = i.sqlmon_id and sql_data_point_id != p_sql_data_point_id))
+      returning sql_mon_report, sql_mon_hst_report, plan_id bulk collect into l_files1, l_files2, l_plans;
+    delete from opas_ot_sql_sqlmon_ref o where sql_data_point_id = p_sql_data_point_id;
+    delete from opas_ot_sql_plans where plan_id in (select column_value from table(l_plans));
+
+    --remove plans if noone references it
+    delete from opas_ot_sql_plans
+     where plan_id in (select plan_id from opas_ot_sql_plan_ref o
+                        where sql_data_point_id = p_sql_data_point_id
+                          and not exists (select 1 from opas_ot_sql_plan_ref i where o.plan_id = i.plan_id and sql_data_point_id != p_sql_data_point_id));
+    delete from opas_ot_sql_plan_ref o where sql_data_point_id = p_sql_data_point_id;
+
+    for i in 1..l_files1.count loop
+      COREMOD_FILE_UTILS.delete_file (  P_FILE_ID => l_files1(i)) ;
+    end loop;
+
+    for i in 1..l_files2.count loop
+      COREMOD_FILE_UTILS.delete_file (  P_FILE_ID => l_files2(i)) ;
+    end loop;
+
+    --delete data point
+    delete from opas_ot_sql_data where sql_data_point_id = p_sql_data_point_id;
+  end;
+
+  procedure drop_sql(p_sql_id    opas_ot_sql_descriptions.sql_id%type) AS
+    l_sql_text        opas_ot_sql_descriptions.sql_text%type;
+    l_sql_text_approx opas_ot_sql_descriptions.SQL_TEXT_APPROX%type;
+  BEGIN
+    for i in (select sql_data_point_id from opas_ot_sql_data where sql_id = p_sql_id) loop
+      remove_dp(i.sql_data_point_id);
     end loop;
 
     delete from opas_ot_sql_descriptions where sql_id = p_sql_id returning sql_text, SQL_TEXT_APPROX into l_sql_text, l_sql_text_approx;

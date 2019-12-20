@@ -1,15 +1,15 @@
 ---------------------------------------------------------------------------------------------
--- Module registry
+-- module registry
 ---------------------------------------------------------------------------------------------
 create table opas_modules (
-MODNAME             varchar2(128)                                   primary key,
-MODDESCR            varchar2(4000),
-MODVER              varchar2(32)                           not null,
-INSTALLED           date                                   not null
+modname             varchar2(128)                                   primary key,
+moddescr            varchar2(4000),
+modver              varchar2(32)                           not null,
+installed           date                                   not null
 );
 
 ---------------------------------------------------------------------------------------------
--- Module Metadata
+-- module metadata
 ---------------------------------------------------------------------------------------------
 create table opas_config (
 modname             varchar2(128)                                    references opas_modules(modname) on delete cascade,
@@ -34,52 +34,52 @@ dic_ordr            number);
 create index idx_opas_dictionary_mod on opas_dictionary(modname,dic_name);
 
 ---------------------------------------------------------------------------------------------
--- Known query storage
+-- known query storage
 ---------------------------------------------------------------------------------------------
 --create table opas_query_storage (
 --sql_id              varchar2(128)                                    primary key,
 --sql_text            clob,
 --created             timestamp        default systimestamp,
---owner               varchar2(128)    default 'PUBLIC')
+--owner               varchar2(128)    default 'public')
 --lob (sql_text) store as (compress high)
 --;
 
--- Text index TBD
+-- text index tbd
 
 ---------------------------------------------------------------------------------------------
--- Database link dictionary
+-- database link dictionary
 ---------------------------------------------------------------------------------------------
 create table opas_db_links (
 db_link_name        varchar2(128)                                    primary key,
-owner               varchar2(128)    default 'PUBLIC',
+owner               varchar2(128)    default 'public',
 username            varchar2(128),
 password            varchar2(128),
 connstr             varchar2(1000),
-STATUS              varchar2(32)     default 'NEW'         not null,
-is_public           varchar2(1)      default 'Y'           not null);
+status              varchar2(32)     default 'new'         not null,
+is_public           varchar2(1)      default 'y'           not null);
 
-CREATE OR REPLACE FORCE VIEW V$OPAS_DB_LINKS AS 
+create or replace force view v$opas_db_links as 
 with gn as (select value from v$parameter where name like '%domain%')
-select DB_LINK_NAME,
+select db_link_name,
        case
-         when DB_LINK_NAME = '$LOCAL$' then DB_LINK_NAME
+         when db_link_name = '$local$' then db_link_name
          else l.db_link
-       end ORA_DB_LINK,
+       end ora_db_link,
        case
-         when DB_LINK_NAME = '$LOCAL$' then 'LOCAL'
+         when db_link_name = '$local$' then 'local'
          else 
-           case when l.username is not null then DB_LINK_NAME||' ('||l.username||'@'||l.host||')' else DB_LINK_NAME||' (SUSPENDED)' end
-         end DISPLAY_NAME,
-       OWNER,
-       STATUS,
-       IS_PUBLIC
-  from OPAS_DB_LINKS o, user_db_links l, gn
+           case when l.username is not null then db_link_name||' ('||l.username||'@'||l.host||')' else db_link_name||' (suspended)' end
+         end display_name,
+       owner,
+       status,
+       is_public
+  from opas_db_links o, user_db_links l, gn
  where owner =
        decode(owner,
-              'PUBLIC',
+              'public',
               owner,
-              decode(is_public, 'Y', owner, nvl(V('APP_USER'), '~^')))
-   and l.db_link(+) = case when gn.value is null then upper(o.DB_LINK_NAME) else upper(o.DB_LINK_NAME ||'.'|| gn.value) end;
+              decode(is_public, 'y', owner, nvl(v('app_user'), '~^')))
+   and l.db_link(+) = case when gn.value is null then upper(o.db_link_name) else upper(o.db_link_name ||'.'|| gn.value) end;
 
 create table opas_db_link_cache (
 dblink              varchar2(128)                          not null  references opas_db_links(db_link_name) on delete cascade,
@@ -92,7 +92,7 @@ create unique index idx_opas_dblink_cache on opas_db_link_cache(dblink,key);
 
 
 ---------------------------------------------------------------------------------------------
--- File storage
+-- file storage
 ---------------------------------------------------------------------------------------------
 create table opas_files (
 file_id             number                                           generated always as identity primary key,
@@ -103,7 +103,7 @@ file_mimetype       varchar2(30)                           not null,
 file_contentb       blob,
 file_contentc       clob,
 created             timestamp        default systimestamp,
-owner               varchar2(128)    default 'PUBLIC'      not null,
+owner               varchar2(128)    default 'public'      not null,
 blob_prepared       timestamp
 )
 lob (file_contentb) store as (compress high)
@@ -116,10 +116,10 @@ create index idx_txt_opas_files on opas_files(file_contentc) indextype is ctxsys
   parameters('filter ctxsys.null_filter section group ctxsys.html_section_group');
 
 ---------------------------------------------------------------------------------------------
--- Authorization
+-- authorization
 ---------------------------------------------------------------------------------------------
--- Authorization group_id - is an access level
--- 0 - admin; 1 - rw; 2 - RO; 3 - noaccess;
+-- authorization group_id - is an access level
+-- 0 - admin; 1 - rw; 2 - ro; 3 - noaccess;
 create table opas_groups (
   group_id            number                                         primary key check (group_id in (0,1,2,3)),
   group_name          varchar2(100)                        not null,
@@ -134,7 +134,7 @@ create index opas_groups2apexusr_usr on opas_groups2apexusr(apex_user);
 create unique index opas_groups2apexusr_usr2grp on opas_groups2apexusr(modname,apex_user,group_id);
 
 ---------------------------------------------------------------------------------------------
--- Navigator
+-- navigator
 ---------------------------------------------------------------------------------------------
 create table opas_object_types (
   ot_id             number                                           primary key,
@@ -148,7 +148,7 @@ create table opas_object_types (
 create table opas_object_pages (
   ot_app_page       number                                 not null,
   ot_id             number                                 not null  references opas_object_types(ot_id) on delete cascade,
-  ot_page_type      varchar2(32)                           not null, --OPEN, NEW, DELETE ...
+  ot_page_type      varchar2(32)                           not null, --open, new, delete ...
   ot_page_descr     varchar2(4000)
 );
 
@@ -159,7 +159,7 @@ create unique index idx_opas_object_pages_pt on opas_object_pages(ot_page_type,o
 --  ot_par_name       varchar2(100)                                    primary key,
 --  ot_app_page       number                                 not null  references opas_object_pages(ot_app_page) on delete cascade,
 --  ot_par_def_val    varchar2(512),
---  ot_par_mandat     varchar2(1)      default 'N'           not null,
+--  ot_par_mandat     varchar2(1)      default 'n'           not null,
 --  ot_par_sortordr   number                                 not null
 --);
 
@@ -167,7 +167,7 @@ create unique index idx_opas_object_pages_pt on opas_object_pages(ot_page_type,o
 
 create table opas_object_oper (
   ot_id             number                                 not null  references opas_object_types(ot_id) on delete cascade,
-  ot_oper_type      varchar2(32)                           not null, --CREATE, MOVE, COPY, DELETE, EXPORT, IMPORT ...
+  ot_oper_type      varchar2(32)                           not null, --create, move, copy, delete, export, import ...
   ot_oper_package   varchar2(128)                          not null,
   ot_oper_procedure varchar2(128)                          not null
 );
@@ -185,8 +185,8 @@ create table opas_objects (
   obj_sortordr      number           default 0             not null,
   obj_owner         varchar2(128),
   obj_size          number           default 0,
-  is_public         varchar2(1)      default 'Y'           not null,
-  is_readonly       varchar2(1)      default 'N'           not null
+  is_public         varchar2(1)      default 'y'           not null,
+  is_readonly       varchar2(1)      default 'n'           not null
 );
 
 create index idx_opas_objects_ot on opas_objects(obj_ot);
@@ -195,7 +195,7 @@ create index idx_opas_objects_prnt on opas_objects(obj_prnt);
 create table opas_object_references (
   obj_id_src        number                                 not null  references opas_objects(obj_id) on delete cascade,
   obj_id_trg        number                                 not null  references opas_objects(obj_id) on delete cascade,
-  obj_ref_type      varchar2(100)    default 'DEFAULT'     not null  -- DEFAULT, SQLOLDNEW, SQLTOPREC
+  obj_ref_type      varchar2(100)    default 'default'     not null  -- default, sqloldnew, sqltoprec
 );
 
 create index idx_opas_object_references_src on opas_object_references(obj_id_src);
@@ -223,24 +223,24 @@ select
     ot_icon,
     ot_name,
     obj_size
-FROM
+from
     opas_objects o, opas_object_types ot 
-where case when o.is_public = 'Y' or o.obj_owner = 'PUBLIC' then 1 else case  when o.obj_owner = V('APP_USER') then 1 else 0 end end = 1
+where case when o.is_public = 'y' or o.obj_owner = 'public' then 1 else case  when o.obj_owner = v('app_user') then 1 else 0 end end = 1
 and o.obj_ot=ot.ot_id;
 
 create table opas_object_pars (
   obj_id              number                               not null  references opas_objects(obj_id) on delete cascade,
-  PAR_NAME            varchar2(100)                        not null,
+  par_name            varchar2(100)                        not null,
   num_par             number,
   varchar_par         varchar2(4000),
   date_par            date
 );
 
-create unique index idx_opas_obj_pars on opas_object_pars(obj_id, PAR_NAME);
+create unique index idx_opas_obj_pars on opas_object_pars(obj_id, par_name);
 
 
 ---------------------------------------------------------------------------------------------
--- Task execution infrasrtucture
+-- task execution infrasrtucture
 ---------------------------------------------------------------------------------------------
 create table opas_cleanup_tasks (
   taskname            varchar2(128)                                  primary key,
@@ -256,10 +256,10 @@ create index idx_opas_cleanup_tasks_mod on opas_cleanup_tasks(modname);
 create table opas_task (
   taskname            varchar2(128)                                  primary key,
   modname             varchar2(128)                        not null  references opas_modules(modname) on delete cascade,
-  is_public           varchar2(1)    default 'Y'           not null,
+  is_public           varchar2(1)    default 'y'           not null,
   created             timestamp      default systimestamp,
   task_body           clob,
-  task_priority       varchar2(10)   default 'NORM'      not null -- 'HIGH', 'LOW'
+  task_priority       varchar2(10)   default 'norm'      not null -- 'high', 'low'
 );
 
 create index idx_opas_task_mod on opas_task(modname);
@@ -274,7 +274,7 @@ create table opas_task_queue (
   finished            timestamp,
   cpu_time            number, --seconds
   elapsed_time        number,
-  status              varchar2(32)   default 'NEW',
+  status              varchar2(32)   default 'new',
   owner               varchar2(128)                        not null,
   sid                 number,
   serial#             number,
@@ -287,7 +287,7 @@ create index idx_opas_task_exec_obj on opas_task_queue(trg_obj_id);
 
 create table opas_task_pars (
   tq_id               number                               not null  references opas_task_queue(tq_id) on delete cascade,
-  PAR_NAME            varchar2(100)                        not null,
+  par_name            varchar2(100)                        not null,
   num_par             number,
   varchar_par         varchar2(4000),
   date_par            date,
@@ -306,7 +306,7 @@ create table opas_log (
 create index idx_opas_task_logtske on opas_log(tq_id);
 create index idx_opas_task_created on opas_log(created);
 
-CREATE OR REPLACE FORCE VIEW V$OPAS_TASK_QUEUE AS 
+create or replace force view v$opas_task_queue as 
 select
   t.taskname, 
   t.modname, 
@@ -324,18 +324,18 @@ select
   q.serial#, 
   q.inst_id,
   q.job_name
-from opas_task t left outer join opas_task_queue q on (t.taskname = q.taskname and q.owner=decode(t.is_public,'Y',q.owner,nvl(V('APP_USER'),'~^')))
-where 1=decode(t.is_public,'Y',1, COREMOD_SEC.is_role_assigned_n(t.modname,'Reas-write users'))
+from opas_task t left outer join opas_task_queue q on (t.taskname = q.taskname and q.owner=decode(t.is_public,'y',q.owner,nvl(v('app_user'),'~^')))
+where 1=decode(t.is_public,'y',1, coremod_sec.is_role_assigned_n(t.modname,'reas-write users'))
 ;
 
-CREATE OR REPLACE FORCE VIEW V$OPAS_TASK_QUEUE_LONGOPS AS
+create or replace force view v$opas_task_queue_longops as
 select tq.*,
        case 
-         when message is null then 'N/A' 
-         else opname || ':' || message || '; elapsed: ' || elapsed_seconds || '; remaining: ' || nvl(to_char(time_remaining), 'N/A') end msg,
+         when message is null then 'n/a' 
+         else opname || ':' || message || '; elapsed: ' || elapsed_seconds || '; remaining: ' || nvl(to_char(time_remaining), 'n/a') end msg,
        round(100 * (sofar / decode(totalwork,0,1,totalwork))) pct_done,
        units,opname,module,action
-  from V$OPAS_TASK_QUEUE           tq,
+  from v$opas_task_queue           tq,
        gv$session_longops           lo,
        gv$session                   s
   where tq.sid = lo.sid(+)
@@ -347,16 +347,16 @@ select tq.*,
 ;
 
 ---------------------------------------------------------------------------------------------
--- Export/Import
+-- export/import
 ---------------------------------------------------------------------------------------------
 create table opas_expimp_sessions (
 sess_id             number                                           generated always as identity primary key,
 tq_id               number                                           references opas_task_queue(tq_id) on delete set null,
 expimp_file         number                                           references opas_files ( file_id ),
 created             timestamp        default systimestamp,
-owner               varchar2(128)    default 'PUBLIC'      not null,
-sess_type           varchar2(3)      check (sess_type in ('IMP','EXP')),
-status              varchar2(32)     default 'NEW'         not null
+owner               varchar2(128)    default 'public'      not null,
+sess_type           varchar2(3)      check (sess_type in ('imp','exp')),
+status              varchar2(32)     default 'new'         not null
 )
 ;
 create index idx_opas_expimp_sessions_tq   on opas_expimp_sessions(tq_id);
@@ -394,7 +394,7 @@ select
     x.expimp_file file_id,
     x.created,
     x.owner,
-    decode(x.sess_type,'EXP','Export','IMP','Import','Unknown: '||x.sess_type) sess_type,
+    decode(x.sess_type,'exp','export','imp','import','unknown: '||x.sess_type) sess_type,
     x.status,
     m.modname,
     m.import_prc,
@@ -403,20 +403,20 @@ select
     m.src_core_version,
     dbms_lob.getlength(f.file_contentb) fsize,
     f.file_name,
-    case when m.MODNAME is not null then to_char(x.created + to_number(COREMOD_API.getconf('EXPIMPSESS',m.MODNAME)),'YYYY-MON-DD HH24:MI' ) else null end expiration
+    case when m.modname is not null then to_char(x.created + to_number(coremod_api.getconf('expimpsess',m.modname)),'yyyy-mon-dd hh24:mi' ) else null end expiration
 from opas_expimp_sessions x, opas_expimp_metadata m, opas_files f
-where x.owner=decode(x.owner,'PUBLIC',x.owner,nvl(V('APP_USER'),'~^'))
+where x.owner=decode(x.owner,'public',x.owner,nvl(v('app_user'),'~^'))
 and x.sess_id=m.sess_id and x.expimp_file=f.file_id(+);
 
 ---------------------------------------------------------------------------------------------
--- Miscelaneous
+-- miscelaneous
 ---------------------------------------------------------------------------------------------
-CREATE OR REPLACE TYPE tableofnumbers as table of number(20)
+create or replace type tableofnumbers as table of number
 /
-CREATE OR REPLACE TYPE tableofstrings as table of varchar2(4000)
+create or replace type tableofstrings as table of varchar2(4000)
 /
 
---Clob2row representation
+--clob2row representation
 --https://jonathanlewis.wordpress.com/2008/11/19/lateral-lobs/
 create or replace type clob_line as object (
     line_number number,
@@ -436,12 +436,12 @@ select
     p1.payload
 from
     opas_files,
-    table(COREMOD_FILE_UTILS.clob2tab(opas_files.file_id)) p1
+    table(coremod_file_utils.clob2tab(opas_files.file_id)) p1
 ;
 ---------------------------------------------------------------------------------------------
--- Core Objects
+-- core objects
 ---------------------------------------------------------------------------------------------
--- Attachments
+-- attachments
 create table opas_ot_attachments (
 attach_id           number                                           primary key,
 modname             varchar2(128)                          not null  references opas_modules(modname) on delete cascade,
@@ -453,11 +453,11 @@ create index idx_opas_attach_mod   on opas_ot_attachments(modname);
 create index idx_opas_attach_cntn  on opas_ot_attachments(attach_content);
 
 ---------------------------------------------------------------------------------------------
--- DB Links assignments
+-- db links assignments
 create table opas_ot_dblinks2obj (
 trg_obj_id          number                                 not null  references opas_objects(obj_id) on delete cascade,
-dblink              varchar2(128)                          not null  references opas_db_links (DB_LINK_NAME) on delete cascade,
-default_dblink      varchar2(1)      default 'N'           not null,
+dblink              varchar2(128)                          not null  references opas_db_links (db_link_name) on delete cascade,
+default_dblink      varchar2(1)      default 'n'           not null,
 sortordr            number           default 0             not null);
 
 create unique index idx_opas_dblinks2obj_trg on opas_ot_dblinks2obj(trg_obj_id,dblink);
@@ -472,7 +472,7 @@ create or replace type t_opasobj_dbltab is table of t_opasobj_dblrec;
 /
 
 ---------------------------------------------------------------------------------------------
--- Memo
+-- memo
 create table opas_ot_memo (
 memo_id           number                                             primary key,
 memo_content      number                                             references opas_files ( file_id ));
@@ -483,14 +483,14 @@ create index idx_opas_memo_cntn  on opas_ot_memo(memo_content);
 
 ---------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------
--- SQLs
+-- sqls
 create table opas_ot_sql_descriptions (
 sql_id              varchar2(13)                           not null  primary key,
 sql_text            number                                           references opas_files ( file_id ),
 sql_text_approx     number                                           references opas_files ( file_id ),
-created_by          varchar2(128)    default 'PUBLIC',
-first_discovered    timestamp        default systimestamp,
-first_discovered_at varchar2(128)                          not null  references opas_db_links (DB_LINK_NAME)
+created_by          varchar2(128)    default 'public',
+first_discovered    timestamp,
+first_discovered_at varchar2(128)                                    references opas_db_links (db_link_name)
 );
 
 create index        idx_opas_ot_sql_descr_file  on opas_ot_sql_descriptions(sql_text);
@@ -503,8 +503,8 @@ sql_data_point_id   number                                           primary key
 sql_id              varchar2(13)                           not null  references opas_ot_sql_descriptions ( sql_id ) on delete cascade,
 start_gathering_dt  timestamp,
 end_gathering_dt    timestamp,
-dblink              varchar2(128)                          not null  references opas_db_links (DB_LINK_NAME),
-gathering_status    varchar2(32)     default 'NOT_STARTED' not null,
+dblink              varchar2(128)                          not null  references opas_db_links (db_link_name),
+gathering_status    varchar2(32)     default 'not_started' not null,
 tq_id               number,
 tq_id2              number
 );
@@ -517,7 +517,7 @@ sql_data_point_id   number                                 not null  references 
 section_name        varchar2(30)                           not null,
 start_gathering_dt  timestamp,
 end_gathering_dt    timestamp,
-gathering_status    varchar2(32)     default 'NOT_STARTED' not null,
+gathering_status    varchar2(32)     default 'not_started' not null,
 error_message       varchar2(4000)
 );
 
@@ -529,7 +529,7 @@ create table opas_ot_sql_data_point_ref (
 );
 
 create index idx_opas_sql_dp_ref_dp  on opas_ot_sql_data_point_ref(sql_data_point_id);
-create index idx_opas_sql_dp_rep_mon on opas_ot_sql_data_point_ref(obj_id);
+create unique index idx_opas_sql_dp_rep_mon on opas_ot_sql_data_point_ref(obj_id);
 
 ----
 create table opas_ot_sql_nonshared (
@@ -548,15 +548,15 @@ create index idx_opas_sql_ns_sqlid on opas_ot_sql_nonshared(sql_id);
 ----
 create table opas_ot_sql_vsql as
 select 0 sql_data_point_id, 
-SQL_ID, CHILD_NUMBER, PLAN_HASH_VALUE, OPTIMIZER_ENV_HASH_VALUE, INST_ID, FORCE_MATCHING_SIGNATURE,
-OLD_HASH_VALUE, PROGRAM_ID, PROGRAM_LINE#, PARSING_SCHEMA_NAME, MODULE, ACTION, FIRST_LOAD_TIME,
-LAST_LOAD_TIME, LAST_ACTIVE_TIME, IS_OBSOLETE, IS_BIND_SENSITIVE, IS_BIND_AWARE,
-IS_SHAREABLE, SQL_PROFILE, SQL_PATCH, SQL_PLAN_BASELINE, PX_SERVERS_EXECUTIONS, PHYSICAL_READ_REQUESTS,
-PHYSICAL_READ_BYTES, PHYSICAL_WRITE_REQUESTS, PHYSICAL_WRITE_BYTES, PARSE_CALLS, EXECUTIONS,
-FETCHES, ROWS_PROCESSED, END_OF_FETCH_COUNT, CPU_TIME, ELAPSED_TIME, DISK_READS, BUFFER_GETS,
-DIRECT_WRITES, APPLICATION_WAIT_TIME, CONCURRENCY_WAIT_TIME, CLUSTER_WAIT_TIME, USER_IO_WAIT_TIME,
-PLSQL_EXEC_TIME, JAVA_EXEC_TIME, IO_CELL_OFFLOAD_ELIGIBLE_BYTES, IO_INTERCONNECT_BYTES, 
-OPTIMIZED_PHY_READ_REQUESTS, IO_CELL_UNCOMPRESSED_BYTES, IO_CELL_OFFLOAD_RETURNED_BYTES
+sql_id, child_number, plan_hash_value, optimizer_env_hash_value, inst_id, force_matching_signature,
+old_hash_value, program_id, program_line#, parsing_schema_name, module, action, first_load_time,
+last_load_time, last_active_time, is_obsolete, is_bind_sensitive, is_bind_aware,
+is_shareable, sql_profile, sql_patch, sql_plan_baseline, px_servers_executions, physical_read_requests,
+physical_read_bytes, physical_write_requests, physical_write_bytes, parse_calls, executions,
+fetches, rows_processed, end_of_fetch_count, cpu_time, elapsed_time, disk_reads, buffer_gets,
+direct_writes, application_wait_time, concurrency_wait_time, cluster_wait_time, user_io_wait_time,
+plsql_exec_time, java_exec_time, io_cell_offload_eligible_bytes, io_interconnect_bytes, 
+optimized_phy_read_requests, io_cell_uncompressed_bytes, io_cell_offload_returned_bytes
 from gv$sql s where 1=2;
 
 alter table opas_ot_sql_vsql add constraint fk_sql_vsql_dp    foreign key (sql_data_point_id) references opas_ot_sql_data(sql_data_point_id) on delete cascade;
@@ -566,7 +566,7 @@ create index idx_opas_sql_vsql_dp    on opas_ot_sql_vsql(sql_data_point_id);
 create index idx_opas_sql_vsql_sqlid on opas_ot_sql_vsql(sql_id);
 
 create table opas_ot_sql_vsql_objs as
-select 0 sql_data_point_id, 0 CHILD_NUMBER,
+select 0 sql_data_point_id, 0 child_number,
 object_id, owner, object_type, object_name
 from dba_objects s where 1=2;
 
@@ -579,7 +579,7 @@ create sequence opas_ot_sq_plan_id;
 create table opas_ot_sql_plans as 
 select
  0 plan_id, 
- 'qazwsxedcrqazwsxedcr' plan_type,
+ cast('qazwsxedcrqazwsxedcr' as varchar2(20)) plan_source,
  systimestamp created,
  x.sql_id
 from gv$sql_plan_statistics_all x where 1=2;
@@ -608,39 +608,39 @@ create index idx_opas_sql_plan_ref_dp  on opas_ot_sql_plan_ref(sql_data_point_id
 create index idx_opas_sql_plan_rep_mon on opas_ot_sql_plan_ref(plan_id);
 
 create global temporary table opas_ot_tmp_gv$sql_plan_stat_all on commit delete rows
-as select * from gv$sql_plan_statistics_all where 1=2;
+as select 0 report_id, x.* from gv$sql_plan_statistics_all x where 1=2;
 
 create global temporary table opas_ot_tmp_gv$sql_plan_key on commit delete rows
-as select 0 plan_id, inst_id, child_number, plan_hash_value, full_plan_hash_value from gv$sql_plan_statistics_all where 1=2;
+as select 0 plan_id, 0 report_id, inst_id, child_number, plan_hash_value, full_plan_hash_value from gv$sql_plan_statistics_all where 1=2;
 
 ----
 create sequence opas_ot_sq_sqlmon_id;
 
 create table opas_ot_sql_sqlmon (
  sqlmon_id                                          number                                           primary key,
- SQL_ID                                             VARCHAR2(13)                           not null  references opas_ot_sql_descriptions(sql_id) on delete cascade,
+ sql_id                                             varchar2(13)                           not null  references opas_ot_sql_descriptions(sql_id) on delete cascade,
  sql_mon_report                                     number                                           references opas_files ( file_id ),
  sql_mon_hst_report                                 number                                           references opas_files ( file_id ),
  plan_id                                            number                                           references opas_ot_sql_plans ( plan_id ),
  dblink                                             varchar2(128)                          not null  references opas_db_links(db_link_name), 
- source                                             varchar2(100), -- V$/HST
- REPORT_ID                                          NUMBER,
- STATUS                                             VARCHAR2(19),
- FIRST_REFRESH_TIME                                 DATE,
- LAST_REFRESH_TIME                                  DATE,
- REFRESH_COUNT                                      NUMBER,
- SQL_EXEC_START                                     DATE,
- SQL_EXEC_ID                                        NUMBER,
- SID                                                NUMBER,
- SESSION_SERIAL#                                    NUMBER,
- CON_ID                                             NUMBER,
- CON_NAME                                           VARCHAR2(128),
- ECID                                               VARCHAR2(64),
+ source                                             varchar2(100), -- v$/hst
+ report_id                                          number,
+ status                                             varchar2(19),
+ first_refresh_time                                 date,
+ last_refresh_time                                  date,
+ refresh_count                                      number,
+ sql_exec_start                                     date,
+ sql_exec_id                                        number,
+ sid                                                number,
+ session_serial#                                    number,
+ con_id                                             number,
+ con_name                                           varchar2(128),
+ ecid                                               varchar2(64),
  ---
- SNAP_ID                                            NUMBER,
- DBID                                               NUMBER,
- INSTANCE_NUMBER                                    NUMBER,
- CON_DBID                                           NUMBER);
+ snap_id                                            number,
+ dbid                                               number,
+ instance_number                                    number,
+ con_dbid                                           number);
  
 create index idx_opas_sql_mon_rep_text  on opas_ot_sql_sqlmon(sql_mon_report);
 create index idx_opas_sql_mon_rep_xml  on opas_ot_sql_sqlmon(sql_mon_hst_report);
@@ -656,69 +656,69 @@ create index idx_opas_sql_mon_rep_mon on opas_ot_sql_sqlmon_ref(sqlmon_id);
 
 create table opas_ot_sql_sqlmon_data (
  sqlmon_id                                          number                                 not null  references opas_ot_sql_sqlmon(sqlmon_id) on delete cascade,
- USER#                                              NUMBER,
- USERNAME                                           VARCHAR2(128),
- MODULE                                             VARCHAR2(64),
- ACTION                                             VARCHAR2(64),
- SERVICE_NAME                                       VARCHAR2(64),
- CLIENT_IDENTIFIER                                  VARCHAR2(64),
- CLIENT_INFO                                        VARCHAR2(64),
- PROGRAM                                            VARCHAR2(48),
- PLSQL_ENTRY_OBJECT_ID                              NUMBER,
- PLSQL_ENTRY_SUBPROGRAM_ID                          NUMBER,
- PLSQL_OBJECT_ID                                    NUMBER,
- PLSQL_SUBPROGRAM_ID                                NUMBER,
- DBOP_EXEC_ID                                       NUMBER,
- DBOP_NAME                                          VARCHAR2(30),
- PROCESS_NAME                                       VARCHAR2(5),
- SQL_TEXT                                           VARCHAR2(2000),
- IS_FULL_SQLTEXT                                    VARCHAR2(1),
- SQL_PLAN_HASH_VALUE                                NUMBER,
- SQL_FULL_PLAN_HASH_VALUE                           NUMBER,
- EXACT_MATCHING_SIGNATURE                           NUMBER,
- FORCE_MATCHING_SIGNATURE                           NUMBER,
- PX_IS_CROSS_INSTANCE                               VARCHAR2(1),
- PX_MAXDOP                                          NUMBER,
- PX_MAXDOP_INSTANCES                                NUMBER,
- PX_SERVERS_REQUESTED                               NUMBER,
- PX_SERVERS_ALLOCATED                               NUMBER,
- PX_SERVER#                                         NUMBER,
- PX_SERVER_GROUP                                    NUMBER,
- PX_SERVER_SET                                      NUMBER,
- PX_QCINST_ID                                       NUMBER,
- PX_QCSID                                           NUMBER,
- ERROR_NUMBER                                       VARCHAR2(40),
- ERROR_FACILITY                                     VARCHAR2(4),
- ERROR_MESSAGE                                      VARCHAR2(256),
- ELAPSED_TIME                                       NUMBER,
- QUEUING_TIME                                       NUMBER,
- CPU_TIME                                           NUMBER,
- FETCHES                                            NUMBER,
- BUFFER_GETS                                        NUMBER,
- DISK_READS                                         NUMBER,
- DIRECT_WRITES                                      NUMBER,
- IO_INTERCONNECT_BYTES                              NUMBER,
- PHYSICAL_READ_REQUESTS                             NUMBER,
- PHYSICAL_READ_BYTES                                NUMBER,
- PHYSICAL_WRITE_REQUESTS                            NUMBER,
- PHYSICAL_WRITE_BYTES                               NUMBER,
- APPLICATION_WAIT_TIME                              NUMBER,
- CONCURRENCY_WAIT_TIME                              NUMBER,
- CLUSTER_WAIT_TIME                                  NUMBER,
- USER_IO_WAIT_TIME                                  NUMBER,
- PLSQL_EXEC_TIME                                    NUMBER,
- JAVA_EXEC_TIME                                     NUMBER,
- RM_LAST_ACTION                                     VARCHAR2(48),
- RM_LAST_ACTION_REASON                              VARCHAR2(128),
- RM_LAST_ACTION_TIME                                DATE,
- RM_CONSUMER_GROUP                                  VARCHAR2(128),
- IS_ADAPTIVE_PLAN                                   VARCHAR2(1),
- IS_FINAL_PLAN                                      VARCHAR2(1),
- IN_DBOP_NAME                                       VARCHAR2(30),
- IN_DBOP_EXEC_ID                                    NUMBER,
- IO_CELL_UNCOMPRESSED_BYTES                         NUMBER,
- IO_CELL_OFFLOAD_ELIGIBLE_BYTES                     NUMBER,
- IO_CELL_OFFLOAD_RETURNED_BYTES                     NUMBER);
+ user#                                              number,
+ username                                           varchar2(128),
+ module                                             varchar2(64),
+ action                                             varchar2(64),
+ service_name                                       varchar2(64),
+ client_identifier                                  varchar2(64),
+ client_info                                        varchar2(64),
+ program                                            varchar2(48),
+ plsql_entry_object_id                              number,
+ plsql_entry_subprogram_id                          number,
+ plsql_object_id                                    number,
+ plsql_subprogram_id                                number,
+ dbop_exec_id                                       number,
+ dbop_name                                          varchar2(30),
+ process_name                                       varchar2(5),
+ sql_text                                           varchar2(2000),
+ is_full_sqltext                                    varchar2(1),
+ sql_plan_hash_value                                number,
+ sql_full_plan_hash_value                           number,
+ exact_matching_signature                           number,
+ force_matching_signature                           number,
+ px_is_cross_instance                               varchar2(1),
+ px_maxdop                                          number,
+ px_maxdop_instances                                number,
+ px_servers_requested                               number,
+ px_servers_allocated                               number,
+ px_server#                                         number,
+ px_server_group                                    number,
+ px_server_set                                      number,
+ px_qcinst_id                                       number,
+ px_qcsid                                           number,
+ error_number                                       varchar2(40),
+ error_facility                                     varchar2(4),
+ error_message                                      varchar2(256),
+ elapsed_time                                       number,
+ queuing_time                                       number,
+ cpu_time                                           number,
+ fetches                                            number,
+ buffer_gets                                        number,
+ disk_reads                                         number,
+ direct_writes                                      number,
+ io_interconnect_bytes                              number,
+ physical_read_requests                             number,
+ physical_read_bytes                                number,
+ physical_write_requests                            number,
+ physical_write_bytes                               number,
+ application_wait_time                              number,
+ concurrency_wait_time                              number,
+ cluster_wait_time                                  number,
+ user_io_wait_time                                  number,
+ plsql_exec_time                                    number,
+ java_exec_time                                     number,
+ rm_last_action                                     varchar2(48),
+ rm_last_action_reason                              varchar2(128),
+ rm_last_action_time                                date,
+ rm_consumer_group                                  varchar2(128),
+ is_adaptive_plan                                   varchar2(1),
+ is_final_plan                                      varchar2(1),
+ in_dbop_name                                       varchar2(30),
+ in_dbop_exec_id                                    number,
+ io_cell_uncompressed_bytes                         number,
+ io_cell_offload_eligible_bytes                     number,
+ io_cell_offload_returned_bytes                     number);
 
 create index idx_opas_sql_mon_rep_d_mon on opas_ot_sql_sqlmon_data(sqlmon_id);
 
@@ -728,36 +728,36 @@ as select * from gv$sql_monitor where 1=2;
 create global temporary table opas_ot_tmp_dba_hist_reports on commit delete rows
 as
   select 
-    r.SNAP_ID                      , 
-    r.DBID                         , 
-    r.INSTANCE_NUMBER              , 
-    r.REPORT_ID                    , 
-    r.COMPONENT_ID                 , 
-    r.SESSION_ID                   , 
-    r.SESSION_SERIAL#              , 
-    r.PERIOD_START_TIME            , 
-    r.PERIOD_END_TIME              , 
-    r.GENERATION_TIME              , 
-    r.COMPONENT_NAME               , 
-    r.REPORT_NAME                  , 
-    r.REPORT_PARAMETERS            , 
-    r.KEY1                         , 
-    r.KEY2                         , 
-    r.KEY3                         , 
-    r.KEY4                         , 
-    r.GENERATION_COST_SECONDS      , 
-    r.REPORT_SUMMARY               , 
-    r.CON_DBID                     , 
-    r.CON_ID
+    r.snap_id                      , 
+    r.dbid                         , 
+    r.instance_number              , 
+    r.report_id                    , 
+    r.component_id                 , 
+    r.session_id                   , 
+    r.session_serial#              , 
+    r.period_start_time            , 
+    r.period_end_time              , 
+    r.generation_time              , 
+    r.component_name               , 
+    r.report_name                  , 
+    r.report_parameters            , 
+    r.key1                         , 
+    r.key2                         , 
+    r.key3                         , 
+    r.key4                         , 
+    r.generation_cost_seconds      , 
+    r.report_summary               , 
+    r.con_dbid                     , 
+    r.con_id
     from dba_hist_reports r
-   WHERE 1=2;
+   where 1=2;
 create global temporary table opas_ot_tmp_dba_hist_rep_xml on commit delete rows
 as
   select 
-    d.REPORT_ID                    , 
-    d.REPORT
+    d.report_id                    , 
+    d.report
     from dba_hist_reports_details d
-   WHERE 1=2;	 
+   where 1=2;    
 ----
 
 create table opas_ot_sql_wa
@@ -805,47 +805,47 @@ create index idx_opas_sql_oe_dp    on opas_ot_sql_opt_env(sql_data_point_id);
 create index idx_opas_sql_oe_sqlid on opas_ot_sql_opt_env(sql_id);
 ---
 
-CREATE TABLE OPAS_OT_SQL_VASH1 (
+create table opas_ot_sql_vash1 (
 sql_data_point_id   number,
 sql_id              varchar2(13), 
-SQL_EXEC_START      date, 
-SQL_EXEC_END        date, 
-PLAN_HASH_VALUE     NUMBER, 
-ID                  NUMBER, 
-ROW_SRC             VARCHAR2(64), 
-EVENT               VARCHAR2(64), 
-CNT                 NUMBER, 
-TIM_PCT             NUMBER, 
-TIM_ID_PCT          NUMBER, 
-OBJ                 VARCHAR2(256), 
-TBS                 VARCHAR2(30)
+sql_exec_start      date, 
+sql_exec_end        date, 
+plan_hash_value     number, 
+id                  number, 
+row_src             varchar2(64), 
+event               varchar2(64), 
+cnt                 number, 
+tim_pct             number, 
+tim_id_pct          number, 
+obj                 varchar2(256), 
+tbs                 varchar2(30)
 );
    
-alter table OPAS_OT_SQL_VASH1 add constraint fk_sql_vash1_dp    foreign key (sql_data_point_id) references opas_ot_sql_data(sql_data_point_id) on delete cascade;
-alter table OPAS_OT_SQL_VASH1 add constraint fk_sql_vash1_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
+alter table opas_ot_sql_vash1 add constraint fk_sql_vash1_dp    foreign key (sql_data_point_id) references opas_ot_sql_data(sql_data_point_id) on delete cascade;
+alter table opas_ot_sql_vash1 add constraint fk_sql_vash1_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
 
-create index idx_opas_sql_vash1_dp    on OPAS_OT_SQL_VASH1(sql_data_point_id);
-create index idx_opas_sql_vash1_sqlid on OPAS_OT_SQL_VASH1(sql_id);
+create index idx_opas_sql_vash1_dp    on opas_ot_sql_vash1(sql_data_point_id);
+create index idx_opas_sql_vash1_sqlid on opas_ot_sql_vash1(sql_id);
 
-CREATE TABLE OPAS_OT_SQL_VASH2 (
+create table opas_ot_sql_vash2 (
 sql_data_point_id   number,
 sql_id              varchar2(13), 
-PLAN_HASH_VALUE     NUMBER, 
-ID                  NUMBER, 
-ROW_SRC             VARCHAR2(64), 
-EVENT               VARCHAR2(64), 
-CNT                 NUMBER, 
-TIM_PCT             NUMBER, 
-TIM_ID_PCT          NUMBER, 
-OBJ                 VARCHAR2(256), 
-TBS                 VARCHAR2(30)
+plan_hash_value     number, 
+id                  number, 
+row_src             varchar2(64), 
+event               varchar2(64), 
+cnt                 number, 
+tim_pct             number, 
+tim_id_pct          number, 
+obj                 varchar2(256), 
+tbs                 varchar2(30)
 );
 
-alter table OPAS_OT_SQL_VASH2 add constraint fk_sql_vash2_dp    foreign key (sql_data_point_id) references opas_ot_sql_data(sql_data_point_id) on delete cascade;
-alter table OPAS_OT_SQL_VASH2 add constraint fk_sql_vash2_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
+alter table opas_ot_sql_vash2 add constraint fk_sql_vash2_dp    foreign key (sql_data_point_id) references opas_ot_sql_data(sql_data_point_id) on delete cascade;
+alter table opas_ot_sql_vash2 add constraint fk_sql_vash2_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
 
-create index idx_opas_sql_vash2_dp    on OPAS_OT_SQL_VASH2(sql_data_point_id);
-create index idx_opas_sql_vash2_sqlid on OPAS_OT_SQL_VASH2(sql_id);
+create index idx_opas_sql_vash2_dp    on opas_ot_sql_vash2(sql_data_point_id);
+create index idx_opas_sql_vash2_sqlid on opas_ot_sql_vash2(sql_id);
 
 create global temporary table opas_ot_tmp_gv$ash on commit delete rows
 as select * from gv$active_session_history where 1=2;
@@ -887,7 +887,7 @@ create table opas_ot_sql_awrash#
 create table opas_ot_sql_awrash#
 
 ---------------------------------------------------------------------------------------------
--- SQL Lists
+-- sql lists
 create table opas_ot_sql_lists (
 sqllst_id           number                                           primary key,
 list_name           varchar2(100)                          not null,
@@ -905,7 +905,7 @@ create unique index idx_opas_lists2sqls_sql_l on opas_ot_lists2sqls(sqllst_id, s
 create index idx_opas_lists2sqls_sql   on opas_ot_lists2sqls(sql_id);
 
 ---------------------------------------------------------------------------------------------
--- Reports
+-- reports
 create table opas_ot_reports (
 report_id           number                                           primary key,
 parent_id           number                                           references opas_reports(report_id) on delete set null,

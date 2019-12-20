@@ -19,10 +19,12 @@ PACKAGE COREOBJ_SQL AS
                    p_sql_id           opas_ot_sql_descriptions.sql_id%type,
                    p_db_link          opas_db_links.db_link_name%type);
 
-  procedure queue_discover_sql(p_sess_id    opas_ot_sql_data.sess_id%type);
+  procedure queue_discover_sql(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type);
 
   procedure remove  (p_obj_id         opas_objects.obj_id%type,
                      p_cascade        varchar2 default 'N');
+
+  procedure remove_dp(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type);
 
   procedure drop_sql(p_sql_id         opas_ot_sql_descriptions.sql_id%type);
 

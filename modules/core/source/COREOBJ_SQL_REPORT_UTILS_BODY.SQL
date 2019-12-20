@@ -4,11 +4,11 @@ PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
   gwNarrowSection    constant number := 600;
   gwWideSection1     constant number := 1200;
 
-  function get_header_refresh_interval(p_sess_id    opas_ot_sql_data.sess_id%type) return number
+  function get_header_refresh_interval(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type) return number
   is
     l_refresh_interval number := 5;
   begin
-    for i in (select gathering_status from opas_ot_sql_data x where sess_id = p_sess_id) loop
+    for i in (select gathering_status from opas_ot_sql_data x where sql_data_point_id = p_sql_data_point_id) loop
       if i.gathering_status not in (COREOBJ_SQL.sdoREADY,COREOBJ_SQL.sdoFAILED) then
         l_refresh_interval := 5;
       else
@@ -18,14 +18,14 @@ PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
     return l_refresh_interval;
   end;
 
-  procedure print_header(p_sess_id    opas_ot_sql_data.sess_id%type)
+  procedure print_header(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type)
   is
   begin
     for i in (select x.*,to_char(cast((x.END_GATHERING_DT-x.START_GATHERING_DT) AS INTERVAL DAY(2) TO SECOND(3))) dur,
                      (select listagg('<b>'||gathering_status||':</b> '||cnt,'; ') within group (order by gathering_status)
                         from (select gathering_status, count(1) cnt
-                                from OPAS_OT_SQL_DATA_SECT where sess_id = p_sess_id group by gathering_status)) sect_statuses
-                from opas_ot_sql_data x where sess_id = p_sess_id) loop
+                                from OPAS_OT_SQL_DATA_SECT where sql_data_point_id = p_sql_data_point_id group by gathering_status)) sect_statuses
+                from opas_ot_sql_data x where sql_data_point_id = p_sql_data_point_id) loop
       htp.p('<b>Gathering status:</b> '||i.gathering_status||'; ');
       if i.START_GATHERING_DT is not null then
         htp.p('<b>Started:</b> '||to_char(i.START_GATHERING_DT,'YYYY-MON-DD HH24:MI')||'; ');
@@ -40,7 +40,7 @@ PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
     end loop;
   end;
 
-  function get_section_duration(p_sess_id                opas_ot_sql_data.sess_id%type,
+  function get_section_duration(p_sql_data_point_id                opas_ot_sql_data.sql_data_point_id%type,
                                 p_section_name           varchar2) return varchar2
   is
     l_result varchar2(100);
@@ -52,18 +52,18 @@ PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
            to_char(cast((nvl(END_GATHERING_DT,systimestamp)-START_GATHERING_DT) AS INTERVAL DAY(2) TO SECOND(3)))
       into l_result
       from opas_ot_sql_data_sect x
-     where sess_id = p_sess_id and section_name = p_section_name;
+     where sql_data_point_id = p_sql_data_point_id and section_name = p_section_name;
     return l_result;
   exception
     when no_data_found then return null;
   end;
 
 
-  procedure print_nonshared_section_base(p_sess_id    opas_ot_sql_data.sess_id%type,
+  procedure print_nonshared_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
                                          p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
   begin
     COREMOD_REPORT_UTILS.print_query_result_html
-                                           (p_query => q'[select inst_id "Instance ID",nonshared_reason "Non-shared reason",cnt "Count" from opas_ot_sql_nonshared where sess_id = ]'||p_sess_id,
+                                           (p_query => q'[select inst_id "Instance ID",nonshared_reason "Non-shared reason",cnt "Count" from opas_ot_sql_nonshared where sql_data_point_id = ]'||p_sql_data_point_id,
                                             p_width => gwNarrowSection,
                                             p_summary => 'Non-shared reason',
                                             --p_search varchar2 default null,
@@ -78,7 +78,7 @@ PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
                                             p_output => print_nonshared_section_base.p_output);
   end;
 
-  procedure print_vsql_section_base(p_sess_id    opas_ot_sql_data.sess_id%type,
+  procedure print_vsql_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
                                     p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
     l_on varchar2(512);
     l_row_index pls_integer := 1;
@@ -88,15 +88,15 @@ PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
     procedure p(msg varchar2) is begin l_output(l_row_index) := msg; l_row_index := l_row_index+1; end;
   begin
     --p(' ');
-    select nvl(display_name,dblink) into l_db_link_display_name from v$opas_db_links l, opas_ot_sql_data sd where l.db_link_name(+) = sd.dblink and sd.sess_id = p_sess_id;
+    select nvl(display_name,dblink) into l_db_link_display_name from v$opas_db_links l, opas_ot_sql_data sd where l.db_link_name(+) = sd.dblink and sd.sql_data_point_id = p_sql_data_point_id;
     p('Source DB: '||l_db_link_display_name);
-    for i in (select * from OPAS_OT_SQL_VSQL where sess_id=p_sess_id order by inst_id, child_number) loop
+    for i in (select * from OPAS_OT_SQL_VSQL where sql_data_point_id=p_sql_data_point_id order by inst_id, child_number) loop
       --p(' ');
       p('=================================================================================================');
       p('SQL_ID='||i.sql_id||'; CHILD_NUMBER='||i.child_number||'; PLAN HASH: '||i.PLAN_HASH_VALUE||'; Opt Env Hash: '||i.OPTIMIZER_ENV_HASH_VALUE||';'||' INST_ID: '||i.inst_id);
 	  p('FORCE_MATCHING_SIGN: '||i.force_matching_signature||'; OLD_HASH_VALUE: '||i.OLD_HASH_VALUE);
 	  begin
-  	  select object_type||': '||owner||'.'||object_name into l_on from opas_ot_sql_vsql_objs s where s.object_id=i.program_id and s.CHILD_NUMBER = i.CHILD_NUMBER and s.sess_id = p_sess_id;
+  	  select object_type||': '||owner||'.'||object_name into l_on from opas_ot_sql_vsql_objs s where s.object_id=i.program_id and s.CHILD_NUMBER = i.CHILD_NUMBER and s.sql_data_point_id = p_sql_data_point_id;
 	    p(l_on||', line number: '||i.program_line#);
 	    exception when no_data_found then null;
 	  end;
@@ -164,7 +164,7 @@ PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
 
   END print_vsql_section_base;
 
-  procedure print_exa_section_base(p_sess_id    opas_ot_sql_data.sess_id%type,
+  procedure print_exa_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
                                   p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
   begin
     p_output(1):='Exadata statistics';
@@ -173,8 +173,8 @@ p_query => replace(q'[select inst_id, offloaded + not_offloaded total, offloaded
   from (select inst_id, sum(decode(offload, 'Yes', 1, 0)) offloaded, sum(decode(offload, 'No', 1, 0)) not_offloaded
           from (select inst_id, sql_id, decode(IO_CELL_OFFLOAD_ELIGIBLE_BYTES, 0, 'No', 'Yes') Offload
                   from OPAS_OT_SQL_VSQL s
-                 where sess_id = '<sess_id>')
-         group by inst_id) order by 1]','<sess_id>',p_sess_id),
+                 where sql_data_point_id = '<sql_data_point_id>')
+         group by inst_id) order by 1]','<sql_data_point_id>',p_sql_data_point_id),
                                             p_width => gwNarrowSection,
                                             p_summary => 'Exadata stats',
                                             --p_search varchar2 default null,
@@ -202,8 +202,8 @@ p_query => replace(q'[select inst_id,
        buffer_gets lio,
        round(buffer_gets / decode(nvl(executions, 0), 0, 1, executions)) avg_lio
   from OPAS_OT_SQL_VSQL s
- where sess_id = '<sess_id>'
-order by 1,2]','<sess_id>',p_sess_id),
+ where sql_data_point_id = '<sql_data_point_id>'
+order by 1,2]','<sql_data_point_id>',p_sql_data_point_id),
                                             p_width => gwNarrowSection,
                                             p_summary => 'Exadata details',
                                             --p_search varchar2 default null,
@@ -218,12 +218,12 @@ order by 1,2]','<sess_id>',p_sess_id),
                                             p_output => print_exa_section_base.p_output);
   end;
 
-  procedure print_sqlmon_section_base(p_sess_id    opas_ot_sql_data.sess_id%type,
+  procedure print_sqlmon_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
                                       p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
     l_text clob;
   begin
 
-    for i in (select m.sql_mon_report from opas_ot_sql_sqlmon_ref r, opas_ot_sql_sqlmon m where r.sqlmon_id = m.sqlmon_id and r.sess_id = p_sess_id and sql_mon_report is not null
+    for i in (select m.sql_mon_report from opas_ot_sql_sqlmon_ref r, opas_ot_sql_sqlmon m where r.sqlmon_id = m.sqlmon_id and r.sql_data_point_id = p_sql_data_point_id and sql_mon_report is not null
                order by sql_exec_start desc) loop
       COREMOD_FILE_UTILS.get_locator(i.sql_mon_report, l_text);
       COREMOD_REPORT_UTILS.convert_to_html_table (
@@ -243,7 +243,7 @@ order by 1,2]','<sess_id>',p_sess_id),
 
   END print_sqlmon_section_base;
 
-  procedure print_sqlmon_hst_section_base(p_sess_id    opas_ot_sql_data.sess_id%type,
+  procedure print_sqlmon_hst_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
                                           p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
     l_text clob;
     l_capture        varchar2(100);
@@ -253,8 +253,18 @@ order by 1,2]','<sess_id>',p_sess_id),
 
     l_display_params:='ALL ALLSTATS +peeked_binds';  l_capture := 'Execution plans extracted from SQL Monitor History';
 
-    for i in (select m.sql_mon_report from opas_ot_sql_sqlmon_ref r, opas_ot_sql_sqlmon m where r.sqlmon_id = m.sqlmon_id and r.sess_id = p_sess_id and sql_mon_report is not null
-               order by sql_exec_start desc) loop
+    for i in (select m.sql_mon_report, d.SQL_PLAN_HASH_VALUE, d.SQL_FULL_PLAN_HASH_VALUE, m.plan_id
+                from opas_ot_sql_sqlmon_ref r,
+                     opas_ot_sql_sqlmon m,
+                     OPAS_OT_SQL_SQLMON_DATA d
+               where r.sqlmon_id = m.sqlmon_id
+                 and r.sql_data_point_id = p_sql_data_point_id
+                 and m.sql_mon_report is not null
+                 and m.source = COREOBJ_SQL_UTILS.srcHST
+                 and d.sqlmon_id = m.sqlmon_id
+               order by sql_exec_start desc)
+    loop
+
       COREMOD_FILE_UTILS.get_locator(i.sql_mon_report, l_text);
       COREMOD_REPORT_UTILS.convert_to_html_table (
         P_TEXT => l_text,
@@ -273,12 +283,16 @@ order by 1,2]','<sess_id>',p_sess_id),
       for plans in (select * from
                      (select unique r.PLAN_ID,d.INST_ID,d.PLAN_HASH_VALUE,d.FULL_PLAN_HASH_VALUE,d.CHILD_NUMBER
                         from OPAS_OT_SQL_PLAN_REF r, OPAS_OT_SQL_PLAN_DET d, OPAS_OT_SQL_PLANS p
-                       where r.sess_id=p_sess_id
+                       where r.sql_data_point_id=p_sql_data_point_id
                          and r.plan_id=d.plan_id
-                         and d.plan_id=r.plan_id
+                         and p.plan_id=r.plan_id
                          and d.plan_id=p.plan_id
-                         and p.plan_type='HST')
-                    order by INST_ID,CHILD_NUMBER) loop
+                         and p.plan_source=COREOBJ_SQL_UTILS.srcHST
+                         and d.PLAN_HASH_VALUE=i.SQL_PLAN_HASH_VALUE
+                         and d.FULL_PLAN_HASH_VALUE=i.SQL_FULL_PLAN_HASH_VALUE
+                         and p.plan_id = i.PLAN_ID)
+                    order by INST_ID,CHILD_NUMBER)
+      loop
 
         l_header := l_capture||chr(10)||'================================'||chr(10)||'Instance number: '||plans.INST_ID||'; Child number: '||plans.CHILD_NUMBER;
         l_header := l_header ||chr(10)||'Plan hash value: '||plans.PLAN_HASH_VALUE||'; Plan full hash value: '||plans.FULL_PLAN_HASH_VALUE;
@@ -300,7 +314,7 @@ order by 1,2]','<sess_id>',p_sess_id),
         COREMOD_REPORT_UTILS.print_query_result_html (
                                               p_query => replace(replace(
 q'[select plan_table_output "Plan Table Output" from table(dbms_xplan.display('OPAS_OT_SQL_PLAN_DET', null, '<display_params>', 'plan_id=<PLAN_ID>'))]'
-                                              ,'<PLAN_ID>',plans.PLAN_ID)
+                                              ,'<PLAN_ID>',i.PLAN_ID)
                                               ,'<display_params>',l_display_params),
                                               p_width => gwWideSection1,
                                               p_summary => 'Execution plan',
@@ -314,13 +328,13 @@ q'[select plan_table_output "Plan Table Output" from table(dbms_xplan.display('O
                                               --p_header number default 0,
                                               --p_break_col => 'inst_id',
                                               p_output => print_sqlmon_hst_section_base.p_output);
-      end loop;
 
+      end loop;
     end loop;
 
   END print_sqlmon_hst_section_base;
 
-  procedure print_wa_section_base(p_sess_id    opas_ot_sql_data.sess_id%type,
+  procedure print_wa_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
                                   p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
   begin
     COREMOD_REPORT_UTILS.print_query_result_html (
@@ -342,8 +356,8 @@ p_query => replace(q'[select inst_id,
        max_tempseg_size "MAX_TMP",
        last_tempseg_size "LAST_TMP"
   from opas_ot_sql_wa
- where sess_id = <sess_id>
- order by inst_id, child_number, operation_id]','<sess_id>',p_sess_id),
+ where sql_data_point_id = <sql_data_point_id>
+ order by inst_id, child_number, operation_id]','<sql_data_point_id>',p_sql_data_point_id),
                                             p_width => gwWideSection1,
                                             p_summary => 'Workareas',
                                             --p_search varchar2 default null,
@@ -358,11 +372,11 @@ p_query => replace(q'[select inst_id,
                                             p_output => print_wa_section_base.p_output);
   end;
 
-  procedure print_oe_section_base(p_sess_id    opas_ot_sql_data.sess_id%type,
+  procedure print_oe_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
                                   p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
   begin
     COREMOD_REPORT_UTILS.print_query_result_html (
-p_query => replace(q'[select inst_id,child_number,name,isdefault,value from opas_ot_sql_opt_env where sess_id = <sess_id> order by inst_id,child_number,name]','<sess_id>',p_sess_id),
+p_query => replace(q'[select inst_id,child_number,name,isdefault,value from opas_ot_sql_opt_env where sql_data_point_id = <sql_data_point_id> order by inst_id,child_number,name]','<sql_data_point_id>',p_sql_data_point_id),
                                             p_width => gwWideSection1,
                                             p_summary => 'Workareas',
                                             --p_search varchar2 default null,
@@ -377,19 +391,20 @@ p_query => replace(q'[select inst_id,child_number,name,isdefault,value from opas
                                             p_output => print_oe_section_base.p_output);
   end;
 
-  procedure print_plan_section_base(p_sess_id       opas_ot_sql_data.sess_id%type,
+  procedure print_plan_section_base(p_sql_data_point_id       opas_ot_sql_data.sql_data_point_id%type,
                                     p_section_name  varchar2,
                                     p_output    out COREMOD_REPORT_UTILS.t_output_lines) AS
     --l_indx number := 1;
     l_display_params varchar2(100);
     l_capture        varchar2(100);
     l_header         clob;
+    l_plan_filter    varchar2(10);
   begin
     case p_section_name
-      when repsSQLPLLAST  then l_display_params:='LAST ALLSTATS +peeked_binds'; l_capture := 'Display cursor (last)';
-      when repsSQLPLADV   then l_display_params:='LAST ADVANCED';               l_capture := 'Display cursor (LAST ADVANCED)';
-      when repsSQLPLALL   then l_display_params:='ALL ALLSTATS +peeked_binds';  l_capture := 'Display cursor (ALL)';
-      when repsSQLPLADAPT then l_display_params:='adaptive LAST ALLSTATS +peeked_binds'; l_capture := 'Display cursor (ADAPTIVE)';
+      when repsSQLPLLAST  then l_display_params:='LAST ALLSTATS +peeked_binds'; l_capture := 'Display cursor (last)'; l_plan_filter := COREOBJ_SQL_UTILS.srcV$;
+      when repsSQLPLADV   then l_display_params:='LAST ADVANCED';               l_capture := 'Display cursor (LAST ADVANCED)'; l_plan_filter := COREOBJ_SQL_UTILS.srcV$;
+      when repsSQLPLALL   then l_display_params:='ALL ALLSTATS +peeked_binds';  l_capture := 'Display cursor (ALL)'; l_plan_filter := COREOBJ_SQL_UTILS.srcV$;
+      when repsSQLPLADAPT then l_display_params:='adaptive LAST ALLSTATS +peeked_binds'; l_capture := 'Display cursor (ADAPTIVE)'; l_plan_filter := COREOBJ_SQL_UTILS.srcV$;
       --when repsSQLPLAWR   then l_display_params:='LAST ALLSTATS +peeked_binds';
     end case;
 
@@ -409,8 +424,12 @@ p_query => replace(q'[select inst_id,child_number,name,isdefault,value from opas
         P_OUTPUT => p_output);
 
     for plans in (select * from (select unique r.PLAN_ID,d.INST_ID,d.PLAN_HASH_VALUE,d.FULL_PLAN_HASH_VALUE,d.CHILD_NUMBER
-                    from OPAS_OT_SQL_PLAN_REF r, OPAS_OT_SQL_PLAN_DET d
-                   where r.sess_id=p_sess_id and r.plan_id=d.plan_id) order by INST_ID,CHILD_NUMBER) loop
+                    from OPAS_OT_SQL_PLAN_REF r, OPAS_OT_SQL_PLAN_DET d, OPAS_OT_SQL_PLANS p
+                   where r.sql_data_point_id=p_sql_data_point_id
+                     and r.plan_id=p.plan_id
+                     and p.plan_source = l_plan_filter
+                     and r.plan_id=d.plan_id)
+                   order by INST_ID, CHILD_NUMBER, PLAN_ID) loop
       l_header := 'Instance number: '||plans.INST_ID||'; Child number: '||plans.CHILD_NUMBER;
       l_header := l_header ||chr(10)||'Plan hash value: '||plans.PLAN_HASH_VALUE||'; Plan full hash value: '||plans.FULL_PLAN_HASH_VALUE;
 
@@ -448,14 +467,14 @@ q'[select plan_table_output "Plan Table Output" from table(dbms_xplan.display('O
     end loop;
   end;
 
-  procedure print_vash_section_base(p_sess_id    opas_ot_sql_data.sess_id%type,
+  procedure print_vash_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
                                     p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
   begin
 
     COREMOD_REPORT_UTILS.print_query_result_html (
 p_query => replace(q'[select plan_hash_value, id, row_src "Row source", event, cnt "Time", tim_pct "Time, %", tim_id_pct "Time by ID, %", obj "Object", tbs "Tablespace"
-  from OPAS_OT_SQL_VASH2 x where sess_id = <sess_id>
- order by plan_hash_value, id, event]','<sess_id>',p_sess_id),
+  from OPAS_OT_SQL_VASH2 x where sql_data_point_id = <sql_data_point_id>
+ order by plan_hash_value, id, event]','<sql_data_point_id>',p_sql_data_point_id),
                                             p_width => gwWideSection1,
                                             p_summary => 'V$ASH Summary',
                                             --p_search varchar2 default null,
@@ -471,8 +490,8 @@ p_query => replace(q'[select plan_hash_value, id, row_src "Row source", event, c
 
     COREMOD_REPORT_UTILS.print_query_result_html (
 p_query => replace(q'[select to_char(SQL_EXEC_START,'YYYY-MM-DD HH24:MI:SS') SQL_EXEC_START, to_char(sql_exec_end,'YYYY-MM-DD HH24:MI:SS') sql_exec_end, plan_hash_value, id, row_src, event, cnt, tim_pct, tim_id_pct, obj, tbs
-  from OPAS_OT_SQL_VASH1 x where sess_id = <sess_id>
- order by SQL_EXEC_START, plan_hash_value, id, event]','<sess_id>',p_sess_id),
+  from OPAS_OT_SQL_VASH1 x where sql_data_point_id = <sql_data_point_id>
+ order by SQL_EXEC_START, plan_hash_value, id, event]','<sql_data_point_id>',p_sql_data_point_id),
                                             p_width => gwWideSection1,
                                             p_summary => 'V$ASH Details',
                                             --p_search varchar2 default null,
@@ -488,7 +507,7 @@ p_query => replace(q'[select to_char(SQL_EXEC_START,'YYYY-MM-DD HH24:MI:SS') SQL
 
   end;
 
-  procedure print_sql_text_web(p_sess_id   opas_ot_sql_data.sess_id%type)
+  procedure print_sql_text_web(p_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type)
   is
   begin
     htp.prn('<code class="codeView">');
@@ -500,7 +519,7 @@ p_query => replace(q'[select to_char(SQL_EXEC_START,'YYYY-MM-DD HH24:MI:SS') SQL
                                 from OPAS_OT_SQL_DESCRIPTIONS de,
                                      OPAS_OT_SQL_DATA da
                                where de.sql_id = da.sql_id
-                                 and da.sess_id=p_sess_id)
+                                 and da.sql_data_point_id=p_sql_data_point_id)
                order by line_number)
     loop
       htp.prn('<li id="L'||to_char(i.line_number)||'">'||apex_escape.html(i.payload) ||'</li>');
@@ -518,31 +537,31 @@ p_query => replace(q'[select to_char(SQL_EXEC_START,'YYYY-MM-DD HH24:MI:SS') SQL
     end loop;
   end;
 
-  procedure print_section_html(p_sess_id   opas_ot_sql_data.sess_id%type,
+  procedure print_section_html(p_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type,
                                p_section_name varchar2)
   is
     l_status     opas_ot_sql_data_sect.gathering_status%type;
     l_errm       opas_ot_sql_data_sect.error_message%type;
     l_output     COREMOD_REPORT_UTILS.t_output_lines;
   begin
-    COREOBJ_SQL_UTILS.is_section_ready(p_sess_id,p_section_name,l_status,l_errm);
+    COREOBJ_SQL_UTILS.is_section_ready(p_sql_data_point_id,p_section_name,l_status,l_errm);
 
     if l_status = COREOBJ_SQL_UTILS.sstReady then
       case p_section_name
-        when repsSQL_TEXT   then print_sql_text_web(p_sess_id);
-        when repsSHARING    then print_nonshared_section_base(p_sess_id,l_output);
-        when repsVSQL       then print_vsql_section_base(p_sess_id,l_output);
-        when repsEXADATA    then print_exa_section_base(p_sess_id,l_output);
-        when repsSQLMON     then print_sqlmon_section_base(p_sess_id,l_output);
-        when repsWORKAREA   then print_wa_section_base(p_sess_id,l_output);
-        when repsOPTENV     then print_oe_section_base(p_sess_id,l_output);
-        when repsSQLPLLAST  then print_plan_section_base(p_sess_id,p_section_name,l_output);
-        when repsSQLPLADV   then print_plan_section_base(p_sess_id,p_section_name,l_output);
-        when repsSQLPLALL   then print_plan_section_base(p_sess_id,p_section_name,l_output);
-        when repsSQLPLADAPT then print_plan_section_base(p_sess_id,p_section_name,l_output);
+        when repsSQL_TEXT   then print_sql_text_web(p_sql_data_point_id);
+        when repsSHARING    then print_nonshared_section_base(p_sql_data_point_id,l_output);
+        when repsVSQL       then print_vsql_section_base(p_sql_data_point_id,l_output);
+        when repsEXADATA    then print_exa_section_base(p_sql_data_point_id,l_output);
+        when repsSQLMON     then print_sqlmon_section_base(p_sql_data_point_id,l_output);
+        when repsWORKAREA   then print_wa_section_base(p_sql_data_point_id,l_output);
+        when repsOPTENV     then print_oe_section_base(p_sql_data_point_id,l_output);
+        when repsSQLPLLAST  then print_plan_section_base(p_sql_data_point_id,p_section_name,l_output);
+        when repsSQLPLADV   then print_plan_section_base(p_sql_data_point_id,p_section_name,l_output);
+        when repsSQLPLALL   then print_plan_section_base(p_sql_data_point_id,p_section_name,l_output);
+        when repsSQLPLADAPT then print_plan_section_base(p_sql_data_point_id,p_section_name,l_output);
         --when repsSQLPLAWR   then
-        when repsSQLMONHST  then print_sqlmon_hst_section_base(p_sess_id,l_output);
-        when repsVASH       then print_vash_section_base(p_sess_id,l_output);
+        when repsSQLMONHST  then print_sqlmon_hst_section_base(p_sql_data_point_id,l_output);
+        when repsVASH       then print_vash_section_base(p_sql_data_point_id,l_output);
       else
         null;
       end case;
@@ -557,7 +576,7 @@ p_query => replace(q'[select to_char(SQL_EXEC_START,'YYYY-MM-DD HH24:MI:SS') SQL
     elsif l_status = COREOBJ_SQL_UTILS.sstEmpty then
       htp.p('<b>Section name:</b> '|| COREMOD_DICT.gdicSQLREPSECT(p_section_name) || ' <b>is empty.</b>');
     end if;
-    htp.small(get_section_duration(p_sess_id,p_section_name));
+    htp.small(get_section_duration(p_sql_data_point_id,p_section_name));
   end;
 
 END COREOBJ_SQL_REPORT_UTILS;

@@ -7,7 +7,7 @@ PACKAGE COREOBJ_SQL_REPORT_UTILS AS
   repsSHARING                 constant varchar2(30) := 'SHARING';       -- Non shared reason
   repsVSQL                    constant varchar2(30) := 'VSQL';          -- V$SQL statistics
   repsEXADATA                 constant varchar2(30) := 'EXADATA';       -- Exadata statistics
-  repsSQLMON                  constant varchar2(30) := 'SQLMON';        -- SQL Monitor report
+  repsSQLMON                  constant varchar2(30) := 'SQLMONV$';        -- SQL Monitor report
   repsWORKAREA                constant varchar2(30) := 'WORKAREA';      -- SQL Workarea
   repsOPTENV                  constant varchar2(30) := 'OPTENV';        -- CBO environment
   repsSQLPLLAST               constant varchar2(30) := 'SQLPLLAST';     -- Display cursor (last)
@@ -21,10 +21,10 @@ PACKAGE COREOBJ_SQL_REPORT_UTILS AS
 --  procedure print_sql_text_html(p_file_id   opas_files.file_id%type);
 --  procedure print_vsql_section_html(p_sess_id   opas_ot_sql_data.sess_id%type);
 
-  function  get_header_refresh_interval(p_sess_id    opas_ot_sql_data.sess_id%type) return number;
-  procedure print_header(p_sess_id    opas_ot_sql_data.sess_id%type);
+  function  get_header_refresh_interval(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type) return number;
+  procedure print_header(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type);
 
-  procedure print_section_html(p_sess_id   opas_ot_sql_data.sess_id%type,
+  procedure print_section_html(p_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type,
                                p_section_name varchar2);
 
 END COREOBJ_SQL_REPORT_UTILS;

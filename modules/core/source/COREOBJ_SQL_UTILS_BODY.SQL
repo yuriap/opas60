@@ -1,7 +1,7 @@
 CREATE OR REPLACE
 PACKAGE BODY COREOBJ_SQL_UTILS AS
 
-  procedure is_section_ready(p_sess_id                opas_ot_sql_data.sess_id%type,
+  procedure is_section_ready(p_sql_data_point_id      opas_ot_sql_data.sql_data_point_id%type,
                              p_section_name           varchar2,
                              p_status             out opas_ot_sql_data_sect.gathering_status%type,
                              p_errm               out opas_ot_sql_data_sect.error_message%type)
@@ -9,63 +9,73 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
   begin
     select gathering_status, error_message into p_status, p_errm
       from opas_ot_sql_data_sect x
-     where sess_id = p_sess_id and section_name = p_section_name;
+     where sql_data_point_id = p_sql_data_point_id and section_name = p_section_name;
   exception
     when no_data_found then p_status := null; p_errm := null;
   end;
 
-  procedure start_processing(p_sess_id   opas_ot_sql_data.sess_id%type,
-                             p_data  out opas_ot_sql_data%rowtype)
+  function  is_section_empty(p_sql_data_point_id      opas_ot_sql_data.sql_data_point_id%type,
+                             p_section_name           varchar2) return boolean
+  is
+    l_status  opas_ot_sql_data_sect.gathering_status%type;
+    l_errm    opas_ot_sql_data_sect.error_message%type;
+  begin
+    is_section_ready(p_sql_data_point_id,p_section_name, l_status, l_errm);
+    return l_status=sstEmpty;
+  end;
+
+  procedure start_processing(p_sql_data_point_id         opas_ot_sql_data.sql_data_point_id%type,
+                             p_data                  out opas_ot_sql_data%rowtype)
   is
     pragma autonomous_transaction;
   begin
     begin
-      select * into p_data from opas_ot_sql_data where sess_id = p_sess_id and gathering_status = COREOBJ_SQL.sdoInQueue for update wait 60;
+      select * into p_data from opas_ot_sql_data where sql_data_point_id = p_sql_data_point_id and gathering_status = COREOBJ_SQL.sdoInQueue for update wait 60;
     exception
       when others then
-        raise_application_error(-20000,'Unable to lock SQL Data Object '||p_sess_id||': '||sqlerrm);
+        raise_application_error(-20000,'Unable to lock SQL Data Object '||p_sql_data_point_id||': '||sqlerrm);
     end;
 
-    update opas_ot_sql_data set gathering_status = COREOBJ_SQL.sdoInProgress, start_gathering_dt = systimestamp where sess_id = p_sess_id;
+    update opas_ot_sql_data set gathering_status = COREOBJ_SQL.sdoInProgress, start_gathering_dt = systimestamp where sql_data_point_id = p_sql_data_point_id;
     commit;
   end;
 
-  procedure start_processing2(p_sess_id   opas_ot_sql_data.sess_id%type,
+  procedure start_processing2(p_sql_data_point_id         opas_ot_sql_data.sql_data_point_id%type,
                               p_data  out opas_ot_sql_data%rowtype)
   is
   begin
-    select * into p_data from opas_ot_sql_data where sess_id = p_sess_id;
+    select * into p_data from opas_ot_sql_data where sql_data_point_id = p_sql_data_point_id;
   end;
 
-  procedure finish_processing(p_sess_id   opas_ot_sql_data.sess_id%type, p_status opas_ot_sql_data.gathering_status%type default COREOBJ_SQL.sdoREADY)
+  procedure finish_processing(p_sql_data_point_id         opas_ot_sql_data.sql_data_point_id%type, p_status opas_ot_sql_data.gathering_status%type default COREOBJ_SQL.sdoREADY)
   is
     pragma autonomous_transaction;
   begin
-    update opas_ot_sql_data set gathering_status = p_status, end_gathering_dt = systimestamp where sess_id = p_sess_id;
+    update opas_ot_sql_data set gathering_status = p_status, end_gathering_dt = systimestamp where sql_data_point_id = p_sql_data_point_id;
     commit;
   end;
 
-  procedure wait_processing(p_sess_id   opas_ot_sql_data.sess_id%type)
+  procedure wait_processing(p_sql_data_point_id         opas_ot_sql_data.sql_data_point_id%type)
   is
     pragma autonomous_transaction;
   begin
-    update opas_ot_sql_data set gathering_status = COREOBJ_SQL.sdoWaitFor2 where sess_id = p_sess_id;
+    update opas_ot_sql_data set gathering_status = COREOBJ_SQL.sdoWaitFor2 where sql_data_point_id = p_sql_data_point_id;
     commit;
   end;
 
-  procedure init_section_statuses(p_sess_id      opas_ot_sql_data.sess_id%type)
+  procedure init_section_statuses(p_sql_data_point_id         opas_ot_sql_data.sql_data_point_id%type)
   is
     --pragma autonomous_transaction;
   begin
     INSERT INTO opas_ot_sql_data_sect
-        (  sess_id,   section_name, start_gathering_dt, end_gathering_dt, gathering_status)
-    select p_sess_id, x.val,        null,               null,             sstNotStarted
+        (    sql_data_point_id, section_name, start_gathering_dt, end_gathering_dt, gathering_status)
+    select p_sql_data_point_id, x.val,        null,               null,             sstNotStarted
       from opas_dictionary x where dic_name='SQLREPSECT';
     --commit;
   end;
 
 
-  procedure start_section(p_sess_id      opas_ot_sql_data.sess_id%type,
+  procedure start_section(p_sql_data_point_id         opas_ot_sql_data.sql_data_point_id%type,
                           p_section_name varchar2)
   is
     pragma autonomous_transaction;
@@ -73,11 +83,11 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     update opas_ot_sql_data_sect
        set start_gathering_dt = systimestamp,
            gathering_status = sstInProgress
-     where sess_id = p_sess_id and section_name = p_section_name;
+     where sql_data_point_id = p_sql_data_point_id and section_name = p_section_name;
     commit;
   end;
 
-  procedure finish_section(p_sess_id      opas_ot_sql_data.sess_id%type,
+  procedure finish_section(p_sql_data_point_id         opas_ot_sql_data.sql_data_point_id%type,
                            p_section_name varchar2,
                            p_exception    varchar2 default null,
                            p_rows_processed number default 1)
@@ -88,16 +98,16 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
        set end_gathering_dt = systimestamp,
            gathering_status = case when p_exception is null then case when p_rows_processed > 0 then sstReady else sstEmpty end else sstFailed end,
            error_message    = p_exception
-     where sess_id = p_sess_id and section_name = p_section_name;
+     where sql_data_point_id = p_sql_data_point_id and section_name = p_section_name;
     commit;
   end;
 
-  procedure finalize_section_statuses(p_sess_id      opas_ot_sql_data.sess_id%type)
+  procedure finalize_section_statuses(p_sql_data_point_id         opas_ot_sql_data.sql_data_point_id%type)
   is
     pragma autonomous_transaction;
   begin
     delete from opas_ot_sql_data_sect
-     where sess_id = p_sess_id and gathering_status = sstNotStarted;
+     where sql_data_point_id = p_sql_data_point_id and gathering_status = sstNotStarted;
     commit;
   end;
 
@@ -107,7 +117,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     l_file_id opas_files.file_id%type;
     l_rows number := 1;
   begin
-    start_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQL_TEXT);
+    start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQL_TEXT);
 
     for i in (select * from opas_ot_sql_descriptions where sql_id=p_data.sql_id and sql_text is null) loop
       if p_data.dblink <> '$LOCAL$' then
@@ -139,18 +149,22 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                                                     P_MIMETYPE  => COREMOD_FILE_UTILS.mtTEXT,
                                                     P_OWNER     => i.created_by);
         COREMOD_FILE_UTILS.store_content(l_file_id,l_sql);
-        update opas_ot_sql_descriptions set sql_text = l_file_id, FIRST_DISCOVERED_AT = p_data.dblink where sql_id = p_data.sql_id;
+        update opas_ot_sql_descriptions set
+          sql_text            = l_file_id,
+          first_discovered    = systimestamp,
+          FIRST_DISCOVERED_AT = p_data.dblink
+        where sql_id = p_data.sql_id;
       else
         l_rows := 0;
       end if;
     end loop;
 
-    finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQL_TEXT, p_rows_processed => l_rows);
+    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQL_TEXT, p_rows_processed => l_rows);
   exception
     when others then
       rollback;
-      coremod_tasks.log('Error load_sql_text ('||p_data.sess_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
-      finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQL_TEXT, sqlerrm);
+      coremod_tasks.log('Error load_sql_text ('||p_data.sql_data_point_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQL_TEXT, sqlerrm);
   end;
 
   procedure load_non_shared(p_data   opas_ot_sql_data%rowtype)
@@ -158,13 +172,13 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     l_sql varchar2(32765);
     l_rows number;
   begin
-    start_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSHARING);
+    start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSHARING);
 
     -- https://timurakhmadeev.wordpress.com/2012/03/15/vsql-is_obsolete/
     l_sql :=
         q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_NONSHARED */ INTO opas_ot_sql_nonshared (
-              sess_id, sql_id, inst_id, nonshared_reason, cnt)
-           select :p_sess_id, sql_id, inst_id, nonshared_reason, cnt from
+              sql_data_point_id, sql_id, inst_id, nonshared_reason, cnt)
+           select :p_sql_data_point_id, sql_id, inst_id, nonshared_reason, cnt from
           (select inst_id, sql_id, nonshared_reason, count(*) cnt from (select inst_id,sql_id,
              UNBOUND_CURSOR,SQL_TYPE_MISMATCH,OPTIMIZER_MISMATCH,OUTLINE_MISMATCH,STATS_ROW_MISMATCH,LITERAL_MISMATCH,FORCE_HARD_PARSE,
              EXPLAIN_PLAN_CURSOR,BUFFERED_DML_MISMATCH,PDML_ENV_MISMATCH,INST_DRTLD_MISMATCH,SLAVE_QC_MISMATCH,TYPECHECK_MISMATCH,
@@ -198,16 +212,16 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                USE_FEEDBACK_STATS as 'USE_FEEDBACK_STATS'))
          where nonshared_value = 'Y'
          group by inst_id,sql_id, nonshared_reason)]';
-    execute immediate l_sql using p_data.sess_id, p_data.sql_id;
+    execute immediate l_sql using p_data.sql_data_point_id, p_data.sql_id;
     l_rows := sql%rowcount;
 
-    finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSHARING, p_rows_processed => l_rows);
+    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSHARING, p_rows_processed => l_rows);
   exception
     when others then
       rollback;
-      if l_sql is not null then coremod_tasks.log('Error load_non_shared ('||p_data.sess_id||'): '||l_sql); end if;
-      coremod_tasks.log('Error load_non_shared ('||p_data.sess_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
-      finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSHARING, sqlerrm);
+      if l_sql is not null then coremod_tasks.log('Error load_non_shared ('||p_data.sql_data_point_id||'): '||l_sql); end if;
+      coremod_tasks.log('Error load_non_shared ('||p_data.sql_data_point_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSHARING, sqlerrm);
   end;
 
   procedure load_vsql(p_data   opas_ot_sql_data%rowtype)
@@ -215,11 +229,11 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     l_sql  varchar2(32765);
     l_rows number;
   begin
-    start_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsVSQL);
-    start_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsEXADATA);
+    start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsVSQL);
+    start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsEXADATA);
 
     l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_VSQL */ INTO opas_ot_sql_vsql (
-              sess_id,
+              sql_data_point_id,
               sql_id, child_number, plan_hash_value, optimizer_env_hash_value, inst_id, force_matching_signature, old_hash_value, program_id, program_line#,
               parsing_schema_name, module, action, first_load_time, last_load_time, last_active_time, is_obsolete, is_bind_sensitive, is_bind_aware, is_shareable,
               sql_profile, sql_patch, sql_plan_baseline, px_servers_executions, physical_read_requests, physical_read_bytes, physical_write_requests, physical_write_bytes,
@@ -227,7 +241,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
               concurrency_wait_time, cluster_wait_time, user_io_wait_time, plsql_exec_time, java_exec_time, io_cell_offload_eligible_bytes, IO_INTERCONNECT_BYTES,
               optimized_phy_read_requests, io_cell_uncompressed_bytes, io_cell_offload_returned_bytes)
            select
-              :p_sess_id,
+              :p_sql_data_point_id,
               sql_id, child_number, plan_hash_value, optimizer_env_hash_value, inst_id, force_matching_signature, old_hash_value, program_id, program_line#,
               parsing_schema_name, module, action, first_load_time, last_load_time, last_active_time, is_obsolete, is_bind_sensitive, is_bind_aware, is_shareable,
               sql_profile, sql_patch, sql_plan_baseline, px_servers_executions, physical_read_requests, physical_read_bytes, physical_write_requests, physical_write_bytes,
@@ -236,29 +250,29 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
               optimized_phy_read_requests, io_cell_uncompressed_bytes, io_cell_offload_returned_bytes
            from gv$sql]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || ' where sql_id=:p_sql_id';
 
-    execute immediate l_sql using p_data.sess_id, p_data.sql_id;
+    execute immediate l_sql using p_data.sql_data_point_id, p_data.sql_id;
     l_rows := sql%rowcount;
     l_sql:=null;
 
-    for i in (select program_id, CHILD_NUMBER from opas_ot_sql_vsql where sess_id = p_data.sess_id) loop
+    for i in (select program_id, CHILD_NUMBER from opas_ot_sql_vsql where sql_data_point_id = p_data.sql_data_point_id) loop
       l_sql := q'[INSERT INTO opas_ot_sql_vsql_objs
-                   ( sess_id,   CHILD_NUMBER, object_id, owner, object_type, object_name)
-           select :p_sess_id,  :CHILD_NUMBER, object_id, owner, object_type, object_name from dba_objects]' ||
+                   ( sql_data_point_id,   CHILD_NUMBER, object_id, owner, object_type, object_name)
+           select :p_sql_data_point_id,  :CHILD_NUMBER, object_id, owner, object_type, object_name from dba_objects]' ||
              COREMOD_API.get_dblink_for_query(p_data.dblink)
              || ' s where s.object_id=:program_id';
-      execute immediate l_sql using p_data.sess_id, i.CHILD_NUMBER, i.program_id;
+      execute immediate l_sql using p_data.sql_data_point_id, i.CHILD_NUMBER, i.program_id;
       l_sql:=null;
     end loop;
 
-    finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsVSQL,    p_rows_processed => l_rows);
-    finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsEXADATA, p_rows_processed => l_rows);
+    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsVSQL,    p_rows_processed => l_rows);
+    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsEXADATA, p_rows_processed => l_rows);
   exception
     when others then
       rollback;
-      if l_sql is not null then coremod_tasks.log('Error load_vsql ('||p_data.sess_id||'): '||l_sql); end if;
-      coremod_tasks.log('Error load_vsql ('||p_data.sess_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
-      finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsVSQL, sqlerrm);
-      finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsEXADATA, sqlerrm);
+      if l_sql is not null then coremod_tasks.log('Error load_vsql ('||p_data.sql_data_point_id||'): '||l_sql); end if;
+      coremod_tasks.log('Error load_vsql ('||p_data.sql_data_point_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsVSQL, sqlerrm);
+      finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsEXADATA, sqlerrm);
   end;
 
   procedure load_sql_mon(p_data   opas_ot_sql_data%rowtype)
@@ -268,7 +282,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     l_report     clob;
     l_file_id    opas_files.file_id%type;
   begin
-    start_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMON);
+    start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMON);
 
     l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_SQLMON */ INTO opas_ot_tmp_gv$sql_monitor (<SRC_DB_COL_LICT>)
               select <SRC_DB_COL_LICT> from gv$sql_monitor]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || q'[ where sql_id = :p_sql_id]';
@@ -315,11 +329,11 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
         rm_consumer_group, is_adaptive_plan, is_final_plan, in_dbop_name, in_dbop_exec_id, io_cell_uncompressed_bytes,
         io_cell_offload_eligible_bytes, io_cell_offload_returned_bytes)
       WHEN op = 'I' THEN
-      INTO opas_ot_sql_sqlmon_ref ( sess_id, sqlmon_id)
-      values( p_data.sess_id, opas_ot_sq_sqlmon_id.currval)
+      INTO opas_ot_sql_sqlmon_ref ( sql_data_point_id, sqlmon_id)
+      values( p_data.sql_data_point_id, opas_ot_sq_sqlmon_id.currval)
       WHEN op = 'L' THEN
-      INTO opas_ot_sql_sqlmon_ref ( sess_id, sqlmon_id)
-      values( p_data.sess_id, sqlmon_id)
+      INTO opas_ot_sql_sqlmon_ref ( sql_data_point_id, sqlmon_id)
+      values( p_data.sql_data_point_id, sqlmon_id)
     SELECT 'I' op, t.*, null sqlmon_id FROM opas_ot_tmp_gv$sql_monitor t
     where report_id = 0 and status = 'EXECUTING'
     union all
@@ -340,11 +354,11 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     union all
     SELECT 'L' op, t.*, p.sqlmon_id FROM opas_ot_tmp_gv$sql_monitor t, opas_ot_sql_sqlmon p
     where t.report_id = p.report_id and t.sql_id = p.sql_id and p.dblink = p_data.dblink and t.report_id <> 0
-      and not exists (select 1 from opas_ot_sql_sqlmon_ref i where sess_id = p_data.sess_id and i.sqlmon_id=p.sqlmon_id);
+      and not exists (select 1 from opas_ot_sql_sqlmon_ref i where sql_data_point_id = p_data.sql_data_point_id and i.sqlmon_id=p.sqlmon_id);
 
-    select count(1) into l_rows from opas_ot_sql_sqlmon_ref where sess_id = p_data.sess_id;
+    select count(1) into l_rows from opas_ot_sql_sqlmon_ref where sql_data_point_id = p_data.sql_data_point_id;
 
-    for i in (select m.* from opas_ot_sql_sqlmon_ref r, opas_ot_sql_sqlmon m where r.sqlmon_id = m.sqlmon_id and r.sess_id = p_data.sess_id and sql_mon_report is null) loop
+    for i in (select m.* from opas_ot_sql_sqlmon_ref r, opas_ot_sql_sqlmon m where r.sqlmon_id = m.sqlmon_id and r.sql_data_point_id = p_data.sql_data_point_id and sql_mon_report is null) loop
       if i.report_id <> 0 then
         COREMOD_UTILS.get_clob_remotelly(p_sql => replace(replace(
           q'[begin l_out := dbms_sqltune.report_sql_monitor(sql_id=>'<SQL_ID>', REPORT_ID => <REP_ID>, report_level=>'ALL'); end;]'
@@ -378,13 +392,13 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       update opas_ot_sql_sqlmon set sql_mon_report = l_file_id where sqlmon_id = i.sqlmon_id;
     end loop;
 
-    finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMON, p_rows_processed => l_rows);
+    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMON, p_rows_processed => l_rows);
   exception
     when others then
       rollback;
-      if l_sql is not null then coremod_tasks.log('Error load_sql_mon ('||p_data.sess_id||'): '||l_sql); end if;
-      coremod_tasks.log('Error load_sql_mon ('||p_data.sess_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
-      finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMON, sqlerrm);
+      if l_sql is not null then coremod_tasks.log('Error load_sql_mon ('||p_data.sql_data_point_id||'): '||l_sql); end if;
+      coremod_tasks.log('Error load_sql_mon ('||p_data.sql_data_point_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMON, sqlerrm);
   end;
 
   procedure load_sql_mon_hst(p_data   opas_ot_sql_data%rowtype)
@@ -395,7 +409,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     l_file_id    opas_files.file_id%type;
     l_obj_lst    varchar2(32765);
   begin
-    start_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMONHST);
+    start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMONHST);
 
     l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_SQLMON */ INTO opas_ot_tmp_dba_hist_reports (<SRC_DB_COL_LICT>)
               select <SRC_DB_COL_LICT> from dba_hist_reports]' || COREMOD_API.get_dblink_for_query(p_data.dblink) ||
@@ -424,7 +438,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
         con_name, ecid, snap_id, dbid, instance_number, con_dbid,
         dblink)
       values (
-        opas_ot_sq_sqlmon_id.nextval, key1,  null,           null,    'HST',  report_id, STATUS, to_date(first_refresh_time,'MM/DD/YYYY HH24:MI:SS'),
+        opas_ot_sq_sqlmon_id.nextval, key1,  null,           null,    srcHST,  report_id, STATUS, to_date(first_refresh_time,'MM/DD/YYYY HH24:MI:SS'),
         to_date(last_refresh_time,'MM/DD/YYYY HH24:MI:SS'), refresh_count, to_date(sql_exec_start,'MM/DD/YYYY HH24:MI:SS'), sql_exec_id, session_id, session_serial#, con_id,
         null,     null, snap_id, dbid, instance_number, con_dbid,
         p_data.dblink)
@@ -446,7 +460,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
         opas_ot_sq_sqlmon_id.currval,
         user#, username, module, action, service_name, null /*client_identifier*/, null /*client_info*/,
         program, null /*plsql_entry_object_id*/, null /*plsql_entry_subprogram_id*/, null /*plsql_object_id*/, null /*plsql_subprogram_id*/,
-        null /*dbop_exec_id*/, null /*dbop_name*/, null /*process_name*/, sql_text, is_full_sqltext, sql_plan_hash_value, sql_full_plan_hash_value,
+        null /*dbop_exec_id*/, null /*dbop_name*/, null /*process_name*/, null /*sql_text*/, null /*is_full_sqltext*/, sql_plan_hash_value, sql_full_plan_hash_value,
         null /*exact_matching_signature*/, null /*force_matching_signature*/, null /*px_is_cross_instance*/, null /*px_maxdop*/, null /*px_maxdop_instances*/,
         null /*px_servers_requested*/, null /*px_servers_allocated*/, null /*px_server#*/, null /*px_server_group*/, null /*px_server_set*/, null /*px_qcinst_id*/,
         null /*px_qcsid*/, null /*error_number*/, null /*error_facility*/, null /*error_message*/, elapsed_time, null /*queuing_time*/, cpu_time, fetches,
@@ -456,32 +470,32 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
         rm_consumer_group, null /*is_adaptive_plan*/, null /*is_final_plan*/, null /*in_dbop_name*/, null /*in_dbop_exec_id*/, null /*io_cell_uncompressed_bytes*/,
         null /*io_cell_offload_eligible_bytes*/, null /*io_cell_offload_returned_bytes*/)
       WHEN op = 'I' THEN
-      INTO opas_ot_sql_sqlmon_ref ( sess_id, sqlmon_id)
-      values( p_data.sess_id, opas_ot_sq_sqlmon_id.currval)
+      INTO opas_ot_sql_sqlmon_ref ( sql_data_point_id, sqlmon_id)
+      values( p_data.sql_data_point_id, opas_ot_sq_sqlmon_id.currval)
       WHEN op = 'L' THEN
-      INTO opas_ot_sql_sqlmon_ref ( sess_id, sqlmon_id)
-      values( p_data.sess_id, sqlmon_id)
+      INTO opas_ot_sql_sqlmon_ref ( sql_data_point_id, sqlmon_id)
+      values( p_data.sql_data_point_id, sqlmon_id)
     select x.*, x1.*, x2.*
     from ( SELECT 'I' op, t.*, null sqlmon_id, d.report
              FROM opas_ot_tmp_dba_hist_reports t, opas_ot_tmp_dba_hist_rep_xml d
             where not exists (select 1 from opas_ot_sql_sqlmon i
                                where i.report_id = t.report_id
-                                and t.key1 = i.sql_id
-                                and i.dblink = p_data.dblink)
+                                 and i.sql_id    = t.key1
+                                 and i.dblink    = p_data.dblink)
              and t.report_id=d.report_id
            union all
            SELECT 'L' op, t.*, p.sqlmon_id, d.report
              FROM opas_ot_tmp_dba_hist_reports t, opas_ot_sql_sqlmon p, opas_ot_tmp_dba_hist_rep_xml d
-            where t.report_id = p.report_id and t.key1 = p.sql_id and p.dblink = p_data.dblink
-              and not exists (select 1 from opas_ot_sql_sqlmon_ref i where sess_id = p_data.sess_id and i.sqlmon_id=p.sqlmon_id)
+            where t.report_id = p.report_id and t.key1 = p.sql_id and p.dblink = p_data.dblink and p.sql_id = p_data.sql_id
+              and not exists (select 1 from opas_ot_sql_sqlmon_ref i where sql_data_point_id = p_data.sql_data_point_id and i.sqlmon_id=p.sqlmon_id)
               and t.report_id=d.report_id) x,
            xmltable('/report/sql_monitor_report/target'
                   PASSING xmlparse(document x.report) COLUMNS
                   STATUS path 'status'
                  ,refresh_count path 'refresh_count'
                  ,rm_consumer_group path 'rminfo/@rmcg'
-                 ,sql_text path 'sql_fulltext'
-                 ,is_full_sqltext path 'sql_fulltext/@is_full'
+                 --,sql_text path 'sql_fulltext'
+                 --,is_full_sqltext path 'sql_fulltext/@is_full'
                  ,sql_exec_start path '@sql_exec_start'
                  ,sql_exec_id path '@sql_exec_id'
                  ,sql_plan_hash_value path '@sql_plan_hash'
@@ -514,27 +528,22 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                   ,physical_read_bytes path 'stat[@name="read_bytes"]'
                   ) x2;
 
-    select count(1) into l_rows from opas_ot_sql_sqlmon_ref where sess_id = p_data.sess_id;
-/*
-    for i in (select unique d.SQL_PLAN_HASH_VALUE,SQL_FULL_PLAN_HASH_VALUE
-                from opas_ot_sql_sqlmon m, OPAS_OT_SQL_SQLMON_DATA d, opas_ot_sql_sqlmon_ref r
-               where m.SQLMON_ID = d.SQLMON_ID and m.SQLMON_ID = r.SQLMON_ID and r.SESS_ID = p_data.sess_id)
-    loop
+    select count(1) into l_rows from opas_ot_sql_sqlmon_ref where sql_data_point_id = p_data.sql_data_point_id;
 
-    end loop;
-*/
     insert into opas_ot_tmp_gv$sql_plan_stat_all (
+           report_id,
            SQL_ID,PLAN_HASH_VALUE,FULL_PLAN_HASH_VALUE,CHILD_NUMBER,inst_id,
            OPERATION, OPTIONS, OBJECT_NODE, OBJECT_NAME, OBJECT_ALIAS,
            ID, DEPTH, POSITION, COST, CARDINALITY, BYTES, PARTITION_START,
            PARTITION_STOP, PARTITION_ID, DISTRIBUTION, CPU_COST, IO_COST,
            TEMP_SPACE, ACCESS_PREDICATES, FILTER_PREDICATES, QBLOCK_NAME)
-    select r.sql_id, d.SQL_PLAN_HASH_VALUE, d.SQL_FULL_PLAN_HASH_VALUE, 0, r.instance_number,
+    select r.report_id,
+           r.sql_id, d.SQL_PLAN_HASH_VALUE, d.SQL_FULL_PLAN_HASH_VALUE, 0, r.instance_number,
            OPERATION, OPTIONS, OBJECT_NODE, OBJECT_NAME, OBJECT_ALIAS,
            ID, DEPTH, POSITION, COST, CARDINALITY, BYTES, PARTITION_START,
            PARTITION_STOP, PARTITION_ID, DISTRIBUTION, CPU_COST, IO_COST,
            TEMP_SPACE, ACCESS_PREDICATES, FILTER_PREDICATES, QBLOCK_NAME
-    from opas_ot_sql_sqlmon r, opas_ot_sql_sqlmon_data d, opas_ot_tmp_dba_hist_rep_xml x,
+    from opas_ot_sql_sqlmon r, opas_ot_sql_sqlmon_data d, opas_ot_tmp_dba_hist_rep_xml x, opas_ot_sql_sqlmon_ref reff,
          xmltable('/report/sql_monitor_report/plan/operation'
                   PASSING xmlparse(document x.report) COLUMNS
                   OPERATION path '@name'
@@ -559,18 +568,27 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                  ,FILTER_PREDICATES path 'predicates[@type="filter"]'
                  ,QBLOCK_NAME path 'qblock'
                  ) x1
-     where r.SQLMON_ID=d.SQLMON_ID and r.report_id=x.report_id;
+     where r.SQLMON_ID=d.SQLMON_ID
+       and r.report_id=x.report_id
+       and r.SQLMON_ID = reff.SQLMON_ID
+       and r.SOURCE = srcHST
+       and reff.sql_data_point_id = p_data.sql_data_point_id;
+
 
     INSERT INTO opas_ot_tmp_gv$sql_plan_key
-           ( plan_id,                   inst_id, child_number, plan_hash_value, full_plan_hash_value)
-     select opas_ot_sq_plan_id.nextval, inst_id, child_number, plan_hash_value, full_plan_hash_value
-       from (select unique inst_id, child_number, plan_hash_value, full_plan_hash_value from opas_ot_tmp_gv$sql_plan_stat_all);
+           ( plan_id,                   report_id, inst_id, child_number, plan_hash_value, full_plan_hash_value)
+     select opas_ot_sq_plan_id.nextval, report_id, inst_id, child_number, plan_hash_value, full_plan_hash_value
+       from (select unique report_id, inst_id, child_number, plan_hash_value, full_plan_hash_value from opas_ot_tmp_gv$sql_plan_stat_all);
 
     insert all
-      into opas_ot_sql_plans    ( plan_id, plan_type, created, sql_id)
-      into opas_ot_sql_plan_ref ( sess_id, plan_id)
-      values( p_data.sess_id, plan_id)
-      select plan_id, 'HST' plan_type, systimestamp created, p_data.sql_id sql_id from opas_ot_tmp_gv$sql_plan_key;
+      into opas_ot_sql_plans    ( plan_id, plan_source, created, sql_id)
+      into opas_ot_sql_plan_ref ( sql_data_point_id, plan_id)
+      values( p_data.sql_data_point_id, plan_id)
+      select plan_id, srcHST plan_type, systimestamp created, p_data.sql_id sql_id from opas_ot_tmp_gv$sql_plan_key;
+
+    update OPAS_OT_SQL_SQLMON m
+       set plan_id = (select plan_id from opas_ot_tmp_gv$sql_plan_key k where m.REPORT_ID = k.REPORT_ID)
+     where m.SOURCE = srcHST and SQLMON_ID in (select SQLMON_ID from opas_ot_sql_sqlmon_ref where sql_data_point_id = p_data.sql_data_point_id);
 
     insert all into opas_ot_sql_plan_det (
         plan_id,
@@ -596,28 +614,29 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
      where p.inst_id = k.inst_id
        and p.child_number = k.child_number
        and p.plan_hash_value = k.plan_hash_value
-       and p.full_plan_hash_value = k.full_plan_hash_value;
+       and p.full_plan_hash_value = k.full_plan_hash_value
+       and p.report_id=k.report_id;
 
 
     for i in (select * from opas_ot_sql_descriptions where sql_id=p_data.sql_id and sql_text is null) loop
-      for j in (select x1.is_full_sqltext,x1.sql_text
-                  from opas_ot_tmp_dba_hist_rep_xml x,
-                       xmltable('/report/sql_monitor_report/target'
-                                PASSING xmlparse(document x.report) COLUMNS
-                                sql_text path 'sql_fulltext'
-                                ,is_full_sqltext path 'sql_fulltext/@is_full') x1)
+      for j in (select * from (
+                select XMLCast(xmlquery('$p/report/sql_monitor_report/target/sql_fulltext' passing xmltype(report) as "p" RETURNING CONTENT) as clob) sql_text,
+                       XMLCast(xmlquery('$p/report/sql_monitor_report/target/sql_fulltext/@is_full' passing xmltype(report) as "p" RETURNING CONTENT) as varchar2(10)) is_full_sqltext
+                  from opas_ot_tmp_dba_hist_rep_xml x
+                ) where is_full_sqltext = 'Y' and rownum = 1)
       loop
-        if j.is_full_sqltext = 'Y' then
           l_file_id := COREMOD_FILE_UTILS.create_file(P_MODNAME => COREMOD_API.gMODNAME,
                                                       P_FILE_TYPE => 'SQL Text',
                                                       P_FILE_NAME => i.sql_id,
                                                       P_MIMETYPE  => COREMOD_FILE_UTILS.mtTEXT,
                                                       P_OWNER     => i.created_by);
           COREMOD_FILE_UTILS.store_content(l_file_id,j.sql_text);
-          update opas_ot_sql_descriptions set sql_text_approx = l_file_id, FIRST_DISCOVERED_AT = p_data.dblink where sql_id = p_data.sql_id;
-          finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQL_TEXT, p_rows_processed => 1);
-          exit;
-        end if;
+          update opas_ot_sql_descriptions set
+            sql_text_approx = l_file_id,
+            FIRST_DISCOVERED = nvl(FIRST_DISCOVERED, systimestamp),
+            FIRST_DISCOVERED_AT = nvl(FIRST_DISCOVERED_AT, p_data.dblink)
+          where sql_id = p_data.sql_id;
+          finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQL_TEXT, p_rows_processed => 1);
       end loop;
     end loop;
 
@@ -641,7 +660,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
 
     end loop;
 
-    for i in (select m.* from opas_ot_sql_sqlmon_ref r, opas_ot_sql_sqlmon m where r.sqlmon_id = m.sqlmon_id and r.sess_id = p_data.sess_id and sql_mon_report is null) loop
+    for i in (select m.* from opas_ot_sql_sqlmon_ref r, opas_ot_sql_sqlmon m where r.sqlmon_id = m.sqlmon_id and r.sql_data_point_id = p_data.sql_data_point_id and sql_mon_report is null) loop
       COREMOD_UTILS.get_clob_remotelly(p_sql => replace(
           q'[begin l_out := DBMS_AUTO_REPORT.REPORT_REPOSITORY_DETAIL(RID => <REP_ID>, TYPE => 'text'); end;]'
                                                     ,'<REP_ID>',i.report_id),
@@ -661,13 +680,13 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       update opas_ot_sql_sqlmon set sql_mon_report = l_file_id where sqlmon_id = i.sqlmon_id;
     end loop;
 
-    finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMONHST, p_rows_processed => l_rows);
+    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMONHST, p_rows_processed => l_rows);
   exception
     when others then
       rollback;
-      if l_sql is not null then coremod_tasks.log('Error load_sql_mon ('||p_data.sess_id||'): '||l_sql); end if;
-      coremod_tasks.log('Error load_sql_mon ('||p_data.sess_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
-      finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMONHST, sqlerrm);
+      if l_sql is not null then coremod_tasks.log('Error load_sql_mon ('||p_data.sql_data_point_id||'): '||l_sql); end if;
+      coremod_tasks.log('Error load_sql_mon ('||p_data.sql_data_point_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMONHST, sqlerrm);
   end;
 
   procedure load_work_area(p_data   opas_ot_sql_data%rowtype)
@@ -675,28 +694,28 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     l_sql  varchar2(32765);
     l_rows number;
   begin
-    start_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsWORKAREA);
+    start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsWORKAREA);
 
     l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_WA */ into opas_ot_sql_wa (
-              sess_id,
+              sql_data_point_id,
               sql_id, inst_id, child_number, policy, operation_id, operation_type, estimated_optimal_size, estimated_onepass_size, last_memory_used, last_execution,
               last_degree, total_executions, optimal_executions, onepass_executions, multipasses_executions, active_time, max_tempseg_size, last_tempseg_size)
            select
-              :p_sess_id,
+              :p_sql_data_point_id,
               sql_id, inst_id, child_number, policy, operation_id, operation_type, estimated_optimal_size, estimated_onepass_size, last_memory_used, last_execution,
               last_degree, total_executions, optimal_executions, onepass_executions, multipasses_executions, active_time, max_tempseg_size, last_tempseg_size
            from gv$sql_workarea]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || ' where sql_id=:p_sql_id';
 
-    execute immediate l_sql using p_data.sess_id, p_data.sql_id;
+    execute immediate l_sql using p_data.sql_data_point_id, p_data.sql_id;
     l_rows := sql%rowcount;
 
-    finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsWORKAREA, p_rows_processed => l_rows);
+    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsWORKAREA, p_rows_processed => l_rows);
   exception
     when others then
       rollback;
-      coremod_tasks.log('Error load_work_area ('||p_data.sess_id||'): '||l_sql);
-      coremod_tasks.log('Error load_work_area ('||p_data.sess_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
-      finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsWORKAREA, sqlerrm);
+      coremod_tasks.log('Error load_work_area ('||p_data.sql_data_point_id||'): '||l_sql);
+      coremod_tasks.log('Error load_work_area ('||p_data.sql_data_point_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsWORKAREA, sqlerrm);
   end;
 
   procedure load_opt_env(p_data   opas_ot_sql_data%rowtype)
@@ -704,39 +723,37 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     l_sql  varchar2(32765);
     l_rows number;
   begin
-    start_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsOPTENV);
+    start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsOPTENV);
 
     l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_OE */ into opas_ot_sql_opt_env (
-              sess_id, sql_id,
+              sql_data_point_id, sql_id,
               inst_id,child_number,name,isdefault,value)
            select
-              :p_sess_id, sql_id,
+              :p_sql_data_point_id, sql_id,
               inst_id,child_number,name,isdefault,value
            from gv$sql_optimizer_env]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || ' where sql_id=:p_sql_id';
 
-    execute immediate l_sql using p_data.sess_id, p_data.sql_id;
+    execute immediate l_sql using p_data.sql_data_point_id, p_data.sql_id;
     l_rows := sql%rowcount;
 
-    finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsOPTENV, p_rows_processed => l_rows);
+    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsOPTENV, p_rows_processed => l_rows);
   exception
     when others then
       rollback;
-      coremod_tasks.log('Error load_opt_env ('||p_data.sess_id||'): '||l_sql);
-      coremod_tasks.log('Error load_opt_env ('||p_data.sess_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
-      finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsOPTENV, sqlerrm);
+      coremod_tasks.log('Error load_opt_env ('||p_data.sql_data_point_id||'): '||l_sql);
+      coremod_tasks.log('Error load_opt_env ('||p_data.sql_data_point_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsOPTENV, sqlerrm);
   end;
 
   procedure load_sql_plans(p_data   opas_ot_sql_data%rowtype)
   is
     l_sql        varchar2(32765);
     l_rows       number;
-    --l_report     clob;
-    --l_file_id    opas_files.file_id%type;
   begin
-    start_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLLAST);
-    start_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLADV);
-    start_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLALL);
-    start_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLADAPT);
+    start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLLAST);
+    start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLADV);
+    start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLALL);
+    start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLADAPT);
 
     l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_PLANS */ INTO opas_ot_tmp_gv$sql_plan_stat_all (<SRC_DB_COL_LICT>)
               select <SRC_DB_COL_LICT> from gv$sql_plan_statistics_all]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || q'[ where sql_id = :p_sql_id]';
@@ -750,10 +767,10 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
        from (select unique inst_id, child_number, plan_hash_value, full_plan_hash_value from opas_ot_tmp_gv$sql_plan_stat_all);
 
     insert all
-      into opas_ot_sql_plans    ( plan_id, plan_type, created, sql_id)
-      into opas_ot_sql_plan_ref ( sess_id, plan_id)
-      values( p_data.sess_id, plan_id)
-      select plan_id, 'V$' plan_type, systimestamp created, p_data.sql_id sql_id from opas_ot_tmp_gv$sql_plan_key;
+      into opas_ot_sql_plans    ( plan_id, plan_source, created, sql_id)
+      into opas_ot_sql_plan_ref ( sql_data_point_id, plan_id)
+      values( p_data.sql_data_point_id, plan_id)
+      select plan_id, srcV$ plan_type, systimestamp created, p_data.sql_id sql_id from opas_ot_tmp_gv$sql_plan_key;
 
     insert all into opas_ot_sql_plan_det (
         plan_id,
@@ -781,22 +798,22 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
        and p.plan_hash_value = k.plan_hash_value
        and p.full_plan_hash_value = k.full_plan_hash_value;
 
-    select count(1) into l_rows from opas_ot_sql_plan_ref where sess_id = p_data.sess_id;
+    select count(1) into l_rows from opas_ot_sql_plan_ref where sql_data_point_id = p_data.sql_data_point_id;
 
-    finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLLAST, p_rows_processed => l_rows);
-    finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLADV, p_rows_processed => l_rows);
-    finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLALL, p_rows_processed => l_rows);
-    finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLADAPT, p_rows_processed => l_rows);
+    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLLAST, p_rows_processed => l_rows);
+    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLADV, p_rows_processed => l_rows);
+    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLALL, p_rows_processed => l_rows);
+    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLADAPT, p_rows_processed => l_rows);
   exception
     when others then
       rollback;
-      if l_sql is not null then coremod_tasks.log('Error load_sql_plans ('||p_data.sess_id||'): '||l_sql);  end if;
-      coremod_tasks.log('Error load_sql_plans ('||p_data.sess_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      if l_sql is not null then coremod_tasks.log('Error load_sql_plans ('||p_data.sql_data_point_id||'): '||l_sql);  end if;
+      coremod_tasks.log('Error load_sql_plans ('||p_data.sql_data_point_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
 
-      finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLLAST, sqlerrm);
-      finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLADV, sqlerrm);
-      finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLALL, sqlerrm);
-      finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLADAPT, sqlerrm);
+      finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLLAST, sqlerrm);
+      finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLADV, sqlerrm);
+      finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLALL, sqlerrm);
+      finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLADAPT, sqlerrm);
   end;
 
   procedure load_sql_vash(p_data   opas_ot_sql_data%rowtype)
@@ -805,7 +822,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     l_rows       number := 0;
     l_obj_lst    varchar2(32765);
   begin
-    start_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsVASH);
+    start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsVASH);
 
     l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_VASH */ INTO opas_ot_tmp_gv$ash (sql_id,sample_time,SQL_EXEC_START,sql_plan_hash_value,sql_plan_line_id,sql_plan_operation,sql_plan_options,event,CURRENT_OBJ#,CURRENT_FILE#)
               select sql_id,sample_time,SQL_EXEC_START,sql_plan_hash_value,sql_plan_line_id,sql_plan_operation,sql_plan_options,event,CURRENT_OBJ#,CURRENT_FILE# from gv$active_session_history]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || q'[ where sql_id = :p_sql_id]';
@@ -833,8 +850,8 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       l_sql := null;
     end if;
 
-    INSERT INTO opas_ot_sql_vash1 ( sess_id, sql_id, sql_exec_start, sql_exec_end, plan_hash_value, id, row_src, event, cnt, tim_pct, tim_id_pct, obj, tbs)
-    select p_data.sess_id,p_data.sql_id,
+    INSERT INTO opas_ot_sql_vash1 ( sql_data_point_id, sql_id, sql_exec_start, sql_exec_end, plan_hash_value, id, row_src, event, cnt, tim_pct, tim_id_pct, obj, tbs)
+    select p_data.sql_data_point_id,p_data.sql_id,
        SQL_EXEC_START,
        to_date(to_char(max(sample_time) over(partition by SQL_EXEC_START, plan_hash_value),'YYYYMMDDHH24MISS'),'YYYYMMDDHH24MISS') sql_exec_end,
        plan_hash_value, id, row_src, event, cnt,
@@ -861,8 +878,8 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                   obj,tbs) x;
     l_rows := l_rows + sql%rowcount;
 
-    INSERT INTO opas_ot_sql_vash2 (sess_id, sql_id, plan_hash_value, id, row_src, event, cnt, tim_pct, tim_id_pct, obj, tbs)
-      select p_data.sess_id,p_data.sql_id,
+    INSERT INTO opas_ot_sql_vash2 (sql_data_point_id, sql_id, plan_hash_value, id, row_src, event, cnt, tim_pct, tim_id_pct, obj, tbs)
+      select p_data.sql_data_point_id,p_data.sql_id,
              plan_hash_value, id, row_src, event, cnt,
              round(100 * cnt / sum(cnt) over(partition by id), 2),
              round(100 * sum(cnt) over(partition by id) / sum(cnt) over()),
@@ -884,28 +901,28 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                   obj,tbs) x;
     l_rows := l_rows + sql%rowcount;
 
-    finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsVASH, p_rows_processed => l_rows);
+    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsVASH, p_rows_processed => l_rows);
   exception
     when others then
       rollback;
-      if l_sql is not null then coremod_tasks.log('Error load_sql_plans ('||p_data.sess_id||'): '||l_sql); end if;
-      coremod_tasks.log('Error load_sql_plans ('||p_data.sess_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
-      finish_section(p_data.sess_id, COREOBJ_SQL_REPORT_UTILS.repsVASH, sqlerrm);
+      if l_sql is not null then coremod_tasks.log('Error load_sql_plans ('||p_data.sql_data_point_id||'): '||l_sql); end if;
+      coremod_tasks.log('Error load_sql_plans ('||p_data.sql_data_point_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsVASH, sqlerrm);
   end;
 
-  procedure discover_sql(p_sess_id   opas_ot_sql_data.sess_id%type)
+  procedure discover_sql(p_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type)
   AS
     l_data       opas_ot_sql_data%rowtype;
     L_TASKNAME   OPAS_TASK.TASKNAME%type := 'OPAS_SQL_DISCOVER2';
     l_tq_id      OPAS_TASK_QUEUE.tq_id%type;
   BEGIN
-    start_processing(p_sess_id, l_data);
-    --init_section_statuses(p_sess_id);
+    start_processing(p_sql_data_point_id, l_data);
+    --init_section_statuses(p_sql_data_point_id);
 
     l_tq_id:=COREMOD_TASKS.prep_execute_task (  P_TASKNAME => L_TASKNAME) ;
-    COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => 'B1', p_num_par => p_sess_id);
+    COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => 'B1', p_num_par => p_sql_data_point_id);
     COREMOD_TASKS.queue_task ( p_tq_id => l_tq_id ) ;
-    update opas_ot_sql_data set tq_id2 = l_tq_id where sess_id = p_sess_id;
+    update opas_ot_sql_data set tq_id2 = l_tq_id where sql_data_point_id = p_sql_data_point_id;
     commit;
 
     load_non_shared(l_data);
@@ -914,12 +931,12 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     commit;
     load_work_area(l_data);
     commit;
-    load_sql_plans(l_data);
+    load_opt_env(l_data);
     commit;
     load_sql_vash(l_data);
     commit;
 
-    wait_processing(p_sess_id);
+    wait_processing(p_sql_data_point_id);
     begin
       coremod_tasks.wait_task_finish(l_tq_id, to_number(COREMOD_API.getconf('AWRTASKTIMEOUT',COREMOD_API.gMODNAME)));
     exception
@@ -927,45 +944,45 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
         coremod_tasks.cancel_task(l_tq_id);
     end;
 
-    finalize_section_statuses(p_sess_id);
-    finish_processing(p_sess_id);
+    finalize_section_statuses(p_sql_data_point_id);
+    finish_processing(p_sql_data_point_id);
   exception
     when others then
-      finish_processing(p_sess_id,COREOBJ_SQL.sdoFAILED);
-      coremod_tasks.log('Error discover_sql ('||p_sess_id||'): '||sqlerrm);
+      finish_processing(p_sql_data_point_id,COREOBJ_SQL.sdoFAILED);
+      coremod_tasks.log('Error discover_sql ('||p_sql_data_point_id||'): '||sqlerrm);
       coremod_tasks.log('Error discover_sql error stack: '||DBMS_UTILITY.FORMAT_ERROR_STACK);
-      raise_application_error(-20000, 'Error discover_sql ('||p_sess_id||'): '||sqlerrm);
+      raise_application_error(-20000, 'Error discover_sql ('||p_sql_data_point_id||'): '||sqlerrm);
   END discover_sql;
 
-  procedure discover_sql2(p_sess_id   opas_ot_sql_data.sess_id%type)
+  procedure discover_sql2(p_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type)
   AS
     l_data opas_ot_sql_data%rowtype;
   BEGIN
-    start_processing2(p_sess_id, l_data);
+    start_processing2(p_sql_data_point_id, l_data);
 
     load_sql_text(l_data);
+    commit;
+    load_sql_plans(l_data);
     commit;
     load_sql_mon(l_data);
     commit;
     load_sql_mon_hst(l_data);
     commit;
-    load_opt_env(l_data);
-    commit;
   exception
     when others then
-      coremod_tasks.log('Error discover_sql2 ('||p_sess_id||'): '||sqlerrm);
+      coremod_tasks.log('Error discover_sql2 ('||p_sql_data_point_id||'): '||sqlerrm);
       coremod_tasks.log('Error discover_sql2 error stack: '||DBMS_UTILITY.FORMAT_ERROR_STACK);
-      raise_application_error(-20000, 'Error discover_sql2 ('||p_sess_id||'): '||sqlerrm);
+      raise_application_error(-20000, 'Error discover_sql2 ('||p_sql_data_point_id||'): '||sqlerrm);
   END discover_sql2;
 
-  procedure refresh_section(p_sess_id   opas_ot_sql_data.sess_id%type,
+  procedure refresh_section(p_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type,
                             p_section_name varchar2)
   AS
     l_data  opas_ot_sql_data%rowtype;
   BEGIN
     case when p_section_name = COREOBJ_SQL_REPORT_UTILS.repsSQLMON then
       begin
-        for i in (select * from opas_ot_sql_data where sess_id = p_sess_id and gathering_status = COREOBJ_SQL.sdoREADY) loop
+        for i in (select * from opas_ot_sql_data where sql_data_point_id = p_sql_data_point_id and gathering_status = COREOBJ_SQL.sdoREADY) loop
           load_sql_mon(i);
           commit;
         end loop;

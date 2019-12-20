@@ -48,12 +48,12 @@ begin
                                p_modname   => '&MODNM.',
                                p_is_public => 'Y', 
 							   p_task_priority => COREMOD_TASKS.tpNORM,
-                               p_task_body => 'begin COREOBJ_SQL_UTILS.discover_sql (p_sess_id => <B1>) ; end;');
+                               p_task_body => 'begin COREOBJ_SQL_UTILS.discover_sql (p_sql_data_point_id => <B1>) ; end;');
   COREMOD_TASKS.create_task (  p_taskname  => 'OPAS_SQL_DISCOVER2',
                                p_modname   => '&MODNM.',
                                p_is_public => 'Y', 
 							   p_task_priority => COREMOD_TASKS.tpNORM,
-                               p_task_body => 'begin COREOBJ_SQL_UTILS.discover_sql2 (p_sess_id => <B1>) ; end;');
+                               p_task_body => 'begin COREOBJ_SQL_UTILS.discover_sql2 (p_sql_data_point_id => <B1>) ; end;');
 							   
 end;
 /

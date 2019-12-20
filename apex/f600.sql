@@ -27,7 +27,7 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 -- Application Export:
 --   Application:     600
 --   Name:            Oracle Performance Analytic Suite
---   Date and Time:   17:19 Friday December 13, 2019
+--   Date and Time:   14:36 Friday December 20, 2019
 --   Exported By:     OPAS60DADM
 --   Flashback:       0
 --   Export Type:     Application Export
@@ -37,7 +37,7 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 
 -- Application Statistics:
 --   Pages:                     24
---     Items:                   92
+--     Items:                   93
 --     Processes:               42
 --     Regions:                 94
 --     Buttons:                 45
@@ -122,7 +122,7 @@ wwv_flow_api.create_flow(
 ,p_substitution_string_02=>'APP_GRID_DT_FMT'
 ,p_substitution_value_02=>'YYYY-MM-DD HH24:MI'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20191213135232'
+,p_last_upd_yyyymmddhh24miss=>'20191220143521'
 ,p_file_prefix => nvl(wwv_flow_application_install.get_static_app_file_prefix,'')
 ,p_files_version=>3
 ,p_ui_type_name => null
@@ -16600,17 +16600,17 @@ wwv_flow_api.create_page(
 '.pad       {margin-left:17px;}',
 '.doublepad {margin-left:34px;}',
 'span.nm    {background-color:#cceeff;color:red;}',
-'th.trchd   {font-family: monospace; font-size: 11px; color: white; background:#0066CC;padding-left:4px; padding-right:4px;padding-bottom:2px;  border: 1px ridge silver; }',
-'td.trcr1   {font-family: monospace; font-size: 11px;color:black;background:White;vertical-align:top;border-style: ridge;border-width: 1px;  border: 1px ridge silver; }',
-'td.trcr2   {font-family: monospace; font-size: 11px;color:black;background:#FFFFCC; vertical-align:top;border-style: ridge;border-width: 1px;  border: 1px ridge silver; }',
+'th.trchd   {font-family: monospace; font-size: 11px; color: white; background:#0066CC;padding-left:4px; padding-right:4px;padding-bottom:2px;  border: 1px ridge silver; line-height: 12px;}',
+'td.trcr1   {font-family: monospace; font-size: 11px;color:black;background:White;vertical-align:top;border-style: ridge;border-width: 1px;  border: 1px ridge silver; line-height: 12px;}',
+'td.trcr2   {font-family: monospace; font-size: 11px;color:black;background:#FFFFCC; vertical-align:top;border-style: ridge;border-width: 1px;  border: 1px ridge silver; line-height: 12px;}',
 'td.trctotr {font-family: monospace; font-size: 11px;color:black;background: transparent; vertical-align:top;  font-weight: bold;  border-top: 2px solid black;  border-bottom: 2px solid silver;  border-left: 1px solid silver;  border-right: 1px solid '
 ||'silver;              }',
-'table.trctd{ border-spacing: 0px;  border: 1px;  border-collapse: collapse; line-height: 14px;  }',
+'table.trctd{ border-spacing: 0px;  border: 1px;  border-collapse: collapse; line-height: 12px;  }',
 ''))
 ,p_step_template=>wwv_flow_api.id(58924046682993504)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20191213135232'
+,p_last_upd_yyyymmddhh24miss=>'20191220143521'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(65432222784589311)
@@ -16635,7 +16635,7 @@ wwv_flow_api.create_page_plug(
 ,p_plug_source=>'<div id="p1401_sqltext"></div>'
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
 ,p_plug_display_condition_type=>'PLSQL_EXPRESSION'
-,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''SQL_TEXT'')>0'
+,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''SQL_TEXT'')>0 and case when :P1401_HIDE_EMPTY=''Y'' and COREOBJ_SQL_UTILS.is_section_empty(:P1401_DATA_POINT_ID,''SQL_TEXT'') then false else true end'
 ,p_attribute_01=>'N'
 ,p_attribute_02=>'HTML'
 );
@@ -16674,7 +16674,7 @@ wwv_flow_api.create_page_plug(
 ,p_plug_source=>'<div id="p1401_vsql"></div>'
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
 ,p_plug_display_condition_type=>'PLSQL_EXPRESSION'
-,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''VSQL'')>0'
+,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''VSQL'')>0 and case when :P1401_HIDE_EMPTY=''Y'' and COREOBJ_SQL_UTILS.is_section_empty(:P1401_DATA_POINT_ID,''VSQL'') then false else true end'
 ,p_attribute_01=>'N'
 ,p_attribute_02=>'HTML'
 );
@@ -16689,7 +16689,7 @@ wwv_flow_api.create_page_plug(
 ,p_plug_source=>'<div id="p1401_nonshared"></div>'
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
 ,p_plug_display_condition_type=>'PLSQL_EXPRESSION'
-,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''SHARING'')>0'
+,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''SHARING'')>0 and case when :P1401_HIDE_EMPTY=''Y'' and COREOBJ_SQL_UTILS.is_section_empty(:P1401_DATA_POINT_ID,''SHARING'') then false else true end'
 ,p_attribute_01=>'N'
 ,p_attribute_02=>'HTML'
 );
@@ -16704,7 +16704,7 @@ wwv_flow_api.create_page_plug(
 ,p_plug_source=>'<div id="p1401_exadata"></div>'
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
 ,p_plug_display_condition_type=>'PLSQL_EXPRESSION'
-,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''EXADATA'')>0'
+,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''EXADATA'')>0 and case when :P1401_HIDE_EMPTY=''Y'' and COREOBJ_SQL_UTILS.is_section_empty(:P1401_DATA_POINT_ID,''EXADATA'') then false else true end'
 ,p_attribute_01=>'N'
 ,p_attribute_02=>'HTML'
 );
@@ -16719,7 +16719,7 @@ wwv_flow_api.create_page_plug(
 ,p_plug_source=>'<div id="p1401_sqlmon"></div>'
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
 ,p_plug_display_condition_type=>'PLSQL_EXPRESSION'
-,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''SQLMON'')>0'
+,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''SQLMONV$'')>0 and case when :P1401_HIDE_EMPTY=''Y'' and COREOBJ_SQL_UTILS.is_section_empty(:P1401_DATA_POINT_ID,''SQLMONV$'') then false else true end'
 ,p_attribute_01=>'N'
 ,p_attribute_02=>'HTML'
 );
@@ -16734,7 +16734,7 @@ wwv_flow_api.create_page_plug(
 ,p_plug_source=>'<div id="p1401_wa"></div>'
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
 ,p_plug_display_condition_type=>'PLSQL_EXPRESSION'
-,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''WORKAREA'')>0'
+,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''WORKAREA'')>0 and case when :P1401_HIDE_EMPTY=''Y'' and COREOBJ_SQL_UTILS.is_section_empty(:P1401_DATA_POINT_ID,''WORKAREA'') then false else true end'
 ,p_attribute_01=>'N'
 ,p_attribute_02=>'HTML'
 );
@@ -16749,7 +16749,7 @@ wwv_flow_api.create_page_plug(
 ,p_plug_source=>'<div id="p1401_oe"></div>'
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
 ,p_plug_display_condition_type=>'PLSQL_EXPRESSION'
-,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''OPTENV'')>0'
+,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''OPTENV'')>0 and case when :P1401_HIDE_EMPTY=''Y'' and COREOBJ_SQL_UTILS.is_section_empty(:P1401_DATA_POINT_ID,''OPTENV'') then false else true end'
 ,p_attribute_01=>'N'
 ,p_attribute_02=>'HTML'
 );
@@ -16764,7 +16764,7 @@ wwv_flow_api.create_page_plug(
 ,p_plug_source=>'<div id="p1401_dp_last"></div>'
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
 ,p_plug_display_condition_type=>'PLSQL_EXPRESSION'
-,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''SQLPLLAST'')>0'
+,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''SQLPLLAST'')>0 and case when :P1401_HIDE_EMPTY=''Y'' and COREOBJ_SQL_UTILS.is_section_empty(:P1401_DATA_POINT_ID,''SQLPLLAST'') then false else true end'
 ,p_attribute_01=>'N'
 ,p_attribute_02=>'HTML'
 );
@@ -16779,7 +16779,7 @@ wwv_flow_api.create_page_plug(
 ,p_plug_source=>'<div id="p1401_dp_lastadv"></div>'
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
 ,p_plug_display_condition_type=>'PLSQL_EXPRESSION'
-,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''SQLPLADV'')>0'
+,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''SQLPLADV'')>0 and case when :P1401_HIDE_EMPTY=''Y'' and COREOBJ_SQL_UTILS.is_section_empty(:P1401_DATA_POINT_ID,''SQLPLADV'') then false else true end'
 ,p_attribute_01=>'N'
 ,p_attribute_02=>'HTML'
 );
@@ -16794,7 +16794,7 @@ wwv_flow_api.create_page_plug(
 ,p_plug_source=>'<div id="p1401_dp_all"></div>'
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
 ,p_plug_display_condition_type=>'PLSQL_EXPRESSION'
-,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''SQLPLALL'')>0'
+,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''SQLPLALL'')>0 and case when :P1401_HIDE_EMPTY=''Y'' and COREOBJ_SQL_UTILS.is_section_empty(:P1401_DATA_POINT_ID,''SQLPLALL'') then false else true end'
 ,p_attribute_01=>'N'
 ,p_attribute_02=>'HTML'
 );
@@ -16809,7 +16809,7 @@ wwv_flow_api.create_page_plug(
 ,p_plug_source=>'<div id="p1401_dp_adapt"></div>'
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
 ,p_plug_display_condition_type=>'PLSQL_EXPRESSION'
-,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''SQLPLADAPT'')>0'
+,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''SQLPLADAPT'')>0 and case when :P1401_HIDE_EMPTY=''Y'' and COREOBJ_SQL_UTILS.is_section_empty(:P1401_DATA_POINT_ID,''SQLPLADAPT'') then false else true end'
 ,p_attribute_01=>'N'
 ,p_attribute_02=>'HTML'
 );
@@ -16824,7 +16824,7 @@ wwv_flow_api.create_page_plug(
 ,p_plug_source=>'<div id="p1401_vash"></div>'
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
 ,p_plug_display_condition_type=>'PLSQL_EXPRESSION'
-,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''VASH'')>0'
+,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''VASH'')>0 and case when :P1401_HIDE_EMPTY=''Y'' and COREOBJ_SQL_UTILS.is_section_empty(:P1401_DATA_POINT_ID,''VASH'') then false else true end'
 ,p_attribute_01=>'N'
 ,p_attribute_02=>'HTML'
 );
@@ -16839,7 +16839,7 @@ wwv_flow_api.create_page_plug(
 ,p_plug_source=>'<div id="p1401_sqlmonhst"></div>'
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
 ,p_plug_display_condition_type=>'PLSQL_EXPRESSION'
-,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''SQLMONHST'')>0'
+,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''SQLMONHST'')>0 and case when :P1401_HIDE_EMPTY=''Y'' and COREOBJ_SQL_UTILS.is_section_empty(:P1401_DATA_POINT_ID,''SQLMONHST'') then false else true end'
 ,p_attribute_01=>'N'
 ,p_attribute_02=>'HTML'
 );
@@ -16901,7 +16901,7 @@ wwv_flow_api.create_page_item(
 );
 wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(65432894648589317)
-,p_name=>'P1401_SESS_ID'
+,p_name=>'P1401_DATA_POINT_ID'
 ,p_item_sequence=>10
 ,p_item_plug_id=>wwv_flow_api.id(65433481111589323)
 ,p_display_as=>'NATIVE_HIDDEN'
@@ -16918,7 +16918,7 @@ wwv_flow_api.create_page_item(
 'select x.display_val d, x.val r ',
 '  from opas_dictionary x, OPAS_OT_SQL_DATA_SECT s ',
 ' where dic_name=''SQLREPSECT''',
-'   and s.sess_id = :P1401_SESS_ID',
+'   and s.sql_data_point_id = :P1401_DATA_POINT_ID',
 '   and x.val = s.section_name order by dic_ordr;'))
 ,p_field_template=>wwv_flow_api.id(59011729453993944)
 ,p_item_template_options=>'#DEFAULT#:margin-top-none:margin-left-none'
@@ -16957,6 +16957,18 @@ wwv_flow_api.create_page_item(
 ,p_display_as=>'NATIVE_HIDDEN'
 ,p_attribute_01=>'Y'
 );
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(65666511733133126)
+,p_name=>'P1401_HIDE_EMPTY'
+,p_item_sequence=>30
+,p_item_plug_id=>wwv_flow_api.id(65433202643589321)
+,p_item_default=>'N'
+,p_prompt=>'Hide Empty'
+,p_display_as=>'NATIVE_YES_NO'
+,p_field_template=>wwv_flow_api.id(59011729453993944)
+,p_item_template_options=>'#DEFAULT#'
+,p_attribute_01=>'APPLICATION'
+);
 wwv_flow_api.create_page_da_event(
  p_id=>wwv_flow_api.id(65433592306589324)
 ,p_name=>'RefreshStatus'
@@ -16975,7 +16987,7 @@ wwv_flow_api.create_page_da_action(
 ,p_action=>'PLUGIN_MULEDEV.SERVER_REGION_REFRESH'
 ,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'begin',
-'  COREOBJ_SQL_REPORT_UTILS.print_header(:P1401_SESS_ID);',
+'  COREOBJ_SQL_REPORT_UTILS.print_header(:P1401_DATA_POINT_ID);',
 '--htp.p('' <b>sysdate:</b> ''||to_char(sysdate,''YYYY-MON-DD HH24:MI:SS''));',
 '--htp.p(''P1401_NEED_REFRESH:</b> ''||nvl(:P1401_NEED_REFRESH,''NULL''));',
 'end;'))
@@ -17001,7 +17013,7 @@ wwv_flow_api.create_page_da_action(
 ,p_action=>'PLUGIN_MULEDEV.SERVER_REGION_REFRESH'
 ,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'begin',
-'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sess_id => :P1401_SESS_ID, ',
+'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sql_data_point_id=> :P1401_DATA_POINT_ID, ',
 '                                              p_section_name => COREOBJ_SQL_REPORT_UTILS.repsVSQL);',
 'end;'))
 ,p_attribute_02=>'p1401_vsql'
@@ -17026,7 +17038,7 @@ wwv_flow_api.create_page_da_action(
 ,p_action=>'PLUGIN_MULEDEV.SERVER_REGION_REFRESH'
 ,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'begin',
-'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sess_id => :P1401_SESS_ID, ',
+'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sql_data_point_id=> :P1401_DATA_POINT_ID, ',
 '                                              p_section_name => COREOBJ_SQL_REPORT_UTILS.repsSQL_TEXT);',
 'end;'))
 ,p_attribute_02=>'p1401_sqltext'
@@ -17051,7 +17063,7 @@ wwv_flow_api.create_page_da_action(
 ,p_action=>'PLUGIN_MULEDEV.SERVER_REGION_REFRESH'
 ,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'begin',
-'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sess_id => :P1401_SESS_ID, ',
+'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sql_data_point_id=> :P1401_DATA_POINT_ID, ',
 '                                              p_section_name => COREOBJ_SQL_REPORT_UTILS.repsSHARING);',
 'end;'))
 ,p_attribute_02=>'p1401_nonshared'
@@ -17076,7 +17088,7 @@ wwv_flow_api.create_page_da_action(
 ,p_action=>'PLUGIN_MULEDEV.SERVER_REGION_REFRESH'
 ,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'begin',
-'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sess_id => :P1401_SESS_ID, ',
+'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sql_data_point_id=> :P1401_DATA_POINT_ID, ',
 '                                              p_section_name => COREOBJ_SQL_REPORT_UTILS.repsEXADATA);',
 'end;'))
 ,p_attribute_02=>'p1401_exadata'
@@ -17101,7 +17113,7 @@ wwv_flow_api.create_page_da_action(
 ,p_action=>'PLUGIN_MULEDEV.SERVER_REGION_REFRESH'
 ,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'begin',
-'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sess_id => :P1401_SESS_ID, ',
+'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sql_data_point_id=> :P1401_DATA_POINT_ID, ',
 '                                              p_section_name => COREOBJ_SQL_REPORT_UTILS.repsSQLMON);',
 'end;'))
 ,p_attribute_02=>'p1401_sqlmon'
@@ -17126,7 +17138,7 @@ wwv_flow_api.create_page_da_action(
 ,p_action=>'PLUGIN_MULEDEV.SERVER_REGION_REFRESH'
 ,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'begin',
-'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sess_id => :P1401_SESS_ID, ',
+'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sql_data_point_id=> :P1401_DATA_POINT_ID, ',
 '                                              p_section_name => COREOBJ_SQL_REPORT_UTILS.repsWORKAREA);',
 'end;'))
 ,p_attribute_02=>'p1401_wa'
@@ -17151,7 +17163,7 @@ wwv_flow_api.create_page_da_action(
 ,p_action=>'PLUGIN_MULEDEV.SERVER_REGION_REFRESH'
 ,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'begin',
-'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sess_id => :P1401_SESS_ID, ',
+'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sql_data_point_id=> :P1401_DATA_POINT_ID, ',
 '                                              p_section_name => COREOBJ_SQL_REPORT_UTILS.repsOPTENV);',
 'end;'))
 ,p_attribute_02=>'p1401_oe'
@@ -17176,7 +17188,7 @@ wwv_flow_api.create_page_da_action(
 ,p_action=>'PLUGIN_MULEDEV.SERVER_REGION_REFRESH'
 ,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'begin',
-'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sess_id => :P1401_SESS_ID, ',
+'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sql_data_point_id=> :P1401_DATA_POINT_ID, ',
 '                                              p_section_name => COREOBJ_SQL_REPORT_UTILS.repsSQLPLLAST);',
 'end;'))
 ,p_attribute_02=>'p1401_dp_last'
@@ -17201,7 +17213,7 @@ wwv_flow_api.create_page_da_action(
 ,p_action=>'PLUGIN_MULEDEV.SERVER_REGION_REFRESH'
 ,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'begin',
-'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sess_id => :P1401_SESS_ID, ',
+'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sql_data_point_id=> :P1401_DATA_POINT_ID, ',
 '                                              p_section_name => COREOBJ_SQL_REPORT_UTILS.repsSQLPLADV);',
 'end;'))
 ,p_attribute_02=>'p1401_dp_lastadv'
@@ -17226,7 +17238,7 @@ wwv_flow_api.create_page_da_action(
 ,p_action=>'PLUGIN_MULEDEV.SERVER_REGION_REFRESH'
 ,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'begin',
-'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sess_id => :P1401_SESS_ID, ',
+'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sql_data_point_id=> :P1401_DATA_POINT_ID, ',
 '                                              p_section_name => COREOBJ_SQL_REPORT_UTILS.repsSQLPLALL);',
 'end;'))
 ,p_attribute_02=>'p1401_dp_all'
@@ -17251,7 +17263,7 @@ wwv_flow_api.create_page_da_action(
 ,p_action=>'PLUGIN_MULEDEV.SERVER_REGION_REFRESH'
 ,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'begin',
-'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sess_id => :P1401_SESS_ID, ',
+'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sql_data_point_id=> :P1401_DATA_POINT_ID, ',
 '                                              p_section_name => COREOBJ_SQL_REPORT_UTILS.repsSQLPLADAPT);',
 'end;'))
 ,p_attribute_02=>'p1401_dp_adapt'
@@ -17276,7 +17288,7 @@ wwv_flow_api.create_page_da_action(
 ,p_action=>'PLUGIN_MULEDEV.SERVER_REGION_REFRESH'
 ,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'begin',
-'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sess_id => :P1401_SESS_ID, ',
+'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sql_data_point_id=> :P1401_DATA_POINT_ID, ',
 '                                              p_section_name => COREOBJ_SQL_REPORT_UTILS.repsVASH);',
 'end;'))
 ,p_attribute_02=>'p1401_vash'
@@ -17292,6 +17304,9 @@ wwv_flow_api.create_page_da_event(
 ,p_bind_type=>'bind'
 ,p_bind_event_type=>'apexafterrefresh'
 );
+end;
+/
+begin
 wwv_flow_api.create_page_da_action(
  p_id=>wwv_flow_api.id(65666453053133125)
 ,p_event_id=>wwv_flow_api.id(65666344667133124)
@@ -17301,7 +17316,7 @@ wwv_flow_api.create_page_da_action(
 ,p_action=>'PLUGIN_MULEDEV.SERVER_REGION_REFRESH'
 ,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'begin',
-'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sess_id => :P1401_SESS_ID, ',
+'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sql_data_point_id=> :P1401_DATA_POINT_ID, ',
 '                                              p_section_name => COREOBJ_SQL_REPORT_UTILS.repsSQLMONHST);',
 'end;'))
 ,p_attribute_02=>'p1401_sqlmonhst'
@@ -17316,7 +17331,7 @@ wwv_flow_api.create_page_process(
 ,p_process_name=>'RefreshSQLMon'
 ,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'begin',
-'  COREOBJ_SQL_UTILS.refresh_section(:P1401_SESS_ID,COREOBJ_SQL_REPORT_UTILS.repsSQLMON);',
+'  COREOBJ_SQL_UTILS.refresh_section(:P1401_DATA_POINT_ID,COREOBJ_SQL_REPORT_UTILS.repsSQLMON);',
 'end;'))
 ,p_error_display_location=>'INLINE_IN_NOTIFICATION'
 ,p_process_when_button_id=>wwv_flow_api.id(65435701045589346)
@@ -17333,17 +17348,19 @@ wwv_flow_api.create_page_process(
 'begin',
 '  select sql_de.sql_text, ',
 '         sql_de.sql_id,',
-'         sql_da.sess_id,',
+'         sql_da.sql_data_point_id,',
 '         sql_da.GATHERING_STATUS,',
-'         to_char(sql_de.created,''YYYY-MON-DD HH24:MI:SS'')||'' Source: ''||nvl(sql_de.first_discovered_at,''N/A'')',
+'         to_char(sql_de.first_discovered,''YYYY-MON-DD HH24:MI:SS'')||'' Source: ''||nvl(l.DISPLAY_NAME,''N/A'')',
 '    into :P1401_FILE_ID, ',
 '         :P1401_SQL_ID,',
-'         :P1401_SESS_ID,',
+'         :P1401_DATA_POINT_ID,',
 '         l_sql_data_status,',
 '         :P1401_SQL_CREATED',
-'    from opas_ot_sql_descriptions sql_de, opas_ot_sql_data sql_da ',
+'    from opas_ot_sql_descriptions sql_de, opas_ot_sql_data sql_da, opas_ot_sql_data_point_ref r, V$OPAS_DB_LINKS l ',
 '   where sql_de.sql_id=sql_da.sql_id',
-'     and sql_da.data_id = :APP_OBJ_ID;',
+'     and sql_da.sql_data_point_id = r.sql_data_point_id',
+'     and r.obj_id = :APP_OBJ_ID',
+'     and sql_de.first_discovered_at = l.DB_LINK_NAME(+);',
 '  ',
 '  :P1401_GATHERING_STATUS := l_sql_data_status;',
 '  :P1401_NEED_REFRESH := COREOBJ_SQL_REPORT_UTILS.get_header_refresh_interval(:P1401_SESS_ID);',
