@@ -475,7 +475,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       WHEN op = 'L' THEN
       INTO opas_ot_sql_sqlmon_ref ( sql_data_point_id, sqlmon_id)
       values( p_data.sql_data_point_id, sqlmon_id)
-    select x.*, x1.*, x2.*
+    select x.*, x1.*, x2.*--, XMLCast(xmlquery('$p/report/sql_monitor_report/target/sql_fulltext' passing xmltype(x.report) as "p" RETURNING CONTENT) as varchar2(2000)) sql_text
     from ( SELECT 'I' op, t.*, null sqlmon_id, d.report
              FROM opas_ot_tmp_dba_hist_reports t, opas_ot_tmp_dba_hist_rep_xml d
             where not exists (select 1 from opas_ot_sql_sqlmon i
@@ -495,7 +495,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                  ,refresh_count path 'refresh_count'
                  ,rm_consumer_group path 'rminfo/@rmcg'
                  --,sql_text path 'sql_fulltext'
-                 --,is_full_sqltext path 'sql_fulltext/@is_full'
+                 ,is_full_sqltext path 'sql_fulltext/@is_full'
                  ,sql_exec_start path '@sql_exec_start'
                  ,sql_exec_id path '@sql_exec_id'
                  ,sql_plan_hash_value path '@sql_plan_hash'
