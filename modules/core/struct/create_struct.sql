@@ -56,29 +56,31 @@ username            varchar2(128),
 password            varchar2(128),
 connstr             varchar2(1000),
 status              varchar2(32)     default 'new'         not null,
-is_public           varchar2(1)      default 'y'           not null);
+is_public           varchar2(1)      default 'y'           not null,
+dbid                number);
 
 create or replace force view v$opas_db_links as 
 with gn as (select value from v$parameter where name like '%domain%')
 select db_link_name,
        case
-         when db_link_name = '$local$' then db_link_name
+         when db_link_name = '$LOCAL$' then db_link_name
          else l.db_link
        end ora_db_link,
        case
-         when db_link_name = '$local$' then 'local'
+         when db_link_name = '$LOCAL$' then 'LOCAL'
          else 
            case when l.username is not null then db_link_name||' ('||l.username||'@'||l.host||')' else db_link_name||' (suspended)' end
          end display_name,
        owner,
        status,
-       is_public
+       is_public,
+	   dbid
   from opas_db_links o, user_db_links l, gn
  where owner =
        decode(owner,
-              'public',
+              'PUBLIC',
               owner,
-              decode(is_public, 'y', owner, nvl(v('app_user'), '~^')))
+              decode(is_public, 'Y', owner, nvl(v('APP_USER'), '~^')))
    and l.db_link(+) = case when gn.value is null then upper(o.db_link_name) else upper(o.db_link_name ||'.'|| gn.value) end;
 
 create table opas_db_link_cache (
@@ -88,8 +90,100 @@ value               varchar2(4000),
 last_updated        timestamp         default systimestamp);
 
 create unique index idx_opas_dblink_cache on opas_db_link_cache(dblink,key);
+-------------------------------
+create table opas_db_link_v$db
+as
+select cast('' as varchar2(128)) dblink,
+       'Y' is_actual,
+	   systimestamp actual_since,
+       x.*
+  from v$database x
+ where 1=2;
 
+create index idx_opas_dbl_db_dblink on opas_db_link_v$db(dblink,is_actual);
+alter table opas_db_link_v$db add constraint fk_v$db_dblink foreign key (dblink) references opas_db_links(db_link_name) on delete cascade;
 
+create global temporary table opas_dbl_tmp_v$database on commit delete rows
+as select * from v$database where 1=2;
+----
+create table opas_db_link_v$pdbs
+as
+select cast('' as varchar2(128)) dblink,
+       'Y' is_actual,
+	   systimestamp actual_since,
+       x.*
+  from v$pdbs x
+ where 1=2;
+
+create index idx_opas_dbl_pdbs_dblink on opas_db_link_v$pdbs(dblink,is_actual);
+alter table opas_db_link_v$pdbs add constraint fk_v$pdbs_dblink foreign key (dblink) references opas_db_links(db_link_name) on delete cascade;
+
+create global temporary table opas_dbl_tmp_v$pdbs on commit delete rows
+as select * from v$pdbs where 1=2;
+----
+create table opas_db_link_v$inst
+as 
+select cast('' as varchar2(128)) dblink,
+       x.*
+  from gv$instance x
+ where 1=2;
+
+create index idx_opas_dbl_vinst_dblink on opas_db_link_v$inst(dblink);
+alter table opas_db_link_v$inst add constraint fk_v$inst_dblink foreign key (dblink) references opas_db_links(db_link_name) on delete cascade;
+
+create global temporary table opas_dbl_tmp_v$inst on commit delete rows
+as select * from gv$instance where 1=2;
+----
+create table opas_db_link_dbh_inst
+as
+select cast('' as varchar2(128)) dblink,
+       x.*
+  from dba_hist_database_instance x
+ where 1=2;
+
+create index idx_opas_dbl_inst_dblink on opas_db_link_dbh_inst(dblink);
+alter table opas_db_link_dbh_inst add constraint fk_dbh_inst_dblink foreign key (dblink) references opas_db_links(db_link_name) on delete cascade;
+
+create global temporary table opas_dbl_tmp_awrinst on commit delete rows
+as select * from DBA_HIST_DATABASE_INSTANCE where 1=2;
+----
+create table opas_db_link_reghst
+as
+select cast('' as varchar2(128)) dblink,
+       x.*
+  from dba_registry_history x
+ where 1=2;
+
+create index idx_opas_db_link_reg_dblink on opas_db_link_reghst(dblink);
+alter table opas_db_link_reghst add constraint fk_dbl_reghst_dblink foreign key (dblink) references opas_db_links(db_link_name) on delete cascade;
+
+create global temporary table opas_dbl_tmp_reghst on commit delete rows
+as select * from DBA_REGISTRY_HISTORY where 1=2;
+----
+create table opas_db_link_sqlptchhst
+as
+select cast('' as varchar2(128)) dblink,
+       x.*
+  from DBA_REGISTRY_SQLPATCH x
+ where 1=2;
+
+alter table opas_db_link_sqlptchhst modify
+  (PATCH_TYPE null,
+  STATUS null,
+  ACTION_TIME null,
+  LOGFILE null);
+
+create index idx_opas_db_link_ptch_dblink on opas_db_link_sqlptchhst(dblink);
+alter table opas_db_link_sqlptchhst add constraint fk_dbl_ptch_dblink foreign key (dblink) references opas_db_links(db_link_name) on delete cascade;
+
+create global temporary table opas_dbl_tmp_sqlptchhst on commit delete rows
+as select * from DBA_REGISTRY_SQLPATCH where 1=2;
+
+alter table opas_dbl_tmp_sqlptchhst modify
+  (PATCH_TYPE null,
+  STATUS null,
+  ACTION_TIME null,
+  LOGFILE null);
 
 ---------------------------------------------------------------------------------------------
 -- file storage
@@ -866,14 +960,13 @@ as select * from dba_hist_sqlstat where 1=2;
 create global temporary table opas_ot_tmp_awrsqlbind on commit delete rows
 as select * from dba_hist_sqlbind where 1=2;
 
-create global temporary table opas_ot_tmp_awrinst on commit delete rows
-as select * from dba_hist_database_instance where 1=2;
-
 create global temporary table opas_ot_tmp_awrpln on commit delete rows
 as select * from dba_hist_sql_plan where 1=2;
 
 create global temporary table opas_ot_tmp_awrash on commit delete rows
 as select * from dba_hist_active_sess_history where 1=2;
+
+
 
 
 create table opas_ot_sql_awrstat

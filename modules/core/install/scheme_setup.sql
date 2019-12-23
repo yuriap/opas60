@@ -14,28 +14,47 @@ grant create materialized view to &localscheme.;
 
 grant connect, resource to &localscheme.;
 grant select_catalog_role to &localscheme.;
-grant MANAGE SCHEDULER to &localscheme.;
+grant manage scheduler to &localscheme.;
 
 grant alter session to &localscheme.;
 grant select any table to &localscheme.;
 
+grant execute on dbms_auto_report to &localscheme.;
 grant execute on dbms_lock to &localscheme.;
+grant execute on dbms_log to &localscheme.;
+grant execute on dbms_sqltune to &localscheme.;
 grant execute on dbms_workload_repository to &localscheme.;
 grant execute on dbms_xplan to &localscheme.;
-grant execute on dbms_log to &localscheme.;
 
 --APEX 18.1 uploading files
 grant update on apex_180100.WWV_FLOW_TEMP_FILES to &localscheme.;
 --APEX 19.1 uploading files
 grant update on apex_190100.WWV_FLOW_TEMP_FILES to &localscheme.;
-
-grant select on v_$session to &localscheme.;
-grant select on gv_$session to &localscheme.;
+--
+grant select on gv_$active_session_history to &localscheme.;
+grant select on v_$database to &localscheme.;
+grant select on gv_$instance to &localscheme.;
 grant select on v_$parameter to &localscheme.;
+grant select on v_$pdbs to &localscheme.;
+grant select on gv_$session to &localscheme.;
+grant select on v_$session to &localscheme.;
+grant select on gv_$sql to &localscheme.;
+grant select on gv_$sql_shared_cursor to &localscheme.;
+grant select on gv_$sql_monitor to &localscheme.;
+grant select on gv_$sql_workarea to &localscheme.;
+grant select on gv_$sql_optimizer_env to &localscheme.;
+grant select on gv_$sql_plan_statistics_all to &localscheme.;
+--
+grant select on dba_hist_database_instance to &localscheme.;
+grant select on dba_hist_reports to &localscheme.;
+grant select on dba_hist_reports_details to &localscheme.;
 grant select on dba_hist_sqltext to &localscheme.;
 --
-grant select on gv_$sql to &localscheme.;
-grant select on dba_hist_sqltext to &localscheme.;
+grant select on dba_data_files to &localscheme.;
+grant select on dba_objects to &localscheme.;
+grant select on dba_registry_history to &localscheme.;
+grant select on dba_registry_sqlpatch to &localscheme.;
+grant select on dba_tab_cols to &localscheme.;
 
 begin
 DBMS_SCHEDULER.CREATE_JOB_CLASS (

@@ -43,6 +43,8 @@ package COREMOD_API as
    function get_dblink_for_query(p_dblink varchar2) return varchar2;
    function get_ora_dblink_cache(p_db_link_name varchar2, p_key varchar2) return varchar2;
 
+   procedure update_dblink_db_info(p_db_link_name varchar2);
+
    function get_def_source return varchar2;
    function get_def_owner return varchar2;
 

@@ -359,17 +359,18 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     select count(1) into l_rows from opas_ot_sql_sqlmon_ref where sql_data_point_id = p_data.sql_data_point_id;
 
     for i in (select m.* from opas_ot_sql_sqlmon_ref r, opas_ot_sql_sqlmon m where r.sqlmon_id = m.sqlmon_id and r.sql_data_point_id = p_data.sql_data_point_id and sql_mon_report is null) loop
-      if i.report_id <> 0 then
-        COREMOD_UTILS.get_clob_remotelly(p_sql => replace(replace(
-          q'[begin l_out := dbms_sqltune.report_sql_monitor(sql_id=>'<SQL_ID>', REPORT_ID => <REP_ID>, report_level=>'ALL'); end;]'
+      begin
+        if i.report_id <> 0 then
+          COREMOD_UTILS.get_clob_remotelly(p_sql => replace(replace(
+            q'[begin l_out := dbms_sqltune.report_sql_monitor(sql_id=>'<SQL_ID>', REPORT_ID => <REP_ID>, report_level=>'ALL'); end;]'
                                                     ,'<SQL_ID>',p_data.sql_id)
                                                     ,'<REP_ID>',i.report_id),
                                          p_dblink => p_data.dblink,
                                          p_output => l_report);
 
-      else
-        COREMOD_UTILS.get_clob_remotelly(p_sql => replace(replace(replace(replace(replace(replace(
-          q'[begin l_out := dbms_sqltune.report_sql_monitor(sql_id=>'<SQL_ID>', SESSION_ID => <SID>, SESSION_SERIAL=> <SER>, SQL_EXEC_ID => <EID>, INST_ID => <IID>, SQL_EXEC_START => to_date('<SDT>','YYYYMMDDHH24MISS'), report_level=>'ALL'); end;]'
+        else
+          COREMOD_UTILS.get_clob_remotelly(p_sql => replace(replace(replace(replace(replace(replace(
+            q'[begin l_out := dbms_sqltune.report_sql_monitor(sql_id=>'<SQL_ID>', SESSION_ID => <SID>, SESSION_SERIAL=> <SER>, SQL_EXEC_ID => <EID>, INST_ID => <IID>, SQL_EXEC_START => to_date('<SDT>','YYYYMMDDHH24MISS'), report_level=>'ALL'); end;]'
                                                     ,'<SQL_ID>',p_data.sql_id)
                                                     ,'<SID>',i.sid)
                                                     ,'<SER>',i.session_serial#)
@@ -378,18 +379,22 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                                                     ,'<SDT>',to_char(i.sql_exec_start,'YYYYMMDDHH24MISS')),
                                          p_dblink => p_data.dblink,
                                          p_output => l_report);
-      end if;
-      l_file_id := COREMOD_FILE_UTILS.create_file(
-        P_MODNAME => COREMOD_API.gMODNAME,
-        P_FILE_TYPE => 'SQLMON',
-        P_FILE_NAME => p_data.sql_id||'_sqlmon.txt',
-        P_MIMETYPE => COREMOD_FILE_UTILS.mtTEXT,
-        P_OWNER => 'PUBLIC');
-      COREMOD_FILE_UTILS.store_content (
-         P_FILE_ID => l_file_id,
-         P_CONTENT => l_report) ;
+        end if;
+        l_file_id := COREMOD_FILE_UTILS.create_file(
+          P_MODNAME => COREMOD_API.gMODNAME,
+          P_FILE_TYPE => 'SQLMON',
+          P_FILE_NAME => p_data.sql_id||'_sqlmon.txt',
+          P_MIMETYPE => COREMOD_FILE_UTILS.mtTEXT,
+          P_OWNER => 'PUBLIC');
+        COREMOD_FILE_UTILS.store_content (
+           P_FILE_ID => l_file_id,
+           P_CONTENT => l_report) ;
 
-      update opas_ot_sql_sqlmon set sql_mon_report = l_file_id where sqlmon_id = i.sqlmon_id;
+        update opas_ot_sql_sqlmon set sql_mon_report = l_file_id where sqlmon_id = i.sqlmon_id;
+      exception
+        when others then
+          coremod_tasks.log('Error load_sql_mon ('||p_data.sql_data_point_id||') calling dbms_sqltune.report_sql_monitor: '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      end;
     end loop;
 
     finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMON, p_rows_processed => l_rows);
@@ -411,7 +416,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
   begin
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMONHST);
 
-    l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_SQLMON */ INTO opas_ot_tmp_dba_hist_reports (<SRC_DB_COL_LICT>)
+    l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_SQLMON_HST */ INTO opas_ot_tmp_dba_hist_reports (<SRC_DB_COL_LICT>)
               select <SRC_DB_COL_LICT> from dba_hist_reports]' || COREMOD_API.get_dblink_for_query(p_data.dblink) ||
               q'[ r where r.component_name = 'sqlmonitor' and r.key1 = :p_sql_id and period_start_time > add_months(sysdate,-1) and rownum<=20]'; --TODO filter istory reports
     l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_DBA_HIST_REPORTS'));
@@ -460,7 +465,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
         opas_ot_sq_sqlmon_id.currval,
         user#, username, module, action, service_name, null /*client_identifier*/, null /*client_info*/,
         program, null /*plsql_entry_object_id*/, null /*plsql_entry_subprogram_id*/, null /*plsql_object_id*/, null /*plsql_subprogram_id*/,
-        null /*dbop_exec_id*/, null /*dbop_name*/, null /*process_name*/, null /*sql_text*/, null /*is_full_sqltext*/, sql_plan_hash_value, sql_full_plan_hash_value,
+        null /*dbop_exec_id*/, null /*dbop_name*/, null /*process_name*/, null /*sql_text*/, is_full_sqltext, sql_plan_hash_value, sql_full_plan_hash_value,
         null /*exact_matching_signature*/, null /*force_matching_signature*/, null /*px_is_cross_instance*/, null /*px_maxdop*/, null /*px_maxdop_instances*/,
         null /*px_servers_requested*/, null /*px_servers_allocated*/, null /*px_server#*/, null /*px_server_group*/, null /*px_server_set*/, null /*px_qcinst_id*/,
         null /*px_qcsid*/, null /*error_number*/, null /*error_facility*/, null /*error_message*/, elapsed_time, null /*queuing_time*/, cpu_time, fetches,
@@ -619,25 +624,30 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
 
 
     for i in (select * from opas_ot_sql_descriptions where sql_id=p_data.sql_id and sql_text is null) loop
-      for j in (select * from (
-                select XMLCast(xmlquery('$p/report/sql_monitor_report/target/sql_fulltext' passing xmltype(report) as "p" RETURNING CONTENT) as clob) sql_text,
-                       XMLCast(xmlquery('$p/report/sql_monitor_report/target/sql_fulltext/@is_full' passing xmltype(report) as "p" RETURNING CONTENT) as varchar2(10)) is_full_sqltext
-                  from opas_ot_tmp_dba_hist_rep_xml x
-                ) where is_full_sqltext = 'Y' and rownum = 1)
-      loop
-          l_file_id := COREMOD_FILE_UTILS.create_file(P_MODNAME => COREMOD_API.gMODNAME,
-                                                      P_FILE_TYPE => 'SQL Text',
-                                                      P_FILE_NAME => i.sql_id,
-                                                      P_MIMETYPE  => COREMOD_FILE_UTILS.mtTEXT,
-                                                      P_OWNER     => i.created_by);
-          COREMOD_FILE_UTILS.store_content(l_file_id,j.sql_text);
-          update opas_ot_sql_descriptions set
-            sql_text_approx = l_file_id,
-            FIRST_DISCOVERED = nvl(FIRST_DISCOVERED, systimestamp),
-            FIRST_DISCOVERED_AT = nvl(FIRST_DISCOVERED_AT, p_data.dblink)
-          where sql_id = p_data.sql_id;
-          finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQL_TEXT, p_rows_processed => 1);
-      end loop;
+      begin
+        for j in (select * from (
+                  select XMLCast(xmlquery('$p/report/sql_monitor_report/target/sql_fulltext' passing xmltype(report) as "p" RETURNING CONTENT) as clob) sql_text,
+                         XMLCast(xmlquery('$p/report/sql_monitor_report/target/sql_fulltext/@is_full' passing xmltype(report) as "p" RETURNING CONTENT) as varchar2(10)) is_full_sqltext
+                    from opas_ot_tmp_dba_hist_rep_xml x
+                  ) where is_full_sqltext = 'Y' and rownum = 1)
+        loop
+            l_file_id := COREMOD_FILE_UTILS.create_file(P_MODNAME => COREMOD_API.gMODNAME,
+                                                        P_FILE_TYPE => 'SQL Text',
+                                                        P_FILE_NAME => i.sql_id,
+                                                        P_MIMETYPE  => COREMOD_FILE_UTILS.mtTEXT,
+                                                        P_OWNER     => i.created_by);
+            COREMOD_FILE_UTILS.store_content(l_file_id,j.sql_text);
+            update opas_ot_sql_descriptions set
+              sql_text_approx = l_file_id,
+              FIRST_DISCOVERED = nvl(FIRST_DISCOVERED, systimestamp),
+              FIRST_DISCOVERED_AT = nvl(FIRST_DISCOVERED_AT, p_data.dblink)
+            where sql_id = p_data.sql_id;
+            finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQL_TEXT, p_rows_processed => 1);
+        end loop;
+      exception
+        when others then
+        coremod_tasks.log('Error load_sql_mon_hst ('||p_data.sql_data_point_id||'): getting approx. sql text: '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      end;
     end loop;
 
     for i in (SELECT d.report, p.SQLMON_ID
@@ -661,31 +671,36 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     end loop;
 
     for i in (select m.* from opas_ot_sql_sqlmon_ref r, opas_ot_sql_sqlmon m where r.sqlmon_id = m.sqlmon_id and r.sql_data_point_id = p_data.sql_data_point_id and sql_mon_report is null) loop
-      COREMOD_UTILS.get_clob_remotelly(p_sql => replace(
-          q'[begin l_out := DBMS_AUTO_REPORT.REPORT_REPOSITORY_DETAIL(RID => <REP_ID>, TYPE => 'text'); end;]'
+      begin
+        COREMOD_UTILS.get_clob_remotelly(p_sql => replace(
+            q'[begin l_out := DBMS_AUTO_REPORT.REPORT_REPOSITORY_DETAIL(RID => <REP_ID>, TYPE => 'text'); end;]'
                                                     ,'<REP_ID>',i.report_id),
                                          p_dblink => p_data.dblink,
                                          p_output => l_report);
 
-      l_file_id := COREMOD_FILE_UTILS.create_file(
-        P_MODNAME => COREMOD_API.gMODNAME,
-        P_FILE_TYPE => 'SQLMON',
-        P_FILE_NAME => p_data.sql_id||'_sqlmon.txt',
-        P_MIMETYPE => COREMOD_FILE_UTILS.mtTEXT,
-        P_OWNER => 'PUBLIC');
-      COREMOD_FILE_UTILS.store_content (
-         P_FILE_ID => l_file_id,
-         P_CONTENT => l_report) ;
+        l_file_id := COREMOD_FILE_UTILS.create_file(
+          P_MODNAME => COREMOD_API.gMODNAME,
+          P_FILE_TYPE => 'SQLMON',
+          P_FILE_NAME => p_data.sql_id||'_sqlmon.txt',
+          P_MIMETYPE => COREMOD_FILE_UTILS.mtTEXT,
+          P_OWNER => 'PUBLIC');
+        COREMOD_FILE_UTILS.store_content (
+          P_FILE_ID => l_file_id,
+          P_CONTENT => l_report) ;
 
-      update opas_ot_sql_sqlmon set sql_mon_report = l_file_id where sqlmon_id = i.sqlmon_id;
+        update opas_ot_sql_sqlmon set sql_mon_report = l_file_id where sqlmon_id = i.sqlmon_id;
+      exception
+        when others then
+        coremod_tasks.log('Error load_sql_mon_hst ('||p_data.sql_data_point_id||'): calling DBMS_AUTO_REPORT.REPORT_REPOSITORY_DETAIL: '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      end;
     end loop;
 
     finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMONHST, p_rows_processed => l_rows);
   exception
     when others then
       rollback;
-      if l_sql is not null then coremod_tasks.log('Error load_sql_mon ('||p_data.sql_data_point_id||'): '||l_sql); end if;
-      coremod_tasks.log('Error load_sql_mon ('||p_data.sql_data_point_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      if l_sql is not null then coremod_tasks.log('Error load_sql_mon_hst ('||p_data.sql_data_point_id||'): '||l_sql); end if;
+      coremod_tasks.log('Error load_sql_mon_hst ('||p_data.sql_data_point_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
       finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMONHST, sqlerrm);
   end;
 
