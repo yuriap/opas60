@@ -552,7 +552,7 @@ p_query => replace(q'[select to_char(SQL_EXEC_START,'YYYY-MM-DD HH24:MI:SS') SQL
         when repsSHARING    then print_nonshared_section_base(p_sql_data_point_id,l_output);
         when repsVSQL       then print_vsql_section_base(p_sql_data_point_id,l_output);
         when repsEXADATA    then print_exa_section_base(p_sql_data_point_id,l_output);
-        when repsSQLMON     then print_sqlmon_section_base(p_sql_data_point_id,l_output);
+        when repsSQLMONV$   then print_sqlmon_section_base(p_sql_data_point_id,l_output);
         when repsWORKAREA   then print_wa_section_base(p_sql_data_point_id,l_output);
         when repsOPTENV     then print_oe_section_base(p_sql_data_point_id,l_output);
         when repsSQLPLLAST  then print_plan_section_base(p_sql_data_point_id,p_section_name,l_output);

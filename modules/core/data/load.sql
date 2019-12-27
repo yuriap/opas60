@@ -66,18 +66,15 @@ INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sp
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLREPSECT','SQLPLADV'                   ,'Display cursor (LAST ADVANCED)'  ,null,null,null,90);
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLREPSECT','SQLPLALL'                   ,'Display cursor (ALL)'            ,null,null,null,100);
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLREPSECT','SQLPLADAPT'                 ,'Display cursor (ADAPTIVE)'       ,null,null,null,110);
-INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLREPSECT','SQLPLAWR'                   ,'Display cursor (AWR)'            ,null,null,null,120);
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLREPSECT','SQLMONHST'                  ,'SQL Monitor report history'      ,null,null,null,130);
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLREPSECT','VASH'                       ,'ASH summary'                     ,null,null,null,140);
-INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLREPSECT','AWRSQL_STAT'                ,''        ,null,null,null,10);
-INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLREPSECT','AWRBINDS'                   ,''        ,null,null,null,10);
-INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLREPSECT','AWRPLSQLSRC'                ,''        ,null,null,null,10);
-INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLREPSECT','AWRASH_INVOCED'             ,''        ,null,null,null,10);
-INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLREPSECT','AWRASH_PLSTATS'             ,''        ,null,null,null,10);
-INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLREPSECT',''                   ,''        ,null,null,null,10);
-INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLREPSECT',''                   ,''        ,null,null,null,10);
-INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLREPSECT',''                   ,''        ,null,null,null,10);
-INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLREPSECT',''                   ,''        ,null,null,null,10);
+INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLREPSECT','AWR_SQLSTAT'                ,'AWR SQL statistics'              ,null,null,null,150);
+INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLREPSECT','AWR_BINDS'                  ,'AWR SQL Binds'                   ,null,null,null,160);
+INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLREPSECT','AWR_SQLPLAN'                ,'AWR Display cursor'              ,null,null,null,170);
+INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLREPSECT','AWR_PLSQLSRC'               ,'AWR ASH PL/SQL source'           ,null,null,null,180);
+INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLREPSECT','AWR_ASHINVOKER'             ,'AWR ASH Invokers'                ,null,null,null,190);
+INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLREPSECT','AWR_ASHPLSTATS'             ,'AWR ASH plan staictics'          ,null,null,null,200);
+
 
 
 

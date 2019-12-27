@@ -129,21 +129,23 @@ PACKAGE BODY COREOBJ_API AS
                        p_par_name        OPAS_OBJECT_PARS.par_name%type,
                        p_NUM_PAR         OPAS_OBJECT_PARS.NUM_PAR%type default null,
                        p_VARCHAR_PAR     OPAS_OBJECT_PARS.VARCHAR_PAR%type default null,
-                       p_DATE_PAR        OPAS_OBJECT_PARS.DATE_PAR%type default null)
+                       p_DATE_PAR        OPAS_OBJECT_PARS.DATE_PAR%type default null,
+                       p_DTTZ_PAR        OPAS_OBJECT_PARS.DTTZ_PAR%type default null)
   is
   begin
     merge
       into OPAS_OBJECT_PARS trg
-      using (select p_obj_id obj_id, upper(p_par_name) par_name, p_NUM_PAR NUM_PAR, p_VARCHAR_PAR VARCHAR_PAR, p_DATE_PAR DATE_PAR from dual) src
+      using (select p_obj_id obj_id, upper(p_par_name) par_name, p_NUM_PAR NUM_PAR, p_VARCHAR_PAR VARCHAR_PAR, p_DATE_PAR DATE_PAR, p_DTTZ_PAR DTTZ_PAR from dual) src
       on (trg.obj_id = src.obj_id and trg.par_name = src.par_name)
       when matched then update set
         trg.NUM_PAR = src.NUM_PAR,
         trg.VARCHAR_PAR = src.VARCHAR_PAR,
-        trg.DATE_PAR = src.DATE_PAR
+        trg.DATE_PAR = src.DATE_PAR,
+        trg.DTTZ_PAR = src.DTTZ_PAR
       when not matched then insert
-        (trg.obj_id, trg.par_name, trg.NUM_PAR, trg.VARCHAR_PAR, trg.DATE_PAR)
+        (trg.obj_id, trg.par_name, trg.NUM_PAR, trg.VARCHAR_PAR, trg.DATE_PAR, trg.DTTZ_PAR)
         values
-        (src.obj_id, src.par_name, src.NUM_PAR, src.VARCHAR_PAR, src.DATE_PAR);
+        (src.obj_id, src.par_name, src.NUM_PAR, src.VARCHAR_PAR, src.DATE_PAR, src.DTTZ_PAR);
   end;
 
   procedure get_param_i (p_obj_id          OPAS_OBJECT_PARS.obj_id%type,
@@ -202,6 +204,16 @@ PACKAGE BODY COREOBJ_API AS
   begin
     get_param_i(p_obj_id,p_par_name,p_search_top,l_par);
     return l_par.VARCHAR_PAR;
+  end;
+
+  function  get_param_z (p_obj_id          OPAS_OBJECT_PARS.obj_id%type,
+                         p_par_name        OPAS_OBJECT_PARS.par_name%type,
+                         p_search_top      boolean default false) return timestamp with time zone
+  is
+    l_par              OPAS_OBJECT_PARS%rowtype;
+  begin
+    get_param_i(p_obj_id,p_par_name,p_search_top,l_par);
+    return l_par.DTTZ_PAR;
   end;
 
 begin

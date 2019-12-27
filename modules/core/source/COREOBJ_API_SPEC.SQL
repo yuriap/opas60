@@ -62,7 +62,8 @@ PACKAGE COREOBJ_API AS
                        p_par_name        OPAS_OBJECT_PARS.par_name%type,
                        p_NUM_PAR         OPAS_OBJECT_PARS.NUM_PAR%type default null,
                        p_VARCHAR_PAR     OPAS_OBJECT_PARS.VARCHAR_PAR%type default null,
-                       p_DATE_PAR        OPAS_OBJECT_PARS.DATE_PAR%type default null);
+                       p_DATE_PAR        OPAS_OBJECT_PARS.DATE_PAR%type default null,
+                       p_DTTZ_PAR        OPAS_OBJECT_PARS.DTTZ_PAR%type default null);
 
   function  get_param_n (p_obj_id          OPAS_OBJECT_PARS.obj_id%type,
                          p_par_name        OPAS_OBJECT_PARS.par_name%type,
@@ -73,6 +74,9 @@ PACKAGE COREOBJ_API AS
   function  get_param_c (p_obj_id          OPAS_OBJECT_PARS.obj_id%type,
                          p_par_name        OPAS_OBJECT_PARS.par_name%type,
                          p_search_top      boolean default false) return varchar2;
+  function  get_param_z (p_obj_id          OPAS_OBJECT_PARS.obj_id%type,
+                         p_par_name        OPAS_OBJECT_PARS.par_name%type,
+                         p_search_top      boolean default false) return timestamp with time zone;
 
 END COREOBJ_API;
 /

@@ -185,6 +185,20 @@ alter table opas_dbl_tmp_sqlptchhst modify
   ACTION_TIME null,
   LOGFILE null);
 
+----
+create table opas_db_link_awrsnaps
+as
+select cast('' as varchar2(128)) dblink,
+       x.*
+  from dba_hist_snapshot x
+ where 1=2;
+
+create index idx_opas_db_link_awrsn_dblink on opas_db_link_awrsnaps(dblink);
+alter table opas_db_link_awrsnaps add constraint fk_dbl_awrsn_dblink foreign key (dblink) references opas_db_links(db_link_name) on delete cascade;
+
+create global temporary table opas_dbl_tmp_awrsnaps on commit preserve rows
+as select * from dba_hist_snapshot where 1=2;
+
 ---------------------------------------------------------------------------------------------
 -- file storage
 ---------------------------------------------------------------------------------------------
@@ -327,7 +341,8 @@ create table opas_object_pars (
   par_name            varchar2(100)                        not null,
   num_par             number,
   varchar_par         varchar2(4000),
-  date_par            date
+  date_par            date,
+  dttz_par            timestamp with time zone
 );
 
 create unique index idx_opas_obj_pars on opas_object_pars(obj_id, par_name);
@@ -600,7 +615,9 @@ end_gathering_dt    timestamp,
 dblink              varchar2(128)                          not null  references opas_db_links (db_link_name),
 gathering_status    varchar2(32)     default 'not_started' not null,
 tq_id               number,
-tq_id2              number
+tq_id2              number,
+awr_snap_start      number,
+awr_snap_end        number
 );
 
 create index idx_opas_sql_data_sqlid on opas_ot_sql_data(sql_id);
@@ -951,12 +968,23 @@ object_type varchar2(256))
 on commit delete rows;
  
 ---
-create global temporary table opas_ot_tmp_awrsnaps on commit delete rows
-as select * from dba_hist_snapshot where 1=2;
+create table opas_ot_sql_awr_sqlstat
+as
+select x.*
+  from dba_hist_sqlstat x
+ where 1=2;
+
+alter table opas_ot_sql_awr_sqlstat add dblink  varchar2(128)  not null  references opas_db_links (db_link_name);
+create index idx_opas_sql_awr_sqlstat_dbl   on opas_ot_sql_awr_sqlstat(dblink);
+
+alter table opas_ot_sql_awr_sqlstat add constraint fk_sql_awrsqlst_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
+
+--create index idx_opas_sql_awrsqlst_key   on opas_ot_sql_awr_sqlstat(sql_data_point_id);
+create unique index idx_opas_sql_awrsqlst_sqlid on opas_ot_sql_awr_sqlstat(sql_id,dbid,snap_id,instance_number,plan_hash_value,con_dbid);
 
 create global temporary table opas_ot_tmp_awrsqlstat on commit delete rows
 as select * from dba_hist_sqlstat where 1=2;
-
+--
 create global temporary table opas_ot_tmp_awrsqlbind on commit delete rows
 as select * from dba_hist_sqlbind where 1=2;
 
@@ -965,8 +993,6 @@ as select * from dba_hist_sql_plan where 1=2;
 
 create global temporary table opas_ot_tmp_awrash on commit delete rows
 as select * from dba_hist_active_sess_history where 1=2;
-
-
 
 
 create table opas_ot_sql_awrstat

@@ -31,6 +31,15 @@ PACKAGE BODY COREMOD_UTILS AS
     return to_number(substr(l_ver,1,instr(l_ver,'.')-1));
   end;
 
+  function get_remote_ts(p_dblink opas_db_links.db_link_name%type) return timestamp with time zone
+  is
+    l_sql  varchar2(1000) := q'[select systimestamp from dual@]'||COREMOD_API.get_ora_dblink(p_dblink);
+    l_ts  timestamp with time zone;
+  begin
+    execute immediate l_sql into l_ts;
+    return l_ts;
+  end;
+
   procedure execute_plsql_remotelly(p_sql varchar2, p_dblink varchar2, p_output out clob, p_is_output boolean default true)
   is
     l_theCursor     integer;
