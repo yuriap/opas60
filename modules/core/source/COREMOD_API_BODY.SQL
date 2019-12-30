@@ -184,9 +184,10 @@ package body COREMOD_API as
             COREMOD_LOG.log(sqlerrm);
         end;
       end if;
-        execute immediate q'[CREATE DATABASE LINK ]'||l_dblink.db_link_name||q'[ CONNECT TO ]'||l_dblink.username||q'[ IDENTIFIED BY ]'||l_dblink.password||q'[ USING ']'||l_dblink.connstr||q'[']';
+      execute immediate q'[CREATE DATABASE LINK ]'||l_dblink.db_link_name||q'[ CONNECT TO ]'||l_dblink.username||q'[ IDENTIFIED BY ]'||l_dblink.password||q'[ USING ']'||l_dblink.connstr||q'[']';
       update opas_db_links set STATUS=dblCREATED where DB_LINK_NAME=upper(p_db_link_name);
       commit;
+      update_dblink_db_info(upper(p_db_link_name));
     end if;
   end;
 
@@ -299,9 +300,11 @@ package body COREMOD_API as
 
   procedure update_dblink_db_info(p_db_link_name varchar2)
   is
-    l_sql        varchar2(32765);
+    l_sql           varchar2(32765);
     l_data_point_ts timestamp := systimestamp;
-    procedure load_tmp_data(p_src_table_name_r varchar2, p_src_table_name varchar2, p_trg_table_name varchar2, p_suff varchar2) is
+    l_dbid          OPAS_DB_LINKS.dbid%type;
+
+    procedure load_tmp_data(p_src_table_name_r varchar2, p_src_table_name varchar2, p_trg_table_name varchar2, p_suff varchar2, p_dbid number default null) is
     begin
       l_sql :=q'[INSERT /*+ OPAS60_DBLINK_<SUFF> */ INTO <TRG_TABLE> (<SRC_DB_COL_LICT>)
               select <SRC_DB_COL_LICT> from <SRC_TABLE>]' || COREMOD_API.get_dblink_for_query(p_db_link_name);
@@ -309,6 +312,9 @@ package body COREMOD_API as
       l_sql := replace(l_sql,'<TRG_TABLE>',p_trg_table_name);
       l_sql := replace(l_sql,'<SRC_TABLE>',p_src_table_name);
       l_sql := replace(l_sql,'<SUFF>',p_suff);
+      if p_dbid is not null then
+        l_sql := l_sql || ' where dbid=' || p_dbid;
+      end if;
       execute immediate l_sql;
       l_sql := null;
     exception
@@ -319,7 +325,6 @@ package body COREMOD_API as
     load_tmp_data('V_$DATABASE',                'V$DATABASE',                 'opas_dbl_tmp_v$database','V$DB');
     load_tmp_data('V_$PDBS',                    'V$PDBS',                     'opas_dbl_tmp_v$pdbs',    'V$PDBS');
     load_tmp_data('GV_$INSTANCE',               'GV$INSTANCE',                'opas_dbl_tmp_v$inst',    'GV$INST');
-    load_tmp_data('DBA_HIST_DATABASE_INSTANCE', 'DBA_HIST_DATABASE_INSTANCE', 'opas_dbl_tmp_awrinst',   'DBH_INST');
     load_tmp_data('DBA_REGISTRY_HISTORY',       'DBA_REGISTRY_HISTORY',       'opas_dbl_tmp_reghst',    'REGHST');
     load_tmp_data('DBA_REGISTRY_SQLPATCH',      'DBA_REGISTRY_SQLPATCH',      'opas_dbl_tmp_sqlptchhst','SQLPTCH');
 
@@ -352,9 +357,11 @@ package body COREMOD_API as
          s.fs_failover_current_target, s.fs_failover_threshold, s.fs_failover_observer_present, s.fs_failover_observer_host, s.controlfile_converted, s.primary_db_unique_name,
          s.supplemental_log_data_pl, s.min_required_capture_change#, s.cdb, s.con_id, s.pending_role_change_tasks, s.con_dbid, s.force_full_db_caching);
     if sql%rowcount > 0 then
-      update opas_db_link_v$db set is_actual='N' where is_actual ='Y' and actual_since<>l_data_point_ts;
-      update opas_db_links set dbid = (select dbid from opas_dbl_tmp_v$database where DB_LINK_NAME = p_db_link_name);
+      update opas_db_link_v$db set is_actual='N' where is_actual ='Y' and actual_since<>l_data_point_ts and dblink = p_db_link_name;
+      update opas_db_links set dbid = (select dbid from opas_dbl_tmp_v$database) where DB_LINK_NAME = p_db_link_name returning dbid into l_dbid;
     end if;
+
+    load_tmp_data('DBA_HIST_DATABASE_INSTANCE', 'DBA_HIST_DATABASE_INSTANCE', 'opas_dbl_tmp_awrinst',   'DBH_INST', l_dbid);
 
     MERGE INTO opas_db_link_v$pdbs t
       using opas_dbl_tmp_v$pdbs s
@@ -374,10 +381,10 @@ package body COREMOD_API as
         s.application_pdb, s.application_seed, s.application_root_con_id, s.application_root_clone, s.proxy_pdb, s.local_undo, s.undo_scn, s.undo_timestamp, s.creation_time, s.diagnostics_size, s.pdb_count, s.audit_files_size,
         s.max_size, s.max_diagnostics_size, s.max_audit_size, s.last_changed_by, s.template, s.tenant_id, s.upgrade_level, s.guid_base64);
     if sql%rowcount > 0 then
-      update opas_db_link_v$pdbs set is_actual='N' where is_actual ='Y' and actual_since<>l_data_point_ts;
+      update opas_db_link_v$pdbs set is_actual='N' where is_actual ='Y' and actual_since<>l_data_point_ts and dblink = p_db_link_name;
     end if;
 
-    delete from opas_db_link_v$inst where exists (select 1 from opas_dbl_tmp_v$inst);
+    delete from opas_db_link_v$inst where exists (select 1 from opas_dbl_tmp_v$inst) and dblink = p_db_link_name;
     INSERT INTO opas_db_link_v$inst (
       dblink, inst_id, instance_number, instance_name, host_name, version, version_legacy, version_full, startup_time, status, parallel,
       thread#, archiver,log_switch_wait, logins, shutdown_pending, database_status, instance_role,active_state, blocked, con_id, instance_mode,

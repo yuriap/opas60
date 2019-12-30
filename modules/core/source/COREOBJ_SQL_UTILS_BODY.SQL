@@ -1007,6 +1007,276 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       coremod_tasks.log('Error load_awr_sqlstats ('||p_data.sql_data_point_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
       finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_SQLSTAT, sqlerrm);
   end;
+
+  procedure load_awr_sqlbinds(p_data       opas_ot_sql_data%rowtype,
+                              p_awr_params t_awr_params_rec)
+  is
+    l_sql  varchar2(32765);
+    l_rows number;
+  begin
+    start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_BINDS);
+
+    l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_AWRSQLBI */ into opas_ot_tmp_awrsqlbind (<SRC_DB_COL_LICT>)
+           select <SRC_DB_COL_LICT>
+           from dba_hist_sqlbind]' || COREMOD_API.get_dblink_for_query(p_data.dblink) ||
+           q'[ where sql_id=:p_sql_id and dbid = :p_dbid and snap_id between :p1 and :p2 and INSTANCE_NUMBER in (<INST_LST>) <CON_FILTER>]';
+
+    l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_DBA_HIST_SQLBIND'));
+    l_sql := replace(l_sql,'<INST_LST>', p_awr_params.INSTANCE_LIST_C);
+
+    if p_awr_params.CON_ID is not null and instr(COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_DBA_HIST_SQLBIND'),'CON_ID') > 0 then
+      l_sql := replace(l_sql,'<CON_FILTER>','and CON_ID = '||p_awr_params.CON_ID);
+    else
+      l_sql := replace(l_sql,'<CON_FILTER>','');
+    end if;
+
+    execute immediate l_sql using p_data.sql_id, p_awr_params.DBID, p_awr_params.SNAP_START, p_awr_params.SNAP_END;
+    l_rows := sql%rowcount;
+
+    merge into opas_ot_sql_awr_sqlbind t
+      using opas_ot_tmp_awrsqlbind s
+      on (t.snap_id = s.snap_id and
+          t.DBID = s.DBID and
+          t.INSTANCE_NUMBER = s.INSTANCE_NUMBER and
+          t.SQL_ID = s.SQL_ID and
+          t.DBLINK = p_data.dblink and
+          t.POSITION = s.POSITION and
+          decode(t.CON_DBID,s.CON_DBID,1,0) = 1
+      ) when not matched then insert (
+        DBLINK, snap_id, DBID, INSTANCE_NUMBER, SQL_ID, NAME, POSITION, DUP_POSITION, DATATYPE, DATATYPE_STRING, CHARACTER_SID, PRECISION,
+        SCALE, MAX_LENGTH, WAS_CAPTURED, LAST_CAPTURED, VALUE_STRING, VALUE_ANYDATA, CON_DBID, CON_ID)
+      values (
+        p_data.dblink, s.snap_id, s.DBID, s.INSTANCE_NUMBER, s.SQL_ID, s.NAME, s.POSITION, s.DUP_POSITION, s.DATATYPE, s.DATATYPE_STRING, s.CHARACTER_SID, s.PRECISION,
+        s.SCALE, s.MAX_LENGTH, s.WAS_CAPTURED, s.LAST_CAPTURED, s.VALUE_STRING, s.VALUE_ANYDATA, s.CON_DBID, s.CON_ID);
+
+    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_BINDS, p_rows_processed => l_rows);
+  exception
+    when others then
+      rollback;
+      coremod_tasks.log('Error load_awr_sqlbinds ('||p_data.sql_data_point_id||'): '||l_sql);
+      coremod_tasks.log('Error load_awr_sqlbinds ('||p_data.sql_data_point_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_BINDS, sqlerrm);
+  end;
+
+  procedure load_awr_plans(p_data   opas_ot_sql_data%rowtype,
+                           p_awr_params t_awr_params_rec)
+  is
+    l_sql        varchar2(32765);
+    l_rows       number;
+  begin
+    start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_SQLPLAN);
+
+    l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_AWRPLANS */ INTO opas_ot_tmp_dbh_plan (<SRC_DB_COL_LICT>)
+              select <SRC_DB_COL_LICT> from dba_hist_sql_plan]' || COREMOD_API.get_dblink_for_query(p_data.dblink) ||
+           q'[ where sql_id=:p_sql_id and dbid = :p_dbid <CON_FILTER>]';
+
+    l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_DBA_HIST_SQL_PLAN'));
+
+    if p_awr_params.CON_ID is not null and instr(COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_DBA_HIST_SQL_PLAN'),'CON_ID') > 0 then
+      l_sql := replace(l_sql,'<CON_FILTER>','and CON_ID = '||p_awr_params.CON_ID);
+    else
+      l_sql := replace(l_sql,'<CON_FILTER>','');
+    end if;
+
+    execute immediate l_sql using p_data.sql_id, p_awr_params.DBID;
+    l_rows := sql%rowcount;
+    l_sql := null;
+
+    INSERT INTO opas_ot_tmp_dbh_plan_key
+           ( plan_id,                   plan_hash_value)
+     select opas_ot_sq_awrplan_id.nextval, plan_hash_value
+       from (select unique plan_hash_value from opas_ot_tmp_dbh_plan);
+
+    insert all
+      WHEN op = 'I' THEN
+      into opas_ot_sql_awr_plans    ( plan_id, created, sql_id, dbid, plan_hash_value) values (plan_id, created, sql_id, dbid, plan_hash_value)
+      WHEN op in ('I', 'R') THEN
+      into opas_ot_sql_awr_plan_ref ( sql_data_point_id, plan_id) values( p_data.sql_data_point_id, plan_id)
+      select 'I' op, plan_id, systimestamp created, p_data.sql_id sql_id, p_awr_params.DBID dbid, plan_hash_value
+        from opas_ot_tmp_dbh_plan_key k
+       where not exists (select 1 from opas_ot_sql_awr_plans p where p.sql_id=p_data.sql_id and p.dbid=p_awr_params.DBID and p.PLAN_HASH_VALUE=k.PLAN_HASH_VALUE)
+      union all
+      select 'R' op, p.plan_id, systimestamp created, p_data.sql_id sql_id, p_awr_params.DBID dbid, p.plan_hash_value
+        from opas_ot_sql_awr_plans p, opas_ot_tmp_dbh_plan_key k
+       where p.sql_id=p_data.sql_id and p.dbid=p_awr_params.DBID and p.PLAN_HASH_VALUE=k.PLAN_HASH_VALUE;
+
+    delete from opas_ot_tmp_dbh_plan_key where plan_id not in (select plan_id from opas_ot_sql_awr_plans where sql_id=p_data.sql_id and dbid = p_awr_params.DBID);
+
+    insert all into opas_ot_sql_awr_plan_det (
+        plan_id,
+        dbid, SQL_ID, PLAN_HASH_VALUE, ID, OPERATION, OPTIONS, OBJECT_NODE, OBJECT#, OBJECT_OWNER, OBJECT_NAME, OBJECT_ALIAS, OBJECT_TYPE,
+        OPTIMIZER, PARENT_ID, DEPTH, POSITION, SEARCH_COLUMNS, COST, CARDINALITY, BYTES, OTHER_TAG, PARTITION_START, PARTITION_STOP, PARTITION_ID,
+        OTHER, DISTRIBUTION, CPU_COST, IO_COST, TEMP_SPACE, ACCESS_PREDICATES, FILTER_PREDICATES, PROJECTION, TIME, QBLOCK_NAME, REMARKS, TIMESTAMP,
+        OTHER_XML, CON_DBID, CON_ID)
+      values (
+        plan_id,
+        dbid, SQL_ID, PLAN_HASH_VALUE, ID, OPERATION, OPTIONS, OBJECT_NODE, OBJECT#, OBJECT_OWNER, OBJECT_NAME, OBJECT_ALIAS, OBJECT_TYPE,
+        OPTIMIZER, PARENT_ID, DEPTH, POSITION, SEARCH_COLUMNS, COST, CARDINALITY, BYTES, OTHER_TAG, PARTITION_START, PARTITION_STOP, PARTITION_ID,
+        OTHER, DISTRIBUTION, CPU_COST, IO_COST, TEMP_SPACE, ACCESS_PREDICATES, FILTER_PREDICATES, PROJECTION, TIME, QBLOCK_NAME, REMARKS, TIMESTAMP,
+        OTHER_XML, CON_DBID, CON_ID)
+    select p.*, k.plan_id
+      from opas_ot_tmp_dbh_plan p,
+           opas_ot_tmp_dbh_plan_key k
+     where p.plan_hash_value = k.plan_hash_value;
+
+    select count(1) into l_rows from opas_ot_sql_awr_plan_ref where sql_data_point_id = p_data.sql_data_point_id;
+
+    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_SQLPLAN, p_rows_processed => l_rows);
+  exception
+    when others then
+      rollback;
+      if l_sql is not null then coremod_tasks.log('Error load_awr_plans ('||p_data.sql_data_point_id||'): '||l_sql);  end if;
+      coremod_tasks.log('Error load_awr_plans ('||p_data.sql_data_point_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+
+      finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_SQLPLAN, sqlerrm);
+  end;
+
+  procedure load_awr_sqlash (p_data       opas_ot_sql_data%rowtype,
+                              p_awr_params t_awr_params_rec)
+  is
+    l_sql  varchar2(32765);
+    l_rows number;
+  begin
+    start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_PLSQLSRC);
+    start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_ASHINVOKER);
+    start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_ASHPLSTATS);
+
+    l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_AWRASH */ into opas_ot_tmp_dbh_ash (
+                  cnt, DBID, SNAP_ID, INSTANCE_NUMBER, MIN_SAMPLE_TIME, MAX_SAMPLE_TIME, SQL_ID, TOP_LEVEL_SQL_ID, USER_ID,
+                  PROGRAM, MACHINE, MODULE, ACTION, CLIENT_ID, ECID, PLSQL_ENTRY_OBJECT_ID, PLSQL_ENTRY_SUBPROGRAM_ID, PLSQL_OBJECT_ID, PLSQL_SUBPROGRAM_ID,
+                  WAIT_CLASS, EVENT, SESSION_STATE, MIN_SQL_EXEC_START, MAX_SQL_EXEC_START, FORCE_MATCHING_SIGNATURE,
+                  SQL_CHILD_NUMBER, SQL_PLAN_HASH_VALUE, SQL_FULL_PLAN_HASH_VALUE, SQL_PLAN_LINE_ID, SQL_PLAN_OPERATION, SQL_PLAN_OPTIONS,
+                  SESSION_TYPE, PGA_ALLOCATED, TEMP_SPACE_ALLOCATED)
+           select count(1) cnt, dbid, snap_id, instance_number, min(sample_time) min_sample_time, max(sample_time) max_sample_time, sql_id, TOP_LEVEL_SQL_ID, user_id,
+                  program, machine, max(module) module, max(action) action, max(client_id) client_id, max(ecid) ecid, plsql_entry_object_id, plsql_entry_subprogram_id, PLSQL_OBJECT_ID, PLSQL_SUBPROGRAM_ID,
+                  wait_class, event, session_state, min(SQL_EXEC_START) min_SQL_EXEC_START, max(SQL_EXEC_START) max_SQL_EXEC_START, force_matching_signature,
+                  sql_child_number, sql_plan_hash_value, sql_full_plan_hash_value, sql_plan_line_id, sql_plan_operation, sql_plan_options,
+                  session_type, max(pga_allocated) pga_allocated, max(temp_space_allocated) temp_space_allocated
+             from dba_hist_active_sess_history]' || COREMOD_API.get_dblink_for_query(p_data.dblink) ||
+           q'[ where sql_id=:p_sql_id and dbid = :p_dbid and snap_id between :p1 and :p2 and INSTANCE_NUMBER in (<INST_LST>)
+           group by
+             dbid, snap_id, instance_number, sql_id, TOP_LEVEL_SQL_ID, user_id, program, machine,
+             plsql_entry_object_id, plsql_entry_subprogram_id, PLSQL_OBJECT_ID, PLSQL_SUBPROGRAM_ID, wait_class,
+             event, session_state, force_matching_signature, sql_child_number, sql_plan_hash_value, sql_full_plan_hash_value,
+             sql_plan_line_id, sql_plan_operation, sql_plan_options, session_type]';
+
+    l_sql := replace(l_sql,'<INST_LST>', p_awr_params.INSTANCE_LIST_C);
+
+    execute immediate l_sql using p_data.sql_id, p_awr_params.DBID, p_awr_params.SNAP_START, p_awr_params.SNAP_END;
+    l_rows := sql%rowcount;
+
+    for i in (select unique plsql_entry_object_id, plsql_entry_subprogram_id from opas_ot_tmp_dbh_ash where plsql_entry_object_id is not null) loop
+      l_sql := q'[INSERT INTO opas_ot_tmp_awr_ash_objs
+                   ( object_id, subprogram_id, owner, object_type, object_name, PROCEDURE_NAME)
+           select    object_id, subprogram_id, owner, object_type, object_name, PROCEDURE_NAME from dba_procedures]' ||
+             COREMOD_API.get_dblink_for_query(p_data.dblink)
+             || ' s where s.object_id=:p_program_id and decode(s.subprogram_id,:p_subprogram_id,1,0)=1';
+      execute immediate l_sql using i.plsql_entry_object_id, i.plsql_entry_subprogram_id;
+      l_sql:=null;
+    end loop;
+
+    for i in (select unique PLSQL_OBJECT_ID, PLSQL_SUBPROGRAM_ID from opas_ot_tmp_dbh_ash where PLSQL_OBJECT_ID is not null) loop
+      l_sql := q'[INSERT INTO opas_ot_tmp_awr_ash_objs
+                   ( object_id, subprogram_id, owner, object_type, object_name, PROCEDURE_NAME)
+           select    object_id, subprogram_id, owner, object_type, object_name, PROCEDURE_NAME from dba_procedures]' ||
+             COREMOD_API.get_dblink_for_query(p_data.dblink)
+             || ' s where s.object_id=:p_program_id and decode(s.subprogram_id,:p_subprogram_id,1,0)=1';
+      execute immediate l_sql using i.PLSQL_OBJECT_ID, i.PLSQL_SUBPROGRAM_ID;
+      l_sql:=null;
+    end loop;
+
+
+    for i in (select unique user_id from opas_ot_tmp_dbh_ash where user_id is not null) loop
+      l_sql := q'[INSERT INTO opas_ot_tmp_awr_ash_objs
+                   ( object_id, subprogram_id, owner, object_type, object_name, PROCEDURE_NAME)
+           select    USER_ID,   null, null, 'USER', USERNAME, null from dba_users]' ||
+             COREMOD_API.get_dblink_for_query(p_data.dblink)
+             || ' s where s.USER_ID=:p_user_id';
+      execute immediate l_sql using i.user_id;
+      l_sql:=null;
+    end loop;
+
+    merge into opas_ot_sql_awr_ash_summ t
+      using (
+      select dbid,
+             snap_id, instance_number, sum(cnt) samples,
+             max(pga_allocated) pga_allocated, max(temp_space_allocated) temp_space_allocated,
+             sql_id, top_level_sql_id,
+             sql_plan_hash_value, sql_full_plan_hash_value,
+             force_matching_signature force_matching_sign,
+             min(min_sql_exec_start)  min_sql_exec_start,
+             max(max_sql_exec_start)  max_sql_exec_start,
+             min(min_sample_time) min_sample_time,
+             max(max_sample_time) max_sample_time,
+             max(program) program,  machine, max(ecid) ecid, max(module) module, max(action) action, max(client_id) client_id,
+             (select object_name from opas_ot_tmp_awr_ash_objs i where object_id=user_id and object_type = 'USER') schema_name,
+             (select owner || '; ' || object_type || '; ' || object_name || decode(procedure_name, null, null, '.' || procedure_name)
+                from opas_ot_tmp_awr_ash_objs i where object_id=plsql_entry_object_id and subprogram_id=plsql_entry_subprogram_id  and object_type != 'USER') top_call,
+             (select owner || '; ' || object_type || '; ' || object_name || decode(procedure_name, null, null, '.' || procedure_name)
+                from opas_ot_tmp_awr_ash_objs i where object_id=plsql_object_id and subprogram_id=plsql_subprogram_id and object_type != 'USER') end_call
+        from opas_ot_tmp_dbh_ash
+       group by dbid, snap_id,instance_number,
+                sql_id,
+                top_level_sql_id,
+                sql_plan_hash_value,sql_full_plan_hash_value,
+                force_matching_signature, plsql_entry_object_id, plsql_entry_subprogram_id,
+                plsql_object_id, plsql_subprogram_id,
+                machine, user_id) s
+      on (
+        t.dblink = p_data.dblink and
+        t.dbid = s.dbid and
+        t.SNAP_ID = s.SNAP_ID and
+        t.INSTANCE_NUMBER = s.INSTANCE_NUMBER and
+        t.SQL_ID = s.SQL_ID and
+        t.SQL_PLAN_HASH_VALUE = s.SQL_PLAN_HASH_VALUE
+      )
+      when not matched then insert (
+        dbid, SNAP_ID, INSTANCE_NUMBER, SAMPLES, PGA_ALLOCATED, TEMP_SPACE_ALLOCATED, SQL_ID, TOP_LEVEL_SQL_ID, SQL_PLAN_HASH_VALUE, SQL_FULL_PLAN_HASH_VALUE,
+        FORCE_MATCHING_SIGN, MIN_SQL_EXEC_START, MAX_SQL_EXEC_START, MIN_SAMPLE_TIME, MAX_SAMPLE_TIME, PROGRAM,
+        MACHINE, ECID, MODULE, ACTION, CLIENT_ID, SCHEMA_NAME, TOP_CALL, END_CALL, DBLINK
+      ) values (
+        s.dbid, s.SNAP_ID, s.INSTANCE_NUMBER, s.SAMPLES, s.PGA_ALLOCATED, s.TEMP_SPACE_ALLOCATED, s.SQL_ID, s.TOP_LEVEL_SQL_ID, s.SQL_PLAN_HASH_VALUE, s.SQL_FULL_PLAN_HASH_VALUE,
+        s.FORCE_MATCHING_SIGN, s.MIN_SQL_EXEC_START, s.MAX_SQL_EXEC_START, s.MIN_SAMPLE_TIME, s.MAX_SAMPLE_TIME, s.PROGRAM,
+        s.MACHINE, s.ECID, s.MODULE, s.ACTION, s.CLIENT_ID, s.SCHEMA_NAME, s.TOP_CALL, s.END_CALL, p_data.dblink
+      );
+
+    merge into opas_ot_sql_awr_ash_plst t
+      using (
+        select sql_id,dbid, snap_id, sql_plan_hash_value,sql_full_plan_hash_value,
+               sql_plan_line_id, sql_plan_operation,sql_plan_options, nvl(event, 'CPU') event,
+               sum(cnt) samples
+          from opas_ot_tmp_dbh_ash
+         group by sql_id,dbid, snap_id, sql_plan_hash_value,sql_full_plan_hash_value,
+                  sql_plan_line_id, sql_plan_operation, sql_plan_options, nvl(event, 'CPU')) s
+        on (
+          t.dblink = p_data.dblink and
+          t.dbid = s.dbid and
+          t.SNAP_ID = s.SNAP_ID and
+          t.sql_plan_hash_value = s.sql_plan_hash_value and
+          t.SQL_ID = s.SQL_ID and
+          t.sql_full_plan_hash_value = s.sql_full_plan_hash_value and
+          t.sql_plan_line_id = s.sql_plan_line_id and
+          t.event = s.event
+        )
+      when not matched then insert (
+        sql_id, DBID, SNAP_ID, SQL_PLAN_HASH_VALUE, SQL_FULL_PLAN_HASH_VALUE, SQL_PLAN_LINE_ID, SQL_PLAN_OPERATION, SQL_PLAN_OPTIONS, EVENT, SAMPLES, DBLINK
+      ) values (
+        s.sql_id, s.DBID, s.SNAP_ID, s.SQL_PLAN_HASH_VALUE, s.SQL_FULL_PLAN_HASH_VALUE, s.SQL_PLAN_LINE_ID, s.SQL_PLAN_OPERATION, s.SQL_PLAN_OPTIONS, s.EVENT, s.SAMPLES, p_data.dblink
+      );
+
+    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_PLSQLSRC, p_rows_processed => l_rows);
+    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_ASHINVOKER, p_rows_processed => l_rows);
+    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_ASHPLSTATS, p_rows_processed => l_rows);
+  exception
+    when others then
+      rollback;
+      coremod_tasks.log('Error load_awr_sqlash ('||p_data.sql_data_point_id||'): '||l_sql);
+      coremod_tasks.log('Error load_awr_sqlash ('||p_data.sql_data_point_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_PLSQLSRC, sqlerrm);
+      finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_ASHINVOKER, sqlerrm);
+      finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_ASHPLSTATS, sqlerrm);
+  end;
+
   -------------------------------------------------
   -------------------------------------------------
   -------------------------------------------------
@@ -1097,6 +1367,13 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     commit;
 
     load_awr_sqlstats(p_data, gAWRParams);
+    commit;
+    load_awr_sqlbinds(p_data, gAWRParams);
+    commit;
+    load_awr_plans(p_data, gAWRParams);
+    commit;
+    load_awr_sqlash(p_data, gAWRParams);
+    commit;
 
   end;
 

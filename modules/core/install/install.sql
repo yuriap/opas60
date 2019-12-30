@@ -58,6 +58,11 @@ begin
 end;
 /
 
+begin
+  COREMOD_API.update_dblink_db_info (  P_DB_LINK_NAME => '$LOCAL$') ;  
+end;
+/
+
 /*
 begin
   COREMOD_TASKS.create_task (  p_taskname  => 'OPAS_REPORT',

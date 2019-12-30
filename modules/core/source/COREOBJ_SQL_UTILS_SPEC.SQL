@@ -9,6 +9,7 @@ PACKAGE COREOBJ_SQL_UTILS AS
 
   srcV$            constant varchar2(30) := 'V$';
   srcHST           constant varchar2(30) := 'HST';
+  srcAWR           constant varchar2(30) := 'AWR';
 
   --default data gathering parameters
   defSQLMONHSTDays constant  number := 8;    pnSQLMONHSTDays     constant varchar2(30) := 'SQL_SQLMONHSTDAYS';

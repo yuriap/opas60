@@ -56,6 +56,13 @@ grant select on dba_registry_history to &localscheme.;
 grant select on dba_registry_sqlpatch to &localscheme.;
 grant select on dba_tab_cols to &localscheme.;
 
+grant select on dba_hist_sqlstat to &localscheme.;
+grant select on dba_hist_sqlbind to &localscheme.;
+grant select on dba_hist_sql_plan to &localscheme.;
+grant select on dba_hist_active_sess_history to &localscheme.;
+grant select on dba_procedures to &localscheme.;
+grant select on dba_users to &localscheme.;
+
 begin
 DBMS_SCHEDULER.CREATE_JOB_CLASS (
    job_class_name            => '&job_class_name.',

@@ -57,7 +57,8 @@ password            varchar2(128),
 connstr             varchar2(1000),
 status              varchar2(32)     default 'new'         not null,
 is_public           varchar2(1)      default 'y'           not null,
-dbid                number);
+dbid                number
+);
 
 create or replace force view v$opas_db_links as 
 with gn as (select value from v$parameter where name like '%domain%')
@@ -74,7 +75,7 @@ select db_link_name,
        owner,
        status,
        is_public,
-	   dbid
+       dbid
   from opas_db_links o, user_db_links l, gn
  where owner =
        decode(owner,
@@ -95,7 +96,7 @@ create table opas_db_link_v$db
 as
 select cast('' as varchar2(128)) dblink,
        'Y' is_actual,
-	   systimestamp actual_since,
+       systimestamp actual_since,
        x.*
   from v$database x
  where 1=2;
@@ -110,7 +111,7 @@ create table opas_db_link_v$pdbs
 as
 select cast('' as varchar2(128)) dblink,
        'Y' is_actual,
-	   systimestamp actual_since,
+       systimestamp actual_since,
        x.*
   from v$pdbs x
  where 1=2;
@@ -979,32 +980,175 @@ create index idx_opas_sql_awr_sqlstat_dbl   on opas_ot_sql_awr_sqlstat(dblink);
 
 alter table opas_ot_sql_awr_sqlstat add constraint fk_sql_awrsqlst_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
 
---create index idx_opas_sql_awrsqlst_key   on opas_ot_sql_awr_sqlstat(sql_data_point_id);
-create unique index idx_opas_sql_awrsqlst_sqlid on opas_ot_sql_awr_sqlstat(sql_id,dbid,snap_id,instance_number,plan_hash_value,con_dbid);
+create unique index idx_opas_sql_awrsqlst_sqlid on opas_ot_sql_awr_sqlstat(sql_id,dblink, dbid,snap_id,instance_number,plan_hash_value,con_dbid);
 
 create global temporary table opas_ot_tmp_awrsqlstat on commit delete rows
 as select * from dba_hist_sqlstat where 1=2;
 --
+create table opas_ot_sql_awr_sqlbind
+as
+select x.*
+  from dba_hist_sqlbind x
+ where 1=2;
+
+alter table opas_ot_sql_awr_sqlbind add dblink  varchar2(128)  not null  references opas_db_links (db_link_name);
+create index idx_opas_sql_awr_sqlbind_dbl   on opas_ot_sql_awr_sqlbind(dblink);
+
+alter table opas_ot_sql_awr_sqlbind add constraint fk_sql_awrsqlbi_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
+
+create index idx_opas_sql_awrsqlbi_sqlid on opas_ot_sql_awr_sqlbind(sql_id,dblink, dbid,snap_id);
+
 create global temporary table opas_ot_tmp_awrsqlbind on commit delete rows
 as select * from dba_hist_sqlbind where 1=2;
+--
 
-create global temporary table opas_ot_tmp_awrpln on commit delete rows
-as select * from dba_hist_sql_plan where 1=2;
+create sequence opas_ot_sq_awrplan_id;
 
-create global temporary table opas_ot_tmp_awrash on commit delete rows
-as select * from dba_hist_active_sess_history where 1=2;
+create table opas_ot_sql_awr_plans as 
+select
+ 0 plan_id, 
+ systimestamp created,
+ x.sql_id,
+ x.dbid,
+ x.plan_hash_value
+from dba_hist_sql_plan x where 1=2;
 
+alter table opas_ot_sql_awr_plans add constraint pk_sql_awrplan_id primary key(plan_id);
+alter table opas_ot_sql_awr_plans add constraint fk_sql_awrplans_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
+create index idx_opas_sql_awrplans_sqlid on opas_ot_sql_awr_plans(sql_id);
 
-create table opas_ot_sql_awrstat
-create table opas_ot_sql_awrbinds
+create table opas_ot_sql_awr_plan_det as 
+select
+ 0 plan_id, 
+ x.*
+from dba_hist_sql_plan x where 1=2;
 
-create table opas_ot_sql_awrplans
-create table opas_ot_sql_recursive
-create table opas_ot_sql_awrash#
-create table opas_ot_sql_awrash#
-create table opas_ot_sql_awrash#
-create table opas_ot_sql_awrash#
+alter table opas_ot_sql_awr_plan_det add constraint fk_sql_awrpland_id foreign key (plan_id) references opas_ot_sql_awr_plans(plan_id) on delete cascade;
+alter table opas_ot_sql_awr_plan_det add constraint fk_sql_awrpland_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
+create index idx_opas_sql_awrpland_id on opas_ot_sql_awr_plan_det(plan_id);
+create index idx_opas_sql_awrpland_sqlid on opas_ot_sql_awr_plan_det(sql_id);
 
+create table opas_ot_sql_awr_plan_ref (
+ sql_data_point_id                                number                                 not null  references opas_ot_sql_data(sql_data_point_id) on delete cascade,
+ plan_id                                          number                                 not null  references opas_ot_sql_awr_plans(plan_id) on delete cascade
+);
+
+create index idx_opas_sql_awrplan_ref_dp  on opas_ot_sql_awr_plan_ref(sql_data_point_id);
+create index idx_opas_sql_awrplan_rep_pl on opas_ot_sql_awr_plan_ref(plan_id);
+
+create global temporary table opas_ot_tmp_dbh_plan on commit delete rows
+as select x.* from dba_hist_sql_plan x where 1=2;
+
+create global temporary table opas_ot_tmp_dbh_plan_key on commit delete rows
+as select 0 plan_id, plan_hash_value from dba_hist_sql_plan where 1=2;
+
+--
+create global temporary table opas_ot_tmp_dbh_ash on commit delete rows
+as
+select count(1) cnt,
+       dbid,
+       snap_id,
+       instance_number,
+       min(sample_time) min_sample_time,
+       max(sample_time) max_sample_time,
+       sql_id,
+       TOP_LEVEL_SQL_ID,
+       user_id,
+       program,
+       machine,
+       max(module) module,
+       max(action) action,
+       max(client_id) client_id,
+       max(ecid) ecid,
+       plsql_entry_object_id,
+       plsql_entry_subprogram_id,
+       PLSQL_OBJECT_ID,
+       PLSQL_SUBPROGRAM_ID,
+       wait_class,
+       event,
+       session_state,
+       min(SQL_EXEC_START) min_SQL_EXEC_START,
+       max(SQL_EXEC_START) max_SQL_EXEC_START,
+       force_matching_signature,
+       sql_child_number,
+       sql_plan_hash_value,
+       sql_full_plan_hash_value,
+       sql_plan_line_id,
+       sql_plan_operation,
+       sql_plan_options,
+       session_type,
+       max(pga_allocated) pga_allocated,
+       max(temp_space_allocated) temp_space_allocated
+  from dba_hist_active_sess_history
+where 1=2
+group by 
+dbid, snap_id, instance_number, sql_id, TOP_LEVEL_SQL_ID, user_id, program, machine,
+plsql_entry_object_id, plsql_entry_subprogram_id, PLSQL_OBJECT_ID, PLSQL_SUBPROGRAM_ID, wait_class,
+event, session_state, force_matching_signature, sql_child_number, sql_plan_hash_value, sql_full_plan_hash_value,
+sql_plan_line_id, sql_plan_operation, sql_plan_options, session_type
+;
+
+create  global temporary table opas_ot_tmp_awr_ash_objs on commit delete rows
+as
+select
+object_id, subprogram_id, owner, object_type, object_name, procedure_name
+from dba_procedures s where 1=2;
+
+create table opas_ot_sql_awr_ash_summ as
+select dbid, snap_id, instance_number, sum(cnt) samples,
+       max(pga_allocated) pga_allocated, max(temp_space_allocated) temp_space_allocated,
+       sql_id, top_level_sql_id,
+       sql_plan_hash_value, sql_full_plan_hash_value,
+       force_matching_signature force_matching_sign,
+       min(min_sql_exec_start)  min_sql_exec_start,
+       max(max_sql_exec_start)  max_sql_exec_start,       
+       min(min_sample_time) min_sample_time,
+       max(max_sample_time) max_sample_time,
+       max(program) program,  machine, max(ecid) ecid, max(module) module, max(action) action, max(client_id) client_id, 
+       (select object_name from opas_ot_tmp_awr_ash_objs where object_id=user_id and object_type = 'user') schema_name,
+       (select owner || '; ' || object_type || '; ' || object_name || decode(procedure_name, null, null, '.' || procedure_name) 
+          from opas_ot_tmp_awr_ash_objs where object_id=plsql_entry_object_id and subprogram_id=plsql_entry_subprogram_id  and object_type != 'user') top_call,
+       (select owner || '; ' || object_type || '; ' || object_name || decode(procedure_name, null, null, '.' || procedure_name) 
+          from opas_ot_tmp_awr_ash_objs where object_id=plsql_object_id and subprogram_id=plsql_subprogram_id and object_type != 'user') end_call 
+  from opas_ot_tmp_dbh_ash
+ where 1=2
+ group by dbid, snap_id,instance_number,
+          sql_id,
+          top_level_sql_id,
+          sql_plan_hash_value,sql_full_plan_hash_value,
+          force_matching_signature, plsql_entry_object_id, plsql_entry_subprogram_id,
+          plsql_object_id, plsql_subprogram_id,
+          machine, user_id;
+
+alter table opas_ot_sql_awr_ash_summ add dblink  varchar2(128)  not null  references opas_db_links (db_link_name);
+create index idx_opas_sql_awr_ashsum_dbl   on opas_ot_sql_awr_ash_summ(dblink);
+
+alter table opas_ot_sql_awr_ash_summ add constraint fk_sql_awrashsum_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
+
+create unique index idx_opas_sql_awrashsum_sqlid on opas_ot_sql_awr_ash_summ(sql_id, dblink, dbid, snap_id, sql_plan_hash_value, instance_number);
+
+create table opas_ot_sql_awr_ash_plst as
+select sql_id,dbid, snap_id, sql_plan_hash_value,sql_full_plan_hash_value,
+       sql_plan_line_id,
+       sql_plan_operation,sql_plan_options,
+       nvl(event, 'CPU') event,
+       sum(cnt) samples
+  from opas_ot_tmp_dbh_ash
+ where 1=2
+ group by sql_id,dbid, snap_id, sql_plan_hash_value,sql_full_plan_hash_value,
+          sql_plan_line_id,
+          sql_plan_operation,
+          sql_plan_options,
+          nvl(event, 'CPU');
+
+alter table opas_ot_sql_awr_ash_plst add dblink  varchar2(128)  not null  references opas_db_links (db_link_name);
+alter table opas_ot_sql_awr_ash_plst ROW STORE COMPRESS ADVANCED;
+
+create index idx_opas_sql_awr_ashplst_dbl   on opas_ot_sql_awr_ash_plst(dblink) compress;
+
+alter table opas_ot_sql_awr_ash_plst add constraint fk_sql_awrashplst_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
+
+create index idx_opas_sql_awrashplst_sqlid on opas_ot_sql_awr_ash_plst(sql_id, dblink, dbid, snap_id, sql_plan_hash_value, sql_plan_line_id) compress;		  
 ---------------------------------------------------------------------------------------------
 -- sql lists
 create table opas_ot_sql_lists (
