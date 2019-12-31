@@ -1142,30 +1142,29 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_ASHPLSTATS);
 
     l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_AWRASH */ into opas_ot_tmp_dbh_ash (
-                  cnt, DBID, SNAP_ID, INSTANCE_NUMBER, MIN_SAMPLE_TIME, MAX_SAMPLE_TIME, SQL_ID, TOP_LEVEL_SQL_ID, USER_ID,
-                  PROGRAM, MACHINE, MODULE, ACTION, CLIENT_ID, ECID, PLSQL_ENTRY_OBJECT_ID, PLSQL_ENTRY_SUBPROGRAM_ID, PLSQL_OBJECT_ID, PLSQL_SUBPROGRAM_ID,
-                  WAIT_CLASS, EVENT, SESSION_STATE, MIN_SQL_EXEC_START, MAX_SQL_EXEC_START, FORCE_MATCHING_SIGNATURE,
-                  SQL_CHILD_NUMBER, SQL_PLAN_HASH_VALUE, SQL_FULL_PLAN_HASH_VALUE, SQL_PLAN_LINE_ID, SQL_PLAN_OPERATION, SQL_PLAN_OPTIONS,
-                  SESSION_TYPE, PGA_ALLOCATED, TEMP_SPACE_ALLOCATED)
-           select count(1) cnt, dbid, snap_id, instance_number, min(sample_time) min_sample_time, max(sample_time) max_sample_time, sql_id, TOP_LEVEL_SQL_ID, user_id,
-                  program, machine, max(module) module, max(action) action, max(client_id) client_id, max(ecid) ecid, plsql_entry_object_id, plsql_entry_subprogram_id, PLSQL_OBJECT_ID, PLSQL_SUBPROGRAM_ID,
-                  wait_class, event, session_state, min(SQL_EXEC_START) min_SQL_EXEC_START, max(SQL_EXEC_START) max_SQL_EXEC_START, force_matching_signature,
-                  sql_child_number, sql_plan_hash_value, sql_full_plan_hash_value, sql_plan_line_id, sql_plan_operation, sql_plan_options,
-                  session_type, max(pga_allocated) pga_allocated, max(temp_space_allocated) temp_space_allocated
+                  dbid, SNAP_ID, SESSION_ID, SESSION_SERIAL#, INSTANCE_NUMBER, SQL_ID, TOP_LEVEL_SQL_ID, USER_ID, PROGRAM, MACHINE, MODULE, ACTION,
+                  CLIENT_ID, ECID, PLSQL_ENTRY_OBJECT_ID, PLSQL_ENTRY_SUBPROGRAM_ID, PLSQL_OBJECT_ID, PLSQL_SUBPROGRAM_ID, FORCE_MATCHING_SIGNATURE,
+                  SQL_CHILD_NUMBER, SQL_PLAN_HASH_VALUE, SQL_FULL_PLAN_HASH_VALUE, SQL_EXEC_ID, SQL_EXEC_START, SQL_PLAN_LINE_ID, SQL_PLAN_OPERATION, EVENT,
+                  SQL_PLAN_OPTIONS, SESSION_TYPE, CON_ID, CON_DBID, MIN_SAMPLE_TIME, MAX_SAMPLE_TIME, CNT, PGA_ALLOCATED, TEMP_SPACE_ALLOCATED)
+           select dbid, snap_id, session_id, session_serial#, instance_number, sql_id, TOP_LEVEL_SQL_ID, user_id, program, machine, module, action,
+                  client_id, ecid, plsql_entry_object_id, plsql_entry_subprogram_id, PLSQL_OBJECT_ID, PLSQL_SUBPROGRAM_ID, force_matching_signature,
+                  sql_child_number, sql_plan_hash_value, sql_full_plan_hash_value, SQL_EXEC_ID, SQL_EXEC_START, sql_plan_line_id, sql_plan_operation, event,
+                  sql_plan_options, session_type, con_id, con_dbid, min(sample_time) min_sample_time, max(sample_time) max_sample_time, count(1) cnt, max(pga_allocated) pga_allocated, max(temp_space_allocated) temp_space_allocated
              from dba_hist_active_sess_history]' || COREMOD_API.get_dblink_for_query(p_data.dblink) ||
            q'[ where sql_id=:p_sql_id and dbid = :p_dbid and snap_id between :p1 and :p2 and INSTANCE_NUMBER in (<INST_LST>)
            group by
-             dbid, snap_id, instance_number, sql_id, TOP_LEVEL_SQL_ID, user_id, program, machine,
-             plsql_entry_object_id, plsql_entry_subprogram_id, PLSQL_OBJECT_ID, PLSQL_SUBPROGRAM_ID, wait_class,
-             event, session_state, force_matching_signature, sql_child_number, sql_plan_hash_value, sql_full_plan_hash_value,
-             sql_plan_line_id, sql_plan_operation, sql_plan_options, session_type]';
+             dbid, snap_id, session_id, session_serial#, instance_number, sql_id, TOP_LEVEL_SQL_ID, user_id, program, machine, module, action,
+             client_id, ecid, plsql_entry_object_id, plsql_entry_subprogram_id, PLSQL_OBJECT_ID, PLSQL_SUBPROGRAM_ID, force_matching_signature,
+             sql_child_number, sql_plan_hash_value, sql_full_plan_hash_value, SQL_EXEC_ID, SQL_EXEC_START, sql_plan_line_id, sql_plan_operation, event,
+             sql_plan_options, session_type, con_id, con_dbid]';
 
     l_sql := replace(l_sql,'<INST_LST>', p_awr_params.INSTANCE_LIST_C);
 
     execute immediate l_sql using p_data.sql_id, p_awr_params.DBID, p_awr_params.SNAP_START, p_awr_params.SNAP_END;
     l_rows := sql%rowcount;
 
-    for i in (select unique plsql_entry_object_id, plsql_entry_subprogram_id from opas_ot_tmp_dbh_ash where plsql_entry_object_id is not null) loop
+    for i in (select plsql_entry_object_id, plsql_entry_subprogram_id from opas_ot_tmp_dbh_ash where plsql_entry_object_id is not null union
+              select PLSQL_OBJECT_ID, PLSQL_SUBPROGRAM_ID from opas_ot_tmp_dbh_ash where PLSQL_OBJECT_ID is not null) loop
       l_sql := q'[INSERT INTO opas_ot_tmp_awr_ash_objs
                    ( object_id, subprogram_id, owner, object_type, object_name, PROCEDURE_NAME)
            select    object_id, subprogram_id, owner, object_type, object_name, PROCEDURE_NAME from dba_procedures]' ||
@@ -1174,7 +1173,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       execute immediate l_sql using i.plsql_entry_object_id, i.plsql_entry_subprogram_id;
       l_sql:=null;
     end loop;
-
+    /*
     for i in (select unique PLSQL_OBJECT_ID, PLSQL_SUBPROGRAM_ID from opas_ot_tmp_dbh_ash where PLSQL_OBJECT_ID is not null) loop
       l_sql := q'[INSERT INTO opas_ot_tmp_awr_ash_objs
                    ( object_id, subprogram_id, owner, object_type, object_name, PROCEDURE_NAME)
@@ -1184,7 +1183,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       execute immediate l_sql using i.PLSQL_OBJECT_ID, i.PLSQL_SUBPROGRAM_ID;
       l_sql:=null;
     end loop;
-
+    */
 
     for i in (select unique user_id from opas_ot_tmp_dbh_ash where user_id is not null) loop
       l_sql := q'[INSERT INTO opas_ot_tmp_awr_ash_objs
@@ -1198,46 +1197,46 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
 
     merge into opas_ot_sql_awr_ash_summ t
       using (
-      select dbid,
-             snap_id, instance_number, sum(cnt) samples,
-             max(pga_allocated) pga_allocated, max(temp_space_allocated) temp_space_allocated,
-             sql_id, top_level_sql_id,
-             sql_plan_hash_value, sql_full_plan_hash_value,
-             force_matching_signature force_matching_sign,
-             min(min_sql_exec_start)  min_sql_exec_start,
-             max(max_sql_exec_start)  max_sql_exec_start,
-             min(min_sample_time) min_sample_time,
-             max(max_sample_time) max_sample_time,
-             max(program) program,  machine, max(ecid) ecid, max(module) module, max(action) action, max(client_id) client_id,
-             (select object_name from opas_ot_tmp_awr_ash_objs i where object_id=user_id and object_type = 'USER') schema_name,
-             (select owner || '; ' || object_type || '; ' || object_name || decode(procedure_name, null, null, '.' || procedure_name)
-                from opas_ot_tmp_awr_ash_objs i where object_id=plsql_entry_object_id and subprogram_id=plsql_entry_subprogram_id  and object_type != 'USER') top_call,
-             (select owner || '; ' || object_type || '; ' || object_name || decode(procedure_name, null, null, '.' || procedure_name)
-                from opas_ot_tmp_awr_ash_objs i where object_id=plsql_object_id and subprogram_id=plsql_subprogram_id and object_type != 'USER') end_call
-        from opas_ot_tmp_dbh_ash
-       group by dbid, snap_id,instance_number,
-                sql_id,
-                top_level_sql_id,
-                sql_plan_hash_value,sql_full_plan_hash_value,
-                force_matching_signature, plsql_entry_object_id, plsql_entry_subprogram_id,
-                plsql_object_id, plsql_subprogram_id,
-                machine, user_id) s
+        select x2.*,
+               (select object_name from opas_ot_tmp_awr_ash_objs i where object_id=user_id and object_type = 'USER') username,
+               (select owner || '; ' || object_type || '; ' || object_name || decode(procedure_name, null, null, '.' || procedure_name)
+                 from opas_ot_tmp_awr_ash_objs i where object_id=plsql_entry_object_id and subprogram_id=plsql_entry_subprogram_id  and object_type != 'USER') plsql_top,
+               (select owner || '; ' || object_type || '; ' || object_name || decode(procedure_name, null, null, '.' || procedure_name)
+                 from opas_ot_tmp_awr_ash_objs i where object_id=plsql_object_id and subprogram_id=plsql_subprogram_id and object_type != 'USER') plsql_end
+         from (
+           select
+                  row_number()over(partition by SNAP_ID order by samples desc) topn,
+                  x1.*
+             from (
+               select
+                 dbid, SNAP_ID, SESSION_ID, SESSION_SERIAL#, INSTANCE_NUMBER, SQL_ID, TOP_LEVEL_SQL_ID, USER_ID, PROGRAM, MACHINE, MODULE, ACTION,
+                 CLIENT_ID, ECID, PLSQL_ENTRY_OBJECT_ID, PLSQL_ENTRY_SUBPROGRAM_ID, PLSQL_OBJECT_ID, PLSQL_SUBPROGRAM_ID, FORCE_MATCHING_SIGNATURE,
+                 SQL_CHILD_NUMBER, SQL_PLAN_HASH_VALUE, SQL_FULL_PLAN_HASH_VALUE, SQL_EXEC_ID, SQL_EXEC_START, session_type, con_id, con_dbid,
+                 min(MIN_SAMPLE_TIME) MIN_SAMPLE_TIME, max(MAX_SAMPLE_TIME) MAX_SAMPLE_TIME, sum(CNT) samples, max(PGA_ALLOCATED) PGA_ALLOCATED, max(TEMP_SPACE_ALLOCATED)TEMP_SPACE_ALLOCATED
+               from opas_ot_tmp_dbh_ash
+               group by
+                 dbid, SNAP_ID, SESSION_ID, SESSION_SERIAL#, INSTANCE_NUMBER, SQL_ID, TOP_LEVEL_SQL_ID, USER_ID, PROGRAM, MACHINE, MODULE, ACTION,
+                 CLIENT_ID, ECID, PLSQL_ENTRY_OBJECT_ID, PLSQL_ENTRY_SUBPROGRAM_ID, PLSQL_OBJECT_ID, PLSQL_SUBPROGRAM_ID, FORCE_MATCHING_SIGNATURE,
+                 SQL_CHILD_NUMBER, SQL_PLAN_HASH_VALUE, SQL_FULL_PLAN_HASH_VALUE, SQL_EXEC_ID, SQL_EXEC_START,
+                 SESSION_TYPE, CON_ID, CON_DBID
+                 ) x1) x2 where topn <=3
+            ) s
       on (
         t.dblink = p_data.dblink and
         t.dbid = s.dbid and
         t.SNAP_ID = s.SNAP_ID and
         t.INSTANCE_NUMBER = s.INSTANCE_NUMBER and
         t.SQL_ID = s.SQL_ID and
-        t.SQL_PLAN_HASH_VALUE = s.SQL_PLAN_HASH_VALUE
+        t.topn = s.topn
       )
       when not matched then insert (
-        dbid, SNAP_ID, INSTANCE_NUMBER, SAMPLES, PGA_ALLOCATED, TEMP_SPACE_ALLOCATED, SQL_ID, TOP_LEVEL_SQL_ID, SQL_PLAN_HASH_VALUE, SQL_FULL_PLAN_HASH_VALUE,
-        FORCE_MATCHING_SIGN, MIN_SQL_EXEC_START, MAX_SQL_EXEC_START, MIN_SAMPLE_TIME, MAX_SAMPLE_TIME, PROGRAM,
-        MACHINE, ECID, MODULE, ACTION, CLIENT_ID, SCHEMA_NAME, TOP_CALL, END_CALL, DBLINK
+        topn, DBID, DBLINK, SNAP_ID, SESSION_ID, SESSION_SERIAL#, INSTANCE_NUMBER, SQL_ID, TOP_LEVEL_SQL_ID, USER_ID, PROGRAM, MACHINE, MODULE, ACTION,
+        CLIENT_ID, ECID, FORCE_MATCHING_SIGNATURE, SQL_CHILD_NUMBER, SQL_PLAN_HASH_VALUE, SQL_FULL_PLAN_HASH_VALUE, SQL_EXEC_ID, SQL_EXEC_START,
+        SESSION_TYPE, CON_ID, CON_DBID, USERNAME, PLSQL_TOP, PLSQL_END, MIN_SAMPLE_TIME, MAX_SAMPLE_TIME, SAMPLES, PGA_ALLOCATED, TEMP_SPACE_ALLOCATED
       ) values (
-        s.dbid, s.SNAP_ID, s.INSTANCE_NUMBER, s.SAMPLES, s.PGA_ALLOCATED, s.TEMP_SPACE_ALLOCATED, s.SQL_ID, s.TOP_LEVEL_SQL_ID, s.SQL_PLAN_HASH_VALUE, s.SQL_FULL_PLAN_HASH_VALUE,
-        s.FORCE_MATCHING_SIGN, s.MIN_SQL_EXEC_START, s.MAX_SQL_EXEC_START, s.MIN_SAMPLE_TIME, s.MAX_SAMPLE_TIME, s.PROGRAM,
-        s.MACHINE, s.ECID, s.MODULE, s.ACTION, s.CLIENT_ID, s.SCHEMA_NAME, s.TOP_CALL, s.END_CALL, p_data.dblink
+        s.topn, s.DBID, p_data.dblink, s.SNAP_ID, s.SESSION_ID, s.SESSION_SERIAL#, s.INSTANCE_NUMBER, s.SQL_ID, s.TOP_LEVEL_SQL_ID, s.USER_ID, s.PROGRAM, s.MACHINE, s.MODULE, s.ACTION,
+        s.CLIENT_ID, s.ECID, s.FORCE_MATCHING_SIGNATURE, s.SQL_CHILD_NUMBER, s.SQL_PLAN_HASH_VALUE, s.SQL_FULL_PLAN_HASH_VALUE, s.SQL_EXEC_ID, s.SQL_EXEC_START,
+        s.SESSION_TYPE, s.CON_ID, s.CON_DBID, s.USERNAME, s.PLSQL_TOP, s.PLSQL_END, s.MIN_SAMPLE_TIME, s.MAX_SAMPLE_TIME, s.SAMPLES, s.PGA_ALLOCATED, s.TEMP_SPACE_ALLOCATED
       );
 
     merge into opas_ot_sql_awr_ash_plst t
