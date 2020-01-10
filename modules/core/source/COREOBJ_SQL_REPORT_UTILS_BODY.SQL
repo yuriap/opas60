@@ -18,6 +18,23 @@ PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
     return l_refresh_interval;
   end;
 
+  function print_data_point_params(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type) return varchar2
+  result_cache
+  is
+    l_result varchar2(32765) := '<br><b>SQL Monitor:</b> Days=<SQLMONHSTDays>; Rows=<SQLMONHSTRows>; <b>AWR:</b> Days=<AWRDataDays>; Search last day=<AWRSearchLastDays>; Start Date=<AWRStartDT>; End Date=<AWREndDT>';
+    l_obj_id opas_ot_sql_data_point_ref.obj_id%type;
+  begin
+    select obj_id into l_obj_id from opas_ot_sql_data_point_ref where sql_data_point_id = p_sql_data_point_id;
+    l_result := replace(l_result, '<SQLMONHSTDays>',     nvl( COREOBJ_API.get_param_n(l_obj_id, COREOBJ_SQL_UTILS.pnSQLMONHSTDays,     true), COREOBJ_SQL_UTILS.defSQLMONHSTDays));
+    l_result := replace(l_result, '<SQLMONHSTRows>',     nvl( COREOBJ_API.get_param_n(l_obj_id, COREOBJ_SQL_UTILS.pnSQLMONHSTRows,     true), COREOBJ_SQL_UTILS.defSQLMONHSTRows));
+    l_result := replace(l_result, '<AWRDataDays>',       nvl( COREOBJ_API.get_param_n(l_obj_id, COREOBJ_SQL_UTILS.pnAWRDataDays,       true), COREOBJ_SQL_UTILS.defAWRDataDays));
+    l_result := replace(l_result, '<AWRSearchLastDays>', nvl( COREOBJ_API.get_param_c(l_obj_id, COREOBJ_SQL_UTILS.pnAWRSearchLastDays, true), COREOBJ_SQL_UTILS.defAWRSearchLastDays));
+
+    l_result := replace(l_result, '<AWRStartDT>', nvl(to_char( COREOBJ_API.get_param_d(l_obj_id, COREOBJ_SQL_UTILS.pnAWRStartDT, true), 'YYYY/MM/DD HH24:MI'),'Not Specified'));
+    l_result := replace(l_result, '<AWREndDT>',   nvl(to_char( COREOBJ_API.get_param_d(l_obj_id, COREOBJ_SQL_UTILS.pnAWREndDT,   true), 'YYYY/MM/DD HH24:MI'),'Not Specified'));
+    return l_result;
+  end;
+
   procedure print_header(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type)
   is
   begin
@@ -37,6 +54,7 @@ PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
         htp.p('<b>Sections:</b> '||i.sect_statuses);
       end if;
       --htp.p(' <b>sysdate:</b> '||to_char(sysdate,'YYYY-MON-DD HH24:MI:SS'));
+      htp.p(print_data_point_params(p_sql_data_point_id));
     end loop;
   end;
 
@@ -507,6 +525,101 @@ p_query => replace(q'[select to_char(SQL_EXEC_START,'YYYY-MM-DD HH24:MI:SS') SQL
 
   end;
 
+  procedure print_awr_sqlstat_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                           p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
+  begin
+
+    COREMOD_REPORT_UTILS.print_query_result_html (
+p_query => replace(q'[with data1 as (
+select
+        s.snap_id snap,to_char(sn.end_interval_time,'dd/mm/yyyy hh24:mi:ss') end_interval_time
+      , s.instance_number inst_id
+      , s.plan_hash_value plan_hash
+      , EXECUTIONS_DELTA EXEC_DELTA
+      , (round(s.ELAPSED_TIME_DELTA/decode(s.EXECUTIONS_DELTA, null, 1,0,1, s.EXECUTIONS_DELTA)/1000)) as ela_poe
+      , (round(s.BUFFER_GETS_DELTA/decode(s.EXECUTIONS_DELTA, null, 1,0,1, s.EXECUTIONS_DELTA))) as LIO_poe
+      , (round(s.CPU_TIME_DELTA/decode(s.EXECUTIONS_DELTA, null, 1,0,1, s.EXECUTIONS_DELTA)/1000)) as CPU_poe
+      , (round(s.IOWAIT_DELTA/decode(s.EXECUTIONS_DELTA, null, 1,0,1, s.EXECUTIONS_DELTA)/1000)) as IOWAIT_poe
+      , (round(s.ccwait_delta/decode(s.EXECUTIONS_DELTA, null, 1,0,1, s.EXECUTIONS_DELTA)/1000)) as CCWAIT_poe
+      , (round(s.APWAIT_delta/decode(s.EXECUTIONS_DELTA, null, 1,0,1, s.EXECUTIONS_DELTA)/1000)) as APWAIT_poe
+      , (round(s.CLWAIT_DELTA/decode(s.EXECUTIONS_DELTA, null, 1,0,1, s.EXECUTIONS_DELTA)/1000)) as CLWAIT_poe
+      , (round(s.DISK_READS_DELTA/decode(s.EXECUTIONS_DELTA, null, 1,0,1, s.EXECUTIONS_DELTA))) as PIO_poe
+      , (round(s.ROWS_PROCESSED_DELTA/decode(s.EXECUTIONS_DELTA, null, 1,0,1, s.EXECUTIONS_DELTA))) as Rows_poe
+      , ROUND(ELAPSED_TIME_DELTA/1000000) ELA_DELTA_SEC
+      , ROUND(CPU_TIME_DELTA/1000000) CPU_DELTA_SEC
+      , ROUND(IOWAIT_DELTA/1000000) IOWAIT_DELTA_SEC
+      , DISK_READS_DELTA
+      , BUFFER_GETS_DELTA
+      , ROWS_PROCESSED_DELTA
+      , round(BUFFER_GETS_DELTA/decode(ROWS_PROCESSED_DELTA,0,null,ROWS_PROCESSED_DELTA)) LIO_PER_ROW
+      , round(DISK_READS_DELTA/decode(ROWS_PROCESSED_DELTA,0,null,ROWS_PROCESSED_DELTA),2) IO_PER_ROW
+      , round(s.IOWAIT_DELTA/decode(s.DISK_READS_DELTA, null, 1,0,1, s.DISK_READS_DELTA)/1000, 3) as awg_IO_tim
+from OPAS_OT_SQL_AWR_SQLSTAT s, OPAS_DB_LINK_AWRSNAPS sn, OPAS_OT_SQL_DATA dp
+where s.sql_id = dp.sql_id
+  and s.snap_id = sn.snap_id
+  and sn.snap_id between dp.AWR_SNAP_START and dp.AWR_SNAP_END
+  and sn.instance_number = s.instance_number
+  and dp.dblink=sn.dblink
+  and dp.dblink=s.dblink
+  and dp.SQL_DATA_POINT_ID = <sql_data_point_id>)
+SELECT
+  snap, end_interval_time, inst_id, plan_hash, exec_delta, ela_poe, lio_poe, cpu_poe, iowait_poe, ccwait_poe, apwait_poe, clwait_poe, pio_poe, rows_poe, ela_delta_sec, cpu_delta_sec,
+  iowait_delta_sec, disk_reads_delta, buffer_gets_delta, rows_processed_delta, lio_per_row, io_per_row, awg_io_tim,
+  0 noprn_lastrow
+FROM data1
+union all
+SELECT
+  null snap, 'Totals:' end_interval_time, null inst_id, null plan_hash, sum(exec_delta), null ela_poe, null lio_poe, null cpu_poe, null iowait_poe, null ccwait_poe, null apwait_poe, null clwait_poe,
+  null pio_poe, null rows_poe, sum(ela_delta_sec), sum(cpu_delta_sec),
+  sum(iowait_delta_sec), sum(disk_reads_delta), sum(buffer_gets_delta), sum(rows_processed_delta), avg(lio_per_row), avg(io_per_row), avg(awg_io_tim),
+  1 noprn_lastrow
+FROM data1
+order by snap nulls last, inst_id]','<sql_data_point_id>',p_sql_data_point_id),
+                                            p_width => gwWideSection1,
+                                            p_summary => 'AWR SQL statistics',
+                                            --p_search varchar2 default null,
+                                            --p_replacement varchar2 default null,
+                                            p_style_tab => 'trctd',
+                                            p_style_head => 'trchd', --head
+                                            p_style_r1 => 'trcr1',   --odd rows
+                                            p_style_r2  => 'trcr2', --even rows
+                                            p_style_finrow => 'trctotr',
+                                            --p_header number default 0,
+                                            p_break_col => 'PLAN_HASH',
+                                            p_output => print_awr_sqlstat_section_base.p_output);
+
+  end;
+
+  procedure print_awr_binds_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                           p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
+  begin
+    null;
+  end;
+
+  procedure print_awr_plans_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                           p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
+  begin
+    null;
+  end;
+
+  procedure print_awr_plsqlsrc_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                           p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
+  begin
+    null;
+  end;
+
+  procedure print_awr_ashinv_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                           p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
+  begin
+    null;
+  end;
+
+  procedure print_awr_ashplstats_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                           p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
+  begin
+    null;
+  end;
+
   procedure print_sql_text_web(p_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type)
   is
   begin
@@ -548,20 +661,26 @@ p_query => replace(q'[select to_char(SQL_EXEC_START,'YYYY-MM-DD HH24:MI:SS') SQL
 
     if l_status = COREOBJ_SQL_UTILS.sstReady then
       case p_section_name
-        when repsSQL_TEXT   then print_sql_text_web(p_sql_data_point_id);
-        when repsSHARING    then print_nonshared_section_base(p_sql_data_point_id,l_output);
-        when repsVSQL       then print_vsql_section_base(p_sql_data_point_id,l_output);
-        when repsEXADATA    then print_exa_section_base(p_sql_data_point_id,l_output);
-        when repsSQLMONV$   then print_sqlmon_section_base(p_sql_data_point_id,l_output);
-        when repsWORKAREA   then print_wa_section_base(p_sql_data_point_id,l_output);
-        when repsOPTENV     then print_oe_section_base(p_sql_data_point_id,l_output);
-        when repsSQLPLLAST  then print_plan_section_base(p_sql_data_point_id,p_section_name,l_output);
-        when repsSQLPLADV   then print_plan_section_base(p_sql_data_point_id,p_section_name,l_output);
-        when repsSQLPLALL   then print_plan_section_base(p_sql_data_point_id,p_section_name,l_output);
-        when repsSQLPLADAPT then print_plan_section_base(p_sql_data_point_id,p_section_name,l_output);
-        --when repsSQLPLAWR   then
-        when repsSQLMONHST  then print_sqlmon_hst_section_base(p_sql_data_point_id,l_output);
-        when repsVASH       then print_vash_section_base(p_sql_data_point_id,l_output);
+        when repsSQL_TEXT    then print_sql_text_web(p_sql_data_point_id);
+        when repsSHARING     then print_nonshared_section_base(p_sql_data_point_id,l_output);
+        when repsVSQL        then print_vsql_section_base(p_sql_data_point_id,l_output);
+        when repsEXADATA     then print_exa_section_base(p_sql_data_point_id,l_output);
+        when repsSQLMONV$    then print_sqlmon_section_base(p_sql_data_point_id,l_output);
+        when repsWORKAREA    then print_wa_section_base(p_sql_data_point_id,l_output);
+        when repsOPTENV      then print_oe_section_base(p_sql_data_point_id,l_output);
+        when repsSQLPLLAST   then print_plan_section_base(p_sql_data_point_id,p_section_name,l_output);
+        when repsSQLPLADV    then print_plan_section_base(p_sql_data_point_id,p_section_name,l_output);
+        when repsSQLPLALL    then print_plan_section_base(p_sql_data_point_id,p_section_name,l_output);
+        when repsSQLPLADAPT  then print_plan_section_base(p_sql_data_point_id,p_section_name,l_output);
+        when repsSQLMONHST   then print_sqlmon_hst_section_base(p_sql_data_point_id,l_output);
+        when repsVASH        then print_vash_section_base(p_sql_data_point_id,l_output);
+        when repsAWR_SQLSTAT then print_awr_sqlstat_section_base(p_sql_data_point_id,l_output);
+
+        when repsAWR_BINDS       then print_awr_binds_section_base(p_sql_data_point_id,l_output);
+        when repsAWR_SQLPLAN     then print_awr_plans_section_base(p_sql_data_point_id,l_output);
+        when repsAWR_PLSQLSRC    then print_awr_plsqlsrc_section_base(p_sql_data_point_id,l_output);
+        when repsAWR_ASHINVOKER  then print_awr_ashinv_section_base(p_sql_data_point_id,l_output);
+        when repsAWR_ASHPLSTATS  then print_awr_ashplstats_section_base(p_sql_data_point_id,l_output);
       else
         null;
       end case;

@@ -603,6 +603,7 @@ first_discovered    timestamp,
 first_discovered_at varchar2(128)                                    references opas_db_links (db_link_name)
 );
 
+alter table opas_ot_sql_descriptions ROW STORE COMPRESS ADVANCED;
 create index        idx_opas_ot_sql_descr_file  on opas_ot_sql_descriptions(sql_text);
 create index        idx_opas_ot_sql_descr_a_file  on opas_ot_sql_descriptions(sql_text_approx);
 
@@ -621,8 +622,10 @@ awr_snap_start      number,
 awr_snap_end        number
 );
 
-create index idx_opas_sql_data_sqlid on opas_ot_sql_data(sql_id);
-create index idx_opas_sql_data_dbl   on opas_ot_sql_data(dblink);
+alter table opas_ot_sql_data ROW STORE COMPRESS ADVANCED;
+
+create index idx_opas_sql_data_sqlid on opas_ot_sql_data(sql_id) compress;
+create index idx_opas_sql_data_dbl   on opas_ot_sql_data(dblink) compress;
 
 create table opas_ot_sql_data_sect (
 sql_data_point_id   number                                 not null  references opas_ot_sql_data(sql_data_point_id) on delete cascade,
@@ -633,15 +636,17 @@ gathering_status    varchar2(32)     default 'NOT_STARTED' not null,
 error_message       varchar2(4000)
 );
 
-create index idx_opas_sql_data_sect_sid on opas_ot_sql_data_sect(sql_data_point_id);
+alter table opas_ot_sql_data_sect ROW STORE COMPRESS ADVANCED;
+create index idx_opas_sql_data_sect_sid on opas_ot_sql_data_sect(sql_data_point_id) compress;
 
 create table opas_ot_sql_data_point_ref (
- sql_data_point_id                                  number                                 not null  references opas_ot_sql_data(sql_data_point_id) on delete cascade,
- obj_id                                             number                                 not null  references opas_objects(obj_id) on delete cascade
-);
+ obj_id                                             number                                 not null  references opas_objects(obj_id) on delete cascade,
+ sql_data_point_id                                  number                                 not null  references opas_ot_sql_data(sql_data_point_id),
+ primary key (obj_id, sql_data_point_id)
+) organization index;
 
-create index idx_opas_sql_dp_ref_dp  on opas_ot_sql_data_point_ref(sql_data_point_id);
-create unique index idx_opas_sql_dp_rep_mon on opas_ot_sql_data_point_ref(obj_id);
+--create index idx_opas_sql_dp_ref_dp  on opas_ot_sql_data_point_ref(sql_data_point_id);
+--create unique index idx_opas_sql_dp_rep_mon on opas_ot_sql_data_point_ref(obj_id);
 
 ----
 create table opas_ot_sql_nonshared (
@@ -651,11 +656,12 @@ inst_id             number,
 nonshared_reason    varchar2(100), 
 cnt                 number);
 
+alter table opas_ot_sql_nonshared ROW STORE COMPRESS ADVANCED;
 alter table opas_ot_sql_nonshared add constraint fk_sql_ns_dp    foreign key (sql_data_point_id) references opas_ot_sql_data(sql_data_point_id) on delete cascade;
 alter table opas_ot_sql_nonshared add constraint fk_sql_ns_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
 
 create index idx_opas_sql_ns_dp    on opas_ot_sql_nonshared(sql_data_point_id);
-create index idx_opas_sql_ns_sqlid on opas_ot_sql_nonshared(sql_id);
+create index idx_opas_sql_ns_sqlid on opas_ot_sql_nonshared(sql_id) compress;
 
 ----
 create table opas_ot_sql_vsql as
@@ -671,19 +677,21 @@ plsql_exec_time, java_exec_time, io_cell_offload_eligible_bytes, io_interconnect
 optimized_phy_read_requests, io_cell_uncompressed_bytes, io_cell_offload_returned_bytes
 from gv$sql s where 1=2;
 
+alter table opas_ot_sql_vsql ROW STORE COMPRESS ADVANCED;
 alter table opas_ot_sql_vsql add constraint fk_sql_vsql_dp    foreign key (sql_data_point_id) references opas_ot_sql_data(sql_data_point_id) on delete cascade;
 alter table opas_ot_sql_vsql add constraint fk_sql_vsql_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
 
 create index idx_opas_sql_vsql_dp    on opas_ot_sql_vsql(sql_data_point_id);
-create index idx_opas_sql_vsql_sqlid on opas_ot_sql_vsql(sql_id);
+create index idx_opas_sql_vsql_sqlid on opas_ot_sql_vsql(sql_id) compress;
 
 create table opas_ot_sql_vsql_objs as
 select 0 sql_data_point_id, 0 child_number,
 object_id, owner, object_type, object_name
 from dba_objects s where 1=2;
 
+alter table opas_ot_sql_vsql_objs ROW STORE COMPRESS ADVANCED;
 alter table opas_ot_sql_vsql_objs add constraint fk_sql_vsql_objs_dp foreign key (sql_data_point_id) references opas_ot_sql_data(sql_data_point_id) on delete cascade;
-create index idx_opas_sql_vsql_objs_dp on opas_ot_sql_vsql_objs(sql_data_point_id);
+create index idx_opas_sql_vsql_objs_dp on opas_ot_sql_vsql_objs(sql_data_point_id) compress;
 
 ----------------------------------------------------------------------------------------------------------------
 create sequence opas_ot_sq_plan_id;
@@ -696,6 +704,7 @@ select
  x.sql_id
 from gv$sql_plan_statistics_all x where 1=2;
 
+alter table opas_ot_sql_plans ROW STORE COMPRESS ADVANCED;
 alter table opas_ot_sql_plans add constraint pk_sql_plan_id primary key(plan_id);
 alter table opas_ot_sql_plans add constraint fk_sql_plans_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
 create index idx_opas_sql_plans_sqlid on opas_ot_sql_plans(sql_id);
@@ -706,18 +715,20 @@ select
  x.*
 from gv$sql_plan_statistics_all x where 1=2;
 
+alter table opas_ot_sql_plan_det ROW STORE COMPRESS ADVANCED;
 alter table opas_ot_sql_plan_det add constraint fk_sql_pland_id foreign key (plan_id) references opas_ot_sql_plans(plan_id) on delete cascade;
 alter table opas_ot_sql_plan_det add constraint fk_sql_pland_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
-create index idx_opas_sql_pland_id on opas_ot_sql_plan_det(plan_id);
-create index idx_opas_sql_pland_sqlid on opas_ot_sql_plan_det(sql_id);
+create index idx_opas_sql_pland_id on opas_ot_sql_plan_det(plan_id) compress;
+create index idx_opas_sql_pland_sqlid on opas_ot_sql_plan_det(sql_id) compress;
 
 create table opas_ot_sql_plan_ref (
  sql_data_point_id                                number                                 not null  references opas_ot_sql_data(sql_data_point_id) on delete cascade,
  plan_id                                          number                                 not null  references opas_ot_sql_plans(plan_id) on delete cascade
 );
 
-create index idx_opas_sql_plan_ref_dp  on opas_ot_sql_plan_ref(sql_data_point_id);
-create index idx_opas_sql_plan_rep_mon on opas_ot_sql_plan_ref(plan_id);
+alter table opas_ot_sql_plan_ref ROW STORE COMPRESS ADVANCED;
+create index idx_opas_sql_plan_ref_dp  on opas_ot_sql_plan_ref(sql_data_point_id) compress;
+create index idx_opas_sql_plan_rep_mon on opas_ot_sql_plan_ref(plan_id) compress;
 
 create global temporary table opas_ot_tmp_gv$sql_plan_stat_all on commit delete rows
 as select 0 report_id, x.* from gv$sql_plan_statistics_all x where 1=2;
@@ -754,17 +765,19 @@ create table opas_ot_sql_sqlmon (
  instance_number                                    number,
  con_dbid                                           number);
  
+alter table opas_ot_sql_sqlmon ROW STORE COMPRESS ADVANCED;
 create index idx_opas_sql_mon_rep_text  on opas_ot_sql_sqlmon(sql_mon_report);
 create index idx_opas_sql_mon_rep_xml  on opas_ot_sql_sqlmon(sql_mon_hst_report);
-create index idx_opas_sql_mon_rep_sqlid on opas_ot_sql_sqlmon(sql_id);
+create index idx_opas_sql_mon_rep_sqlid on opas_ot_sql_sqlmon(sql_id) compress;
 
 create table opas_ot_sql_sqlmon_ref (
  sql_data_point_id                                  number                                 not null  references opas_ot_sql_data(sql_data_point_id) on delete cascade,
  sqlmon_id                                          number                                 not null  references opas_ot_sql_sqlmon(sqlmon_id) on delete cascade
 );
 
-create index idx_opas_sql_mon_ref_dp  on opas_ot_sql_sqlmon_ref(sql_data_point_id);
-create index idx_opas_sql_mon_rep_mon on opas_ot_sql_sqlmon_ref(sqlmon_id);
+alter table opas_ot_sql_sqlmon_ref ROW STORE COMPRESS ADVANCED;
+create index idx_opas_sql_mon_ref_dp  on opas_ot_sql_sqlmon_ref(sql_data_point_id) compress;
+create index idx_opas_sql_mon_rep_mon on opas_ot_sql_sqlmon_ref(sqlmon_id) compress;
 
 create table opas_ot_sql_sqlmon_data (
  sqlmon_id                                          number                                 not null  references opas_ot_sql_sqlmon(sqlmon_id) on delete cascade,
@@ -832,7 +845,8 @@ create table opas_ot_sql_sqlmon_data (
  io_cell_offload_eligible_bytes                     number,
  io_cell_offload_returned_bytes                     number);
 
-create index idx_opas_sql_mon_rep_d_mon on opas_ot_sql_sqlmon_data(sqlmon_id);
+alter table opas_ot_sql_sqlmon_data ROW STORE COMPRESS ADVANCED;
+create index idx_opas_sql_mon_rep_d_mon on opas_ot_sql_sqlmon_data(sqlmon_id) compress;
 
 create global temporary table opas_ot_tmp_gv$sql_monitor on commit delete rows
 as select * from gv$sql_monitor where 1=2;
@@ -863,6 +877,7 @@ as
     r.con_id
     from dba_hist_reports r
    where 1=2;
+   
 create global temporary table opas_ot_tmp_dba_hist_rep_xml on commit delete rows
 as
   select 
@@ -896,11 +911,12 @@ select 0 sql_data_point_id,
   from gv$sql_workarea
  where 1=2;
 
+alter table opas_ot_sql_wa ROW STORE COMPRESS ADVANCED;
 alter table opas_ot_sql_wa add constraint fk_sql_wa_dp    foreign key (sql_data_point_id) references opas_ot_sql_data(sql_data_point_id) on delete cascade;
 alter table opas_ot_sql_wa add constraint fk_sql_wa_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
 
-create index idx_opas_sql_wa_dp    on opas_ot_sql_wa(sql_data_point_id);
-create index idx_opas_sql_wa_sqlid on opas_ot_sql_wa(sql_id);
+create index idx_opas_sql_wa_dp    on opas_ot_sql_wa(sql_data_point_id) compress;
+create index idx_opas_sql_wa_sqlid on opas_ot_sql_wa(sql_id) compress;
 ----
 
 create table opas_ot_sql_opt_env
@@ -910,11 +926,12 @@ select 0 sql_data_point_id, sql_id,
   from gv$sql_optimizer_env
  where 1=2;
 
+alter table opas_ot_sql_opt_env ROW STORE COMPRESS ADVANCED;
 alter table opas_ot_sql_opt_env add constraint fk_sql_oe_dp    foreign key (sql_data_point_id) references opas_ot_sql_data(sql_data_point_id) on delete cascade;
 alter table opas_ot_sql_opt_env add constraint fk_sql_oe_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
 
-create index idx_opas_sql_oe_dp    on opas_ot_sql_opt_env(sql_data_point_id);
-create index idx_opas_sql_oe_sqlid on opas_ot_sql_opt_env(sql_id);
+create index idx_opas_sql_oe_dp    on opas_ot_sql_opt_env(sql_data_point_id) compress;
+create index idx_opas_sql_oe_sqlid on opas_ot_sql_opt_env(sql_id) compress;
 ---
 
 create table opas_ot_sql_vash1 (
@@ -933,11 +950,12 @@ obj                 varchar2(256),
 tbs                 varchar2(30)
 );
    
+alter table opas_ot_sql_vash1 ROW STORE COMPRESS ADVANCED;
 alter table opas_ot_sql_vash1 add constraint fk_sql_vash1_dp    foreign key (sql_data_point_id) references opas_ot_sql_data(sql_data_point_id) on delete cascade;
 alter table opas_ot_sql_vash1 add constraint fk_sql_vash1_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
 
-create index idx_opas_sql_vash1_dp    on opas_ot_sql_vash1(sql_data_point_id);
-create index idx_opas_sql_vash1_sqlid on opas_ot_sql_vash1(sql_id);
+create index idx_opas_sql_vash1_dp    on opas_ot_sql_vash1(sql_data_point_id) compress;
+create index idx_opas_sql_vash1_sqlid on opas_ot_sql_vash1(sql_id) compress;
 
 create table opas_ot_sql_vash2 (
 sql_data_point_id   number,
@@ -953,11 +971,12 @@ obj                 varchar2(256),
 tbs                 varchar2(30)
 );
 
+alter table opas_ot_sql_vash2 ROW STORE COMPRESS ADVANCED;
 alter table opas_ot_sql_vash2 add constraint fk_sql_vash2_dp    foreign key (sql_data_point_id) references opas_ot_sql_data(sql_data_point_id) on delete cascade;
 alter table opas_ot_sql_vash2 add constraint fk_sql_vash2_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
 
-create index idx_opas_sql_vash2_dp    on opas_ot_sql_vash2(sql_data_point_id);
-create index idx_opas_sql_vash2_sqlid on opas_ot_sql_vash2(sql_id);
+create index idx_opas_sql_vash2_dp    on opas_ot_sql_vash2(sql_data_point_id) compress;
+create index idx_opas_sql_vash2_sqlid on opas_ot_sql_vash2(sql_id) compress;
 
 create global temporary table opas_ot_tmp_gv$ash on commit delete rows
 as select * from gv$active_session_history where 1=2;
@@ -975,12 +994,13 @@ select x.*
   from dba_hist_sqlstat x
  where 1=2;
 
+alter table opas_ot_sql_awr_sqlstat ROW STORE COMPRESS ADVANCED;
 alter table opas_ot_sql_awr_sqlstat add dblink  varchar2(128)  not null  references opas_db_links (db_link_name);
-create index idx_opas_sql_awr_sqlstat_dbl   on opas_ot_sql_awr_sqlstat(dblink);
+create index idx_opas_sql_awr_sqlstat_dbl   on opas_ot_sql_awr_sqlstat(dblink) compress;
 
 alter table opas_ot_sql_awr_sqlstat add constraint fk_sql_awrsqlst_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
 
-create unique index idx_opas_sql_awrsqlst_sqlid on opas_ot_sql_awr_sqlstat(sql_id,dblink, dbid,snap_id,instance_number,plan_hash_value,con_dbid);
+create unique index idx_opas_sql_awrsqlst_sqlid on opas_ot_sql_awr_sqlstat(sql_id,dblink, dbid,snap_id,instance_number,plan_hash_value,con_dbid) compress;
 
 create global temporary table opas_ot_tmp_awrsqlstat on commit delete rows
 as select * from dba_hist_sqlstat where 1=2;
@@ -991,12 +1011,13 @@ select x.*
   from dba_hist_sqlbind x
  where 1=2;
 
+alter table opas_ot_sql_awr_sqlbind ROW STORE COMPRESS ADVANCED;
 alter table opas_ot_sql_awr_sqlbind add dblink  varchar2(128)  not null  references opas_db_links (db_link_name);
-create index idx_opas_sql_awr_sqlbind_dbl   on opas_ot_sql_awr_sqlbind(dblink);
+create index idx_opas_sql_awr_sqlbind_dbl   on opas_ot_sql_awr_sqlbind(dblink) compress;
 
 alter table opas_ot_sql_awr_sqlbind add constraint fk_sql_awrsqlbi_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
 
-create index idx_opas_sql_awrsqlbi_sqlid on opas_ot_sql_awr_sqlbind(sql_id,dblink, dbid,snap_id);
+create index idx_opas_sql_awrsqlbi_sqlid on opas_ot_sql_awr_sqlbind(sql_id,dblink, dbid,snap_id) compress;
 
 create global temporary table opas_ot_tmp_awrsqlbind on commit delete rows
 as select * from dba_hist_sqlbind where 1=2;
@@ -1013,9 +1034,10 @@ select
  x.plan_hash_value
 from dba_hist_sql_plan x where 1=2;
 
+alter table opas_ot_sql_awr_plans ROW STORE COMPRESS ADVANCED;
 alter table opas_ot_sql_awr_plans add constraint pk_sql_awrplan_id primary key(plan_id);
 alter table opas_ot_sql_awr_plans add constraint fk_sql_awrplans_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
-create index idx_opas_sql_awrplans_sqlid on opas_ot_sql_awr_plans(sql_id);
+create index idx_opas_sql_awrplans_sqlid on opas_ot_sql_awr_plans(sql_id) compress;
 
 create table opas_ot_sql_awr_plan_det as 
 select
@@ -1130,7 +1152,7 @@ alter table opas_ot_sql_awr_ash_summ add constraint fk_sql_awrashsum_dbl foreign
 create index idx_opas_sql_awr_ashsum_dbl   on opas_ot_sql_awr_ash_summ(dblink) compress;
 
 alter table opas_ot_sql_awr_ash_summ add constraint fk_sql_awrashsum_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
-create unique index idx_opas_sql_awrashsum_sqlid on opas_ot_sql_awr_ash_summ(sql_id, dblink, dbid, snap_id, sql_plan_hash_value, instance_number) compress;
+create index idx_opas_sql_awrashsum_sqlid on opas_ot_sql_awr_ash_summ(sql_id, dblink, dbid, snap_id, sql_plan_hash_value, instance_number) compress;
 ---
 create table opas_ot_sql_awr_ash_plst 
    (sql_id varchar2(13 byte), 

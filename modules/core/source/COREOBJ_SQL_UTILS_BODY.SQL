@@ -283,20 +283,24 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsEXADATA, sqlerrm);
   end;
 
-  procedure load_sql_mon(p_data   opas_ot_sql_data%rowtype)
+  procedure load_sql_mon(p_data   opas_ot_sql_data%rowtype,
+                         p_obj_id opas_ot_sql_data_point_ref.obj_id%type)
   is
     l_sql        varchar2(32765);
     l_rows       number;
     l_report     clob;
     l_file_id    opas_files.file_id%type;
+    l_drows      number;
   begin
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMONV$);
 
     l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_SQLMON */ INTO opas_ot_tmp_gv$sql_monitor (<SRC_DB_COL_LICT>)
-              select <SRC_DB_COL_LICT> from gv$sql_monitor]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || q'[ where sql_id = :p_sql_id]';
+              select <SRC_DB_COL_LICT> from gv$sql_monitor]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || q'[ where sql_id = :p_sql_id and rownum < :p_drows]';
     l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_GV_$SQL_MONITOR'));
 
-    execute immediate l_sql using p_data.sql_id;
+    l_drows := nvl( COREOBJ_API.get_param_n(p_obj_id, pnSQLMONHSTRows, true), defSQLMONHSTRows);
+
+    execute immediate l_sql using p_data.sql_id, l_drows;
     l_sql := null;
 
     INSERT ALL
@@ -429,7 +433,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
 
     l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_SQLMON_HST */ INTO opas_ot_tmp_dba_hist_reports (<SRC_DB_COL_LICT>)
               select <SRC_DB_COL_LICT> from dba_hist_reports]' || COREMOD_API.get_dblink_for_query(p_data.dblink) ||
-              q'[ r where r.component_name = 'sqlmonitor' and r.key1 = :p_sql_id and ( period_start_time > (sysdate - :p_days) or rownum <= :p_rows )]'; --TODO filter istory reports
+              q'[ r where r.component_name = 'sqlmonitor' and r.key1 = :p_sql_id and period_start_time > (sysdate - :p_days) and rownum <= :p_rows ]'; --TODO filter istory reports
     l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_DBA_HIST_REPORTS'));
 
     l_ddays := nvl( COREOBJ_API.get_param_n(p_obj_id, pnSQLMONHSTDays, true), defSQLMONHSTDays);
@@ -1279,19 +1283,38 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
   -------------------------------------------------
   -------------------------------------------------
   -------------------------------------------------
-  procedure update_dblink_db_info_awrsn(p_db_link_name varchar2,
-                                        p_days         number,
-                                        p_start_dt     timestamp with time zone,
-                                        p_end_dt       timestamp with time zone,
-                                        p_params   out t_awr_params_rec)
+  procedure update_dblink_db_info_awrsn(p_db_link_name     varchar2,
+                                        p_days             number,
+                                        p_start_dt         timestamp with time zone,
+                                        p_end_dt           timestamp with time zone,
+                                        p_search_last_days boolean,
+                                        p_sql_id           varchar2 default null,
+                                        p_params       out t_awr_params_rec)
   is
     l_sql        varchar2(32765);
+    l_sql1       varchar2(32765);
     l_ts1        timestamp with time zone;
     l_ts2        timestamp with time zone;
   begin
     select DBLINK, dbid, CON_ID into p_params.DBLINK, p_params.DBID, p_params.CON_ID from OPAS_DB_LINK_V$DB where DBLINK = p_db_link_name and IS_ACTUAL = 'Y';
 
     delete from opas_dbl_tmp_awrsnaps;
+
+    if p_days is not null then
+      if p_search_last_days then
+        l_sql :=q'[select max(END_INTERVAL_TIME) from dba_hist_snapshot]' || COREMOD_API.get_dblink_for_query(p_db_link_name) ||
+                q'[ s, dba_hist_sqlstat]' || COREMOD_API.get_dblink_for_query(p_db_link_name) ||
+                q'[ q where s.dbid=q.dbid and s.dbid=:p_dbid and s.snap_id=q.snap_id and s.instance_number=q.instance_number and q.sql_id=:p_sql_id]';
+        execute immediate l_sql into l_ts2 using p_params.DBID, p_sql_id;
+        l_sql := null;
+      else
+        l_ts2 := COREMOD_UTILS.get_remote_ts(p_db_link_name);
+      end if;
+      l_ts1 := l_ts2 - NUMTODSINTERVAL(p_days, 'day');
+    else
+      l_ts1 := p_start_dt;
+      l_ts2 := p_end_dt;
+    end if;
 
     l_sql :=q'[INSERT /*+ OPAS60_DBLINK_AWRSN */ INTO opas_dbl_tmp_awrsnaps (<SRC_DB_COL_LICT>)
               select <SRC_DB_COL_LICT> from dba_hist_snapshot]' || COREMOD_API.get_dblink_for_query(p_db_link_name) ||
@@ -1304,14 +1327,6 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       l_sql := replace(l_sql,'<CON_FILTER>','and CON_ID = '||p_params.CON_ID);
     else
       l_sql := replace(l_sql,'<CON_FILTER>','');
-    end if;
-
-    if p_days is not null then
-      l_ts2 := COREMOD_UTILS.get_remote_ts(p_db_link_name);
-      l_ts1 := l_ts2 - NUMTODSINTERVAL(p_days, 'day');
-    else
-      l_ts1 := p_start_dt;
-      l_ts2 := p_end_dt;
     end if;
 
     execute immediate l_sql using l_ts1, l_ts2, p_params.DBID;
@@ -1344,9 +1359,10 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
   procedure load_awr_data(p_data   opas_ot_sql_data%rowtype,
                           p_obj_id opas_ot_sql_data_point_ref.obj_id%type)
   is
-    l_awrdays number;
-    l_start_dt     timestamp with time zone;
-    l_end_dt       timestamp with time zone;
+    l_awrdays          number;
+    l_start_dt         timestamp with time zone;
+    l_end_dt           timestamp with time zone;
+    l_search_last_days boolean := false;
   begin
     l_start_dt := COREOBJ_API.get_param_z(p_obj_id, pnAWRStartDT, false);
     l_end_dt := COREOBJ_API.get_param_z(p_obj_id, pnAWREndDT, false);
@@ -1355,13 +1371,17 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       l_awrdays := null;
     else
       l_awrdays := nvl( COREOBJ_API.get_param_n(p_obj_id, pnAWRDataDays, true), defAWRDataDays);
+      l_search_last_days := nvl( COREOBJ_API.get_param_c(p_obj_id, pnAWRSearchLastDays, true), defAWRSearchLastDays) = 'Y';
     end if;
 
-    update_dblink_db_info_awrsn(p_db_link_name => p_data.dblink,
-                                p_days         => l_awrdays,
-                                p_start_dt     => l_start_dt,
-                                p_end_dt       => l_end_dt,
-                                p_params       => gAWRParams);
+    update_dblink_db_info_awrsn(p_db_link_name     => p_data.dblink,
+                                p_days             => l_awrdays,
+                                p_start_dt         => l_start_dt,
+                                p_end_dt           => l_end_dt,
+                                p_search_last_days => l_search_last_days,
+                                p_sql_id           => p_data.sql_id,
+                                p_params           => gAWRParams);
+
     update opas_ot_sql_data set AWR_SNAP_START = gAWRParams.SNAP_START, AWR_SNAP_END = gAWRParams.SNAP_END where sql_data_point_id = p_data.sql_data_point_id;
     commit;
 
@@ -1437,7 +1457,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     commit;
     load_sql_plans(l_data);
     commit;
-    load_sql_mon(l_data);
+    load_sql_mon(l_data, l_obj_id);
     commit;
     load_sql_mon_hst(l_data, l_obj_id);
     commit;
@@ -1452,11 +1472,15 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                             p_section_name varchar2)
   AS
     l_data  opas_ot_sql_data%rowtype;
+    l_obj_id     opas_ot_sql_data_point_ref.obj_id%type;
   BEGIN
     case when p_section_name = COREOBJ_SQL_REPORT_UTILS.repsSQLMONV$ then
       begin
-        for i in (select * from opas_ot_sql_data where sql_data_point_id = p_sql_data_point_id and gathering_status = COREOBJ_SQL.sdoREADY) loop
-          load_sql_mon(i);
+        for i in (select d.* from opas_ot_sql_data d
+                   where sql_data_point_id = p_sql_data_point_id
+                     and gathering_status = COREOBJ_SQL.sdoREADY) loop
+          select obj_id into l_obj_id from OPAS_OT_SQL_DATA_POINT_REF where sql_data_point_id = p_sql_data_point_id;
+          load_sql_mon(i, l_obj_id);
           commit;
         end loop;
       end;

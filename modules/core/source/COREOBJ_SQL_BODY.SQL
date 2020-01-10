@@ -76,10 +76,13 @@ PACKAGE BODY COREOBJ_SQL AS
     l_files1 tableofnumbers;
     l_files2 tableofnumbers;
     l_plans  tableofnumbers;
+
+    l_ids    tableofnumbers;
   begin
     --remove objects referencing this datapoint
-    for i in (select * from opas_ot_sql_data_point_ref where sql_data_point_id = p_sql_data_point_id) loop
-      remove(i.obj_id, 'N');
+    delete from opas_ot_sql_data_point_ref where sql_data_point_id = p_sql_data_point_id returning obj_id bulk collect into l_ids;
+    for i in 1..l_ids.count loop
+      remove(l_ids(i), 'N');
     end loop;
 
     --remove SQL Monitor if noone references it

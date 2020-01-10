@@ -12,11 +12,12 @@ PACKAGE COREOBJ_SQL_UTILS AS
   srcAWR           constant varchar2(30) := 'AWR';
 
   --default data gathering parameters
-  defSQLMONHSTDays constant  number := 8;    pnSQLMONHSTDays     constant varchar2(30) := 'SQL_SQLMONHSTDAYS';
-  defSQLMONHSTRows constant  number := 10;   pnSQLMONHSTRows     constant varchar2(30) := 'SQL_SQLMONHSTROWS';
-  defAWRDataDays   constant  number := 8;    pnAWRDataDays       constant varchar2(30) := 'SQL_AWRDATADAYS';
-  pnAWRStartDT     constant varchar2(30) := 'SQL_AWRSTARTDT';
-  pnAWREndDT       constant varchar2(30) := 'SQL_AWRENDDT';
+  defSQLMONHSTDays     constant  number := 8;         pnSQLMONHSTDays     constant varchar2(30) := 'SQL_SQLMONHSTDAYS';
+  defSQLMONHSTRows     constant  number := 10;        pnSQLMONHSTRows     constant varchar2(30) := 'SQL_SQLMONHSTROWS';
+  defAWRDataDays       constant  number := 8;         pnAWRDataDays       constant varchar2(30) := 'SQL_AWRDATADAYS';
+  defAWRSearchLastDays constant varchar2(1) := 'N';   pnAWRSearchLastDays constant varchar2(30) := 'SQL_AWRSEARCHLASTDAYS';
+  pnAWRStartDT         constant varchar2(30) := 'SQL_AWRSTARTDT';
+  pnAWREndDT           constant varchar2(30) := 'SQL_AWRENDDT';
 
   type t_awr_params_rec is record (
     DBLINK               OPAS_DB_LINK_V$DB.DBLINK%type,
@@ -43,11 +44,12 @@ PACKAGE COREOBJ_SQL_UTILS AS
   procedure init_section_statuses(p_sql_data_point_id opas_ot_sql_data.sql_data_point_id%type);
   procedure refresh_section(p_sql_data_point_id       opas_ot_sql_data.sql_data_point_id%type,
                             p_section_name            varchar2);
-
+/*
   procedure update_dblink_db_info_awrsn(p_db_link_name varchar2,
                                         p_days         number,
                                         p_start_dt     timestamp with time zone,
                                         p_end_dt       timestamp with time zone,
                                         p_params   out t_awr_params_rec);
+*/
 END COREOBJ_SQL_UTILS;
 /
