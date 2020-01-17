@@ -7,12 +7,13 @@ PACKAGE BODY COREOBJ_FOLDER AS
   END lock_object;
 
   procedure add   (p_obj_id       out opas_objects.obj_id%type,
-                   p_obj_prnt        opas_objects.obj_prnt%type) AS
+                   p_obj_prnt         opas_objects.obj_prnt%type,
+                   p_folder_name      opas_objects.obj_name%type default null) AS
   BEGIN
     COREOBJ_API.add (  P_OBJ_ID => P_OBJ_ID,
       P_OBJ_PRNT  => P_OBJ_PRNT,
       P_OBJ_OT    => COREOBJ_API.otFOLDER,
-      P_OBJ_NAME  => to_char(sysdate,'YYYYMMDD'),
+      P_OBJ_NAME  => nvl(p_folder_name,to_char(sysdate,'YYYYMMDD')),
       P_OBJ_DESCR => null) ;
   END add;
 

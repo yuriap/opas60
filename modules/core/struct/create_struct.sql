@@ -194,6 +194,7 @@ select cast('' as varchar2(128)) dblink,
   from dba_hist_snapshot x
  where 1=2;
 
+alter table opas_db_link_awrsnaps add incarnation# number;
 create index idx_opas_db_link_awrsn_dblink on opas_db_link_awrsnaps(dblink);
 alter table opas_db_link_awrsnaps add constraint fk_dbl_awrsn_dblink foreign key (dblink) references opas_db_links(db_link_name) on delete cascade;
 
@@ -619,9 +620,10 @@ gathering_status    varchar2(32)     default 'NOT_STARTED' not null,
 tq_id               number,
 tq_id2              number,
 awr_snap_start      number,
-awr_snap_end        number
+awr_snap_end        number,
+incarnation#        number
 );
-
+alter table opas_ot_sql_data add incarnation# number;
 alter table opas_ot_sql_data ROW STORE COMPRESS ADVANCED;
 
 create index idx_opas_sql_data_sqlid on opas_ot_sql_data(sql_id) compress;
@@ -994,13 +996,15 @@ select x.*
   from dba_hist_sqlstat x
  where 1=2;
 
+alter table opas_ot_sql_awr_sqlstat add incarnation# number;
+
 alter table opas_ot_sql_awr_sqlstat ROW STORE COMPRESS ADVANCED;
 alter table opas_ot_sql_awr_sqlstat add dblink  varchar2(128)  not null  references opas_db_links (db_link_name);
 create index idx_opas_sql_awr_sqlstat_dbl   on opas_ot_sql_awr_sqlstat(dblink) compress;
 
 alter table opas_ot_sql_awr_sqlstat add constraint fk_sql_awrsqlst_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
 
-create unique index idx_opas_sql_awrsqlst_sqlid on opas_ot_sql_awr_sqlstat(sql_id,dblink, dbid,snap_id,instance_number,plan_hash_value,con_dbid) compress;
+create unique index idx_opas_sql_awrsqlst_sqlid on opas_ot_sql_awr_sqlstat(sql_id,dblink,dbid,incarnation#,snap_id,instance_number,plan_hash_value,con_dbid) compress;
 
 create global temporary table opas_ot_tmp_awrsqlstat on commit delete rows
 as select * from dba_hist_sqlstat where 1=2;
@@ -1011,13 +1015,15 @@ select x.*
   from dba_hist_sqlbind x
  where 1=2;
 
+alter table opas_ot_sql_awr_sqlbind add incarnation# number;
+
 alter table opas_ot_sql_awr_sqlbind ROW STORE COMPRESS ADVANCED;
 alter table opas_ot_sql_awr_sqlbind add dblink  varchar2(128)  not null  references opas_db_links (db_link_name);
 create index idx_opas_sql_awr_sqlbind_dbl   on opas_ot_sql_awr_sqlbind(dblink) compress;
 
 alter table opas_ot_sql_awr_sqlbind add constraint fk_sql_awrsqlbi_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
 
-create index idx_opas_sql_awrsqlbi_sqlid on opas_ot_sql_awr_sqlbind(sql_id,dblink, dbid,snap_id) compress;
+create index idx_opas_sql_awrsqlbi_sqlid on opas_ot_sql_awr_sqlbind(sql_id,dblink,dbid,incarnation#,snap_id) compress;
 
 create global temporary table opas_ot_tmp_awrsqlbind on commit delete rows
 as select * from dba_hist_sqlbind where 1=2;
@@ -1033,6 +1039,8 @@ select
  x.dbid,
  x.plan_hash_value
 from dba_hist_sql_plan x where 1=2;
+
+alter table opas_ot_sql_awr_plans add incarnation# number;
 
 alter table opas_ot_sql_awr_plans ROW STORE COMPRESS ADVANCED;
 alter table opas_ot_sql_awr_plans add constraint pk_sql_awrplan_id primary key(plan_id);
@@ -1101,7 +1109,9 @@ create global temporary table opas_ot_tmp_dbh_ash
     max_sample_time timestamp (3), 
     cnt number, 
     pga_allocated number, 
-    temp_space_allocated number
+    temp_space_allocated number,
+	CURRENT_OBJ# number,
+	CURRENT_FILE# number
    ) on commit delete rows ;
 ;
 ---
@@ -1144,7 +1154,8 @@ create table opas_ot_sql_awr_ash_summ
 	max_sample_time timestamp (3), 
 	samples number, 
 	pga_allocated number, 
-	temp_space_allocated number
+	temp_space_allocated number,
+	incarnation# number,
    )
 row store compress advanced logging;
 
@@ -1152,12 +1163,13 @@ alter table opas_ot_sql_awr_ash_summ add constraint fk_sql_awrashsum_dbl foreign
 create index idx_opas_sql_awr_ashsum_dbl   on opas_ot_sql_awr_ash_summ(dblink) compress;
 
 alter table opas_ot_sql_awr_ash_summ add constraint fk_sql_awrashsum_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
-create index idx_opas_sql_awrashsum_sqlid on opas_ot_sql_awr_ash_summ(sql_id, dblink, dbid, snap_id, sql_plan_hash_value, instance_number) compress;
+create index idx_opas_sql_awrashsum_sqlid on opas_ot_sql_awr_ash_summ(sql_id, dblink, dbid, incarnation#, snap_id, sql_plan_hash_value, instance_number) compress;
 ---
 create table opas_ot_sql_awr_ash_plst 
    (sql_id varchar2(13 byte), 
 	dbid number, 
 	snap_id number, 
+	instance_number number,
 	sql_plan_hash_value number, 
 	sql_full_plan_hash_value number, 
 	sql_plan_line_id number, 
@@ -1165,7 +1177,10 @@ create table opas_ot_sql_awr_ash_plst
 	sql_plan_options varchar2(64 byte), 
 	event varchar2(64 byte), 
 	samples number, 
-	dblink varchar2(128 byte) not null enable
+	dblink varchar2(128 byte) not null enable,
+    obj                 varchar2(256), 
+    tbs                 varchar2(30),
+	incarnation#        number
    ) 
 row store compress advanced logging;
 
@@ -1173,7 +1188,7 @@ alter table opas_ot_sql_awr_ash_plst add constraint fk_sql_awrashplst_dbl foreig
 create index idx_opas_sql_awr_ashplst_dbl   on opas_ot_sql_awr_ash_plst(dblink) compress;
 
 alter table opas_ot_sql_awr_ash_plst add constraint fk_sql_awrashplst_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
-create index idx_opas_sql_awrashplst_sqlid on opas_ot_sql_awr_ash_plst(sql_id, dblink, dbid, snap_id, sql_plan_hash_value, sql_plan_line_id) compress;        
+create index idx_opas_sql_awrashplst_sqlid on opas_ot_sql_awr_ash_plst(sql_id, dblink, dbid, incarnation#, snap_id, sql_plan_hash_value, sql_plan_line_id, instance_number) compress;        
 ---------------------------------------------------------------------------------------------
 -- sql lists
 create table opas_ot_sql_lists (

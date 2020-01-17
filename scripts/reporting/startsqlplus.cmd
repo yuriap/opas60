@@ -1,0 +1,1 @@
+sqlplus /nolog @%1 %cd%

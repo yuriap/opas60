@@ -4,7 +4,9 @@ PACKAGE COREOBJ_FOLDER AS
   procedure lock_object(p_obj_id opas_objects.obj_id%type);
 
   procedure add   (p_obj_id       out opas_objects.obj_id%type,
-                   p_obj_prnt        opas_objects.obj_prnt%type);
+                   p_obj_prnt         opas_objects.obj_prnt%type,
+                   p_folder_name      opas_objects.obj_name%type default null);
+
   procedure remove(p_obj_id           opas_objects.obj_id%type,
                    p_cascade          varchar2 default 'N');
   function folder_icon(p_obj_id           opas_objects.obj_id%type,

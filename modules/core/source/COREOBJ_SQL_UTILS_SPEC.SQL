@@ -27,7 +27,8 @@ PACKAGE COREOBJ_SQL_UTILS AS
     SNAP_START           OPAS_DB_LINK_AWRSNAPS.SNAP_ID%type,
     SNAP_END             OPAS_DB_LINK_AWRSNAPS.SNAP_ID%type,
     BEGIN_INTERVAL_TIME  OPAS_DB_LINK_AWRSNAPS.BEGIN_INTERVAL_TIME%type,
-    END_INTERVAL_TIME    OPAS_DB_LINK_AWRSNAPS.END_INTERVAL_TIME%type
+    END_INTERVAL_TIME    OPAS_DB_LINK_AWRSNAPS.END_INTERVAL_TIME%type,
+    INCARNATION#         OPAS_DB_LINK_AWRSNAPS.INCARNATION#%type
   );
 
   procedure discover_sql (p_sql_data_point_id         opas_ot_sql_data.sql_data_point_id%type);
@@ -44,12 +45,15 @@ PACKAGE COREOBJ_SQL_UTILS AS
   procedure init_section_statuses(p_sql_data_point_id opas_ot_sql_data.sql_data_point_id%type);
   procedure refresh_section(p_sql_data_point_id       opas_ot_sql_data.sql_data_point_id%type,
                             p_section_name            varchar2);
-/*
-  procedure update_dblink_db_info_awrsn(p_db_link_name varchar2,
-                                        p_days         number,
-                                        p_start_dt     timestamp with time zone,
-                                        p_end_dt       timestamp with time zone,
-                                        p_params   out t_awr_params_rec);
-*/
+
+  procedure getdatacmd
+                  (p_obj_id       out opas_objects.obj_id%type,
+                   p_obj_prnt         opas_objects.obj_prnt%type,
+                   p_sql_id           opas_ot_sql_descriptions.sql_id%type,
+                   p_db_link          opas_db_links.db_link_name%type,
+                   p_current_dir      varchar2,
+                   p_gather_new       boolean,
+                   p_dirname      out varchar2);
+
 END COREOBJ_SQL_UTILS;
 /

@@ -25,12 +25,18 @@ PACKAGE COREOBJ_SQL_REPORT_UTILS AS
 
 --  procedure print_sql_text_html(p_file_id   opas_files.file_id%type);
 --  procedure print_vsql_section_html(p_sess_id   opas_ot_sql_data.sess_id%type);
+  defDataTimeFmt              constant varchar2(30) := 'YYYY/MM/DD HH24:MI';
+  defDataTimeFullFmt          constant varchar2(30) := 'YYYY/MM/DD HH24:MI:SS';
 
   function  get_header_refresh_interval(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type) return number;
   procedure print_header(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type);
 
   procedure print_section_html(p_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type,
                                p_section_name varchar2);
+
+  --cmd utils
+  function gathering_status(p_obj_id  opas_objects.obj_id%type) return TABLEOFSTRINGS pipelined;
+  function print_report_html(p_obj_id  opas_objects.obj_id%type) return TABLEOFSTRINGS pipelined;
 
 END COREOBJ_SQL_REPORT_UTILS;
 /
