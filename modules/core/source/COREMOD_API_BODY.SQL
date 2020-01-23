@@ -270,7 +270,7 @@ package body COREMOD_API as
       when p_key like 'TABCOLLIST%' then
         begin
           l_sql := q'[select listagg(column_name,',') within group (order by column_name) from (select column_name from dba_tab_cols]' || get_dblink_for_query(p_db_link_name) || q'[ where table_name=upper(:p_tab_name) and owner='SYS'
-                               intersect select column_name from dba_tab_cols where table_name=upper(:p_tab_name) and owner='SYS' and DATA_TYPE not in 'XMLTYPE')]';
+                               intersect select column_name from dba_tab_cols where table_name=upper(:p_tab_name) and owner='SYS' and DATA_TYPE not in ('XMLTYPE','LONG'))]';
           execute immediate l_sql into l_res using ltrim(p_key, 'TABCOLLIST_'), ltrim(p_key, 'TABCOLLIST_');
         exception
           when others then raise_application_error(-20000,'Unable to get DB Link Cache for Key|DB Link: '||p_key||'|'||p_db_link_name||chr(10)||' '||sqlerrm||chr(10)||l_sql);
@@ -281,8 +281,8 @@ package body COREMOD_API as
 
     if l_res is not null then
       INSERT INTO opas_db_link_cache ( dblink, key, value, last_updated ) VALUES (p_db_link_name, upper(p_key), l_res, systimestamp);
-      commit;
     end if;
+    commit;
     return l_res;
   end;
 

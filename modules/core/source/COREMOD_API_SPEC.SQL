@@ -4,6 +4,8 @@ package COREMOD_API as
    gDefaultSource constant varchar2(32) := 'LOCAL';
    gDefaultOwner  constant varchar2(32) := 'PUBLIC';
 
+   gLocalDBLink   constant varchar2(32) := '$LOCAL$';
+
    gMODNAME       constant varchar2(32) := 'OPASCORE';
 
    exDBLinkSuspended exception;

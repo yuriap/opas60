@@ -10,6 +10,7 @@ PACKAGE COREOBJ_SQL_UTILS AS
   srcV$            constant varchar2(30) := 'V$';
   srcHST           constant varchar2(30) := 'HST';
   srcAWR           constant varchar2(30) := 'AWR';
+  srcEP            constant varchar2(30) := 'EP';
 
   --default data gathering parameters
   defSQLMONHSTDays     constant  number := 8;         pnSQLMONHSTDays     constant varchar2(30) := 'SQL_SQLMONHSTDAYS';
@@ -18,6 +19,7 @@ PACKAGE COREOBJ_SQL_UTILS AS
   defAWRSearchLastDays constant varchar2(1) := 'N';   pnAWRSearchLastDays constant varchar2(30) := 'SQL_AWRSEARCHLASTDAYS';
   pnAWRStartDT         constant varchar2(30) := 'SQL_AWRSTARTDT';
   pnAWREndDT           constant varchar2(30) := 'SQL_AWRENDDT';
+  pnAllParsDispl       constant varchar2(30) := 'SQL_ALLPARSDISPL';
 
   type t_awr_params_rec is record (
     DBLINK               OPAS_DB_LINK_V$DB.DBLINK%type,

@@ -19,5 +19,7 @@ PACKAGE COREOBJ_FOLDER AS
   procedure set_nav_folder     (p_folder      opas_objects.obj_id%type);
   procedure calc_folder_size   (p_folder      opas_objects.obj_id%type);
 
+  function get_object_status_do_display (p_obj_id          opas_objects.obj_id%type) return varchar2;
+
 END COREOBJ_FOLDER;
 /

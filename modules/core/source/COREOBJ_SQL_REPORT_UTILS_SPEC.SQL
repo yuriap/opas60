@@ -14,13 +14,14 @@ PACKAGE COREOBJ_SQL_REPORT_UTILS AS
   repsSQLPLADV                constant varchar2(30) := 'SQLPLADV';           -- Display cursor (LAST ADVANCED)
   repsSQLPLALL                constant varchar2(30) := 'SQLPLALL';           -- Display cursor (ALL)
   repsSQLPLADAPT              constant varchar2(30) := 'SQLPLADAPT';         -- Display cursor (ADAPTIVE)
+  repsSQLPLEP                 constant varchar2(30) := 'SQLPLEP';            -- Explain Plan
   repsSQLMONHST               constant varchar2(30) := 'SQLMONHST';          -- SQL Monitor report history
   repsVASH                    constant varchar2(30) := 'VASH';               -- ASH summary
   repsAWR_SQLSTAT             constant varchar2(30) := 'AWR_SQLSTAT';        -- AWR SQL statistics
   repsAWR_BINDS               constant varchar2(30) := 'AWR_BINDS';          -- AWR SQL Binds
   repsAWR_SQLPLAN             constant varchar2(30) := 'AWR_SQLPLAN';        -- AWR Display cursor
   repsAWR_PLSQLSRC            constant varchar2(30) := 'AWR_PLSQLSRC';       -- AWR ASH PL/SQL source
-  repsAWR_ASHINVOKER          constant varchar2(30) := 'AWR_ASHINVOKER';     -- AWR ASH Invokers
+  repsAWR_ASHINVOKER          constant varchar2(30) := 'AWR_ASHINVOKER';     -- AWR ASH Invocers
   repsAWR_ASHPLSTATS          constant varchar2(30) := 'AWR_ASHPLSTATS';     -- AWR ASH plan staictics
 
 --  procedure print_sql_text_html(p_file_id   opas_files.file_id%type);
@@ -37,6 +38,8 @@ PACKAGE COREOBJ_SQL_REPORT_UTILS AS
   --cmd utils
   function gathering_status(p_obj_id  opas_objects.obj_id%type) return TABLEOFSTRINGS pipelined;
   function print_report_html(p_obj_id  opas_objects.obj_id%type) return TABLEOFSTRINGS pipelined;
+
+  function print_data_point_params(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type) return varchar2 result_cache;
 
 END COREOBJ_SQL_REPORT_UTILS;
 /

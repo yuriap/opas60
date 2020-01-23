@@ -97,5 +97,10 @@ PACKAGE BODY COREOBJ_FOLDER AS
     where obj_id = p_folder;
   end;
 
+  function get_object_status_do_display (p_obj_id          opas_objects.obj_id%type) return varchar2
+  is
+  begin
+    return null;
+  end;
 END COREOBJ_FOLDER;
 /

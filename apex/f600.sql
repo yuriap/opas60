@@ -27,7 +27,7 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 -- Application Export:
 --   Application:     600
 --   Name:            Oracle Performance Analytic Suite
---   Date and Time:   16:34 Friday January 17, 2020
+--   Date and Time:   15:15 Thursday January 23, 2020
 --   Exported By:     OPAS60DADM
 --   Flashback:       0
 --   Export Type:     Application Export
@@ -40,9 +40,9 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 --     Items:                  103
 --     Validations:              2
 --     Processes:               43
---     Regions:                105
+--     Regions:                106
 --     Buttons:                 45
---     Dynamic Actions:         27
+--     Dynamic Actions:         28
 --   Shared Components:
 --     Logic:
 --       Items:                  3
@@ -125,7 +125,7 @@ wwv_flow_api.create_flow(
 ,p_substitution_string_03=>'APP_EDIT_DT_FMT'
 ,p_substitution_value_03=>'YYYY-MM-DD HH24:MI'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200117163221'
+,p_last_upd_yyyymmddhh24miss=>'20200122163207'
 ,p_file_prefix => nvl(wwv_flow_application_install.get_static_app_file_prefix,'')
 ,p_files_version=>3
 ,p_ui_type_name => null
@@ -10610,7 +10610,7 @@ wwv_flow_api.create_page(
 ,p_step_template=>wwv_flow_api.id(58926811794993507)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200109172439'
+,p_last_upd_yyyymmddhh24miss=>'20200122124617'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(58654036113400237)
@@ -10737,7 +10737,8 @@ wwv_flow_api.create_page_plug(
 '    obj_prnt,',
 '    obj_ot,	',
 '    case when obj_ot = 100 then 10 else nvl((select ot_app_page from opas_object_pages p where p.ot_id = o.obj_ot and p.ot_page_type=''OPEN''),9998) end link_page,',
-'    case when obj_ot = 100 then ''APP_FOLDER_ID'' else ''APP_OBJ_ID'' end app_item',
+'    case when obj_ot = 100 then ''APP_FOLDER_ID'' else ''APP_OBJ_ID'' end app_item,',
+'    COREOBJ_API.get_object_status_do_display(obj_id, obj_ot) object_status',
 'FROM v$opas_objects o',
 'where obj_prnt=:APP_FOLDER_ID'))
 ,p_plug_source_type=>'NATIVE_IR'
@@ -10948,6 +10949,14 @@ wwv_flow_api.create_worksheet_column(
 ,p_column_link_attr=>'class="simpleButton" title="#ACTION# Object - #OBJ_NAME#"'
 ,p_column_type=>'STRING'
 );
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(65922578635515622)
+,p_db_column_name=>'OBJECT_STATUS'
+,p_display_order=>180
+,p_column_identifier=>'R'
+,p_column_label=>'Object Status'
+,p_column_type=>'STRING'
+);
 wwv_flow_api.create_worksheet_rpt(
  p_id=>wwv_flow_api.id(65343124788633364)
 ,p_application_user=>'APXWS_DEFAULT'
@@ -10955,7 +10964,7 @@ wwv_flow_api.create_worksheet_rpt(
 ,p_report_alias=>'653432'
 ,p_status=>'PUBLIC'
 ,p_is_default=>'Y'
-,p_report_columns=>'OBJ_ID:OBJ_PRNT:OBJ_OT:OT_NAME:OBJ_CREATED:OBJ_EXPIRED:OBJ_NAME:OBJ_DESCR:OBJ_SORTORDR:OBJ_OWNER:IS_PUBLIC:IS_READONLY:OBJ_SIZE:OT_ICON:LINK_PAGE:APP_ITEM:ACTION'
+,p_report_columns=>'OBJ_ID:OBJ_PRNT:OBJ_OT:OT_NAME:OBJ_CREATED:OBJ_EXPIRED:OBJ_NAME:OBJ_DESCR:OBJ_SORTORDR:OBJ_OWNER:IS_PUBLIC:IS_READONLY:OBJ_SIZE:OT_ICON:LINK_PAGE:APP_ITEM:ACTION:OBJECT_STATUS'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(65330038662626042)
@@ -16926,7 +16935,7 @@ wwv_flow_api.create_page(
 ,p_step_template=>wwv_flow_api.id(58924046682993504)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200117163221'
+,p_last_upd_yyyymmddhh24miss=>'20200122163207'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(65432222784589311)
@@ -17134,7 +17143,7 @@ wwv_flow_api.create_page_plug(
 ,p_plug_name=>'ASH summary'
 ,p_region_template_options=>'#DEFAULT#:t-Region--scrollBody'
 ,p_plug_template=>wwv_flow_api.id(58960191682993672)
-,p_plug_display_sequence=>130
+,p_plug_display_sequence=>140
 ,p_include_in_reg_disp_sel_yn=>'Y'
 ,p_plug_display_point=>'BODY'
 ,p_plug_source=>'<div id="p1401_vash"></div>'
@@ -17149,7 +17158,7 @@ wwv_flow_api.create_page_plug(
 ,p_plug_name=>'SQL Monitor report history'
 ,p_region_template_options=>'#DEFAULT#:t-Region--scrollBody'
 ,p_plug_template=>wwv_flow_api.id(58960191682993672)
-,p_plug_display_sequence=>140
+,p_plug_display_sequence=>150
 ,p_include_in_reg_disp_sel_yn=>'Y'
 ,p_plug_display_point=>'BODY'
 ,p_plug_source=>'<div id="p1401_sqlmonhst"></div>'
@@ -17164,7 +17173,7 @@ wwv_flow_api.create_page_plug(
 ,p_plug_name=>'AWR SQL statistics'
 ,p_region_template_options=>'#DEFAULT#:t-Region--scrollBody'
 ,p_plug_template=>wwv_flow_api.id(58960191682993672)
-,p_plug_display_sequence=>150
+,p_plug_display_sequence=>160
 ,p_include_in_reg_disp_sel_yn=>'Y'
 ,p_plug_display_point=>'BODY'
 ,p_plug_source=>'<div id="p1401_awr_sqlstat"></div>'
@@ -17179,7 +17188,7 @@ wwv_flow_api.create_page_plug(
 ,p_plug_name=>'AWR SQL Binds'
 ,p_region_template_options=>'#DEFAULT#:t-Region--scrollBody'
 ,p_plug_template=>wwv_flow_api.id(58960191682993672)
-,p_plug_display_sequence=>160
+,p_plug_display_sequence=>170
 ,p_include_in_reg_disp_sel_yn=>'Y'
 ,p_plug_display_point=>'BODY'
 ,p_plug_source=>'<div id="p1401_awr_binds"></div>'
@@ -17194,7 +17203,7 @@ wwv_flow_api.create_page_plug(
 ,p_plug_name=>'AWR Display cursor'
 ,p_region_template_options=>'#DEFAULT#:t-Region--scrollBody'
 ,p_plug_template=>wwv_flow_api.id(58960191682993672)
-,p_plug_display_sequence=>170
+,p_plug_display_sequence=>180
 ,p_include_in_reg_disp_sel_yn=>'Y'
 ,p_plug_display_point=>'BODY'
 ,p_plug_source=>'<div id="p1401_awr_plans"></div>'
@@ -17209,7 +17218,7 @@ wwv_flow_api.create_page_plug(
 ,p_plug_name=>'AWR ASH PL/SQL source'
 ,p_region_template_options=>'#DEFAULT#:t-Region--scrollBody'
 ,p_plug_template=>wwv_flow_api.id(58960191682993672)
-,p_plug_display_sequence=>180
+,p_plug_display_sequence=>190
 ,p_include_in_reg_disp_sel_yn=>'Y'
 ,p_plug_display_point=>'BODY'
 ,p_plug_source=>'<div id="p1401_awr_plsqlsrc"></div>'
@@ -17224,7 +17233,7 @@ wwv_flow_api.create_page_plug(
 ,p_plug_name=>'AWR ASH Invocers'
 ,p_region_template_options=>'#DEFAULT#:t-Region--scrollBody'
 ,p_plug_template=>wwv_flow_api.id(58960191682993672)
-,p_plug_display_sequence=>190
+,p_plug_display_sequence=>200
 ,p_include_in_reg_disp_sel_yn=>'Y'
 ,p_plug_display_point=>'BODY'
 ,p_plug_source=>'<div id="p1401_awr_ashinv"></div>'
@@ -17239,13 +17248,28 @@ wwv_flow_api.create_page_plug(
 ,p_plug_name=>'AWR ASH plan staictics'
 ,p_region_template_options=>'#DEFAULT#:t-Region--scrollBody'
 ,p_plug_template=>wwv_flow_api.id(58960191682993672)
-,p_plug_display_sequence=>200
+,p_plug_display_sequence=>210
 ,p_include_in_reg_disp_sel_yn=>'Y'
 ,p_plug_display_point=>'BODY'
 ,p_plug_source=>'<div id="p1401_awr_ashplstat"></div>'
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
 ,p_plug_display_condition_type=>'PLSQL_EXPRESSION'
 ,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''AWR_ASHPLSTATS'')>0 and case when :P1401_HIDE_EMPTY=''Y'' and COREOBJ_SQL_UTILS.is_section_empty(:P1401_DATA_POINT_ID,''AWR_ASHPLSTATS'') then false else true end'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(65922632229515623)
+,p_plug_name=>'Explain Plan'
+,p_region_template_options=>'#DEFAULT#:t-Region--scrollBody'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>130
+,p_include_in_reg_disp_sel_yn=>'Y'
+,p_plug_display_point=>'BODY'
+,p_plug_source=>'<div id="p1401_dp_ep"></div>'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_plug_display_condition_type=>'PLSQL_EXPRESSION'
+,p_plug_display_when_condition=>'instr(:P1401_SECTIONS,''SQLPLEP'')>0 and case when :P1401_HIDE_EMPTY=''Y'' and COREOBJ_SQL_UTILS.is_section_empty(:P1401_DATA_POINT_ID,''SQLPLEP'') then false else true end'
 ,p_attribute_01=>'N'
 ,p_attribute_02=>'HTML'
 );
@@ -17589,6 +17613,9 @@ wwv_flow_api.create_page_da_action(
 ,p_attribute_04=>'&P1401_NEED_REFRESH.'
 ,p_attribute_05=>'REPLACE'
 );
+end;
+/
+begin
 wwv_flow_api.create_page_da_event(
  p_id=>wwv_flow_api.id(65664743549133108)
 ,p_name=>'RefreshDPLast'
@@ -17598,9 +17625,6 @@ wwv_flow_api.create_page_da_event(
 ,p_bind_type=>'bind'
 ,p_bind_event_type=>'apexafterrefresh'
 );
-end;
-/
-begin
 wwv_flow_api.create_page_da_action(
  p_id=>wwv_flow_api.id(65664897792133109)
 ,p_event_id=>wwv_flow_api.id(65664743549133108)
@@ -17971,6 +17995,31 @@ wwv_flow_api.create_page_da_action(
 '                                              p_section_name => COREOBJ_SQL_REPORT_UTILS.repsAWR_ASHPLSTATS);',
 'end;'))
 ,p_attribute_02=>'p1401_awr_ashplstat'
+,p_attribute_04=>'&P1401_NEED_REFRESH.'
+,p_attribute_05=>'REPLACE'
+);
+wwv_flow_api.create_page_da_event(
+ p_id=>wwv_flow_api.id(65922759683515624)
+,p_name=>'RefreshEP'
+,p_event_sequence=>220
+,p_triggering_element_type=>'REGION'
+,p_triggering_region_id=>wwv_flow_api.id(65922632229515623)
+,p_bind_type=>'bind'
+,p_bind_event_type=>'apexafterrefresh'
+);
+wwv_flow_api.create_page_da_action(
+ p_id=>wwv_flow_api.id(65922816353515625)
+,p_event_id=>wwv_flow_api.id(65922759683515624)
+,p_event_result=>'TRUE'
+,p_action_sequence=>10
+,p_execute_on_page_init=>'Y'
+,p_action=>'PLUGIN_MULEDEV.SERVER_REGION_REFRESH'
+,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'begin',
+'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sql_data_point_id=> :P1401_DATA_POINT_ID, ',
+'                                              p_section_name => COREOBJ_SQL_REPORT_UTILS.repsSQLPLEP);',
+'end;'))
+,p_attribute_02=>'p1401_dp_ep'
 ,p_attribute_04=>'&P1401_NEED_REFRESH.'
 ,p_attribute_05=>'REPLACE'
 );

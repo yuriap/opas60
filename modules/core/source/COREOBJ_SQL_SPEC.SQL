@@ -31,6 +31,7 @@ PACKAGE COREOBJ_SQL AS
   --
 --  procedure group_sql_in_folder(
 --                    p_folder_id        opas_objects.obj_id%type);
+  function get_object_status_do_display (p_obj_id          opas_objects.obj_id%type) return varchar2;
 
 END COREOBJ_SQL;
 /

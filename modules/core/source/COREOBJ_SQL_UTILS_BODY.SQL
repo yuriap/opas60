@@ -41,6 +41,14 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     end;
 
     update opas_ot_sql_data set gathering_status = COREOBJ_SQL.sdoInProgress, start_gathering_dt = systimestamp where sql_data_point_id = p_sql_data_point_id;
+
+    COREOBJ_API.set_param (  P_OBJ_ID => P_OBJ_ID,
+      P_PAR_NAME => pnAllParsDispl,
+      P_NUM_PAR => null,
+      P_VARCHAR_PAR => COREOBJ_SQL_REPORT_UTILS.print_data_point_params(p_sql_data_point_id),
+      P_DATE_PAR => null,
+      P_DTTZ_PAR => null);
+
     commit;
   end;
 
@@ -830,7 +838,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
        and p.plan_hash_value = k.plan_hash_value
        and p.full_plan_hash_value = k.full_plan_hash_value;
 
-    select count(1) into l_rows from opas_ot_sql_plan_ref where sql_data_point_id = p_data.sql_data_point_id;
+    select count(1) into l_rows from opas_ot_sql_plan_ref r, opas_ot_sql_plans p where r.plan_id=p.plan_id and p.plan_source = srcV$ and r.sql_data_point_id = p_data.sql_data_point_id;
 
     finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLLAST, p_rows_processed => l_rows);
     finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLADV, p_rows_processed => l_rows);
@@ -846,6 +854,97 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLADV, sqlerrm);
       finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLALL, sqlerrm);
       finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLADAPT, sqlerrm);
+  end;
+
+  procedure load_sql_ep_plans(p_data   opas_ot_sql_data%rowtype)
+  is
+    l_sql        varchar2(32765);
+    l_rows       number;
+    l_remote_ep  varchar2(32765) := q'[begin delete from plan_table where STATEMENT_ID = 'OPAS60'; execute immediate q'~explain plan set statement_id='OPAS60' for ]' || chr(10) || q'[<SQLTOEXPLAIN>~'; end;]';
+    l_sql_ptr    OPAS_OT_SQL_DESCRIPTIONS.SQL_TEXT%type;
+    l_sql_text   clob;
+    l_sql_out    clob;
+    l_plan_hash  number;
+    l_full_plan_hash number;
+    l_col_list   varchar2(32765);
+  begin
+    start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLEP);
+
+    select nvl(SQL_TEXT,SQL_TEXT_APPROX) into l_sql_ptr from OPAS_OT_SQL_DESCRIPTIONS where sql_id=p_data.sql_id;
+    if l_sql_ptr is null then raise_application_error(-20000, 'SQL Text is unavailable'); end if;
+
+    if p_data.dblink <> COREMOD_API.gLocalDBLink then
+      if COREMOD_FILE_UTILS.get_file_size(p_file_id => l_sql_ptr) > 32000 then raise_application_error(-20000, 'SQL Text is too long'); end if;
+      COREMOD_FILE_UTILS.get_locator(l_sql_ptr,l_sql_text);
+
+      l_col_list := COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_PLAN_TABLE$');
+
+      l_sql := replace(l_remote_ep,'<SQLTOEXPLAIN>',l_sql_text);
+
+      COREMOD_UTILS.execute_plsql_remotelly (  P_SQL => l_sql,
+        P_DBLINK => p_data.dblink,
+        P_OUTPUT => l_sql_out,
+        P_IS_OUTPUT => false) ;
+
+      delete from plan_table where STATEMENT_ID = 'OPAS60';
+
+      l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_EP_PLANS */ INTO plan_table (<SRC_DB_COL_LICT>)
+                 select <SRC_DB_COL_LICT> from plan_table]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || q'[ where STATEMENT_ID = 'OPAS60']';
+      l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',l_col_list);
+      execute immediate l_sql;
+      l_sql := null;
+    else
+      l_sql := replace(l_remote_ep,'<SQLTOEXPLAIN>',l_sql_text);
+      execute immediate l_sql;
+    end if;
+
+    select x1.plan_hash, x1.plan_hash_full into l_plan_hash, l_full_plan_hash
+      from plan_table p,
+           xmltable('/other_xml'
+                  PASSING xmlparse(document p.other_xml) COLUMNS
+                  plan_hash      path 'info[@type="plan_hash"]',
+                  plan_hash_full path 'info[@type="plan_hash_full"]'
+                 ) x1
+     where other_xml is not null and STATEMENT_ID = 'OPAS60';
+
+    INSERT INTO opas_ot_tmp_gv$sql_plan_key
+           ( plan_id,                   plan_hash_value, full_plan_hash_value)
+     select opas_ot_sq_plan_id.nextval, l_plan_hash, l_full_plan_hash
+       from dual;
+
+    insert all
+      into opas_ot_sql_plans    ( plan_id, plan_source, created, sql_id)
+      into opas_ot_sql_plan_ref ( sql_data_point_id, plan_id)
+      values( p_data.sql_data_point_id, plan_id)
+      select plan_id, srcEP plan_type, systimestamp created, p_data.sql_id sql_id from opas_ot_tmp_gv$sql_plan_key;
+
+    insert all into opas_ot_sql_ep_plan_det (
+        SQL_ID, PLAN_ID, STATEMENT_ID, TIMESTAMP, REMARKS, OPERATION, OPTIONS, OBJECT_NODE, OBJECT_OWNER,
+        OBJECT_NAME, OBJECT_ALIAS, OBJECT_INSTANCE, OBJECT_TYPE, OPTIMIZER, SEARCH_COLUMNS, ID, PARENT_ID,
+        DEPTH, POSITION, COST, CARDINALITY, BYTES, OTHER_TAG, PARTITION_START, PARTITION_STOP, PARTITION_ID,
+        OTHER_XML, DISTRIBUTION, CPU_COST, IO_COST, TEMP_SPACE, ACCESS_PREDICATES, FILTER_PREDICATES, PROJECTION, TIME, QBLOCK_NAME,
+        sql_plan_hash_value,sql_full_plan_hash_value)
+      values (
+        SQL_ID, opas_plan_id, STATEMENT_ID, TIMESTAMP, REMARKS, OPERATION, OPTIONS, OBJECT_NODE, OBJECT_OWNER,
+        OBJECT_NAME, OBJECT_ALIAS, OBJECT_INSTANCE, OBJECT_TYPE, OPTIMIZER, SEARCH_COLUMNS, ID, PARENT_ID,
+        DEPTH, POSITION, COST, CARDINALITY, BYTES, OTHER_TAG, PARTITION_START, PARTITION_STOP, PARTITION_ID,
+        OTHER_XML, DISTRIBUTION, CPU_COST, IO_COST, TEMP_SPACE, ACCESS_PREDICATES, FILTER_PREDICATES, PROJECTION, TIME, QBLOCK_NAME,
+        plan_hash_value, full_plan_hash_value)
+    select p.*, k.plan_id opas_plan_id, p_data.sql_id sql_id, k.plan_hash_value, k.full_plan_hash_value
+      from plan_table p,
+           opas_ot_tmp_gv$sql_plan_key k
+     where p.STATEMENT_ID = 'OPAS60';
+
+    select count(1) into l_rows from opas_ot_sql_plan_ref r, opas_ot_sql_plans p where r.plan_id=p.plan_id and p.plan_source = srcEP and r.sql_data_point_id = p_data.sql_data_point_id;
+
+    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLEP, p_rows_processed => l_rows);
+  exception
+    when others then
+      rollback;
+      if l_sql is not null then coremod_tasks.log('Error load_sql_ep_plans ('||p_data.sql_data_point_id||'): '||l_sql);  end if;
+      coremod_tasks.log('Error load_sql_ep_plans ('||p_data.sql_data_point_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+
+      finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLEP, sqlerrm);
   end;
 
   procedure load_sql_vash(p_data   opas_ot_sql_data%rowtype)
@@ -1453,6 +1552,9 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     l_tq_id      OPAS_TASK_QUEUE.tq_id%type;
     l_obj_id     opas_ot_sql_data_point_ref.obj_id%type;
   BEGIN
+    COREMOD_LOG.Start_SQL_GATHER_STAT('COREOBJ_SQL_UTILS.DISCOVER_SQL.GATHER_SQL_STAT');
+    COREMOD_LOG.Start_SQL_TRACE('COREOBJ_SQL_UTILS.DISCOVER_SQL.SQL_TRACE');
+
     start_processing(p_sql_data_point_id, l_data, l_obj_id);
     --init_section_statuses(p_sql_data_point_id);
 
@@ -1484,6 +1586,9 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
 
     finalize_section_statuses(p_sql_data_point_id);
     finish_processing(p_sql_data_point_id);
+
+    COREMOD_LOG.Stop_SQL_TRACE('COREOBJ_SQL_UTILS.DISCOVER_SQL.SQL_TRACE');
+    COREMOD_LOG.Stop_SQL_GATHER_STAT('COREOBJ_SQL_UTILS.DISCOVER_SQL.GATHER_SQL_STAT');
   exception
     when others then
       finish_processing(p_sql_data_point_id,COREOBJ_SQL.sdoFAILED);
@@ -1497,9 +1602,14 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     l_data opas_ot_sql_data%rowtype;
     l_obj_id     opas_ot_sql_data_point_ref.obj_id%type;
   BEGIN
+    COREMOD_LOG.Start_SQL_GATHER_STAT('COREOBJ_SQL_UTILS.DISCOVER_SQL2.GATHER_SQL_STAT');
+    COREMOD_LOG.Start_SQL_TRACE('COREOBJ_SQL_UTILS.DISCOVER_SQL2.SQL_TRACE');
+
     start_processing2(p_sql_data_point_id, l_data, l_obj_id);
 
     load_sql_text(l_data);
+    commit;
+    load_sql_ep_plans(l_data);
     commit;
     load_sql_plans(l_data);
     commit;
@@ -1507,6 +1617,9 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     commit;
     load_sql_mon_hst(l_data, l_obj_id);
     commit;
+
+    COREMOD_LOG.Stop_SQL_TRACE('COREOBJ_SQL_UTILS.DISCOVER_SQL2.SQL_TRACE');
+    COREMOD_LOG.Stop_SQL_GATHER_STAT('COREOBJ_SQL_UTILS.DISCOVER_SQL2.GATHER_SQL_STAT');
   exception
     when others then
       coremod_tasks.log('Error discover_sql2 ('||p_sql_data_point_id||'): '||sqlerrm);
@@ -1558,7 +1671,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                                 P_OBJ_PRNT    => p_obj_prnt,
                                 p_folder_name => p_dirname) ;
         else
-          raise_application_error(-20000, 'Directory '||p_dirname||' not found');
+          raise_application_error(-20000, 'Directory '||p_dirname||' not found. Either go to the directory where data has been gathered or gather the data here.');
         end if;
     end;
 

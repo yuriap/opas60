@@ -723,6 +723,55 @@ alter table opas_ot_sql_plan_det add constraint fk_sql_pland_sqlid foreign key (
 create index idx_opas_sql_pland_id on opas_ot_sql_plan_det(plan_id) compress;
 create index idx_opas_sql_pland_sqlid on opas_ot_sql_plan_det(sql_id) compress;
 
+create table opas_ot_sql_ep_plan_det
+(
+SQL_ID                  VARCHAR2(13),
+PLAN_ID                 NUMBER,
+sql_plan_hash_value      number,
+sql_full_plan_hash_value number,
+STATEMENT_ID            VARCHAR2(30),
+TIMESTAMP               DATE,
+REMARKS                 VARCHAR2(4000),
+OPERATION               VARCHAR2(30),
+OPTIONS                 VARCHAR2(255),
+OBJECT_NODE             VARCHAR2(128),
+OBJECT_OWNER            VARCHAR2(128),
+OBJECT_NAME             VARCHAR2(128),
+OBJECT_ALIAS            VARCHAR2(261),
+OBJECT_INSTANCE         NUMBER(38),
+OBJECT_TYPE             VARCHAR2(30),
+OPTIMIZER               VARCHAR2(255),
+SEARCH_COLUMNS          NUMBER,
+ID                      NUMBER(38),
+PARENT_ID               NUMBER(38),
+DEPTH                   NUMBER(38),
+POSITION                NUMBER(38),
+COST                    NUMBER(38),
+CARDINALITY             NUMBER(38),
+BYTES                   NUMBER(38),
+OTHER_TAG               VARCHAR2(255),
+PARTITION_START         VARCHAR2(255),
+PARTITION_STOP          VARCHAR2(255),
+PARTITION_ID            NUMBER(38),
+OTHER_XML               CLOB,
+DISTRIBUTION            VARCHAR2(30),
+CPU_COST                NUMBER(38),
+IO_COST                 NUMBER(38),
+TEMP_SPACE              NUMBER(38),
+ACCESS_PREDICATES       VARCHAR2(4000),
+FILTER_PREDICATES       VARCHAR2(4000),
+PROJECTION              VARCHAR2(4000),
+TIME                    NUMBER(38),
+QBLOCK_NAME             VARCHAR2(128)
+);
+
+alter table opas_ot_sql_ep_plan_det ROW STORE COMPRESS ADVANCED;
+alter table opas_ot_sql_ep_plan_det add constraint fk_sql_eppland_id foreign key (plan_id) references opas_ot_sql_plans(plan_id) on delete cascade;
+alter table opas_ot_sql_ep_plan_det add constraint fk_sql_eppland_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
+create index idx_opas_sql_eppland_id on opas_ot_sql_ep_plan_det(plan_id) compress;
+create index idx_opas_sql_eppland_sqlid on opas_ot_sql_ep_plan_det(sql_id) compress;
+
+
 create table opas_ot_sql_plan_ref (
  sql_data_point_id                                number                                 not null  references opas_ot_sql_data(sql_data_point_id) on delete cascade,
  plan_id                                          number                                 not null  references opas_ot_sql_plans(plan_id) on delete cascade

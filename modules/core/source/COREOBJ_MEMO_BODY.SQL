@@ -37,5 +37,11 @@ PACKAGE BODY COREOBJ_MEMO AS
     COREMOD_FILE_UTILS.delete_file (  P_FILE_ID => l_file_id) ;
   END remove;
 
+  function get_object_status_do_display (p_obj_id          opas_objects.obj_id%type) return varchar2
+  is
+  begin
+    return null;
+  end;
+
 END COREOBJ_MEMO;
 /

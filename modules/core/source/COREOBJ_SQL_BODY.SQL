@@ -147,5 +147,17 @@ PACKAGE BODY COREOBJ_SQL AS
     end loop;
   end;
 */
+
+  function get_object_status_do_display (p_obj_id          opas_objects.obj_id%type) return varchar2
+  is
+    l_status varchar2(100);
+  begin
+    select GATHERING_STATUS into l_status
+      from OPAS_OT_SQL_DATA_POINT_REF r, OPAS_OT_SQL_DATA d
+     where r.obj_id=p_obj_id and r.SQL_DATA_POINT_ID=d.SQL_DATA_POINT_ID;
+
+    return l_status;
+  end;
+
 END COREOBJ_SQL;
 /

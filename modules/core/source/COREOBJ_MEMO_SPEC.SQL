@@ -7,5 +7,7 @@ PACKAGE COREOBJ_MEMO AS
   procedure remove  (p_obj_id    opas_objects.obj_id%type,
                      p_cascade   varchar2 default 'N');
 
+  function get_object_status_do_display (p_obj_id          opas_objects.obj_id%type) return varchar2;
+
 END COREOBJ_MEMO;
 /

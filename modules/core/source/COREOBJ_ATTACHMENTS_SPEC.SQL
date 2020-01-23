@@ -26,5 +26,8 @@ PACKAGE COREOBJ_ATTACHMENTS AS
   function  get_size(p_obj_id opas_objects.obj_id%type) return number;
   procedure store_content(p_obj_id    opas_objects.obj_id%type,
                           p_content opas_files.file_contentb%type);
+
+  function get_object_status_do_display (p_obj_id          opas_objects.obj_id%type) return varchar2;
+
 END COREOBJ_ATTACHMENTS;
 /
