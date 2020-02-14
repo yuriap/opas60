@@ -20,7 +20,7 @@ PACKAGE COREOBJ_DBLINKS2OBJ AS
   --=================================================================
   function get_dbl_list(p_obj_id opas_objects.obj_id%type) return t_opasobj_dbltab;
 
-  function get_object_status_do_display (p_obj_id          opas_objects.obj_id%type) return varchar2;
+  function get_object_status_to_display (p_obj_id          opas_objects.obj_id%type) return varchar2;
 
 END COREOBJ_DBLINKS2OBJ;
 /

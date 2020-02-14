@@ -52,6 +52,17 @@ package body coremod_cleanup as
         coremod_log.log(DBMS_UTILITY.FORMAT_ERROR_STACK);
         coremod_log.log(DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
     end;
+
+
+    begin
+      COREMOD_ALERTS.cleanup;
+    exception
+      when others then
+        rollback;
+        coremod_log.log('Cleanup job COREMOD_ALERTS.cleanup error: '||sqlerrm);
+        coremod_log.log(DBMS_UTILITY.FORMAT_ERROR_STACK);
+        coremod_log.log(DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+    end;
   end;
 
 end;

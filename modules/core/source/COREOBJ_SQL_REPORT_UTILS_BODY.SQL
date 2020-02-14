@@ -22,8 +22,12 @@ PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
   function print_data_point_params(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type) return varchar2
   result_cache
   is
-    l_result varchar2(32765) := '<br><b>SQL Monitor:</b> Days=<SQLMONHSTDays>; Rows=<SQLMONHSTRows>; <b>AWR:</b> Days=<AWRDataDays>; Search last day=<AWRSearchLastDays>; Start Date=<AWRStartDT>; End Date=<AWREndDT>';
-    l_obj_id opas_ot_sql_data_point_ref.obj_id%type;
+    l_result varchar2(32765) :=
+      '<br><b>SQL Monitor:</b> Days=<SQLMONHSTDays>; Rows=<SQLMONHSTRows>; <b>AWR:</b> Days=<AWRDataDays>; Search last day=<AWRSearchLastDays>; Start Date=<AWRStartDT>; End Date=<AWREndDT>; <b>Recursive:</b> <RECURS>';
+    l_obj_id     opas_ot_sql_data_point_ref.obj_id%type;
+    l_recursive  varchar2(100);
+    l_rec_v$     number;
+    l_rec_awr    number;
   begin
     select obj_id into l_obj_id from opas_ot_sql_data_point_ref where sql_data_point_id = p_sql_data_point_id;
     l_result := replace(l_result, '<SQLMONHSTDays>',     nvl( COREOBJ_API.get_param_n(l_obj_id, COREOBJ_SQL_UTILS.pnSQLMONHSTDays,     true), COREOBJ_SQL_UTILS.defSQLMONHSTDays));
@@ -33,6 +37,13 @@ PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
 
     l_result := replace(l_result, '<AWRStartDT>', nvl(to_char( COREOBJ_API.get_param_d(l_obj_id, COREOBJ_SQL_UTILS.pnAWRStartDT, true), defDataTimeFmt),'Not Specified'));
     l_result := replace(l_result, '<AWREndDT>',   nvl(to_char( COREOBJ_API.get_param_d(l_obj_id, COREOBJ_SQL_UTILS.pnAWREndDT,   true), defDataTimeFmt),'Not Specified'));
+
+    l_rec_v$  := nvl(COREOBJ_API.get_param_n(l_obj_id, COREOBJ_SQL_UTILS.pnV$Recursive,    true), COREOBJ_SQL_UTILS.defV$Recursive);
+    l_rec_awr := nvl(COREOBJ_API.get_param_n(l_obj_id, COREOBJ_SQL_UTILS.pnAWRRecursive,   true), COREOBJ_SQL_UTILS.defAWRRecursive);
+    l_recursive := case when l_rec_v$  >=0 then 'V$ASH limit: '  ||l_rec_v$  else 'No V$ASH'   end || '/' ||
+                   case when l_rec_awr >=0 then 'ASH HST limit: '||l_rec_awr else 'No ASH HST' end;
+
+    l_result := replace(l_result, '<RECURS>', l_recursive);
     return l_result;
   end;
 
@@ -215,6 +226,8 @@ PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
         P_STYLE_R1 => 'awrc1',--'trcr1',
         P_STYLE_R2 => 'awrnc1',--'trcr2',
         P_OUTPUT => p_output);
+
+      l_output.delete; l_row_index:=1;
     end loop;
 
   END print_vsql_section_base;
@@ -514,16 +527,17 @@ p_query => replace(q'[select inst_id,child_number,name,isdefault,value from opas
     l_capture        varchar2(100);
     l_header         clob;
     l_plan_filter    varchar2(10);
+    l_search0        varchar2(32765);
     l_search         varchar2(32765);
     l_replace         varchar2(32765);
   begin
     case p_section_name
       when repsSQLPLLAST  then l_display_params:='LAST ALLSTATS +peeked_binds';          l_capture := 'Display cursor (last)';          l_plan_filter := COREOBJ_SQL_UTILS.srcV$;
-                               l_search := 'Instance number: <INST>; Child number: <CHLD>';
+                               l_search0 := 'Instance number: <INST>; Child number: <CHLD>';
                                l_replace := HTF.ANCHOR(curl=>'#child_all_<INST>_<CHLD>',ctext=>'<REPLTXT>',cname=>'child_last_<INST>_<CHLD>',cattributes=>'class="awr"');
       when repsSQLPLADV   then l_display_params:='LAST ADVANCED';                        l_capture := 'Display cursor (LAST ADVANCED)'; l_plan_filter := COREOBJ_SQL_UTILS.srcV$;
       when repsSQLPLALL   then l_display_params:='ALL ALLSTATS +peeked_binds';           l_capture := 'Display cursor (ALL)';           l_plan_filter := COREOBJ_SQL_UTILS.srcV$;
-                               l_search := 'Instance number: <INST>; Child number: <CHLD>';
+                               l_search0 := 'Instance number: <INST>; Child number: <CHLD>';
                                l_replace := HTF.ANCHOR(curl=>'',ctext=>'<REPLTXT>',cname=>'child_all_<INST>_<CHLD>',cattributes=>'class="awr"');
       when repsSQLPLADAPT then l_display_params:='adaptive LAST ALLSTATS +peeked_binds'; l_capture := 'Display cursor (ADAPTIVE)';      l_plan_filter := COREOBJ_SQL_UTILS.srcV$;
     end case;
@@ -539,7 +553,7 @@ p_query => replace(q'[select inst_id,child_number,name,isdefault,value from opas
       l_header := 'Plan hash value: '||plans.PLAN_HASH_VALUE||'; Plan full hash value: '||plans.FULL_PLAN_HASH_VALUE;
       l_header := l_header ||chr(10)||'Instance number: '||plans.INST_ID||'; Child number: '||plans.CHILD_NUMBER;
 
-      l_search := replace(replace(l_search,'<INST>',plans.INST_ID),'<CHLD>',plans.CHILD_NUMBER);
+      l_search := replace(replace(l_search0,'<INST>',plans.INST_ID),'<CHLD>',plans.CHILD_NUMBER);
 
       COREMOD_REPORT_UTILS.convert_to_html_table (
         P_TEXT => l_header,
@@ -622,8 +636,8 @@ q'[select plan_table_output "Plan Table Output" from table(dbms_xplan.display('O
                                               ,'<display_params>',l_display_params),
                                             p_width => gwWideSection1,
                                             p_summary => 'Execution plan',
-                                            --p_search varchar2 default null,
-                                            --p_replacement varchar2 default null,
+                                            p_search => 'Plan hash value: ([[:digit:]]*)',
+                                            p_replacement => HTF.ANCHOR(curl=>'#epplanadv_\1',ctext=>'Plan hash value: \1',cname=>'epplan_\1',cattributes=>'class="awr"'),
                                             p_style_tab => 'trctd',
                                             p_style_head => 'trchd', --head
                                             p_style_r1 => 'trcr1',   --odd rows
@@ -648,8 +662,8 @@ q'[select plan_table_output "Plan Table Output" from table(dbms_xplan.display('O
                                               ,'<display_params>',l_display_params),
                                             p_width => gwWideSection1,
                                             p_summary => 'Execution plan (advanced)',
-                                            --p_search varchar2 default null,
-                                            --p_replacement varchar2 default null,
+                                            p_search => 'Plan hash value: ([[:digit:]]*)',
+                                            p_replacement => HTF.ANCHOR(curl=>'',ctext=>'Plan hash value: \1',cname=>'epplanadv_\1',cattributes=>'class="awr"'),
                                             p_style_tab => 'trctd',
                                             p_style_head => 'trchd', --head
                                             p_style_r1 => 'trcr1',   --odd rows
@@ -771,8 +785,8 @@ FROM data1
 order by snap nulls last, inst_id]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt),
                                             p_width => gwWideSection1,
                                             p_summary => 'AWR SQL statistics',
-                                            --p_search varchar2 default null,
-                                            --p_replacement varchar2 default null,
+                                            p_search => 'PLAN_HASH',
+                                            p_replacement => HTF.ANCHOR (curl=>'#awrplan_\1',ctext=>'\1',cattributes=>'class="awr"'),
                                             p_style_tab => 'trctd',
                                             p_style_head => 'trchd', --head
                                             p_style_r1 => 'trcr1',   --odd rows
@@ -840,8 +854,8 @@ q'[select plan_table_output "Plan Table Output" from table(dbms_xplan.display('O
                                               ,'<display_params>',l_display_params),
                                             p_width => gwWideSection1,
                                             p_summary => 'AWR execution plan',
-                                            --p_search varchar2 default null,
-                                            --p_replacement varchar2 default null,
+                                            p_search => 'Plan hash value: ([[:digit:]]*)',
+                                            p_replacement => HTF.ANCHOR(curl=>'#epplan_\1',ctext=>'Plan hash value: \1',cname=>'awrplan_\1',cattributes=>'class="awr"'),
                                             p_style_tab => 'trctd',
                                             p_style_head => 'trchd', --head
                                             p_style_r1 => 'trcr1',   --odd rows
@@ -891,7 +905,8 @@ order by s.snap_id]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',def
   begin
     COREMOD_REPORT_UTILS.print_query_result_html (
 p_query => replace(replace(replace(q'[select s.snap_id snap, to_char(sn.end_interval_time,'<defDTFullFmt>') end_interval_time,
-topn, SESSION_ID, SESSION_SERIAL#, s.INSTANCE_NUMBER, TOP_LEVEL_SQL_ID, USER_ID, PROGRAM, MACHINE, MODULE, ACTION, CLIENT_ID, ECID, FORCE_MATCHING_SIGNATURE, SQL_CHILD_NUMBER, SQL_PLAN_HASH_VALUE, SQL_FULL_PLAN_HASH_VALUE,
+topn, SESSION_ID, SESSION_SERIAL#, s.INSTANCE_NUMBER, TOP_LEVEL_SQL_ID, SQL_CHILD_NUMBER CHILD#, SQL_PLAN_HASH_VALUE PLAN_HASH, SQL_FULL_PLAN_HASH_VALUE FULL_PLAN__HASH,
+USER_ID, PROGRAM, MACHINE, MODULE, ACTION, CLIENT_ID, ECID, FORCE_MATCHING_SIGNATURE,
 SQL_EXEC_ID, to_char(SQL_EXEC_START,'<defDTFmt>') SQL_EXEC_START, SESSION_TYPE, USERNAME, to_char(MIN_SAMPLE_TIME,'<defDTFmt>') MIN_SAMPLE_TIME, to_char(MAX_SAMPLE_TIME,'<defDTFmt>') MAX_SAMPLE_TIME,
 SAMPLES, PGA_ALLOCATED, TEMP_SPACE_ALLOCATED
 from OPAS_OT_SQL_AWR_ASH_SUMM s,
@@ -911,6 +926,8 @@ order by s.snap_id, topn]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt
                                             p_summary => 'AWR ASH Top executions',
                                             --p_search varchar2 default null,
                                             --p_replacement varchar2 default null,
+                                            p_search => 'PLAN_HASH',
+                                            p_replacement => HTF.ANCHOR (curl=>'#awrplan_\1',ctext=>'\1',cattributes=>'class="awr"'),
                                             p_style_tab => 'trctd',
                                             p_style_head => 'trchd', --head
                                             p_style_r1 => 'trcr1',   --odd rows
@@ -934,7 +951,7 @@ order by s.snap_id, topn]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt
 
     COREMOD_REPORT_UTILS.print_query_result_html (
 p_query => replace(replace(replace(q'[select
-  plan_hash_value, FULL_PLAN_HASH_VALUE, PLAN_LINE_ID ID, PLAN_OPERATION ||' '|| PLAN_OPTIONS "Row source", EVENT, SAMPLES*10 "Time",
+  plan_hash_value PLAN_HASH, FULL_PLAN_HASH_VALUE FULL_PLAN__HASH, PLAN_LINE_ID ID, PLAN_OPERATION ||' '|| PLAN_OPTIONS "Row source", EVENT, SAMPLES*10 "Time",
   round(100 * SAMPLES / sum(SAMPLES) over(partition by plan_hash_value), 2) "Time, %",
   round(100 * sum(SAMPLES) over(partition by PLAN_LINE_ID, plan_hash_value) / sum(SAMPLES) over(partition by plan_hash_value), 2) "Time by ID, %",
   obj "Object", tbs "Tablespace"
@@ -957,8 +974,8 @@ group by sql_plan_hash_value, SQL_FULL_PLAN_HASH_VALUE, SQL_PLAN_LINE_ID, SQL_PL
 order by plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt),
                                             p_width => gwWideSection1,
                                             p_summary => 'AWR ASH Plan stats',
-                                            --p_search varchar2 default null,
-                                            --p_replacement varchar2 default null,
+                                            p_search => 'PLAN_HASH',
+                                            p_replacement => HTF.ANCHOR (curl=>'#awrplan_\1',ctext=>'\1',cattributes=>'class="awr"'),
                                             p_style_tab => 'trctd',
                                             p_style_head => 'trchd', --head
                                             p_style_r1 => 'trcr1',   --odd rows
@@ -980,7 +997,7 @@ order by plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data_poin
 
     COREMOD_REPORT_UTILS.print_query_result_html (
 p_query => replace(replace(replace(q'[select snap,end_interval_time,
-  plan_hash_value, FULL_PLAN_HASH_VALUE, PLAN_LINE_ID ID, PLAN_OPERATION ||' '|| PLAN_OPTIONS "Row source", EVENT, SAMPLES*10 "Time",
+  plan_hash_value PLAN_HASH, FULL_PLAN_HASH_VALUE FULL_PLAN__HASH, PLAN_LINE_ID ID, PLAN_OPERATION ||' '|| PLAN_OPTIONS "Row source", EVENT, SAMPLES*10 "Time",
   round(100 * SAMPLES / sum(SAMPLES) over(partition by plan_hash_value), 2) "Time, %",
   round(100 * sum(SAMPLES) over(partition by PLAN_LINE_ID, plan_hash_value) / sum(SAMPLES) over(partition by plan_hash_value), 2) "Time by ID, %",
   obj "Object", tbs "Tablespace"
@@ -1004,8 +1021,8 @@ group by s.snap_id, sn.end_interval_time, sql_plan_hash_value, SQL_FULL_PLAN_HAS
 order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt),
                                             p_width => gwWideSection1,
                                             p_summary => 'AWR ASH Plan stats per snap',
-                                            --p_search varchar2 default null,
-                                            --p_replacement varchar2 default null,
+                                            p_search => 'PLAN_HASH',
+                                            p_replacement => HTF.ANCHOR (curl=>'#awrplan_\1',ctext=>'\1',cattributes=>'class="awr"'),
                                             p_style_tab => 'trctd',
                                             p_style_head => 'trchd', --head
                                             p_style_r1 => 'trcr1',   --odd rows
@@ -1044,6 +1061,7 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
     l_text clob;
     l_length number;
   begin
+--dbms_output.put_line(p_sql_data_point_id);
     p_output(1):='<code class="codeView">';
     p_output(1):=p_output(1)||'<ol start="1">';
 
@@ -1122,7 +1140,7 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
     COREMOD_LOG.Start_SQL_TRACE('COREOBJ_SQL_REPORT_UTILS.print_section_html.SQL_TRACE');
 
     COREOBJ_SQL_UTILS.is_section_ready(p_sql_data_point_id,p_section_name,l_status,l_errm);
-
+--dbms_output.put_line(p_sql_data_point_id||':'||l_status);
     if l_status = COREOBJ_SQL_UTILS.sstReady then
 
       print_section_html_i(p_sql_data_point_id,p_section_name,l_output);

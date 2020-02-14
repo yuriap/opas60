@@ -1,16 +1,39 @@
 CREATE OR REPLACE
 PACKAGE BODY COREOBJ_SQL AS
 
+  procedure queue_discover_sql(p_sql_data_point    opas_ot_sql_data%rowtype)
+  is
+    L_TASKNAME   OPAS_TASK.TASKNAME%type := case when p_sql_data_point.prnt_data_point_id is null then 'OPAS_SQL_DISCOVER' else 'OPAS_SQL_DISCOVER_REC' end;
+    l_tq_id      OPAS_TASK_QUEUE.tq_id%type;
+
+    l_status     opas_ot_sql_data.gathering_status%type;
+  begin
+    select gathering_status into l_status from opas_ot_sql_data where sql_data_point_id = p_sql_data_point.sql_data_point_id for update;
+    if l_status in (sdoNotStarted, sdoFAILED) then
+      l_tq_id:=COREMOD_TASKS.prep_execute_task (  P_TASKNAME => L_TASKNAME) ;
+      COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => 'B1', p_num_par => p_sql_data_point.sql_data_point_id);
+      COREMOD_TASKS.queue_task ( p_tq_id => l_tq_id ) ;
+
+      update opas_ot_sql_data set tq_id = l_tq_id, gathering_status = sdoInQueue where sql_data_point_id = p_sql_data_point.sql_data_point_id;
+
+      COREOBJ_SQL_UTILS.init_section_statuses(p_sql_data_point.sql_data_point_id);
+    else
+      raise_application_error(-20000,'Inapropriate data object '|| p_sql_data_point.sql_data_point_id || ' status: '||l_status);
+    end if;
+  end;
+
+
   procedure add   (p_obj_id       out opas_objects.obj_id%type,
                    p_obj_prnt         opas_objects.obj_prnt%type,
                    p_modname          opas_files.modname%type default COREMOD_API.gMODNAME,
                    p_owner            opas_files.owner%type default 'PUBLIC',
                    p_descr            opas_objects.obj_descr%type,
                    p_sql_id           opas_ot_sql_descriptions.sql_id%type,
-                   p_db_link          opas_db_links.db_link_name%type)
+                   p_db_link          opas_db_links.db_link_name%type,
+                   p_prnt_dp          opas_ot_sql_data.prnt_data_point_id%type default null)
   AS
     l_sql_exists number;
-    l_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type;
+    l_sql_data_point    opas_ot_sql_data%rowtype;
   BEGIN
     COREOBJ_API.add (  P_OBJ_ID => P_OBJ_ID,
       P_OBJ_PRNT  => P_OBJ_PRNT,
@@ -27,36 +50,16 @@ PACKAGE BODY COREOBJ_SQL AS
     end if;
 
     INSERT INTO opas_ot_sql_data
-             ( sql_data_point_id,     sql_id,   start_gathering_dt,  end_gathering_dt,    dblink,    gathering_status, tq_id, tq_id2)
-      VALUES ( opas_ot_sq_dp.nextval, p_sql_id, null,                null,             p_db_link,    sdoNotStarted,    null,  null) returning sql_data_point_id into l_sql_data_point_id;
+             ( sql_data_point_id,     sql_id,   start_gathering_dt,  end_gathering_dt,    dblink,    gathering_status, tq_id, tq_id2, prnt_data_point_id)
+      VALUES ( opas_ot_sq_dp.nextval, p_sql_id, null,                null,             p_db_link,    sdoNotStarted,    null,  null, p_prnt_dp)
+    returning sql_data_point_id,prnt_data_point_id into l_sql_data_point.sql_data_point_id, l_sql_data_point.prnt_data_point_id;
 
     INSERT INTO opas_ot_sql_data_point_ref
              ( obj_id,  sql_data_point_id)
-      VALUES ( P_OBJ_ID, l_sql_data_point_id);
+      VALUES ( P_OBJ_ID, l_sql_data_point.sql_data_point_id);
 
-    queue_discover_sql(l_sql_data_point_id);
+    queue_discover_sql(l_sql_data_point);
   END add;
-
-  procedure queue_discover_sql(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type)
-  is
-    L_TASKNAME   OPAS_TASK.TASKNAME%type := 'OPAS_SQL_DISCOVER';
-    l_tq_id      OPAS_TASK_QUEUE.tq_id%type;
-
-    l_status     opas_ot_sql_data.gathering_status%type;
-  begin
-    select gathering_status into l_status from opas_ot_sql_data where sql_data_point_id = p_sql_data_point_id for update;
-    if l_status in (sdoNotStarted, sdoFAILED) then
-      l_tq_id:=COREMOD_TASKS.prep_execute_task (  P_TASKNAME => L_TASKNAME) ;
-      COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => 'B1', p_num_par => p_sql_data_point_id);
-      COREMOD_TASKS.queue_task ( p_tq_id => l_tq_id ) ;
-
-      update opas_ot_sql_data set tq_id = l_tq_id, gathering_status = sdoInQueue where sql_data_point_id = p_sql_data_point_id;
-
-      COREOBJ_SQL_UTILS.init_section_statuses(p_sql_data_point_id);
-    else
-      raise_application_error(-20000,'Inapropriate data object '|| p_sql_data_point_id || ' status: '||l_status);
-    end if;
-  end;
 
   procedure remove  (p_obj_id    opas_objects.obj_id%type,
                      p_cascade   varchar2 default 'N') AS
@@ -78,7 +81,17 @@ PACKAGE BODY COREOBJ_SQL AS
     l_plans  tableofnumbers;
 
     l_ids    tableofnumbers;
+    l_log_level       varchar2(100) := 'DEBUG';
   begin
+    -- remove recursive sql datapoints first
+    COREMOD_LOG.log ('remove_dp: Start removing '||p_sql_data_point_id, l_log_level);
+
+    for i in (select sql_data_point_id from opas_ot_sql_data where prnt_data_point_id = p_sql_data_point_id) loop
+      COREMOD_LOG.log ('remove_dp: Start removing recursive '||i.sql_data_point_id, l_log_level);
+      remove_dp(i.sql_data_point_id);
+      COREMOD_LOG.log ('remove_dp: Finish removing recursive '||i.sql_data_point_id, l_log_level);
+    end loop;
+
     --remove objects referencing this datapoint
     delete from opas_ot_sql_data_point_ref where sql_data_point_id = p_sql_data_point_id returning obj_id bulk collect into l_ids;
     for i in 1..l_ids.count loop
@@ -111,19 +124,28 @@ PACKAGE BODY COREOBJ_SQL AS
 
     --delete data point
     delete from opas_ot_sql_data where sql_data_point_id = p_sql_data_point_id;
+
+    COREMOD_LOG.log ('remove_dp: Finish removing '||p_sql_data_point_id, l_log_level);
   end;
 
   procedure drop_sql(p_sql_id    opas_ot_sql_descriptions.sql_id%type) AS
     l_sql_text        opas_ot_sql_descriptions.sql_text%type;
     l_sql_text_approx opas_ot_sql_descriptions.SQL_TEXT_APPROX%type;
+    l_log_level       varchar2(100) := 'DEBUG';
   BEGIN
+    COREMOD_LOG.log ('drop_sql: Start removing '||p_sql_id, l_log_level);
+
     for i in (select sql_data_point_id from opas_ot_sql_data where sql_id = p_sql_id) loop
+      COREMOD_LOG.log ('drop_sql: Start removing '||i.sql_data_point_id, l_log_level);
       remove_dp(i.sql_data_point_id);
+      COREMOD_LOG.log ('drop_sql: Finish removing '||i.sql_data_point_id, l_log_level);
     end loop;
 
     delete from opas_ot_sql_descriptions where sql_id = p_sql_id returning sql_text, SQL_TEXT_APPROX into l_sql_text, l_sql_text_approx;
     COREMOD_FILE_UTILS.delete_file (  P_FILE_ID => l_sql_text) ;
     COREMOD_FILE_UTILS.delete_file (  P_FILE_ID => l_sql_text_approx) ;
+
+    COREMOD_LOG.log ('drop_sql: Finish removing '||p_sql_id, l_log_level);
   END drop_sql;
 
 /*
@@ -148,11 +170,15 @@ PACKAGE BODY COREOBJ_SQL AS
   end;
 */
 
-  function get_object_status_do_display (p_obj_id          opas_objects.obj_id%type) return varchar2
+  function get_object_status_to_display (p_obj_id          opas_objects.obj_id%type) return varchar2
   is
     l_status varchar2(100);
   begin
-    select GATHERING_STATUS into l_status
+    select GATHERING_STATUS ||
+           case when GATHERING_STATUS in (sdoREADY,sdoFAILED,sdoNotStarted) then null
+           else ' ' || to_char((select round(100*sum(decode(GATHERING_STATUS,COREOBJ_SQL_UTILS.sstReady,1,COREOBJ_SQL_UTILS.sstFailed,1,COREOBJ_SQL_UTILS.sstEmpty,1,0))/count(1)) from OPAS_OT_SQL_DATA_SECT s where s.SQL_DATA_POINT_ID=d.SQL_DATA_POINT_ID))
+                || '%'
+           end into l_status
       from OPAS_OT_SQL_DATA_POINT_REF r, OPAS_OT_SQL_DATA d
      where r.obj_id=p_obj_id and r.SQL_DATA_POINT_ID=d.SQL_DATA_POINT_ID;
 

@@ -15,16 +15,18 @@ package coremod_tasks as
   tpHIGH       constant varchar2(10):='HIGH';
   tpNORM       constant varchar2(10):='NORM';
   tpLOW        constant varchar2(10):='LOW';
+  tpINTERNAL   constant varchar2(10):='INTERNAL';
 
   exTimedOutTask exception;
 
   procedure cleanup_tasks;
 
-  procedure create_task(p_taskname   opas_task.taskname%type,
-                        p_modname    opas_task.modname%type,
-                        p_is_public  opas_task.is_public%type default 'Y',
+  procedure create_task(p_taskname      opas_task.taskname%type,
+                        p_modname       opas_task.modname%type,
+                        p_is_public     opas_task.is_public%type default 'Y',
                         p_task_priority opas_task.task_priority%type,
-                        p_task_body  opas_task.task_body%type);
+                        p_task_body     opas_task.task_body%type);
+
   procedure drop_task(p_taskname opas_task.taskname%type);
 
   function  prep_execute_task(p_taskname opas_task.taskname%type,

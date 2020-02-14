@@ -216,17 +216,19 @@ PACKAGE BODY COREOBJ_API AS
     return l_par.DTTZ_PAR;
   end;
 
-  function get_object_status_do_display (p_obj_id          opas_objects.obj_id%type,
+  function get_object_status_to_display (p_obj_id          opas_objects.obj_id%type,
                                          p_obj_ot          opas_objects.obj_ot%type) return varchar2
   is
     l_status varchar2(100) := null;
   begin
 
     if g_ot_api.exists(p_obj_ot) and g_ot_api(p_obj_ot) is not null then
-      execute immediate 'begin :res:='||g_ot_api(p_obj_ot)||'.get_object_status_do_display(:obj_id); end;' using out l_status, p_obj_id;
+      execute immediate 'begin :res:='||g_ot_api(p_obj_ot)||'.get_object_status_to_display(:obj_id); end;' using out l_status, p_obj_id;
     end if;
 
     return l_status;
+  exception
+    when others then raise_application_error(-20000,'COREOBJ_API.get_object_status_to_display: '||p_obj_ot||' '||p_obj_id||' '||sqlerrm);
   end;
 
 begin

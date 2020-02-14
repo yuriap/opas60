@@ -28,7 +28,7 @@ table.tdiff{ border-spacing: 0px;  border: 1px;  border-collapse: collapse;  }
 .doublepad {margin-left:34px;}
 span.nm    {background-color:#cceeff;color:red;}
 th.trchd   {font-family: monospace; font-size: 11px; color: white; background:#0066CC;padding-left:4px; padding-right:4px;padding-bottom:2px;  border: 1px ridge silver; }
-td.trcr1   {font-family: monospace; font-size: 11px;color:black;background:White;vertical-align:top;border-style: ridge;border-width: 1px;  border: 1px ridge silver; }
-td.trcr2   {font-family: monospace; font-size: 11px;color:black;background:#FFFFCC; vertical-align:top;border-style: ridge;border-width: 1px;  border: 1px ridge silver; }
+td.trcr1   {font-family: monospace; font-size: 11px;color:black;background:White;vertical-align:top;border-style: ridge;border-width: 1px; }
+td.trcr2   {font-family: monospace; font-size: 11px;color:black;background:#FFFFCC; vertical-align:top;border-style: ridge;border-width: 1px; }
 td.trctotr {font-family: monospace; font-size: 11px;color:black;background: transparent; vertical-align:top;  font-weight: bold;  border-top: 2px solid black;  border-bottom: 2px solid silver;  border-left: 1px solid silver;  border-right: 1px solid silver;              }
-table.trctd{ border-spacing: 0px;  border: 1px;  border-collapse: collapse;  }
+table.trctd{ border-spacing: 0px; border-collapse: collapse;  }

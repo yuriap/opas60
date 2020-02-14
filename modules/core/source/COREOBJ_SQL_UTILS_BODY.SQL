@@ -69,12 +69,29 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     commit;
   end;
 
-  procedure wait_processing(p_sql_data_point_id         opas_ot_sql_data.sql_data_point_id%type)
+  procedure set_status_prep_recursive(p_sql_data_point_id         opas_ot_sql_data.sql_data_point_id%type)
   is
     pragma autonomous_transaction;
   begin
-    update opas_ot_sql_data set gathering_status = COREOBJ_SQL.sdoWaitFor2 where sql_data_point_id = p_sql_data_point_id;
+    update opas_ot_sql_data set gathering_status = COREOBJ_SQL.sdoPrepRecursive where sql_data_point_id = p_sql_data_point_id;
     commit;
+  end;
+
+  procedure wait_processing_of_discovery2(p_sql_data_point_id         opas_ot_sql_data.sql_data_point_id%type)
+  is
+    pragma autonomous_transaction;
+    l_tq_id                     opas_ot_sql_data.TQ_ID2%type;
+  begin
+    update opas_ot_sql_data set gathering_status = COREOBJ_SQL.sdoWaitFor2 where sql_data_point_id = p_sql_data_point_id returning TQ_ID2 into l_tq_id;
+    commit;
+
+    begin
+      coremod_tasks.wait_task_finish(l_tq_id, to_number(COREMOD_API.getconf('SECONDARYTASKTIMEOUT',COREMOD_API.gMODNAME)));
+    exception
+      when coremod_tasks.exTimedOutTask then
+        coremod_tasks.cancel_task(l_tq_id);
+    end;
+
   end;
 
   procedure init_section_statuses(p_sql_data_point_id         opas_ot_sql_data.sql_data_point_id%type)
@@ -1238,7 +1255,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
   end;
 
   procedure load_awr_sqlash (p_data       opas_ot_sql_data%rowtype,
-                              p_awr_params t_awr_params_rec)
+                             p_awr_params t_awr_params_rec)
   is
     l_sql        varchar2(32765);
     l_rows       number;
@@ -1495,6 +1512,69 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
        p_params.INCARNATION#
        );
     --commit;
+  exception
+    when others then
+      rollback;
+      coremod_tasks.log('Error update_dblink_db_info_awrsn ('||p_sql_id||'): '||l_sql);
+      coremod_tasks.log('Error update_dblink_db_info_awrsn ('||p_sql_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+  end;
+
+  procedure gather_recursive_sql(p_data       opas_ot_sql_data%rowtype,
+                                 p_obj_id     opas_ot_sql_data_point_ref.obj_id%type,
+                                 p_awr_params t_awr_params_rec)
+  is
+    l_rec_v$     number;
+    l_rec_awr    number;
+    l_obj_id     opas_ot_sql_data_point_ref.obj_id%type;
+    l_sql        varchar2(32765);
+    l_owner      OPAS_OT_SQL_DESCRIPTIONS.CREATED_BY%type;
+  begin
+    l_rec_v$  := nvl(COREOBJ_API.get_param_n(p_obj_id, COREOBJ_SQL_UTILS.pnV$Recursive,    true), COREOBJ_SQL_UTILS.defV$Recursive);
+    l_rec_awr := nvl(COREOBJ_API.get_param_n(p_obj_id, COREOBJ_SQL_UTILS.pnAWRRecursive,   true), COREOBJ_SQL_UTILS.defAWRRecursive);
+    if l_rec_v$ >= 0 then
+      l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_REC_SQL */ into opas_ot_tmp_rec_sql_ids (sql_id)
+                 select sql_id from gv$active_session_history]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || ' where top_level_sql_id=:p_sql_id and sql_id<>top_level_sql_id
+                 group by sql_id
+                 having count(1) > :p_limit';
+      execute immediate l_sql using p_data.sql_id, l_rec_v$;
+      l_sql := null;
+    end if;
+    if l_rec_awr >= 0 then
+      l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_REC_SQL */ into opas_ot_tmp_rec_sql_ids (sql_id)
+                 select sql_id from dba_hist_active_sess_history]' || COREMOD_API.get_dblink_for_query(p_data.dblink)
+                 || ' where top_level_sql_id=:p_sql_id and dbid = :p_dbid and snap_id between :p1 and :p2 and INSTANCE_NUMBER in (<INST_LST>) and sql_id<>top_level_sql_id
+                 group by sql_id
+                 having count(1) > :p_limit';
+      l_sql := replace(l_sql,'<INST_LST>', p_awr_params.INSTANCE_LIST_C);
+
+      execute immediate l_sql using p_data.sql_id, p_awr_params.DBID, p_awr_params.SNAP_START, p_awr_params.SNAP_END, l_rec_awr;
+      l_sql := null;
+    end if;
+
+    select CREATED_BY into l_owner from OPAS_OT_SQL_DESCRIPTIONS where sql_id=p_data.sql_id;
+
+    for i in (select unique sql_id from opas_ot_tmp_rec_sql_ids) loop
+      COREOBJ_SQL.add (
+        P_OBJ_ID   => l_obj_id, --new ID is created here
+        P_OBJ_PRNT => p_obj_id,
+        P_OWNER    => l_owner,
+        P_DESCR    => 'Recursive SQL for SQL_ID='||p_data.SQL_ID,
+        P_SQL_ID   => i.sql_id,
+        P_DB_LINK  => p_data.DBLINK,
+        p_prnt_dp  => p_data.sql_data_point_id) ;
+
+      COREOBJ_API.set_param(p_obj_id   => l_obj_id,
+                            p_par_name => COREOBJ_SQL_UTILS.pnV$Recursive,
+                            p_NUM_PAR  => COREOBJ_SQL_UTILS.defV$Recursive);
+      COREOBJ_API.set_param(p_obj_id   => l_obj_id,
+                            p_par_name => COREOBJ_SQL_UTILS.pnAWRRecursive,
+                            p_NUM_PAR  => COREOBJ_SQL_UTILS.defAWRRecursive);
+    end loop;
+  exception
+    when others then
+      rollback;
+      coremod_tasks.log('Error gather_recursive_sql ('||p_data.sql_data_point_id||'): '||l_sql);
+      coremod_tasks.log('Error gather_recursive_sql ('||p_data.sql_data_point_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
   end;
 
   procedure load_awr_data(p_data   opas_ot_sql_data%rowtype,
@@ -1539,12 +1619,14 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     load_awr_sqlash(p_data, gAWRParams);
     commit;
 
+    set_status_prep_recursive(p_data.sql_data_point_id);
+    gather_recursive_sql(p_data, p_obj_id, gAWRParams);
+    commit;
   end;
 
   ------------------------------------------------------------
   ------------------------------------------------------------
   ------------------------------------------------------------
-
   procedure discover_sql(p_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type)
   AS
     l_data       opas_ot_sql_data%rowtype;
@@ -1557,6 +1639,8 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
 
     start_processing(p_sql_data_point_id, l_data, l_obj_id);
     --init_section_statuses(p_sql_data_point_id);
+
+    L_TASKNAME := case when l_data.prnt_data_point_id is null then 'OPAS_SQL_DISCOVER2' else 'OPAS_SQL_DISCOVER2_REC' end;
 
     l_tq_id:=COREMOD_TASKS.prep_execute_task (  P_TASKNAME => L_TASKNAME) ;
     COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => 'B1', p_num_par => p_sql_data_point_id);
@@ -1576,13 +1660,8 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     commit;
     load_awr_data(l_data, l_obj_id);
     commit;
-    wait_processing(p_sql_data_point_id);
-    begin
-      coremod_tasks.wait_task_finish(l_tq_id, to_number(COREMOD_API.getconf('AWRTASKTIMEOUT',COREMOD_API.gMODNAME)));
-    exception
-      when coremod_tasks.exTimedOutTask then
-        coremod_tasks.cancel_task(l_tq_id);
-    end;
+
+    wait_processing_of_discovery2(p_sql_data_point_id);
 
     finalize_section_statuses(p_sql_data_point_id);
     finish_processing(p_sql_data_point_id);
@@ -1626,6 +1705,26 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       coremod_tasks.log('Error discover_sql2 error stack: '||DBMS_UTILITY.FORMAT_ERROR_STACK);
       raise_application_error(-20000, 'Error discover_sql2 ('||p_sql_data_point_id||'): '||sqlerrm);
   END discover_sql2;
+
+  procedure cancel_discover_sql (p_sql_data_point_id         opas_ot_sql_data.sql_data_point_id%type)
+  is
+  begin
+    for i in (select * from opas_ot_sql_data where sql_data_point_id = p_sql_data_point_id) loop
+      COREMOD_TASKS.cancel_task (  P_TQ_ID => i.tq_id) ;
+      COREMOD_TASKS.stop_task   (  P_TQ_ID => i.tq_id) ;
+      COREMOD_TASKS.cancel_task (  P_TQ_ID => i.tq_id2) ;
+      COREMOD_TASKS.stop_task   (  P_TQ_ID => i.tq_id2) ;
+    end loop;
+
+    finalize_section_statuses(p_sql_data_point_id);
+    finish_processing(p_sql_data_point_id);
+
+    update OPAS_OT_SQL_DATA_SECT set
+     GATHERING_STATUS = sstEmpty
+     where SQL_DATA_POINT_ID = p_sql_data_point_id and GATHERING_STATUS in (sstInProgress);
+    commit;
+
+  end;
 
   procedure refresh_section(p_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type,
                             p_section_name varchar2)

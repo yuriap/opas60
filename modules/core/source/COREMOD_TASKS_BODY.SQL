@@ -121,24 +121,6 @@ package body coremod_tasks as
     end if;
   end;
 
-  procedure cancel_task(p_tq_id opas_task_queue.tq_id%type)
-  is
-    l_job_name  opas_task_queue.job_name%type;
-  begin
-    update opas_task_queue set status=gtqCanceled where tq_id = p_tq_id and status in (gtqNEW,gtqQUEUED,gtqSCHEDULED) returning job_name into l_job_name;
-    if sql%rowcount<1 then
-      raise_application_error(-20000,'Unable to change task status ID, Status: '||p_tq_id||', '||gtqCanceled);
-    end if;
-    if l_job_name is not null then
-      dbms_scheduler.disable(l_job_name);
-      dbms_scheduler.drop_job(l_job_name);
-    end if;
-  exception
-    when others then
-      log('cancel_task error: '||sqlerrm,p_tq_id);
-  end;
-
-
   procedure set_task_started(p_tq_id opas_task_queue.tq_id%type, p_job_name opas_task_queue.job_name%type)
   is
   begin
@@ -205,7 +187,7 @@ package body coremod_tasks as
     */
   begin
     for i in (select priority_levels.lvl task_priority, count(j.job_name) cnt
-                from (select decode(level,1,tpHIGH,2,tpNORM,3,tpLOW) lvl from dual connect by level <=3) priority_levels,
+                from (select decode(level,1,tpHIGH,2,tpNORM,3,tpLOW,4,tpINTERNAL) lvl from dual connect by level <=4) priority_levels,
                      USER_SCHEDULER_RUNNING_JOBS j,
                      opas_task_queue tq,
                      opas_task t
@@ -215,23 +197,27 @@ package body coremod_tasks as
                  and tq.taskname(+) = t.taskname
                group by priority_levels.lvl)
     loop
-      if i.cnt < to_number(COREMOD_API.getconf('MAXTHREADS'||i.task_priority,COREMOD_API.gMODNAME)) then
-        l_freeslots:= to_number(COREMOD_API.getconf('MAXTHREADS'||i.task_priority,COREMOD_API.gMODNAME)) - i.cnt;
-
-        select tq.* bulk collect into l_tasks
-          from opas_task_queue tq, opas_task t
-         where status=gtqQUEUED
-           and tq.taskname = t.taskname
-           and t.task_priority = i.task_priority
-           for update skip locked order by queued;
-
-        for i in 1..least(l_freeslots,l_tasks.count) loop
-          l_2run.extend;
-          l_2run(l_2run.count):=l_tasks(i);
-          l_2run(l_2run.count).job_name:=gJOBNMPREF||'_'||upper(l_2run(l_2run.count).taskname)||'_'||DBMS_RANDOM.STRING('X',6);
-          set_task_started(l_tasks(i).tq_id, l_2run(l_2run.count).job_name);
-        end loop;
+      if i.task_priority = tpINTERNAL then
+        l_freeslots := 1000;
+      else
+        if i.cnt < to_number(COREMOD_API.getconf('MAXTHREADS'||i.task_priority,COREMOD_API.gMODNAME)) then
+          l_freeslots:= to_number(COREMOD_API.getconf('MAXTHREADS'||i.task_priority,COREMOD_API.gMODNAME)) - i.cnt;
+        end if;
       end if;
+
+      select tq.* bulk collect into l_tasks
+        from opas_task_queue tq, opas_task t
+       where status=gtqQUEUED
+         and tq.taskname = t.taskname
+         and t.task_priority = i.task_priority
+         for update skip locked order by queued;
+
+      for i in 1..least(l_freeslots,l_tasks.count) loop
+        l_2run.extend;
+        l_2run(l_2run.count):=l_tasks(i);
+        l_2run(l_2run.count).job_name:=gJOBNMPREF||'_'||upper(l_2run(l_2run.count).taskname)||'_'||DBMS_RANDOM.STRING('X',6);
+        set_task_started(l_tasks(i).tq_id, l_2run(l_2run.count).job_name);
+      end loop;
     end loop;
 
     commit;
@@ -253,14 +239,39 @@ package body coremod_tasks as
     end loop;
   end;
 
+  procedure cancel_task(p_tq_id opas_task_queue.tq_id%type)
+  is
+    l_job_name  opas_task_queue.job_name%type;
+  begin
+    update opas_task_queue set status=gtqCanceled where tq_id = p_tq_id and status in (gtqNEW,gtqQUEUED,gtqSCHEDULED) returning job_name into l_job_name;
+    /*
+    if sql%rowcount<1 then
+      raise_application_error(-20000,'Unable to change task status ID, Status: '||p_tq_id||', '||gtqCanceled);
+    end if;
+    */
+    if l_job_name is not null then
+      dbms_scheduler.disable(l_job_name);
+      dbms_scheduler.drop_job(l_job_name);
+    end if;
+
+    log('Executed cancel_task: '||p_tq_id||'; '||nvl(l_job_name,'N/A'));
+  exception
+    when others then
+      log('cancel_task error: '||sqlerrm,p_tq_id);
+      log(DBMS_UTILITY.FORMAT_ERROR_STACK);
+  end;
+
   procedure stop_task(p_tq_id opas_task_queue.tq_id%type)
   is
     l_job_name opas_task_queue.job_name%type;
   begin
-    select job_name into l_job_name from opas_task_queue where tq_id=p_tq_id;
-    update opas_task_queue set status=gtqCanceled where tq_id = p_tq_id and status in (gtqRUNNING);
+    --select job_name into l_job_name from opas_task_queue where tq_id=p_tq_id;
+    update opas_task_queue set status=gtqCanceled where tq_id = p_tq_id and status in (gtqRUNNING) returning job_name into l_job_name;
     commit;
-    dbms_scheduler.stop_job(l_job_name, true);
+    if l_job_name is not null then
+      dbms_scheduler.stop_job(l_job_name, true);
+    end if;
+    log('Executed stop_task: '||p_tq_id||'; '||nvl(l_job_name,'N/A'));
   exception
      when others then
        log('Stop job error: '||l_job_name||':'||p_tq_id||chr(10)||sqlerrm);
@@ -298,6 +309,7 @@ package body coremod_tasks as
     l_expiration_time date := sysdate + p_timeout/3600/24;
     l_status          opas_task_queue.status%type;
   begin
+  /*
     loop
       select status into l_status from opas_task_queue where tq_id=p_tq_id;
 
@@ -308,6 +320,28 @@ package body coremod_tasks as
       exit when l_status in (gtqSUCCEEDED,gtqFAILED,gtqCanceled);
       dbms_lock.sleep(15);
     end loop;
+
+  gtqNEW       constant varchar2(10):='NEW';
+  gtqQUEUED    constant varchar2(10):='QUEUED';
+  gtqSTARTED   constant varchar2(10):='STARTED';
+  gtqSCHEDULED constant varchar2(10):='SCHEDULED';
+  gtqRUNNING   constant varchar2(10):='RUNNING';
+  gtqSUCCEEDED constant varchar2(10):='SUCCEEDED';
+  gtqFAILED    constant varchar2(10):='FAILED';
+  gtqCanceled  constant varchar2(10):='CANCELED';
+  */
+    loop
+      select STATUS into l_STATUS from opas_task_queue where tq_id = p_tq_id;
+      exit when l_STATUS not in (gtqNEW,gtqQUEUED,gtqSTARTED,gtqSCHEDULED);
+      dbms_lock.sleep(10);
+    end loop;
+
+    COREMOD_API.lock_resource(
+      P_RESOURCE_NAME => 'OPASTASK'||p_tq_id,
+      P_MODE => 6,
+      P_TIMEOUT => p_timeout,
+      P_RELEASE_ON_COMMIT => true);
+    commit;
   end;
 
   procedure execute_task(p_tq_id opas_task_queue.tq_id%type)
@@ -315,6 +349,14 @@ package body coremod_tasks as
     l_task opas_task%rowtype;
     l_task_body clob;
   begin
+
+    --to be able to wait for job finish
+    COREMOD_API.lock_resource(
+      P_RESOURCE_NAME => 'OPASTASK'||p_tq_id,
+      P_MODE => 6,
+      P_TIMEOUT => 0,
+      P_RELEASE_ON_COMMIT => false);
+
     gTQ_ID:=p_tq_id;
     set_task_running(p_tq_id);
     select * into l_task from opas_task where taskname=(select taskname from opas_task_queue where tq_id = p_tq_id);

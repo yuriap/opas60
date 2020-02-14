@@ -5,6 +5,7 @@ PACKAGE COREOBJ_SQL AS
   sdoNotStarted    constant varchar2(30) := 'NOT_STARTED';
   sdoInQueue       constant varchar2(30) := 'INQUEUE';
   sdoInProgress    constant varchar2(30) := 'INPROGRESS';
+  sdoPrepRecursive constant varchar2(30) := 'PREP_RECURSIVE';
   sdoWaitFor2      constant varchar2(30) := 'WAITSECONDARY';
   sdoREADY         constant varchar2(30) := 'READY';
   sdoFAILED        constant varchar2(30) := 'FAILED';
@@ -17,9 +18,10 @@ PACKAGE COREOBJ_SQL AS
                    p_owner            opas_files.owner%type default 'PUBLIC',
                    p_descr            opas_objects.obj_descr%type,
                    p_sql_id           opas_ot_sql_descriptions.sql_id%type,
-                   p_db_link          opas_db_links.db_link_name%type);
+                   p_db_link          opas_db_links.db_link_name%type,
+                   p_prnt_dp          opas_ot_sql_data.prnt_data_point_id%type default null);
 
-  procedure queue_discover_sql(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type);
+  --procedure queue_discover_sql(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type);
 
   procedure remove  (p_obj_id         opas_objects.obj_id%type,
                      p_cascade        varchar2 default 'N');
@@ -31,7 +33,7 @@ PACKAGE COREOBJ_SQL AS
   --
 --  procedure group_sql_in_folder(
 --                    p_folder_id        opas_objects.obj_id%type);
-  function get_object_status_do_display (p_obj_id          opas_objects.obj_id%type) return varchar2;
+  function get_object_status_to_display (p_obj_id          opas_objects.obj_id%type) return varchar2;
 
 END COREOBJ_SQL;
 /

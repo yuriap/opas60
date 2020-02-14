@@ -21,6 +21,9 @@ PACKAGE COREOBJ_SQL_UTILS AS
   pnAWREndDT           constant varchar2(30) := 'SQL_AWRENDDT';
   pnAllParsDispl       constant varchar2(30) := 'SQL_ALLPARSDISPL';
 
+  defV$Recursive       constant number := -1; /* -1 not gather */  pnV$Recursive       constant varchar2(30) := 'SQL_V$RECURSIVE';
+  defAWRRecursive      constant number := -1; /* -1 not gather */  pnAWRRecursive      constant varchar2(30) := 'SQL_AWRRECURSIVE';
+
   type t_awr_params_rec is record (
     DBLINK               OPAS_DB_LINK_V$DB.DBLINK%type,
     DBID                 OPAS_DB_LINK_V$DB.DBID%type,
@@ -56,6 +59,8 @@ PACKAGE COREOBJ_SQL_UTILS AS
                    p_current_dir      varchar2,
                    p_gather_new       boolean,
                    p_dirname      out varchar2);
+
+  procedure cancel_discover_sql (p_sql_data_point_id         opas_ot_sql_data.sql_data_point_id%type);
 
 END COREOBJ_SQL_UTILS;
 /

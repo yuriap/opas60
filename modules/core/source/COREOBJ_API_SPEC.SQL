@@ -13,6 +13,7 @@ PACKAGE COREOBJ_API AS
   otASHA_CUBE                 constant number := 300;
   otAWR_DUMP                  constant number := 400;
   otDB_GROWTH_TRACKER         constant number := 500;
+  otSIMPLE_DB_MONITOR         constant number := 600;
 
   type t_string_indexed_tbl is table of varchar2(4000) index by pls_integer;
 
@@ -77,7 +78,7 @@ PACKAGE COREOBJ_API AS
   function  get_param_z (p_obj_id          OPAS_OBJECT_PARS.obj_id%type,
                          p_par_name        OPAS_OBJECT_PARS.par_name%type,
                          p_search_top      boolean default false) return timestamp with time zone;
-  function get_object_status_do_display (p_obj_id          opas_objects.obj_id%type,
+  function get_object_status_to_display (p_obj_id          opas_objects.obj_id%type,
                                          p_obj_ot          opas_objects.obj_ot%type) return varchar2;
 
 END COREOBJ_API;

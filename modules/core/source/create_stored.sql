@@ -1,3 +1,6 @@
+@@COREMOD_ALERTS_SPEC.SQL
+show errors
+
 @@COREMOD_API_SPEC.SQL
 show errors
 
@@ -14,6 +17,9 @@ show errors
 show errors
 
 @@COREMOD_REPORT_UTILS_SPEC.SQL
+show errors
+
+@@COREMOD_SCHEDULER_SPEC.SQL
 show errors
 
 @@COREMOD_SEC_SPEC.SQL
@@ -34,6 +40,9 @@ show errors
 @@COREOBJ_DBLINKS2OBJ_SPEC.SQL
 show errors
 
+@@COREOBJ_DB_MONITOR_SPEC.SQL
+show errors
+
 @@COREOBJ_FOLDER_SPEC.SQL
 show errors
 
@@ -47,6 +56,9 @@ show errors
 show errors
 
 @@COREOBJ_SQL_UTILS_SPEC.SQL
+show errors
+
+@@COREMOD_ALERTS_BODY.SQL
 show errors
 
 @@COREMOD_API_BODY.SQL
@@ -67,6 +79,9 @@ show errors
 @@COREMOD_REPORT_UTILS_BODY.SQL
 show errors
 
+@@COREMOD_SCHEDULER_BODY.SQL
+show errors
+
 @@COREMOD_SEC_BODY.SQL
 show errors
 
@@ -83,6 +98,9 @@ show errors
 show errors
 
 @@COREOBJ_DBLINKS2OBJ_BODY.SQL
+show errors
+
+@@COREOBJ_DB_MONITOR_BODY.SQL
 show errors
 
 @@COREOBJ_FOLDER_BODY.SQL

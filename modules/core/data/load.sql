@@ -6,12 +6,16 @@ INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','TA
 INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','TASKEXEC','MAXTHREADSLOW', 1,'Low priority: Max number of simultaneously running tasks');
 INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','RETENTION','TASKRETENTION',3,'Retention time in days for task queue metadata.');
 INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','RETENTION','LOGRETENTION', 3,'Retention time in days for logs.');
+INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','RETENTION','ALERTRETVED',  8,'Retention time in days for viewed alerts.');
+INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','RETENTION','ALERTRETNVED', 30,'Retention time in days for non-viewed alerts.');
 INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','INSTRUMENTATION','INSTR_SQL_GATHER_STAT',null,'Start to gather SQL rowsource statistic for a given code.');
 INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','INSTRUMENTATION','INSTR_SQL_TRACE',null,'Start Extended SQL Trace for a given code.');
 
 INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','LOGGING','LOGGING_LEVEL','INFO','Current logging level. INFO|DEBUG');
 
-INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','SQL_DATA','AWRTASKTIMEOUT', 3600,'Timeout for a secondary task of gathering AWR data, seconds');
+INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','SQL_DATA','SECONDARYTASKTIMEOUT', 3600,'Timeout for a secondary task of gathering SQL data, seconds');
+
+--INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','ALERT','HIDEVIEWED', 1,'Hide viewed alerts after N days.');
 
 insert into opas_groups (group_id,group_name,group_descr) values (0, 'Administrators','Full set of rights');
 insert into opas_groups (group_id,group_name,group_descr) values (1, 'Reas-write users','All application functions');
@@ -34,6 +38,7 @@ insert into OPAS_OBJECT_TYPES (OT_ID,OT_NAME,OT_DESCR,OT_ICON, OT_API_PKG) value
 insert into OPAS_OBJECT_TYPES (OT_ID,OT_NAME,OT_DESCR,OT_ICON, OT_API_PKG) values (300,'ASHA Cube'         ,'Application "ASHA" Cube data and diagrams','fa-cube'                             ,'');
 insert into OPAS_OBJECT_TYPES (OT_ID,OT_NAME,OT_DESCR,OT_ICON, OT_API_PKG) values (400,'AWR Dump'          ,'Application "AWRWH" AWR stored dump'      ,'fa-database-play'                    ,'');
 insert into OPAS_OBJECT_TYPES (OT_ID,OT_NAME,OT_DESCR,OT_ICON, OT_API_PKG) values (500,'DB Growth Tracker' ,'Application "DB Growth Tracker" data'     ,'fa-combo-chart'                      ,'');
+insert into OPAS_OBJECT_TYPES (OT_ID,OT_NAME,OT_DESCR,OT_ICON, OT_API_PKG) values (600,'Simple DB Monitor' ,'Simple Database monitor to measure scalar metric' ,'fa-eyedropper'                ,'COREOBJ_DB_MONITOR');
 
 
 INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (1000,         100,   'CREATE',     'Create Folder');
@@ -46,6 +51,9 @@ INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) 
 INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (1400,         140,   'CREATE',     'Register new SQL query');
 INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (1401,         140,   'OPEN',       'Show SQL Data');
 --INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (1103,         110,   'EDIT',       'Edit attached file');
+
+INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (6000,         600,   'CREATE',     'Register new Simple DB Monitor');
+INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (6000,         600,   'OPEN',       'Show Simple DB Monitor');
 
 
 
@@ -76,6 +84,7 @@ INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sp
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLREPSECT','AWR_ASHINVOKER'             ,'AWR ASH Invocers'                ,'ash_invokers', null,null,190);
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLREPSECT','AWR_ASHPLSTATS'             ,'AWR ASH plan staictics'          ,'ash_plsstat',  null,null,200);
 
+INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SDBMALERT', 'SINGLELIMIT'               ,'Single value limit'   ,null,null,null,10);
 
 
 declare

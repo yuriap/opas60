@@ -102,7 +102,7 @@ PACKAGE BODY COREOBJ_DBLINKS2OBJ AS
     return l_tab;
   end;
 
-  function get_object_status_do_display (p_obj_id          opas_objects.obj_id%type) return varchar2
+  function get_object_status_to_display (p_obj_id          opas_objects.obj_id%type) return varchar2
   is
     l_status varchar2(100);
   begin

@@ -34,18 +34,53 @@ dic_ordr            number);
 create index idx_opas_dictionary_mod on opas_dictionary(modname,dic_name);
 
 ---------------------------------------------------------------------------------------------
--- known query storage
+-- OPAS Scheduler
 ---------------------------------------------------------------------------------------------
---create table opas_query_storage (
---sql_id              varchar2(128)                                    primary key,
---sql_text            clob,
---created             timestamp        default systimestamp,
---owner               varchar2(128)    default 'public')
---lob (sql_text) store as (compress high)
---;
+create table opas_scheduler (
+sch_id          number                                           generated always as identity primary key,
+schedule        varchar2(512),
+plsql_call      varchar2(512)                           not null,
+start_date      date,
+last_changed    timestamp,
+last_validated  timestamp,
+job_name        varchar2(128),
+owner           varchar2(128)    default 'PUBLIC'       not null,
+status          varchar2(32)     default 'NEW'          not null
+);
 
--- text index tbd
+create or replace force view v$opas_scheduler as 
+select *
+  from opas_scheduler
+ where owner = decode(owner,'PUBLIC', owner, nvl(v('APP_USER'),'~^'));
 
+create table opas_scheduler_validation (
+sch_id          number not null references opas_scheduler(sch_id) on delete cascade,
+status          varchar2(100),
+message         varchar2(4000)
+);
+
+create index idx_opas_scheduler_val on opas_scheduler_validation(sch_id);
+
+---------------------------------------------------------------------------------------------
+-- Alert system
+---------------------------------------------------------------------------------------------
+
+create table opas_alert_queue (
+alert_id            number                                           generated always as identity primary key,
+alert_type          varchar2(128)    default 'Default'     not null,
+owner               varchar2(128)    default 'PUBLIC'      not null,
+message             varchar2(4000)                         not null,
+link_page           number,
+link_param          varchar2(128),
+created             timestamp                              not null,
+viewed              timestamp,
+status              varchar2(100)    default 'NEW'         not null --New, Viewed
+);
+
+create or replace force view v$opas_alert_queue as 
+select *
+  from opas_alert_queue
+ where owner = decode(owner,'PUBLIC', owner, nvl(v('APP_USER'),'~^'));
 ---------------------------------------------------------------------------------------------
 -- database link dictionary
 ---------------------------------------------------------------------------------------------
@@ -57,7 +92,8 @@ password            varchar2(128),
 connstr             varchar2(1000),
 status              varchar2(32)     default 'NEW'         not null,
 is_public           varchar2(1)      default 'Y'           not null,
-dbid                number
+dbid                number,
+update_sched        number                                           references opas_scheduler(sch_id) on delete set null
 );
 
 create or replace force view v$opas_db_links as 
@@ -72,10 +108,7 @@ select db_link_name,
          else 
            case when l.username is not null then db_link_name||' ('||l.username||'@'||l.host||')' else db_link_name||' (suspended)' end
          end display_name,
-       owner,
-       status,
-       is_public,
-       dbid
+       owner, status, is_public, dbid,update_sched
   from opas_db_links o, user_db_links l, gn
  where owner =
        decode(owner,
@@ -612,6 +645,7 @@ create sequence opas_ot_sq_dp;
 
 create table opas_ot_sql_data (
 sql_data_point_id   number                                           primary key,
+prnt_data_point_id  number                                           references opas_ot_sql_data ( sql_data_point_id ) on delete cascade,
 sql_id              varchar2(13)                           not null  references opas_ot_sql_descriptions ( sql_id ) on delete cascade,
 start_gathering_dt  timestamp,
 end_gathering_dt    timestamp,
@@ -628,6 +662,11 @@ alter table opas_ot_sql_data ROW STORE COMPRESS ADVANCED;
 
 create index idx_opas_sql_data_sqlid on opas_ot_sql_data(sql_id) compress;
 create index idx_opas_sql_data_dbl   on opas_ot_sql_data(dblink) compress;
+create index idx_opas_sql_data_prnt  on opas_ot_sql_data(prnt_data_point_id) compress;
+
+create global temporary table opas_ot_tmp_rec_sql_ids (
+sql_id varchar2(13)
+) on commit delete rows;
 
 create table opas_ot_sql_data_sect (
 sql_data_point_id   number                                 not null  references opas_ot_sql_data(sql_data_point_id) on delete cascade,
@@ -1238,6 +1277,41 @@ create index idx_opas_sql_awr_ashplst_dbl   on opas_ot_sql_awr_ash_plst(dblink) 
 
 alter table opas_ot_sql_awr_ash_plst add constraint fk_sql_awrashplst_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
 create index idx_opas_sql_awrashplst_sqlid on opas_ot_sql_awr_ash_plst(sql_id, dblink, dbid, incarnation#, snap_id, sql_plan_hash_value, sql_plan_line_id, instance_number) compress;        
+
+---------------------------------------------------------------------------------------------
+-- Simple DB metric monitor
+create table opas_ot_db_monitor (
+metric_id       number                                           primary key,
+dblink          varchar2(128)                                    references opas_db_links (db_link_name) on delete cascade,
+schedule        number                                           references opas_scheduler (sch_id) on delete set null,
+call_type       varchar2(512)                           not null check (call_type in ('SQL','FUNC')),
+calc_code       varchar2(512),
+convert_code    varchar2(1000),
+measure         varchar2(32)
+);
+
+alter table opas_ot_db_monitor add constraint fk_ot_db_mon_obj foreign key (metric_id) references opas_objects(obj_id) on delete cascade;
+create index idx_opas_ot_db_monitor_dbl   on opas_ot_db_monitor(dblink);
+create index idx_opas_ot_db_monitor_sch   on opas_ot_db_monitor(schedule);
+
+create table opas_ot_db_monitor_vals (
+measur_id       number                                           generated always as identity primary key,
+metric_id       number                                           references opas_ot_db_monitor (metric_id) on delete cascade,
+tim             timestamp(6),
+val             number) row store compress advanced;
+
+create index idx_opas_ot_db_monitor_vm   on opas_ot_db_monitor_vals(metric_id);
+
+create table opas_ot_db_monitor_alerts_cfg (
+metric_id       number                                           references opas_ot_db_monitor (metric_id) on delete cascade,
+alert_type      varchar2(128),
+alert_limit     number);
+
+create unique index idx_opas_ot_db_mon_acgg_vm   on opas_ot_db_monitor_alerts_cfg(metric_id, alert_type);
+
+
+--
+--
 ---------------------------------------------------------------------------------------------
 -- sql lists
 create table opas_ot_sql_lists (
