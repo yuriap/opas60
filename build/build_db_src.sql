@@ -34,6 +34,8 @@ spool off
 
 spool &COREMODPATH.\create_stored.sql
 
+prompt set define off
+
 select 
 '@@'||object_name||'_SPEC.SQL'||chr(10)||'show errors'||chr(10)
 from user_objects 
@@ -47,6 +49,8 @@ from user_objects
 where object_type like 'PACKAGE BODY' 
 and object_name like 'CORE%'
 order by object_name, object_type;
+
+prompt set define on
 
 spool off
 

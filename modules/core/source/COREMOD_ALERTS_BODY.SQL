@@ -3,6 +3,7 @@ PACKAGE BODY COREMOD_ALERTS AS
 
   procedure add_alert(p_alert_id  out opas_alert_queue.alert_id%type,
                       p_alert_type    opas_alert_queue.alert_type%type,
+                      p_created       opas_alert_queue.created%type, --varchar2, -- TZ is getting lost somehow
                       p_owner         opas_alert_queue.owner%type,
                       p_message       opas_alert_queue.message%type,
                       p_link_page     opas_alert_queue.link_page%type,
@@ -11,8 +12,8 @@ PACKAGE BODY COREMOD_ALERTS AS
   BEGIN
 
    INSERT INTO opas_alert_queue
-            ( alert_type,     owner,   message,   link_page,   link_param, created,      viewed, status)
-     VALUES ( p_alert_type, p_owner, p_message, p_link_page, p_link_param, systimestamp, null,   'New') returning alert_id into p_alert_id;
+            ( alert_type,     owner,   message,   link_page,   link_param, created,   viewed, status)
+     VALUES ( p_alert_type, p_owner, p_message, p_link_page, p_link_param, p_created /*to_timestamp_tz(p_created,gTSWTZFMT)*/, null,   'New') returning alert_id into p_alert_id;
 
   END add_alert;
 

@@ -72,14 +72,24 @@ owner               varchar2(128)    default 'PUBLIC'      not null,
 message             varchar2(4000)                         not null,
 link_page           number,
 link_param          varchar2(128),
-created             timestamp                              not null,
+created             timestamp WITH TIME ZONE               not null,
 viewed              timestamp,
 status              varchar2(100)    default 'NEW'         not null --New, Viewed
 );
 
 create or replace force view v$opas_alert_queue as 
-select *
-  from opas_alert_queue
+select 
+  x.*,
+  to_char(CREATED_HH,'YYYY-MM-DD HH24') || ' ' || TZHH ||':'||TZMI CREATED_HHTZ,
+  to_char(CREATED_DD,'YYYY-MM-DD') || ' ' || TZHH ||':'||TZMI CREATED_DDTZ
+from (
+select 
+       ALERT_ID,OWNER,MESSAGE,LINK_PAGE,LINK_PARAM,CREATED,VIEWED,STATUS,ALERT_TYPE,
+	   trunc(created,'hh') CREATED_HH,
+       trunc(created,'dd') CREATED_DD,
+       case when instr(EXTRACT(TIMEZONE_HOUR FROM created),'-')>0 then '-'||lpad(ltrim(EXTRACT(TIMEZONE_HOUR FROM created),'-'),2,'0')else lpad(EXTRACT(TIMEZONE_HOUR FROM created),2,'0') end TZHH, 
+       lpad(EXTRACT(TIMEZONE_MINUTE FROM created),2,'0') TZMI
+  from opas_alert_queue) x
  where owner = decode(owner,'PUBLIC', owner, nvl(v('APP_USER'),'~^'));
 ---------------------------------------------------------------------------------------------
 -- database link dictionary
@@ -125,115 +135,425 @@ last_updated        timestamp         default systimestamp);
 
 create unique index idx_opas_dblink_cache on opas_db_link_cache(dblink,key);
 -------------------------------
-create table opas_db_link_v$db
-as
-select cast('' as varchar2(128)) dblink,
-       'Y' is_actual,
-       systimestamp actual_since,
-       x.*
-  from v$database x
- where 1=2;
+CREATE TABLE OPAS_DB_LINK_V$DB 
+   (DBLINK VARCHAR2(128 BYTE), 
+	IS_ACTUAL CHAR(1 BYTE), 
+	ACTUAL_SINCE TIMESTAMP (6) WITH TIME ZONE, 
+	DBID NUMBER, 
+	NAME VARCHAR2(9 BYTE), 
+	CREATED DATE, 
+	RESETLOGS_CHANGE# NUMBER, 
+	RESETLOGS_TIME DATE, 
+	PRIOR_RESETLOGS_CHANGE# NUMBER, 
+	PRIOR_RESETLOGS_TIME DATE, 
+	LOG_MODE VARCHAR2(12 BYTE), 
+	CHECKPOINT_CHANGE# NUMBER, 
+	ARCHIVE_CHANGE# NUMBER, 
+	CONTROLFILE_TYPE VARCHAR2(7 BYTE), 
+	CONTROLFILE_CREATED DATE, 
+	CONTROLFILE_SEQUENCE# NUMBER, 
+	CONTROLFILE_CHANGE# NUMBER, 
+	CONTROLFILE_TIME DATE, 
+	OPEN_RESETLOGS VARCHAR2(11 BYTE), 
+	VERSION_TIME DATE, 
+	OPEN_MODE VARCHAR2(20 BYTE), 
+	PROTECTION_MODE VARCHAR2(20 BYTE), 
+	PROTECTION_LEVEL VARCHAR2(20 BYTE), 
+	REMOTE_ARCHIVE VARCHAR2(8 BYTE), 
+	ACTIVATION# NUMBER, 
+	SWITCHOVER# NUMBER, 
+	DATABASE_ROLE VARCHAR2(16 BYTE), 
+	ARCHIVELOG_CHANGE# NUMBER, 
+	ARCHIVELOG_COMPRESSION VARCHAR2(8 BYTE), 
+	SWITCHOVER_STATUS VARCHAR2(20 BYTE), 
+	DATAGUARD_BROKER VARCHAR2(8 BYTE), 
+	GUARD_STATUS VARCHAR2(7 BYTE), 
+	SUPPLEMENTAL_LOG_DATA_MIN VARCHAR2(8 BYTE), 
+	SUPPLEMENTAL_LOG_DATA_PK VARCHAR2(3 BYTE), 
+	SUPPLEMENTAL_LOG_DATA_UI VARCHAR2(3 BYTE), 
+	FORCE_LOGGING VARCHAR2(39 BYTE), 
+	PLATFORM_ID NUMBER, 
+	PLATFORM_NAME VARCHAR2(101 BYTE), 
+	RECOVERY_TARGET_INCARNATION# NUMBER, 
+	LAST_OPEN_INCARNATION# NUMBER, 
+	CURRENT_SCN NUMBER, 
+	FLASHBACK_ON VARCHAR2(18 BYTE), 
+	SUPPLEMENTAL_LOG_DATA_FK VARCHAR2(3 BYTE), 
+	SUPPLEMENTAL_LOG_DATA_ALL VARCHAR2(3 BYTE), 
+	DB_UNIQUE_NAME VARCHAR2(30 BYTE), 
+	STANDBY_BECAME_PRIMARY_SCN NUMBER, 
+	FS_FAILOVER_STATUS VARCHAR2(22 BYTE), 
+	FS_FAILOVER_CURRENT_TARGET VARCHAR2(30 BYTE), 
+	FS_FAILOVER_THRESHOLD NUMBER, 
+	FS_FAILOVER_OBSERVER_PRESENT VARCHAR2(7 BYTE), 
+	FS_FAILOVER_OBSERVER_HOST VARCHAR2(512 BYTE), 
+	CONTROLFILE_CONVERTED VARCHAR2(3 BYTE), 
+	PRIMARY_DB_UNIQUE_NAME VARCHAR2(30 BYTE), 
+	SUPPLEMENTAL_LOG_DATA_PL VARCHAR2(3 BYTE), 
+	MIN_REQUIRED_CAPTURE_CHANGE# NUMBER, 
+	CDB VARCHAR2(3 BYTE), 
+	CON_ID NUMBER, 
+	PENDING_ROLE_CHANGE_TASKS VARCHAR2(512 BYTE), 
+	CON_DBID NUMBER, 
+	FORCE_FULL_DB_CACHING VARCHAR2(3 BYTE));
 
 create index idx_opas_dbl_db_dblink on opas_db_link_v$db(dblink,is_actual);
 alter table opas_db_link_v$db add constraint fk_v$db_dblink foreign key (dblink) references opas_db_links(db_link_name) on delete cascade;
 
-create global temporary table opas_dbl_tmp_v$database on commit delete rows
-as select * from v$database where 1=2;
+CREATE GLOBAL TEMPORARY TABLE OPAS_DBL_TMP_V$DATABASE 
+   (DBID NUMBER, 
+	NAME VARCHAR2(9 BYTE), 
+	CREATED DATE, 
+	RESETLOGS_CHANGE# NUMBER, 
+	RESETLOGS_TIME DATE, 
+	PRIOR_RESETLOGS_CHANGE# NUMBER, 
+	PRIOR_RESETLOGS_TIME DATE, 
+	LOG_MODE VARCHAR2(12 BYTE), 
+	CHECKPOINT_CHANGE# NUMBER, 
+	ARCHIVE_CHANGE# NUMBER, 
+	CONTROLFILE_TYPE VARCHAR2(7 BYTE), 
+	CONTROLFILE_CREATED DATE, 
+	CONTROLFILE_SEQUENCE# NUMBER, 
+	CONTROLFILE_CHANGE# NUMBER, 
+	CONTROLFILE_TIME DATE, 
+	OPEN_RESETLOGS VARCHAR2(11 BYTE), 
+	VERSION_TIME DATE, 
+	OPEN_MODE VARCHAR2(20 BYTE), 
+	PROTECTION_MODE VARCHAR2(20 BYTE), 
+	PROTECTION_LEVEL VARCHAR2(20 BYTE), 
+	REMOTE_ARCHIVE VARCHAR2(8 BYTE), 
+	ACTIVATION# NUMBER, 
+	SWITCHOVER# NUMBER, 
+	DATABASE_ROLE VARCHAR2(16 BYTE), 
+	ARCHIVELOG_CHANGE# NUMBER, 
+	ARCHIVELOG_COMPRESSION VARCHAR2(8 BYTE), 
+	SWITCHOVER_STATUS VARCHAR2(20 BYTE), 
+	DATAGUARD_BROKER VARCHAR2(8 BYTE), 
+	GUARD_STATUS VARCHAR2(7 BYTE), 
+	SUPPLEMENTAL_LOG_DATA_MIN VARCHAR2(8 BYTE), 
+	SUPPLEMENTAL_LOG_DATA_PK VARCHAR2(3 BYTE), 
+	SUPPLEMENTAL_LOG_DATA_UI VARCHAR2(3 BYTE), 
+	FORCE_LOGGING VARCHAR2(39 BYTE), 
+	PLATFORM_ID NUMBER, 
+	PLATFORM_NAME VARCHAR2(101 BYTE), 
+	RECOVERY_TARGET_INCARNATION# NUMBER, 
+	LAST_OPEN_INCARNATION# NUMBER, 
+	CURRENT_SCN NUMBER, 
+	FLASHBACK_ON VARCHAR2(18 BYTE), 
+	SUPPLEMENTAL_LOG_DATA_FK VARCHAR2(3 BYTE), 
+	SUPPLEMENTAL_LOG_DATA_ALL VARCHAR2(3 BYTE), 
+	DB_UNIQUE_NAME VARCHAR2(30 BYTE), 
+	STANDBY_BECAME_PRIMARY_SCN NUMBER, 
+	FS_FAILOVER_STATUS VARCHAR2(22 BYTE), 
+	FS_FAILOVER_CURRENT_TARGET VARCHAR2(30 BYTE), 
+	FS_FAILOVER_THRESHOLD NUMBER, 
+	FS_FAILOVER_OBSERVER_PRESENT VARCHAR2(7 BYTE), 
+	FS_FAILOVER_OBSERVER_HOST VARCHAR2(512 BYTE), 
+	CONTROLFILE_CONVERTED VARCHAR2(3 BYTE), 
+	PRIMARY_DB_UNIQUE_NAME VARCHAR2(30 BYTE), 
+	SUPPLEMENTAL_LOG_DATA_PL VARCHAR2(3 BYTE), 
+	MIN_REQUIRED_CAPTURE_CHANGE# NUMBER, 
+	CDB VARCHAR2(3 BYTE), 
+	CON_ID NUMBER, 
+	PENDING_ROLE_CHANGE_TASKS VARCHAR2(512 BYTE), 
+	CON_DBID NUMBER, 
+	FORCE_FULL_DB_CACHING VARCHAR2(3 BYTE)
+   ) ON COMMIT DELETE ROWS ;
+
 ----
-create table opas_db_link_v$pdbs
-as
-select cast('' as varchar2(128)) dblink,
-       'Y' is_actual,
-       systimestamp actual_since,
-       x.*
-  from v$pdbs x
- where 1=2;
+CREATE TABLE OPAS_DB_LINK_V$PDBS 
+   (DBLINK VARCHAR2(128 BYTE), 
+	IS_ACTUAL CHAR(1 BYTE), 
+	ACTUAL_SINCE TIMESTAMP (6) WITH TIME ZONE, 
+	CON_ID NUMBER, 
+	DBID NUMBER, 
+	CON_UID NUMBER, 
+	GUID RAW(16), 
+	NAME VARCHAR2(128 BYTE), 
+	OPEN_MODE VARCHAR2(10 BYTE), 
+	RESTRICTED VARCHAR2(3 BYTE), 
+	OPEN_TIME TIMESTAMP (3) WITH TIME ZONE, 
+	CREATE_SCN NUMBER, 
+	TOTAL_SIZE NUMBER, 
+	BLOCK_SIZE NUMBER, 
+	RECOVERY_STATUS VARCHAR2(8 BYTE), 
+	SNAPSHOT_PARENT_CON_ID NUMBER, 
+	APPLICATION_ROOT VARCHAR2(3 BYTE), 
+	APPLICATION_PDB VARCHAR2(3 BYTE), 
+	APPLICATION_SEED VARCHAR2(3 BYTE), 
+	APPLICATION_ROOT_CON_ID NUMBER, 
+	APPLICATION_ROOT_CLONE VARCHAR2(3 BYTE), 
+	PROXY_PDB VARCHAR2(3 BYTE), 
+	LOCAL_UNDO NUMBER, 
+	UNDO_SCN NUMBER, 
+	UNDO_TIMESTAMP DATE, 
+	CREATION_TIME DATE, 
+	DIAGNOSTICS_SIZE NUMBER, 
+	PDB_COUNT NUMBER, 
+	AUDIT_FILES_SIZE NUMBER, 
+	MAX_SIZE NUMBER, 
+	MAX_DIAGNOSTICS_SIZE NUMBER, 
+	MAX_AUDIT_SIZE NUMBER, 
+	LAST_CHANGED_BY VARCHAR2(11 BYTE), 
+	TEMPLATE VARCHAR2(3 BYTE), 
+	TENANT_ID VARCHAR2(256 BYTE), 
+	UPGRADE_LEVEL NUMBER, 
+	GUID_BASE64 VARCHAR2(30 BYTE)
+   );
 
 create index idx_opas_dbl_pdbs_dblink on opas_db_link_v$pdbs(dblink,is_actual);
 alter table opas_db_link_v$pdbs add constraint fk_v$pdbs_dblink foreign key (dblink) references opas_db_links(db_link_name) on delete cascade;
 
-create global temporary table opas_dbl_tmp_v$pdbs on commit delete rows
-as select * from v$pdbs where 1=2;
+CREATE GLOBAL TEMPORARY TABLE OPAS_DBL_TMP_V$PDBS 
+   (CON_ID NUMBER, 
+	DBID NUMBER, 
+	CON_UID NUMBER, 
+	GUID RAW(16), 
+	NAME VARCHAR2(128 BYTE), 
+	OPEN_MODE VARCHAR2(10 BYTE), 
+	RESTRICTED VARCHAR2(3 BYTE), 
+	OPEN_TIME TIMESTAMP (3) WITH TIME ZONE, 
+	CREATE_SCN NUMBER, 
+	TOTAL_SIZE NUMBER, 
+	BLOCK_SIZE NUMBER, 
+	RECOVERY_STATUS VARCHAR2(8 BYTE), 
+	SNAPSHOT_PARENT_CON_ID NUMBER, 
+	APPLICATION_ROOT VARCHAR2(3 BYTE), 
+	APPLICATION_PDB VARCHAR2(3 BYTE), 
+	APPLICATION_SEED VARCHAR2(3 BYTE), 
+	APPLICATION_ROOT_CON_ID NUMBER, 
+	APPLICATION_ROOT_CLONE VARCHAR2(3 BYTE), 
+	PROXY_PDB VARCHAR2(3 BYTE), 
+	LOCAL_UNDO NUMBER, 
+	UNDO_SCN NUMBER, 
+	UNDO_TIMESTAMP DATE, 
+	CREATION_TIME DATE, 
+	DIAGNOSTICS_SIZE NUMBER, 
+	PDB_COUNT NUMBER, 
+	AUDIT_FILES_SIZE NUMBER, 
+	MAX_SIZE NUMBER, 
+	MAX_DIAGNOSTICS_SIZE NUMBER, 
+	MAX_AUDIT_SIZE NUMBER, 
+	LAST_CHANGED_BY VARCHAR2(11 BYTE), 
+	TEMPLATE VARCHAR2(3 BYTE), 
+	TENANT_ID VARCHAR2(256 BYTE), 
+	UPGRADE_LEVEL NUMBER, 
+	GUID_BASE64 VARCHAR2(30 BYTE)
+   ) ON COMMIT DELETE ROWS ;
 ----
-create table opas_db_link_v$inst
-as 
-select cast('' as varchar2(128)) dblink,
-       x.*
-  from gv$instance x
- where 1=2;
 
+CREATE TABLE OPAS_DB_LINK_V$INST 
+   (DBLINK VARCHAR2(128 BYTE), 
+	INST_ID NUMBER, 
+	INSTANCE_NUMBER NUMBER, 
+	INSTANCE_NAME VARCHAR2(16 BYTE), 
+	HOST_NAME VARCHAR2(64 BYTE), 
+	VERSION VARCHAR2(17 BYTE), 
+	VERSION_LEGACY VARCHAR2(17 BYTE), 
+	VERSION_FULL VARCHAR2(17 BYTE), 
+	STARTUP_TIME DATE, 
+	STATUS VARCHAR2(12 BYTE), 
+	PARALLEL VARCHAR2(3 BYTE), 
+	THREAD# NUMBER, 
+	ARCHIVER VARCHAR2(7 BYTE), 
+	LOG_SWITCH_WAIT VARCHAR2(15 BYTE), 
+	LOGINS VARCHAR2(10 BYTE), 
+	SHUTDOWN_PENDING VARCHAR2(3 BYTE), 
+	DATABASE_STATUS VARCHAR2(17 BYTE), 
+	INSTANCE_ROLE VARCHAR2(18 BYTE), 
+	ACTIVE_STATE VARCHAR2(9 BYTE), 
+	BLOCKED VARCHAR2(3 BYTE), 
+	CON_ID NUMBER, 
+	INSTANCE_MODE VARCHAR2(11 BYTE), 
+	EDITION VARCHAR2(7 BYTE), 
+	FAMILY VARCHAR2(80 BYTE), 
+	DATABASE_TYPE VARCHAR2(15 BYTE)
+   );
+   
 create index idx_opas_dbl_vinst_dblink on opas_db_link_v$inst(dblink);
 alter table opas_db_link_v$inst add constraint fk_v$inst_dblink foreign key (dblink) references opas_db_links(db_link_name) on delete cascade;
 
-create global temporary table opas_dbl_tmp_v$inst on commit delete rows
-as select * from gv$instance where 1=2;
+CREATE GLOBAL TEMPORARY TABLE OPAS_DBL_TMP_V$INST 
+   (INST_ID NUMBER, 
+	INSTANCE_NUMBER NUMBER, 
+	INSTANCE_NAME VARCHAR2(16 BYTE), 
+	HOST_NAME VARCHAR2(64 BYTE), 
+	VERSION VARCHAR2(17 BYTE), 
+	VERSION_LEGACY VARCHAR2(17 BYTE), 
+	VERSION_FULL VARCHAR2(17 BYTE), 
+	STARTUP_TIME DATE, 
+	STATUS VARCHAR2(12 BYTE), 
+	PARALLEL VARCHAR2(3 BYTE), 
+	THREAD# NUMBER, 
+	ARCHIVER VARCHAR2(7 BYTE), 
+	LOG_SWITCH_WAIT VARCHAR2(15 BYTE), 
+	LOGINS VARCHAR2(10 BYTE), 
+	SHUTDOWN_PENDING VARCHAR2(3 BYTE), 
+	DATABASE_STATUS VARCHAR2(17 BYTE), 
+	INSTANCE_ROLE VARCHAR2(18 BYTE), 
+	ACTIVE_STATE VARCHAR2(9 BYTE), 
+	BLOCKED VARCHAR2(3 BYTE), 
+	CON_ID NUMBER, 
+	INSTANCE_MODE VARCHAR2(11 BYTE), 
+	EDITION VARCHAR2(7 BYTE), 
+	FAMILY VARCHAR2(80 BYTE), 
+	DATABASE_TYPE VARCHAR2(15 BYTE)
+   ) ON COMMIT DELETE ROWS ;
 ----
-create table opas_db_link_dbh_inst
-as
-select cast('' as varchar2(128)) dblink,
-       x.*
-  from dba_hist_database_instance x
- where 1=2;
+CREATE TABLE OPAS_DB_LINK_DBH_INST 
+   (DBLINK VARCHAR2(128 BYTE), 
+	DBID NUMBER, 
+	INSTANCE_NUMBER NUMBER, 
+	STARTUP_TIME TIMESTAMP (3), 
+	PARALLEL VARCHAR2(3 BYTE), 
+	VERSION VARCHAR2(17 BYTE), 
+	DB_NAME VARCHAR2(9 BYTE), 
+	INSTANCE_NAME VARCHAR2(16 BYTE), 
+	HOST_NAME VARCHAR2(64 BYTE), 
+	LAST_ASH_SAMPLE_ID NUMBER, 
+	PLATFORM_NAME VARCHAR2(101 BYTE), 
+	CDB VARCHAR2(3 BYTE), 
+	EDITION VARCHAR2(7 BYTE), 
+	DB_UNIQUE_NAME VARCHAR2(30 BYTE), 
+	DATABASE_ROLE VARCHAR2(16 BYTE), 
+	CDB_ROOT_DBID NUMBER, 
+	CON_ID NUMBER, 
+	STARTUP_TIME_TZ TIMESTAMP (3) WITH TIME ZONE);
 
 create index idx_opas_dbl_inst_dblink on opas_db_link_dbh_inst(dblink);
 alter table opas_db_link_dbh_inst add constraint fk_dbh_inst_dblink foreign key (dblink) references opas_db_links(db_link_name) on delete cascade;
 
-create global temporary table opas_dbl_tmp_awrinst on commit delete rows
-as select * from DBA_HIST_DATABASE_INSTANCE where 1=2;
+CREATE GLOBAL TEMPORARY TABLE OPAS_DBL_TMP_AWRINST 
+   (DBID NUMBER, 
+	INSTANCE_NUMBER NUMBER, 
+	STARTUP_TIME TIMESTAMP (3), 
+	PARALLEL VARCHAR2(3 BYTE), 
+	VERSION VARCHAR2(17 BYTE), 
+	DB_NAME VARCHAR2(9 BYTE), 
+	INSTANCE_NAME VARCHAR2(16 BYTE), 
+	HOST_NAME VARCHAR2(64 BYTE), 
+	LAST_ASH_SAMPLE_ID NUMBER, 
+	PLATFORM_NAME VARCHAR2(101 BYTE), 
+	CDB VARCHAR2(3 BYTE), 
+	EDITION VARCHAR2(7 BYTE), 
+	DB_UNIQUE_NAME VARCHAR2(30 BYTE), 
+	DATABASE_ROLE VARCHAR2(16 BYTE), 
+	CDB_ROOT_DBID NUMBER, 
+	CON_ID NUMBER, 
+	STARTUP_TIME_TZ TIMESTAMP (3) WITH TIME ZONE
+   ) ON COMMIT DELETE ROWS ;
 ----
-create table opas_db_link_reghst
-as
-select cast('' as varchar2(128)) dblink,
-       x.*
-  from dba_registry_history x
- where 1=2;
+CREATE TABLE OPAS_DB_LINK_REGHST 
+   (DBLINK VARCHAR2(128 BYTE), 
+	ACTION_TIME TIMESTAMP (6), 
+	ACTION VARCHAR2(30 BYTE), 
+	NAMESPACE VARCHAR2(30 BYTE), 
+	VERSION VARCHAR2(30 BYTE), 
+	ID NUMBER, 
+	COMMENTS VARCHAR2(255 BYTE), 
+	BUNDLE_SERIES VARCHAR2(30 BYTE));
 
 create index idx_opas_db_link_reg_dblink on opas_db_link_reghst(dblink);
 alter table opas_db_link_reghst add constraint fk_dbl_reghst_dblink foreign key (dblink) references opas_db_links(db_link_name) on delete cascade;
 
-create global temporary table opas_dbl_tmp_reghst on commit delete rows
-as select * from DBA_REGISTRY_HISTORY where 1=2;
+CREATE GLOBAL TEMPORARY TABLE OPAS_DBL_TMP_REGHST 
+   (	ACTION_TIME TIMESTAMP (6), 
+	ACTION VARCHAR2(30 BYTE), 
+	NAMESPACE VARCHAR2(30 BYTE), 
+	VERSION VARCHAR2(30 BYTE), 
+	ID NUMBER, 
+	COMMENTS VARCHAR2(255 BYTE), 
+	BUNDLE_SERIES VARCHAR2(30 BYTE)
+   ) ON COMMIT DELETE ROWS ;
 ----
-create table opas_db_link_sqlptchhst
-as
-select cast('' as varchar2(128)) dblink,
-       x.*
-  from DBA_REGISTRY_SQLPATCH x
- where 1=2;
 
-alter table opas_db_link_sqlptchhst modify
-  (PATCH_TYPE null,
-  STATUS null,
-  ACTION_TIME null,
-  LOGFILE null);
-
+CREATE TABLE OPAS_DB_LINK_SQLPTCHHST 
+   (DBLINK VARCHAR2(128 BYTE), 
+	INSTALL_ID NUMBER, 
+	PATCH_ID NUMBER, 
+	PATCH_UID NUMBER, 
+	PATCH_TYPE VARCHAR2(10 BYTE), 
+	ACTION VARCHAR2(15 BYTE), 
+	STATUS VARCHAR2(25 BYTE), 
+	ACTION_TIME TIMESTAMP (6), 
+	DESCRIPTION VARCHAR2(100 BYTE), 
+	LOGFILE VARCHAR2(500 BYTE), 
+	RU_LOGFILE VARCHAR2(500 BYTE), 
+	FLAGS VARCHAR2(10 BYTE), 
+	PATCH_DESCRIPTOR SYS.XMLTYPE , 
+	PATCH_DIRECTORY BLOB, 
+	SOURCE_VERSION VARCHAR2(15 BYTE), 
+	SOURCE_BUILD_DESCRIPTION VARCHAR2(80 BYTE), 
+	SOURCE_BUILD_TIMESTAMP TIMESTAMP (6), 
+	TARGET_VERSION VARCHAR2(15 BYTE), 
+	TARGET_BUILD_DESCRIPTION VARCHAR2(80 BYTE), 
+	TARGET_BUILD_TIMESTAMP TIMESTAMP (6)
+   );
+   
 create index idx_opas_db_link_ptch_dblink on opas_db_link_sqlptchhst(dblink);
 alter table opas_db_link_sqlptchhst add constraint fk_dbl_ptch_dblink foreign key (dblink) references opas_db_links(db_link_name) on delete cascade;
 
-create global temporary table opas_dbl_tmp_sqlptchhst on commit delete rows
-as select * from DBA_REGISTRY_SQLPATCH where 1=2;
 
-alter table opas_dbl_tmp_sqlptchhst modify
-  (PATCH_TYPE null,
-  STATUS null,
-  ACTION_TIME null,
-  LOGFILE null);
-
+CREATE GLOBAL TEMPORARY TABLE OPAS_DBL_TMP_SQLPTCHHST 
+   (INSTALL_ID NUMBER, 
+	PATCH_ID NUMBER, 
+	PATCH_UID NUMBER, 
+	PATCH_TYPE VARCHAR2(10 BYTE), 
+	ACTION VARCHAR2(15 BYTE), 
+	STATUS VARCHAR2(25 BYTE), 
+	ACTION_TIME TIMESTAMP (6), 
+	DESCRIPTION VARCHAR2(100 BYTE), 
+	LOGFILE VARCHAR2(500 BYTE), 
+	RU_LOGFILE VARCHAR2(500 BYTE), 
+	FLAGS VARCHAR2(10 BYTE), 
+	PATCH_DESCRIPTOR SYS.XMLTYPE , 
+	PATCH_DIRECTORY BLOB, 
+	SOURCE_VERSION VARCHAR2(15 BYTE), 
+	SOURCE_BUILD_DESCRIPTION VARCHAR2(80 BYTE), 
+	SOURCE_BUILD_TIMESTAMP TIMESTAMP (6), 
+	TARGET_VERSION VARCHAR2(15 BYTE), 
+	TARGET_BUILD_DESCRIPTION VARCHAR2(80 BYTE), 
+	TARGET_BUILD_TIMESTAMP TIMESTAMP (6)
+   ) ON COMMIT DELETE ROWS 
+;
 ----
-create table opas_db_link_awrsnaps
-as
-select cast('' as varchar2(128)) dblink,
-       x.*
-  from dba_hist_snapshot x
- where 1=2;
+CREATE TABLE OPAS_DB_LINK_AWRSNAPS 
+   (DBLINK VARCHAR2(128 BYTE), 
+	SNAP_ID NUMBER, 
+	DBID NUMBER, 
+	INSTANCE_NUMBER NUMBER, 
+	STARTUP_TIME TIMESTAMP (3), 
+	BEGIN_INTERVAL_TIME TIMESTAMP (3), 
+	END_INTERVAL_TIME TIMESTAMP (3), 
+	FLUSH_ELAPSED INTERVAL DAY (5) TO SECOND (1), 
+	SNAP_LEVEL NUMBER, 
+	ERROR_COUNT NUMBER, 
+	SNAP_FLAG NUMBER, 
+	SNAP_TIMEZONE INTERVAL DAY (0) TO SECOND (0), 
+	BEGIN_INTERVAL_TIME_TZ TIMESTAMP (3) WITH TIME ZONE, 
+	END_INTERVAL_TIME_TZ TIMESTAMP (3) WITH TIME ZONE, 
+	CON_ID NUMBER, 
+	INCARNATION# NUMBER);
 
-alter table opas_db_link_awrsnaps add incarnation# number;
 create index idx_opas_db_link_awrsn_dblink on opas_db_link_awrsnaps(dblink);
 alter table opas_db_link_awrsnaps add constraint fk_dbl_awrsn_dblink foreign key (dblink) references opas_db_links(db_link_name) on delete cascade;
 
-create global temporary table opas_dbl_tmp_awrsnaps on commit preserve rows
-as select * from dba_hist_snapshot where 1=2;
-
+CREATE GLOBAL TEMPORARY TABLE OPAS_DBL_TMP_AWRSNAPS 
+   (SNAP_ID NUMBER, 
+	DBID NUMBER, 
+	INSTANCE_NUMBER NUMBER, 
+	STARTUP_TIME TIMESTAMP (3), 
+	BEGIN_INTERVAL_TIME TIMESTAMP (3), 
+	END_INTERVAL_TIME TIMESTAMP (3), 
+	FLUSH_ELAPSED INTERVAL DAY (5) TO SECOND (1), 
+	SNAP_LEVEL NUMBER, 
+	ERROR_COUNT NUMBER, 
+	SNAP_FLAG NUMBER, 
+	SNAP_TIMEZONE INTERVAL DAY (0) TO SECOND (0), 
+	BEGIN_INTERVAL_TIME_TZ TIMESTAMP (3) WITH TIME ZONE, 
+	END_INTERVAL_TIME_TZ TIMESTAMP (3) WITH TIME ZONE, 
+	CON_ID NUMBER
+   ) ON COMMIT PRESERVE ROWS ;
 ---------------------------------------------------------------------------------------------
 -- file storage
 ---------------------------------------------------------------------------------------------
@@ -621,7 +941,7 @@ create table opas_ot_memo (
 memo_id           number                                             primary key,
 memo_content      number                                             references opas_files ( file_id ));
 
-alter table opas_ot_memo add constraint fk_attach_obj foreign key (memo_id) references opas_objects(obj_id);
+alter table opas_ot_memo add constraint fk_memo_obj foreign key (memo_id) references opas_objects(obj_id);
 
 create index idx_opas_memo_cntn  on opas_ot_memo(memo_content);
 
@@ -657,7 +977,7 @@ awr_snap_start      number,
 awr_snap_end        number,
 incarnation#        number
 );
-alter table opas_ot_sql_data add incarnation# number;
+
 alter table opas_ot_sql_data ROW STORE COMPRESS ADVANCED;
 
 create index idx_opas_sql_data_sqlid on opas_ot_sql_data(sql_id) compress;
@@ -705,18 +1025,56 @@ create index idx_opas_sql_ns_dp    on opas_ot_sql_nonshared(sql_data_point_id);
 create index idx_opas_sql_ns_sqlid on opas_ot_sql_nonshared(sql_id) compress;
 
 ----
-create table opas_ot_sql_vsql as
-select 0 sql_data_point_id, 
-sql_id, child_number, plan_hash_value, optimizer_env_hash_value, inst_id, force_matching_signature,
-old_hash_value, program_id, program_line#, parsing_schema_name, module, action, first_load_time,
-last_load_time, last_active_time, is_obsolete, is_bind_sensitive, is_bind_aware,
-is_shareable, sql_profile, sql_patch, sql_plan_baseline, px_servers_executions, physical_read_requests,
-physical_read_bytes, physical_write_requests, physical_write_bytes, parse_calls, executions,
-fetches, rows_processed, end_of_fetch_count, cpu_time, elapsed_time, disk_reads, buffer_gets,
-direct_writes, application_wait_time, concurrency_wait_time, cluster_wait_time, user_io_wait_time,
-plsql_exec_time, java_exec_time, io_cell_offload_eligible_bytes, io_interconnect_bytes, 
-optimized_phy_read_requests, io_cell_uncompressed_bytes, io_cell_offload_returned_bytes
-from gv$sql s where 1=2;
+CREATE TABLE OPAS_OT_SQL_VSQL 
+   (SQL_DATA_POINT_ID NUMBER, 
+	SQL_ID VARCHAR2(13 BYTE), 
+	CHILD_NUMBER NUMBER, 
+	PLAN_HASH_VALUE NUMBER, 
+	OPTIMIZER_ENV_HASH_VALUE NUMBER, 
+	INST_ID NUMBER, 
+	FORCE_MATCHING_SIGNATURE NUMBER, 
+	OLD_HASH_VALUE NUMBER, 
+	PROGRAM_ID NUMBER, 
+	PROGRAM_LINE# NUMBER, 
+	PARSING_SCHEMA_NAME VARCHAR2(128 BYTE), 
+	MODULE VARCHAR2(64 BYTE), 
+	ACTION VARCHAR2(64 BYTE), 
+	FIRST_LOAD_TIME VARCHAR2(76 BYTE), 
+	LAST_LOAD_TIME VARCHAR2(76 BYTE), 
+	LAST_ACTIVE_TIME DATE, 
+	IS_OBSOLETE VARCHAR2(1 BYTE), 
+	IS_BIND_SENSITIVE VARCHAR2(1 BYTE), 
+	IS_BIND_AWARE VARCHAR2(1 BYTE), 
+	IS_SHAREABLE VARCHAR2(1 BYTE), 
+	SQL_PROFILE VARCHAR2(64 BYTE), 
+	SQL_PATCH VARCHAR2(128 BYTE), 
+	SQL_PLAN_BASELINE VARCHAR2(128 BYTE), 
+	PX_SERVERS_EXECUTIONS NUMBER, 
+	PHYSICAL_READ_REQUESTS NUMBER, 
+	PHYSICAL_READ_BYTES NUMBER, 
+	PHYSICAL_WRITE_REQUESTS NUMBER, 
+	PHYSICAL_WRITE_BYTES NUMBER, 
+	PARSE_CALLS NUMBER, 
+	EXECUTIONS NUMBER, 
+	FETCHES NUMBER, 
+	ROWS_PROCESSED NUMBER, 
+	END_OF_FETCH_COUNT NUMBER, 
+	CPU_TIME NUMBER, 
+	ELAPSED_TIME NUMBER, 
+	DISK_READS NUMBER, 
+	BUFFER_GETS NUMBER, 
+	DIRECT_WRITES NUMBER, 
+	APPLICATION_WAIT_TIME NUMBER, 
+	CONCURRENCY_WAIT_TIME NUMBER, 
+	CLUSTER_WAIT_TIME NUMBER, 
+	USER_IO_WAIT_TIME NUMBER, 
+	PLSQL_EXEC_TIME NUMBER, 
+	JAVA_EXEC_TIME NUMBER, 
+	IO_CELL_OFFLOAD_ELIGIBLE_BYTES NUMBER, 
+	IO_INTERCONNECT_BYTES NUMBER, 
+	OPTIMIZED_PHY_READ_REQUESTS NUMBER, 
+	IO_CELL_UNCOMPRESSED_BYTES NUMBER, 
+	IO_CELL_OFFLOAD_RETURNED_BYTES NUMBER);
 
 alter table opas_ot_sql_vsql ROW STORE COMPRESS ADVANCED;
 alter table opas_ot_sql_vsql add constraint fk_sql_vsql_dp    foreign key (sql_data_point_id) references opas_ot_sql_data(sql_data_point_id) on delete cascade;
@@ -725,10 +1083,13 @@ alter table opas_ot_sql_vsql add constraint fk_sql_vsql_sqlid foreign key (sql_i
 create index idx_opas_sql_vsql_dp    on opas_ot_sql_vsql(sql_data_point_id);
 create index idx_opas_sql_vsql_sqlid on opas_ot_sql_vsql(sql_id) compress;
 
-create table opas_ot_sql_vsql_objs as
-select 0 sql_data_point_id, 0 child_number,
-object_id, owner, object_type, object_name
-from dba_objects s where 1=2;
+CREATE TABLE OPAS_OT_SQL_VSQL_OBJS 
+   (SQL_DATA_POINT_ID NUMBER, 
+	CHILD_NUMBER NUMBER, 
+	OBJECT_ID NUMBER, 
+	OWNER VARCHAR2(128 BYTE), 
+	OBJECT_TYPE VARCHAR2(23 BYTE), 
+	OBJECT_NAME VARCHAR2(128 BYTE));
 
 alter table opas_ot_sql_vsql_objs ROW STORE COMPRESS ADVANCED;
 alter table opas_ot_sql_vsql_objs add constraint fk_sql_vsql_objs_dp foreign key (sql_data_point_id) references opas_ot_sql_data(sql_data_point_id) on delete cascade;
@@ -737,24 +1098,91 @@ create index idx_opas_sql_vsql_objs_dp on opas_ot_sql_vsql_objs(sql_data_point_i
 ----------------------------------------------------------------------------------------------------------------
 create sequence opas_ot_sq_plan_id;
 
-create table opas_ot_sql_plans as 
-select
- 0 plan_id, 
- cast('qazwsxedcrqazwsxedcr' as varchar2(20)) plan_source,
- systimestamp created,
- x.sql_id
-from gv$sql_plan_statistics_all x where 1=2;
+CREATE TABLE OPAS_OT_SQL_PLANS 
+   (PLAN_ID NUMBER, 
+	CREATED TIMESTAMP (6) WITH TIME ZONE, 
+	SQL_ID VARCHAR2(13 BYTE), 
+	PLAN_SOURCE VARCHAR2(20 BYTE));
 
 alter table opas_ot_sql_plans ROW STORE COMPRESS ADVANCED;
 alter table opas_ot_sql_plans add constraint pk_sql_plan_id primary key(plan_id);
 alter table opas_ot_sql_plans add constraint fk_sql_plans_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
 create index idx_opas_sql_plans_sqlid on opas_ot_sql_plans(sql_id);
 
-create table opas_ot_sql_plan_det as 
-select
- 0 plan_id, 
- x.*
-from gv$sql_plan_statistics_all x where 1=2;
+CREATE TABLE OPAS_OT_SQL_PLAN_DET 
+   (PLAN_ID NUMBER, 
+	INST_ID NUMBER, 
+	ADDRESS RAW(8), 
+	HASH_VALUE NUMBER, 
+	SQL_ID VARCHAR2(13 BYTE), 
+	PLAN_HASH_VALUE NUMBER, 
+	FULL_PLAN_HASH_VALUE NUMBER, 
+	CHILD_ADDRESS RAW(8), 
+	CHILD_NUMBER NUMBER, 
+	TIMESTAMP DATE, 
+	OPERATION VARCHAR2(120 BYTE), 
+	OPTIONS VARCHAR2(120 BYTE), 
+	OBJECT_NODE VARCHAR2(160 BYTE), 
+	OBJECT# NUMBER, 
+	OBJECT_OWNER VARCHAR2(128 BYTE), 
+	OBJECT_NAME VARCHAR2(128 BYTE), 
+	OBJECT_ALIAS VARCHAR2(261 BYTE), 
+	OBJECT_TYPE VARCHAR2(80 BYTE), 
+	OPTIMIZER VARCHAR2(80 BYTE), 
+	ID NUMBER, 
+	PARENT_ID NUMBER, 
+	DEPTH NUMBER, 
+	POSITION NUMBER, 
+	SEARCH_COLUMNS NUMBER, 
+	COST NUMBER, 
+	CARDINALITY NUMBER, 
+	BYTES NUMBER, 
+	OTHER_TAG VARCHAR2(140 BYTE), 
+	PARTITION_START VARCHAR2(256 BYTE), 
+	PARTITION_STOP VARCHAR2(256 BYTE), 
+	PARTITION_ID NUMBER, 
+	OTHER VARCHAR2(4000 BYTE), 
+	DISTRIBUTION VARCHAR2(80 BYTE), 
+	CPU_COST NUMBER, 
+	IO_COST NUMBER, 
+	TEMP_SPACE NUMBER, 
+	ACCESS_PREDICATES VARCHAR2(4000 BYTE), 
+	FILTER_PREDICATES VARCHAR2(4000 BYTE), 
+	PROJECTION VARCHAR2(4000 BYTE), 
+	TIME NUMBER, 
+	QBLOCK_NAME VARCHAR2(128 BYTE), 
+	REMARKS VARCHAR2(4000 BYTE), 
+	OTHER_XML CLOB, 
+	EXECUTIONS NUMBER, 
+	LAST_STARTS NUMBER, 
+	STARTS NUMBER, 
+	LAST_OUTPUT_ROWS NUMBER, 
+	OUTPUT_ROWS NUMBER, 
+	LAST_CR_BUFFER_GETS NUMBER, 
+	CR_BUFFER_GETS NUMBER, 
+	LAST_CU_BUFFER_GETS NUMBER, 
+	CU_BUFFER_GETS NUMBER, 
+	LAST_DISK_READS NUMBER, 
+	DISK_READS NUMBER, 
+	LAST_DISK_WRITES NUMBER, 
+	DISK_WRITES NUMBER, 
+	LAST_ELAPSED_TIME NUMBER, 
+	ELAPSED_TIME NUMBER, 
+	POLICY VARCHAR2(40 BYTE), 
+	ESTIMATED_OPTIMAL_SIZE NUMBER, 
+	ESTIMATED_ONEPASS_SIZE NUMBER, 
+	LAST_MEMORY_USED NUMBER, 
+	LAST_EXECUTION VARCHAR2(40 BYTE), 
+	LAST_DEGREE NUMBER, 
+	TOTAL_EXECUTIONS NUMBER, 
+	OPTIMAL_EXECUTIONS NUMBER, 
+	ONEPASS_EXECUTIONS NUMBER, 
+	MULTIPASSES_EXECUTIONS NUMBER, 
+	ACTIVE_TIME NUMBER, 
+	MAX_TEMPSEG_SIZE NUMBER, 
+	LAST_TEMPSEG_SIZE NUMBER, 
+	CON_ID NUMBER, 
+	CON_DBID NUMBER);
 
 alter table opas_ot_sql_plan_det ROW STORE COMPRESS ADVANCED;
 alter table opas_ot_sql_plan_det add constraint fk_sql_pland_id foreign key (plan_id) references opas_ot_sql_plans(plan_id) on delete cascade;
@@ -820,11 +1248,91 @@ alter table opas_ot_sql_plan_ref ROW STORE COMPRESS ADVANCED;
 create index idx_opas_sql_plan_ref_dp  on opas_ot_sql_plan_ref(sql_data_point_id) compress;
 create index idx_opas_sql_plan_rep_mon on opas_ot_sql_plan_ref(plan_id) compress;
 
-create global temporary table opas_ot_tmp_gv$sql_plan_stat_all on commit delete rows
-as select 0 report_id, x.* from gv$sql_plan_statistics_all x where 1=2;
+CREATE GLOBAL TEMPORARY TABLE OPAS_OT_TMP_GV$SQL_PLAN_STAT_ALL 
+   (REPORT_ID NUMBER, 
+	INST_ID NUMBER, 
+	ADDRESS RAW(8), 
+	HASH_VALUE NUMBER, 
+	SQL_ID VARCHAR2(13 BYTE), 
+	PLAN_HASH_VALUE NUMBER, 
+	FULL_PLAN_HASH_VALUE NUMBER, 
+	CHILD_ADDRESS RAW(8), 
+	CHILD_NUMBER NUMBER, 
+	TIMESTAMP DATE, 
+	OPERATION VARCHAR2(120 BYTE), 
+	OPTIONS VARCHAR2(120 BYTE), 
+	OBJECT_NODE VARCHAR2(160 BYTE), 
+	OBJECT# NUMBER, 
+	OBJECT_OWNER VARCHAR2(128 BYTE), 
+	OBJECT_NAME VARCHAR2(128 BYTE), 
+	OBJECT_ALIAS VARCHAR2(261 BYTE), 
+	OBJECT_TYPE VARCHAR2(80 BYTE), 
+	OPTIMIZER VARCHAR2(80 BYTE), 
+	ID NUMBER, 
+	PARENT_ID NUMBER, 
+	DEPTH NUMBER, 
+	POSITION NUMBER, 
+	SEARCH_COLUMNS NUMBER, 
+	COST NUMBER, 
+	CARDINALITY NUMBER, 
+	BYTES NUMBER, 
+	OTHER_TAG VARCHAR2(140 BYTE), 
+	PARTITION_START VARCHAR2(256 BYTE), 
+	PARTITION_STOP VARCHAR2(256 BYTE), 
+	PARTITION_ID NUMBER, 
+	OTHER VARCHAR2(4000 BYTE), 
+	DISTRIBUTION VARCHAR2(80 BYTE), 
+	CPU_COST NUMBER, 
+	IO_COST NUMBER, 
+	TEMP_SPACE NUMBER, 
+	ACCESS_PREDICATES VARCHAR2(4000 BYTE), 
+	FILTER_PREDICATES VARCHAR2(4000 BYTE), 
+	PROJECTION VARCHAR2(4000 BYTE), 
+	TIME NUMBER, 
+	QBLOCK_NAME VARCHAR2(128 BYTE), 
+	REMARKS VARCHAR2(4000 BYTE), 
+	OTHER_XML CLOB, 
+	EXECUTIONS NUMBER, 
+	LAST_STARTS NUMBER, 
+	STARTS NUMBER, 
+	LAST_OUTPUT_ROWS NUMBER, 
+	OUTPUT_ROWS NUMBER, 
+	LAST_CR_BUFFER_GETS NUMBER, 
+	CR_BUFFER_GETS NUMBER, 
+	LAST_CU_BUFFER_GETS NUMBER, 
+	CU_BUFFER_GETS NUMBER, 
+	LAST_DISK_READS NUMBER, 
+	DISK_READS NUMBER, 
+	LAST_DISK_WRITES NUMBER, 
+	DISK_WRITES NUMBER, 
+	LAST_ELAPSED_TIME NUMBER, 
+	ELAPSED_TIME NUMBER, 
+	POLICY VARCHAR2(40 BYTE), 
+	ESTIMATED_OPTIMAL_SIZE NUMBER, 
+	ESTIMATED_ONEPASS_SIZE NUMBER, 
+	LAST_MEMORY_USED NUMBER, 
+	LAST_EXECUTION VARCHAR2(40 BYTE), 
+	LAST_DEGREE NUMBER, 
+	TOTAL_EXECUTIONS NUMBER, 
+	OPTIMAL_EXECUTIONS NUMBER, 
+	ONEPASS_EXECUTIONS NUMBER, 
+	MULTIPASSES_EXECUTIONS NUMBER, 
+	ACTIVE_TIME NUMBER, 
+	MAX_TEMPSEG_SIZE NUMBER, 
+	LAST_TEMPSEG_SIZE NUMBER, 
+	CON_ID NUMBER, 
+	CON_DBID NUMBER
+   ) ON COMMIT DELETE ROWS;
 
-create global temporary table opas_ot_tmp_gv$sql_plan_key on commit delete rows
-as select 0 plan_id, 0 report_id, inst_id, child_number, plan_hash_value, full_plan_hash_value from gv$sql_plan_statistics_all where 1=2;
+
+CREATE GLOBAL TEMPORARY TABLE OPAS_OT_TMP_GV$SQL_PLAN_KEY 
+   (PLAN_ID NUMBER, 
+	REPORT_ID NUMBER, 
+	INST_ID NUMBER, 
+	CHILD_NUMBER NUMBER, 
+	PLAN_HASH_VALUE NUMBER, 
+	FULL_PLAN_HASH_VALUE NUMBER
+   ) ON COMMIT DELETE ROWS ;
 
 ----
 create sequence opas_ot_sq_sqlmon_id;
@@ -938,69 +1446,142 @@ create table opas_ot_sql_sqlmon_data (
 alter table opas_ot_sql_sqlmon_data ROW STORE COMPRESS ADVANCED;
 create index idx_opas_sql_mon_rep_d_mon on opas_ot_sql_sqlmon_data(sqlmon_id) compress;
 
-create global temporary table opas_ot_tmp_gv$sql_monitor on commit delete rows
-as select * from gv$sql_monitor where 1=2;
+CREATE GLOBAL TEMPORARY TABLE OPAS_OT_TMP_GV$SQL_MONITOR 
+   (INST_ID NUMBER, 
+	KEY NUMBER, 
+	REPORT_ID NUMBER, 
+	STATUS VARCHAR2(19 BYTE), 
+	USER# NUMBER, 
+	USERNAME VARCHAR2(128 BYTE), 
+	MODULE VARCHAR2(64 BYTE), 
+	ACTION VARCHAR2(64 BYTE), 
+	SERVICE_NAME VARCHAR2(64 BYTE), 
+	CLIENT_IDENTIFIER VARCHAR2(64 BYTE), 
+	CLIENT_INFO VARCHAR2(64 BYTE), 
+	PROGRAM VARCHAR2(48 BYTE), 
+	PLSQL_ENTRY_OBJECT_ID NUMBER, 
+	PLSQL_ENTRY_SUBPROGRAM_ID NUMBER, 
+	PLSQL_OBJECT_ID NUMBER, 
+	PLSQL_SUBPROGRAM_ID NUMBER, 
+	FIRST_REFRESH_TIME DATE, 
+	LAST_REFRESH_TIME DATE, 
+	REFRESH_COUNT NUMBER, 
+	DBOP_EXEC_ID NUMBER, 
+	DBOP_NAME VARCHAR2(30 BYTE), 
+	SID NUMBER, 
+	PROCESS_NAME VARCHAR2(5 BYTE), 
+	SQL_ID VARCHAR2(13 BYTE), 
+	SQL_TEXT VARCHAR2(2000 BYTE), 
+	IS_FULL_SQLTEXT VARCHAR2(1 BYTE), 
+	SQL_EXEC_START DATE, 
+	SQL_EXEC_ID NUMBER, 
+	SQL_PLAN_HASH_VALUE NUMBER, 
+	SQL_FULL_PLAN_HASH_VALUE NUMBER, 
+	EXACT_MATCHING_SIGNATURE NUMBER, 
+	FORCE_MATCHING_SIGNATURE NUMBER, 
+	SQL_CHILD_ADDRESS RAW(8), 
+	SESSION_SERIAL# NUMBER, 
+	PX_IS_CROSS_INSTANCE VARCHAR2(1 BYTE), 
+	PX_MAXDOP NUMBER, 
+	PX_MAXDOP_INSTANCES NUMBER, 
+	PX_SERVERS_REQUESTED NUMBER, 
+	PX_SERVERS_ALLOCATED NUMBER, 
+	PX_SERVER# NUMBER, 
+	PX_SERVER_GROUP NUMBER, 
+	PX_SERVER_SET NUMBER, 
+	PX_QCINST_ID NUMBER, 
+	PX_QCSID NUMBER, 
+	ERROR_NUMBER VARCHAR2(40 BYTE), 
+	ERROR_FACILITY VARCHAR2(4 BYTE), 
+	ERROR_MESSAGE VARCHAR2(256 BYTE), 
+	BINDS_XML CLOB, 
+	OTHER_XML CLOB, 
+	ELAPSED_TIME NUMBER, 
+	QUEUING_TIME NUMBER, 
+	CPU_TIME NUMBER, 
+	FETCHES NUMBER, 
+	BUFFER_GETS NUMBER, 
+	DISK_READS NUMBER, 
+	DIRECT_WRITES NUMBER, 
+	IO_INTERCONNECT_BYTES NUMBER, 
+	PHYSICAL_READ_REQUESTS NUMBER, 
+	PHYSICAL_READ_BYTES NUMBER, 
+	PHYSICAL_WRITE_REQUESTS NUMBER, 
+	PHYSICAL_WRITE_BYTES NUMBER, 
+	APPLICATION_WAIT_TIME NUMBER, 
+	CONCURRENCY_WAIT_TIME NUMBER, 
+	CLUSTER_WAIT_TIME NUMBER, 
+	USER_IO_WAIT_TIME NUMBER, 
+	PLSQL_EXEC_TIME NUMBER, 
+	JAVA_EXEC_TIME NUMBER, 
+	RM_LAST_ACTION VARCHAR2(48 BYTE), 
+	RM_LAST_ACTION_REASON VARCHAR2(128 BYTE), 
+	RM_LAST_ACTION_TIME DATE, 
+	RM_CONSUMER_GROUP VARCHAR2(128 BYTE), 
+	CON_ID NUMBER, 
+	CON_NAME VARCHAR2(128 BYTE), 
+	ECID VARCHAR2(64 BYTE), 
+	IS_ADAPTIVE_PLAN VARCHAR2(1 BYTE), 
+	IS_FINAL_PLAN VARCHAR2(1 BYTE), 
+	IN_DBOP_NAME VARCHAR2(30 BYTE), 
+	IN_DBOP_EXEC_ID NUMBER, 
+	IO_CELL_UNCOMPRESSED_BYTES NUMBER, 
+	IO_CELL_OFFLOAD_ELIGIBLE_BYTES NUMBER, 
+	IO_CELL_OFFLOAD_RETURNED_BYTES NUMBER
+   ) ON COMMIT DELETE ROWS;
 
-create global temporary table opas_ot_tmp_dba_hist_reports on commit delete rows
-as
-  select 
-    r.snap_id                      , 
-    r.dbid                         , 
-    r.instance_number              , 
-    r.report_id                    , 
-    r.component_id                 , 
-    r.session_id                   , 
-    r.session_serial#              , 
-    r.period_start_time            , 
-    r.period_end_time              , 
-    r.generation_time              , 
-    r.component_name               , 
-    r.report_name                  , 
-    r.report_parameters            , 
-    r.key1                         , 
-    r.key2                         , 
-    r.key3                         , 
-    r.key4                         , 
-    r.generation_cost_seconds      , 
-    r.report_summary               , 
-    r.con_dbid                     , 
-    r.con_id
-    from dba_hist_reports r
-   where 1=2;
+
+CREATE GLOBAL TEMPORARY TABLE OPAS_OT_TMP_DBA_HIST_REPORTS 
+   (	SNAP_ID NUMBER, 
+	DBID NUMBER, 
+	INSTANCE_NUMBER NUMBER, 
+	REPORT_ID NUMBER, 
+	COMPONENT_ID NUMBER, 
+	SESSION_ID NUMBER, 
+	SESSION_SERIAL# NUMBER, 
+	PERIOD_START_TIME DATE, 
+	PERIOD_END_TIME DATE, 
+	GENERATION_TIME DATE, 
+	COMPONENT_NAME VARCHAR2(128 BYTE), 
+	REPORT_NAME VARCHAR2(128 BYTE), 
+	REPORT_PARAMETERS VARCHAR2(1024 BYTE), 
+	KEY1 VARCHAR2(128 BYTE), 
+	KEY2 VARCHAR2(128 BYTE), 
+	KEY3 VARCHAR2(128 BYTE), 
+	KEY4 VARCHAR2(256 BYTE), 
+	GENERATION_COST_SECONDS NUMBER, 
+	REPORT_SUMMARY VARCHAR2(4000 BYTE), 
+	CON_DBID NUMBER, 
+	CON_ID NUMBER
+   ) ON COMMIT DELETE ROWS ;
    
-create global temporary table opas_ot_tmp_dba_hist_rep_xml on commit delete rows
-as
-  select 
-    d.report_id                    , 
-    d.report
-    from dba_hist_reports_details d
-   where 1=2;    
+CREATE GLOBAL TEMPORARY TABLE OPAS_OT_TMP_DBA_HIST_REP_XML 
+   (REPORT_ID NUMBER, 
+	REPORT CLOB
+   ) ON COMMIT DELETE ROWS;
+   
 ----
-
-create table opas_ot_sql_wa
-as
-select 0 sql_data_point_id, 
-       sql_id, 
-       inst_id,
-       child_number,
-       policy,
-       operation_id,
-       operation_type,
-       estimated_optimal_size,
-       estimated_onepass_size,
-       last_memory_used,
-       last_execution,
-       last_degree,
-       total_executions,
-       optimal_executions,
-       onepass_executions,
-       multipasses_executions,
-       active_time,
-       max_tempseg_size,
-       last_tempseg_size
-  from gv$sql_workarea
- where 1=2;
-
+CREATE TABLE OPAS_OT_SQL_WA 
+   (SQL_DATA_POINT_ID NUMBER, 
+	SQL_ID VARCHAR2(13 BYTE), 
+	INST_ID NUMBER, 
+	CHILD_NUMBER NUMBER, 
+	POLICY VARCHAR2(40 BYTE), 
+	OPERATION_ID NUMBER, 
+	OPERATION_TYPE VARCHAR2(160 BYTE), 
+	ESTIMATED_OPTIMAL_SIZE NUMBER, 
+	ESTIMATED_ONEPASS_SIZE NUMBER, 
+	LAST_MEMORY_USED NUMBER, 
+	LAST_EXECUTION VARCHAR2(40 BYTE), 
+	LAST_DEGREE NUMBER, 
+	TOTAL_EXECUTIONS NUMBER, 
+	OPTIMAL_EXECUTIONS NUMBER, 
+	ONEPASS_EXECUTIONS NUMBER, 
+	MULTIPASSES_EXECUTIONS NUMBER, 
+	ACTIVE_TIME NUMBER, 
+	MAX_TEMPSEG_SIZE NUMBER, 
+	LAST_TEMPSEG_SIZE NUMBER);
+	
 alter table opas_ot_sql_wa ROW STORE COMPRESS ADVANCED;
 alter table opas_ot_sql_wa add constraint fk_sql_wa_dp    foreign key (sql_data_point_id) references opas_ot_sql_data(sql_data_point_id) on delete cascade;
 alter table opas_ot_sql_wa add constraint fk_sql_wa_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
@@ -1009,13 +1590,15 @@ create index idx_opas_sql_wa_dp    on opas_ot_sql_wa(sql_data_point_id) compress
 create index idx_opas_sql_wa_sqlid on opas_ot_sql_wa(sql_id) compress;
 ----
 
-create table opas_ot_sql_opt_env
-as
-select 0 sql_data_point_id, sql_id, 
-       inst_id,child_number,name,isdefault,value
-  from gv$sql_optimizer_env
- where 1=2;
-
+CREATE TABLE OPAS_OT_SQL_OPT_ENV 
+   (SQL_DATA_POINT_ID NUMBER, 
+	SQL_ID VARCHAR2(13 BYTE), 
+	INST_ID NUMBER, 
+	CHILD_NUMBER NUMBER, 
+	NAME VARCHAR2(40 BYTE), 
+	ISDEFAULT VARCHAR2(3 BYTE), 
+	VALUE VARCHAR2(25 BYTE));
+	
 alter table opas_ot_sql_opt_env ROW STORE COMPRESS ADVANCED;
 alter table opas_ot_sql_opt_env add constraint fk_sql_oe_dp    foreign key (sql_data_point_id) references opas_ot_sql_data(sql_data_point_id) on delete cascade;
 alter table opas_ot_sql_opt_env add constraint fk_sql_oe_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
@@ -1068,8 +1651,122 @@ alter table opas_ot_sql_vash2 add constraint fk_sql_vash2_sqlid foreign key (sql
 create index idx_opas_sql_vash2_dp    on opas_ot_sql_vash2(sql_data_point_id) compress;
 create index idx_opas_sql_vash2_sqlid on opas_ot_sql_vash2(sql_id) compress;
 
-create global temporary table opas_ot_tmp_gv$ash on commit delete rows
-as select * from gv$active_session_history where 1=2;
+CREATE GLOBAL TEMPORARY TABLE OPAS_OT_TMP_GV$ASH 
+   (INST_ID NUMBER, 
+	SAMPLE_ID NUMBER, 
+	SAMPLE_TIME TIMESTAMP (3), 
+	SAMPLE_TIME_UTC TIMESTAMP (3), 
+	USECS_PER_ROW NUMBER, 
+	IS_AWR_SAMPLE VARCHAR2(1 BYTE), 
+	SESSION_ID NUMBER, 
+	SESSION_SERIAL# NUMBER, 
+	SESSION_TYPE VARCHAR2(10 BYTE), 
+	FLAGS NUMBER, 
+	USER_ID NUMBER, 
+	SQL_ID VARCHAR2(13 BYTE), 
+	IS_SQLID_CURRENT VARCHAR2(1 BYTE), 
+	SQL_CHILD_NUMBER NUMBER, 
+	SQL_OPCODE NUMBER, 
+	FORCE_MATCHING_SIGNATURE NUMBER, 
+	TOP_LEVEL_SQL_ID VARCHAR2(13 BYTE), 
+	TOP_LEVEL_SQL_OPCODE NUMBER, 
+	SQL_OPNAME VARCHAR2(64 BYTE), 
+	SQL_ADAPTIVE_PLAN_RESOLVED NUMBER, 
+	SQL_FULL_PLAN_HASH_VALUE NUMBER, 
+	SQL_PLAN_HASH_VALUE NUMBER, 
+	SQL_PLAN_LINE_ID NUMBER, 
+	SQL_PLAN_OPERATION VARCHAR2(30 BYTE), 
+	SQL_PLAN_OPTIONS VARCHAR2(30 BYTE), 
+	SQL_EXEC_ID NUMBER, 
+	SQL_EXEC_START DATE, 
+	PLSQL_ENTRY_OBJECT_ID NUMBER, 
+	PLSQL_ENTRY_SUBPROGRAM_ID NUMBER, 
+	PLSQL_OBJECT_ID NUMBER, 
+	PLSQL_SUBPROGRAM_ID NUMBER, 
+	QC_INSTANCE_ID NUMBER, 
+	QC_SESSION_ID NUMBER, 
+	QC_SESSION_SERIAL# NUMBER, 
+	PX_FLAGS NUMBER, 
+	EVENT VARCHAR2(64 BYTE), 
+	EVENT_ID NUMBER, 
+	EVENT# NUMBER, 
+	SEQ# NUMBER, 
+	P1TEXT VARCHAR2(64 BYTE), 
+	P1 NUMBER, 
+	P2TEXT VARCHAR2(64 BYTE), 
+	P2 NUMBER, 
+	P3TEXT VARCHAR2(64 BYTE), 
+	P3 NUMBER, 
+	WAIT_CLASS VARCHAR2(64 BYTE), 
+	WAIT_CLASS_ID NUMBER, 
+	WAIT_TIME NUMBER, 
+	SESSION_STATE VARCHAR2(7 BYTE), 
+	TIME_WAITED NUMBER, 
+	BLOCKING_SESSION_STATUS VARCHAR2(11 BYTE), 
+	BLOCKING_SESSION NUMBER, 
+	BLOCKING_SESSION_SERIAL# NUMBER, 
+	BLOCKING_INST_ID NUMBER, 
+	BLOCKING_HANGCHAIN_INFO VARCHAR2(1 BYTE), 
+	CURRENT_OBJ# NUMBER, 
+	CURRENT_FILE# NUMBER, 
+	CURRENT_BLOCK# NUMBER, 
+	CURRENT_ROW# NUMBER, 
+	TOP_LEVEL_CALL# NUMBER, 
+	TOP_LEVEL_CALL_NAME VARCHAR2(64 BYTE), 
+	CONSUMER_GROUP_ID NUMBER, 
+	XID RAW(8), 
+	REMOTE_INSTANCE# NUMBER, 
+	TIME_MODEL NUMBER, 
+	IN_CONNECTION_MGMT VARCHAR2(1 BYTE), 
+	IN_PARSE VARCHAR2(1 BYTE), 
+	IN_HARD_PARSE VARCHAR2(1 BYTE), 
+	IN_SQL_EXECUTION VARCHAR2(1 BYTE), 
+	IN_PLSQL_EXECUTION VARCHAR2(1 BYTE), 
+	IN_PLSQL_RPC VARCHAR2(1 BYTE), 
+	IN_PLSQL_COMPILATION VARCHAR2(1 BYTE), 
+	IN_JAVA_EXECUTION VARCHAR2(1 BYTE), 
+	IN_BIND VARCHAR2(1 BYTE), 
+	IN_CURSOR_CLOSE VARCHAR2(1 BYTE), 
+	IN_SEQUENCE_LOAD VARCHAR2(1 BYTE), 
+	IN_INMEMORY_QUERY VARCHAR2(1 BYTE), 
+	IN_INMEMORY_POPULATE VARCHAR2(1 BYTE), 
+	IN_INMEMORY_PREPOPULATE VARCHAR2(1 BYTE), 
+	IN_INMEMORY_REPOPULATE VARCHAR2(1 BYTE), 
+	IN_INMEMORY_TREPOPULATE VARCHAR2(1 BYTE), 
+	IN_TABLESPACE_ENCRYPTION VARCHAR2(1 BYTE), 
+	CAPTURE_OVERHEAD VARCHAR2(1 BYTE), 
+	REPLAY_OVERHEAD VARCHAR2(1 BYTE), 
+	IS_CAPTURED VARCHAR2(1 BYTE), 
+	IS_REPLAYED VARCHAR2(1 BYTE), 
+	IS_REPLAY_SYNC_TOKEN_HOLDER VARCHAR2(1 BYTE), 
+	SERVICE_HASH NUMBER, 
+	PROGRAM VARCHAR2(48 BYTE), 
+	MODULE VARCHAR2(64 BYTE), 
+	ACTION VARCHAR2(64 BYTE), 
+	CLIENT_ID VARCHAR2(64 BYTE), 
+	MACHINE VARCHAR2(64 BYTE), 
+	PORT NUMBER, 
+	ECID VARCHAR2(64 BYTE), 
+	DBREPLAY_FILE_ID NUMBER, 
+	DBREPLAY_CALL_COUNTER NUMBER, 
+	TM_DELTA_TIME NUMBER, 
+	TM_DELTA_CPU_TIME NUMBER, 
+	TM_DELTA_DB_TIME NUMBER, 
+	DELTA_TIME NUMBER, 
+	DELTA_READ_IO_REQUESTS NUMBER, 
+	DELTA_WRITE_IO_REQUESTS NUMBER, 
+	DELTA_READ_IO_BYTES NUMBER, 
+	DELTA_WRITE_IO_BYTES NUMBER, 
+	DELTA_INTERCONNECT_IO_BYTES NUMBER, 
+	DELTA_READ_MEM_BYTES NUMBER, 
+	PGA_ALLOCATED NUMBER, 
+	TEMP_SPACE_ALLOCATED NUMBER, 
+	CON_DBID NUMBER, 
+	CON_ID NUMBER, 
+	DBOP_NAME VARCHAR2(30 BYTE), 
+	DBOP_EXEC_ID NUMBER
+   ) ON COMMIT DELETE ROWS ;
+
 
 create global temporary table opas_ot_tmp_gv$ash_objs (
 object_id number,
@@ -1078,69 +1775,301 @@ object_type varchar2(256))
 on commit delete rows;
  
 ---
-create table opas_ot_sql_awr_sqlstat
-as
-select x.*
-  from dba_hist_sqlstat x
- where 1=2;
+CREATE TABLE OPAS_OT_SQL_AWR_SQLSTAT 
+   (SNAP_ID NUMBER, 
+	DBID NUMBER, 
+	INSTANCE_NUMBER NUMBER, 
+	SQL_ID VARCHAR2(13 BYTE), 
+	PLAN_HASH_VALUE NUMBER, 
+	OPTIMIZER_COST NUMBER, 
+	OPTIMIZER_MODE VARCHAR2(10 BYTE), 
+	OPTIMIZER_ENV_HASH_VALUE NUMBER, 
+	SHARABLE_MEM NUMBER, 
+	LOADED_VERSIONS NUMBER, 
+	VERSION_COUNT NUMBER, 
+	MODULE VARCHAR2(64 BYTE), 
+	ACTION VARCHAR2(64 BYTE), 
+	SQL_PROFILE VARCHAR2(64 BYTE), 
+	FORCE_MATCHING_SIGNATURE NUMBER, 
+	PARSING_SCHEMA_ID NUMBER, 
+	PARSING_SCHEMA_NAME VARCHAR2(128 BYTE), 
+	PARSING_USER_ID NUMBER, 
+	FETCHES_TOTAL NUMBER, 
+	FETCHES_DELTA NUMBER, 
+	END_OF_FETCH_COUNT_TOTAL NUMBER, 
+	END_OF_FETCH_COUNT_DELTA NUMBER, 
+	SORTS_TOTAL NUMBER, 
+	SORTS_DELTA NUMBER, 
+	EXECUTIONS_TOTAL NUMBER, 
+	EXECUTIONS_DELTA NUMBER, 
+	PX_SERVERS_EXECS_TOTAL NUMBER, 
+	PX_SERVERS_EXECS_DELTA NUMBER, 
+	LOADS_TOTAL NUMBER, 
+	LOADS_DELTA NUMBER, 
+	INVALIDATIONS_TOTAL NUMBER, 
+	INVALIDATIONS_DELTA NUMBER, 
+	PARSE_CALLS_TOTAL NUMBER, 
+	PARSE_CALLS_DELTA NUMBER, 
+	DISK_READS_TOTAL NUMBER, 
+	DISK_READS_DELTA NUMBER, 
+	BUFFER_GETS_TOTAL NUMBER, 
+	BUFFER_GETS_DELTA NUMBER, 
+	ROWS_PROCESSED_TOTAL NUMBER, 
+	ROWS_PROCESSED_DELTA NUMBER, 
+	CPU_TIME_TOTAL NUMBER, 
+	CPU_TIME_DELTA NUMBER, 
+	ELAPSED_TIME_TOTAL NUMBER, 
+	ELAPSED_TIME_DELTA NUMBER, 
+	IOWAIT_TOTAL NUMBER, 
+	IOWAIT_DELTA NUMBER, 
+	CLWAIT_TOTAL NUMBER, 
+	CLWAIT_DELTA NUMBER, 
+	APWAIT_TOTAL NUMBER, 
+	APWAIT_DELTA NUMBER, 
+	CCWAIT_TOTAL NUMBER, 
+	CCWAIT_DELTA NUMBER, 
+	DIRECT_WRITES_TOTAL NUMBER, 
+	DIRECT_WRITES_DELTA NUMBER, 
+	PLSEXEC_TIME_TOTAL NUMBER, 
+	PLSEXEC_TIME_DELTA NUMBER, 
+	JAVEXEC_TIME_TOTAL NUMBER, 
+	JAVEXEC_TIME_DELTA NUMBER, 
+	IO_OFFLOAD_ELIG_BYTES_TOTAL NUMBER, 
+	IO_OFFLOAD_ELIG_BYTES_DELTA NUMBER, 
+	IO_INTERCONNECT_BYTES_TOTAL NUMBER, 
+	IO_INTERCONNECT_BYTES_DELTA NUMBER, 
+	PHYSICAL_READ_REQUESTS_TOTAL NUMBER, 
+	PHYSICAL_READ_REQUESTS_DELTA NUMBER, 
+	PHYSICAL_READ_BYTES_TOTAL NUMBER, 
+	PHYSICAL_READ_BYTES_DELTA NUMBER, 
+	PHYSICAL_WRITE_REQUESTS_TOTAL NUMBER, 
+	PHYSICAL_WRITE_REQUESTS_DELTA NUMBER, 
+	PHYSICAL_WRITE_BYTES_TOTAL NUMBER, 
+	PHYSICAL_WRITE_BYTES_DELTA NUMBER, 
+	OPTIMIZED_PHYSICAL_READS_TOTAL NUMBER, 
+	OPTIMIZED_PHYSICAL_READS_DELTA NUMBER, 
+	CELL_UNCOMPRESSED_BYTES_TOTAL NUMBER, 
+	CELL_UNCOMPRESSED_BYTES_DELTA NUMBER, 
+	IO_OFFLOAD_RETURN_BYTES_TOTAL NUMBER, 
+	IO_OFFLOAD_RETURN_BYTES_DELTA NUMBER, 
+	BIND_DATA RAW(2000), 
+	FLAG NUMBER, 
+	OBSOLETE_COUNT NUMBER, 
+	CON_DBID NUMBER, 
+	CON_ID NUMBER, 
+	DBLINK VARCHAR2(128 BYTE) NOT NULL ENABLE, 
+	INCARNATION# NUMBER);
 
-alter table opas_ot_sql_awr_sqlstat add incarnation# number;
 
 alter table opas_ot_sql_awr_sqlstat ROW STORE COMPRESS ADVANCED;
-alter table opas_ot_sql_awr_sqlstat add dblink  varchar2(128)  not null  references opas_db_links (db_link_name);
+
+alter table opas_ot_sql_awr_sqlstat add constraint fk_sql_awrsqlst_dbl foreign key (dblink) references opas_db_links (db_link_name);
 create index idx_opas_sql_awr_sqlstat_dbl   on opas_ot_sql_awr_sqlstat(dblink) compress;
 
 alter table opas_ot_sql_awr_sqlstat add constraint fk_sql_awrsqlst_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
 
 create unique index idx_opas_sql_awrsqlst_sqlid on opas_ot_sql_awr_sqlstat(sql_id,dblink,dbid,incarnation#,snap_id,instance_number,plan_hash_value,con_dbid) compress;
 
-create global temporary table opas_ot_tmp_awrsqlstat on commit delete rows
-as select * from dba_hist_sqlstat where 1=2;
---
-create table opas_ot_sql_awr_sqlbind
-as
-select x.*
-  from dba_hist_sqlbind x
- where 1=2;
+CREATE GLOBAL TEMPORARY TABLE OPAS_OT_TMP_AWRSQLSTAT 
+   (SNAP_ID NUMBER, 
+	DBID NUMBER, 
+	INSTANCE_NUMBER NUMBER, 
+	SQL_ID VARCHAR2(13 BYTE), 
+	PLAN_HASH_VALUE NUMBER, 
+	OPTIMIZER_COST NUMBER, 
+	OPTIMIZER_MODE VARCHAR2(10 BYTE), 
+	OPTIMIZER_ENV_HASH_VALUE NUMBER, 
+	SHARABLE_MEM NUMBER, 
+	LOADED_VERSIONS NUMBER, 
+	VERSION_COUNT NUMBER, 
+	MODULE VARCHAR2(64 BYTE), 
+	ACTION VARCHAR2(64 BYTE), 
+	SQL_PROFILE VARCHAR2(64 BYTE), 
+	FORCE_MATCHING_SIGNATURE NUMBER, 
+	PARSING_SCHEMA_ID NUMBER, 
+	PARSING_SCHEMA_NAME VARCHAR2(128 BYTE), 
+	PARSING_USER_ID NUMBER, 
+	FETCHES_TOTAL NUMBER, 
+	FETCHES_DELTA NUMBER, 
+	END_OF_FETCH_COUNT_TOTAL NUMBER, 
+	END_OF_FETCH_COUNT_DELTA NUMBER, 
+	SORTS_TOTAL NUMBER, 
+	SORTS_DELTA NUMBER, 
+	EXECUTIONS_TOTAL NUMBER, 
+	EXECUTIONS_DELTA NUMBER, 
+	PX_SERVERS_EXECS_TOTAL NUMBER, 
+	PX_SERVERS_EXECS_DELTA NUMBER, 
+	LOADS_TOTAL NUMBER, 
+	LOADS_DELTA NUMBER, 
+	INVALIDATIONS_TOTAL NUMBER, 
+	INVALIDATIONS_DELTA NUMBER, 
+	PARSE_CALLS_TOTAL NUMBER, 
+	PARSE_CALLS_DELTA NUMBER, 
+	DISK_READS_TOTAL NUMBER, 
+	DISK_READS_DELTA NUMBER, 
+	BUFFER_GETS_TOTAL NUMBER, 
+	BUFFER_GETS_DELTA NUMBER, 
+	ROWS_PROCESSED_TOTAL NUMBER, 
+	ROWS_PROCESSED_DELTA NUMBER, 
+	CPU_TIME_TOTAL NUMBER, 
+	CPU_TIME_DELTA NUMBER, 
+	ELAPSED_TIME_TOTAL NUMBER, 
+	ELAPSED_TIME_DELTA NUMBER, 
+	IOWAIT_TOTAL NUMBER, 
+	IOWAIT_DELTA NUMBER, 
+	CLWAIT_TOTAL NUMBER, 
+	CLWAIT_DELTA NUMBER, 
+	APWAIT_TOTAL NUMBER, 
+	APWAIT_DELTA NUMBER, 
+	CCWAIT_TOTAL NUMBER, 
+	CCWAIT_DELTA NUMBER, 
+	DIRECT_WRITES_TOTAL NUMBER, 
+	DIRECT_WRITES_DELTA NUMBER, 
+	PLSEXEC_TIME_TOTAL NUMBER, 
+	PLSEXEC_TIME_DELTA NUMBER, 
+	JAVEXEC_TIME_TOTAL NUMBER, 
+	JAVEXEC_TIME_DELTA NUMBER, 
+	IO_OFFLOAD_ELIG_BYTES_TOTAL NUMBER, 
+	IO_OFFLOAD_ELIG_BYTES_DELTA NUMBER, 
+	IO_INTERCONNECT_BYTES_TOTAL NUMBER, 
+	IO_INTERCONNECT_BYTES_DELTA NUMBER, 
+	PHYSICAL_READ_REQUESTS_TOTAL NUMBER, 
+	PHYSICAL_READ_REQUESTS_DELTA NUMBER, 
+	PHYSICAL_READ_BYTES_TOTAL NUMBER, 
+	PHYSICAL_READ_BYTES_DELTA NUMBER, 
+	PHYSICAL_WRITE_REQUESTS_TOTAL NUMBER, 
+	PHYSICAL_WRITE_REQUESTS_DELTA NUMBER, 
+	PHYSICAL_WRITE_BYTES_TOTAL NUMBER, 
+	PHYSICAL_WRITE_BYTES_DELTA NUMBER, 
+	OPTIMIZED_PHYSICAL_READS_TOTAL NUMBER, 
+	OPTIMIZED_PHYSICAL_READS_DELTA NUMBER, 
+	CELL_UNCOMPRESSED_BYTES_TOTAL NUMBER, 
+	CELL_UNCOMPRESSED_BYTES_DELTA NUMBER, 
+	IO_OFFLOAD_RETURN_BYTES_TOTAL NUMBER, 
+	IO_OFFLOAD_RETURN_BYTES_DELTA NUMBER, 
+	BIND_DATA RAW(2000), 
+	FLAG NUMBER, 
+	OBSOLETE_COUNT NUMBER, 
+	CON_DBID NUMBER, 
+	CON_ID NUMBER
+   ) ON COMMIT DELETE ROWS ;
 
-alter table opas_ot_sql_awr_sqlbind add incarnation# number;
+--
+CREATE TABLE OPAS_OT_SQL_AWR_SQLBIND 
+   (SNAP_ID NUMBER, 
+	DBID NUMBER, 
+	INSTANCE_NUMBER NUMBER, 
+	SQL_ID VARCHAR2(13 BYTE), 
+	NAME VARCHAR2(128 BYTE), 
+	POSITION NUMBER, 
+	DUP_POSITION NUMBER, 
+	DATATYPE NUMBER, 
+	DATATYPE_STRING VARCHAR2(15 BYTE), 
+	CHARACTER_SID NUMBER, 
+	PRECISION NUMBER, 
+	SCALE NUMBER, 
+	MAX_LENGTH NUMBER, 
+	WAS_CAPTURED VARCHAR2(3 BYTE), 
+	LAST_CAPTURED DATE, 
+	VALUE_STRING VARCHAR2(4000 BYTE), 
+	VALUE_ANYDATA SYS.ANYDATA , 
+	CON_DBID NUMBER, 
+	CON_ID NUMBER, 
+	DBLINK VARCHAR2(128 BYTE) NOT NULL ENABLE, 
+	INCARNATION# NUMBER
+	);
 
 alter table opas_ot_sql_awr_sqlbind ROW STORE COMPRESS ADVANCED;
-alter table opas_ot_sql_awr_sqlbind add dblink  varchar2(128)  not null  references opas_db_links (db_link_name);
+
+alter table opas_ot_sql_awr_sqlbind add constraint fk_sql_awrsqlbi_dbl foreign key (dblink) references opas_db_links (db_link_name);
 create index idx_opas_sql_awr_sqlbind_dbl   on opas_ot_sql_awr_sqlbind(dblink) compress;
 
 alter table opas_ot_sql_awr_sqlbind add constraint fk_sql_awrsqlbi_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
 
 create index idx_opas_sql_awrsqlbi_sqlid on opas_ot_sql_awr_sqlbind(sql_id,dblink,dbid,incarnation#,snap_id) compress;
 
-create global temporary table opas_ot_tmp_awrsqlbind on commit delete rows
-as select * from dba_hist_sqlbind where 1=2;
+CREATE GLOBAL TEMPORARY TABLE OPAS_OT_TMP_AWRSQLBIND 
+   (SNAP_ID NUMBER, 
+	DBID NUMBER, 
+	INSTANCE_NUMBER NUMBER, 
+	SQL_ID VARCHAR2(13 BYTE), 
+	NAME VARCHAR2(128 BYTE), 
+	POSITION NUMBER, 
+	DUP_POSITION NUMBER, 
+	DATATYPE NUMBER, 
+	DATATYPE_STRING VARCHAR2(15 BYTE), 
+	CHARACTER_SID NUMBER, 
+	PRECISION NUMBER, 
+	SCALE NUMBER, 
+	MAX_LENGTH NUMBER, 
+	WAS_CAPTURED VARCHAR2(3 BYTE), 
+	LAST_CAPTURED DATE, 
+	VALUE_STRING VARCHAR2(4000 BYTE), 
+	VALUE_ANYDATA SYS.ANYDATA , 
+	CON_DBID NUMBER, 
+	CON_ID NUMBER
+   ) ON COMMIT DELETE ROWS;
 --
 
 create sequence opas_ot_sq_awrplan_id;
 
-create table opas_ot_sql_awr_plans as 
-select
- 0 plan_id, 
- systimestamp created,
- x.sql_id,
- x.dbid,
- x.plan_hash_value
-from dba_hist_sql_plan x where 1=2;
-
-alter table opas_ot_sql_awr_plans add incarnation# number;
+CREATE TABLE OPAS_OT_SQL_AWR_PLANS 
+   (PLAN_ID NUMBER, 
+	CREATED TIMESTAMP (6) WITH TIME ZONE, 
+	SQL_ID VARCHAR2(13 BYTE), 
+	DBID NUMBER, 
+	PLAN_HASH_VALUE NUMBER, 
+	INCARNATION# NUMBER
+	);
 
 alter table opas_ot_sql_awr_plans ROW STORE COMPRESS ADVANCED;
 alter table opas_ot_sql_awr_plans add constraint pk_sql_awrplan_id primary key(plan_id);
 alter table opas_ot_sql_awr_plans add constraint fk_sql_awrplans_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
 create index idx_opas_sql_awrplans_sqlid on opas_ot_sql_awr_plans(sql_id) compress;
 
-create table opas_ot_sql_awr_plan_det as 
-select
- 0 plan_id, 
- x.*
-from dba_hist_sql_plan x where 1=2;
-
+CREATE TABLE OPAS_OT_SQL_AWR_PLAN_DET 
+   (PLAN_ID NUMBER, 
+	DBID NUMBER, 
+	SQL_ID VARCHAR2(13 BYTE), 
+	PLAN_HASH_VALUE NUMBER, 
+	ID NUMBER, 
+	OPERATION VARCHAR2(30 BYTE), 
+	OPTIONS VARCHAR2(30 BYTE), 
+	OBJECT_NODE VARCHAR2(128 BYTE), 
+	OBJECT# NUMBER, 
+	OBJECT_OWNER VARCHAR2(128 BYTE), 
+	OBJECT_NAME VARCHAR2(128 BYTE), 
+	OBJECT_ALIAS VARCHAR2(261 BYTE), 
+	OBJECT_TYPE VARCHAR2(20 BYTE), 
+	OPTIMIZER VARCHAR2(20 BYTE), 
+	PARENT_ID NUMBER, 
+	DEPTH NUMBER, 
+	POSITION NUMBER, 
+	SEARCH_COLUMNS NUMBER, 
+	COST NUMBER, 
+	CARDINALITY NUMBER, 
+	BYTES NUMBER, 
+	OTHER_TAG VARCHAR2(35 BYTE), 
+	PARTITION_START VARCHAR2(64 BYTE), 
+	PARTITION_STOP VARCHAR2(64 BYTE), 
+	PARTITION_ID NUMBER, 
+	OTHER VARCHAR2(4000 BYTE), 
+	DISTRIBUTION VARCHAR2(20 BYTE), 
+	CPU_COST NUMBER, 
+	IO_COST NUMBER, 
+	TEMP_SPACE NUMBER, 
+	ACCESS_PREDICATES VARCHAR2(4000 BYTE), 
+	FILTER_PREDICATES VARCHAR2(4000 BYTE), 
+	PROJECTION VARCHAR2(4000 BYTE), 
+	TIME NUMBER, 
+	QBLOCK_NAME VARCHAR2(128 BYTE), 
+	REMARKS VARCHAR2(4000 BYTE), 
+	TIMESTAMP DATE, 
+	OTHER_XML CLOB, 
+	CON_DBID NUMBER, 
+	CON_ID NUMBER
+	);
+	
 alter table opas_ot_sql_awr_plan_det add constraint fk_sql_awrpland_id foreign key (plan_id) references opas_ot_sql_awr_plans(plan_id) on delete cascade;
 alter table opas_ot_sql_awr_plan_det add constraint fk_sql_awrpland_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
 create index idx_opas_sql_awrpland_id on opas_ot_sql_awr_plan_det(plan_id);
@@ -1154,11 +2083,52 @@ create table opas_ot_sql_awr_plan_ref (
 create index idx_opas_sql_awrplan_ref_dp  on opas_ot_sql_awr_plan_ref(sql_data_point_id);
 create index idx_opas_sql_awrplan_rep_pl on opas_ot_sql_awr_plan_ref(plan_id);
 
-create global temporary table opas_ot_tmp_dbh_plan on commit delete rows
-as select x.* from dba_hist_sql_plan x where 1=2;
+CREATE GLOBAL TEMPORARY TABLE OPAS_OT_TMP_DBH_PLAN 
+   (	DBID NUMBER, 
+	SQL_ID VARCHAR2(13 BYTE), 
+	PLAN_HASH_VALUE NUMBER, 
+	ID NUMBER, 
+	OPERATION VARCHAR2(30 BYTE), 
+	OPTIONS VARCHAR2(30 BYTE), 
+	OBJECT_NODE VARCHAR2(128 BYTE), 
+	OBJECT# NUMBER, 
+	OBJECT_OWNER VARCHAR2(128 BYTE), 
+	OBJECT_NAME VARCHAR2(128 BYTE), 
+	OBJECT_ALIAS VARCHAR2(261 BYTE), 
+	OBJECT_TYPE VARCHAR2(20 BYTE), 
+	OPTIMIZER VARCHAR2(20 BYTE), 
+	PARENT_ID NUMBER, 
+	DEPTH NUMBER, 
+	POSITION NUMBER, 
+	SEARCH_COLUMNS NUMBER, 
+	COST NUMBER, 
+	CARDINALITY NUMBER, 
+	BYTES NUMBER, 
+	OTHER_TAG VARCHAR2(35 BYTE), 
+	PARTITION_START VARCHAR2(64 BYTE), 
+	PARTITION_STOP VARCHAR2(64 BYTE), 
+	PARTITION_ID NUMBER, 
+	OTHER VARCHAR2(4000 BYTE), 
+	DISTRIBUTION VARCHAR2(20 BYTE), 
+	CPU_COST NUMBER, 
+	IO_COST NUMBER, 
+	TEMP_SPACE NUMBER, 
+	ACCESS_PREDICATES VARCHAR2(4000 BYTE), 
+	FILTER_PREDICATES VARCHAR2(4000 BYTE), 
+	PROJECTION VARCHAR2(4000 BYTE), 
+	TIME NUMBER, 
+	QBLOCK_NAME VARCHAR2(128 BYTE), 
+	REMARKS VARCHAR2(4000 BYTE), 
+	TIMESTAMP DATE, 
+	OTHER_XML CLOB, 
+	CON_DBID NUMBER, 
+	CON_ID NUMBER
+   ) ON COMMIT DELETE ROWS;
 
-create global temporary table opas_ot_tmp_dbh_plan_key on commit delete rows
-as select 0 plan_id, plan_hash_value from dba_hist_sql_plan where 1=2;
+CREATE GLOBAL TEMPORARY TABLE OPAS_OT_TMP_DBH_PLAN_KEY 
+   (PLAN_ID NUMBER, 
+	PLAN_HASH_VALUE NUMBER
+   ) ON COMMIT DELETE ROWS ;
 
 --
 create global temporary table opas_ot_tmp_dbh_ash
@@ -1203,11 +2173,15 @@ create global temporary table opas_ot_tmp_dbh_ash
    ) on commit delete rows ;
 ;
 ---
-create  global temporary table opas_ot_tmp_awr_ash_objs on commit delete rows
-as
-select
-object_id, subprogram_id, owner, object_type, object_name, procedure_name
-from dba_procedures s where 1=2;
+CREATE GLOBAL TEMPORARY TABLE OPAS_OT_TMP_AWR_ASH_OBJS 
+   (OBJECT_ID NUMBER, 
+	SUBPROGRAM_ID NUMBER, 
+	OWNER VARCHAR2(128 BYTE), 
+	OBJECT_TYPE VARCHAR2(13 BYTE), 
+	OBJECT_NAME VARCHAR2(128 BYTE), 
+	PROCEDURE_NAME VARCHAR2(128 BYTE)
+   ) ON COMMIT DELETE ROWS ;
+
 ---
 create table opas_ot_sql_awr_ash_summ 
    (topn number, 
@@ -1243,7 +2217,7 @@ create table opas_ot_sql_awr_ash_summ
 	samples number, 
 	pga_allocated number, 
 	temp_space_allocated number,
-	incarnation# number,
+	incarnation# number
    )
 row store compress advanced logging;
 
@@ -1297,7 +2271,7 @@ create index idx_opas_ot_db_monitor_sch   on opas_ot_db_monitor(schedule);
 create table opas_ot_db_monitor_vals (
 measur_id       number                                           generated always as identity primary key,
 metric_id       number                                           references opas_ot_db_monitor (metric_id) on delete cascade,
-tim             timestamp(6),
+tim             timestamp(6) WITH TIME ZONE,
 val             number) row store compress advanced;
 
 create index idx_opas_ot_db_monitor_vm   on opas_ot_db_monitor_vals(metric_id);
@@ -1305,54 +2279,58 @@ create index idx_opas_ot_db_monitor_vm   on opas_ot_db_monitor_vals(metric_id);
 create table opas_ot_db_monitor_alerts_cfg (
 metric_id       number                                           references opas_ot_db_monitor (metric_id) on delete cascade,
 alert_type      varchar2(128),
-alert_limit     number);
+alert_limit     number,
+limit_actual    varchar2(1) default 'Y',
+actual_start    timestamp,
+actual_end      timestamp);
 
-create unique index idx_opas_ot_db_mon_acgg_vm   on opas_ot_db_monitor_alerts_cfg(metric_id, alert_type);
+create unique index idx_opas_ot_db_mon_acgg_u1   on opas_ot_db_monitor_alerts_cfg(decode(limit_actual,'Y', metric_id, null), decode(limit_actual,'Y', alert_type, null));
+create index idx_opas_ot_db_mon_acgg_m    on opas_ot_db_monitor_alerts_cfg(metric_id);
 
 
 --
 --
 ---------------------------------------------------------------------------------------------
 -- sql lists
-create table opas_ot_sql_lists (
-sqllst_id           number                                           primary key,
-list_name           varchar2(100)                          not null,
-description         varchar2(4000)
-);
+--create table opas_ot_sql_lists (
+--sqllst_id           number                                           primary key,
+--list_name           varchar2(100)                          not null,
+--description         varchar2(4000)
+--);
 
-alter table opas_ot_sql_lists add constraint fk_sql_lists_obj foreign key (sqllst_id) references opas_objects(obj_id) on delete cascade;
+--alter table opas_ot_sql_lists add constraint fk_sql_lists_obj foreign key (sqllst_id) references opas_objects(obj_id) on delete cascade;
 
-create table opas_ot_lists2sqls (
-sqllst_id           number                                 not null  references opas_sql_lists(sqllst_id) on delete cascade,
-sql_id              varchar2(128)                          not null  references opas_query_storage(sql_id)
-);
+--create table opas_ot_lists2sqls (
+--sqllst_id           number                                 not null  references opas_sql_lists(sqllst_id) on delete cascade,
+--sql_id              varchar2(128)                          not null  references opas_query_storage(sql_id)
+--);
 
-create unique index idx_opas_lists2sqls_sql_l on opas_ot_lists2sqls(sqllst_id, sql_id);
-create index idx_opas_lists2sqls_sql   on opas_ot_lists2sqls(sql_id);
+--create unique index idx_opas_lists2sqls_sql_l on opas_ot_lists2sqls(sqllst_id, sql_id);
+--create index idx_opas_lists2sqls_sql   on opas_ot_lists2sqls(sql_id);
 
 ---------------------------------------------------------------------------------------------
 -- reports
-create table opas_ot_reports (
-report_id           number                                           primary key,
-parent_id           number                                           references opas_reports(report_id) on delete set null,
-modname             varchar2(128)                          not null  references opas_modules(modname) on delete cascade,
-tq_id               number                                           references opas_task_queue(tq_id) on delete set null,
-report_content      number                                           references opas_files ( file_id ),
-report_params_displ varchar2(1000),
-report_type         varchar2(100)                          not null);
+--create table opas_ot_reports (
+--report_id           number                                           primary key,
+--parent_id           number                                           references opas_reports(report_id) on delete set null,
+--modname             varchar2(128)                          not null  references opas_modules(modname) on delete cascade,
+--tq_id               number                                           references opas_task_queue(tq_id) on delete set null,
+--report_content      number                                           references opas_files ( file_id ),
+--report_params_displ varchar2(1000),
+--report_type         varchar2(100)                          not null);
 
-alter table opas_ot_reports add constraint fk_reports_obj foreign key (report_id) references opas_objects(obj_id);
+--alter table opas_ot_reports add constraint fk_reports_obj foreign key (report_id) references opas_objects(obj_id);
 
-create index idx_opas_reports_mod   on opas_ot_reports(modname);
-create index idx_opas_reports_fcntn on opas_ot_reports(report_content);
+--create index idx_opas_reports_mod   on opas_ot_reports(modname);
+--create index idx_opas_reports_fcntn on opas_ot_reports(report_content);
 
-create table opas_ot_reports_pars (
-report_id           number                                 not null  references opas_reports(report_id) on delete cascade,
-par_name            varchar2(100)                          not null,
-num_par             number,
-varchar_par         varchar2(4000),
-date_par            date
-);
+--create table opas_ot_reports_pars (
+--report_id           number                                 not null  references opas_reports(report_id) on delete cascade,
+--par_name            varchar2(100)                          not null,
+--num_par             number,
+--varchar_par         varchar2(4000),
+--date_par            date
+--);
 
-create index idx_opas_reports_parstske on opas_reports_pars(report_id);
+--create index idx_opas_reports_parstske on opas_reports_pars(report_id);
 

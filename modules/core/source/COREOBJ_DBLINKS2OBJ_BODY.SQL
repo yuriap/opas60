@@ -106,9 +106,13 @@ PACKAGE BODY COREOBJ_DBLINKS2OBJ AS
   is
     l_status varchar2(100);
   begin
-    select status into l_status
+    select
+      substr(listagg(status||': '||cnt, ';')within group (order by status),1,100) into l_status
+    from (
+    select status, count(1) cnt
     from opas_db_links li, OPAS_OT_DBLINKS2OBJ o2l
-    where TRG_OBJ_ID = p_obj_id and DBLINK = DB_LINK_NAME;
+    where TRG_OBJ_ID = p_obj_id and DBLINK = DB_LINK_NAME
+    group by status);
     return l_status;
   end;
 

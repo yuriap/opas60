@@ -63,6 +63,8 @@ grant select on dba_hist_active_sess_history to &localscheme.;
 grant select on dba_procedures to &localscheme.;
 grant select on dba_users to &localscheme.;
 
+define job_class_name=JC_&namepref.
+
 begin
 DBMS_SCHEDULER.CREATE_JOB_CLASS (
    job_class_name            => '&job_class_name.',
@@ -75,18 +77,6 @@ end;
 grant execute on &job_class_name. to &localscheme.;
 
 set serveroutput on
-/*
-begin
-  for i in (select * from dba_tab_privs where grantee='SELECT_CATALOG_ROLE')
-  loop
-  begin
-    execute immediate 'grant '||i.privilege||' on '||i.table_name||' to &localscheme.';
-  exception
-    when others then null; -- dbms_output.put_line(i.table_name||':'||i.privilege||': '||sqlerrm);
-  end;
-  end loop;
-end;
-*/
 
 create or replace directory &OPASEXPIMP_DIR. as '&OPASEXPIMP_DIRPATH.';
 grant read, write on directory &OPASEXPIMP_DIR. to &localscheme.;

@@ -2,7 +2,7 @@ CREATE OR REPLACE
 PACKAGE BODY COREOBJ_DB_MONITOR AS
 
   procedure calc_alerts(p_metric_id   OPAS_OT_DB_MONITOR_VALS.METRIC_ID%type,
-                        p_metric_tim  OPAS_OT_DB_MONITOR_VALS.TIM%type,
+                        p_metric_tim  OPAS_OT_DB_MONITOR_VALS.TIM%type, --varchar2, -- TZ is getting lost somehow
                         p_metruc_val  OPAS_OT_DB_MONITOR_VALS.VAL%type,
                         p_measur_id   OPAS_OT_DB_MONITOR_VALS.measur_id%type)
   is
@@ -14,17 +14,19 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
                      opas_objects o
                where c.metric_id = p_metric_id
                  and c.metric_id=o.obj_id
-                 and m.metric_id = c.metric_id)
+                 and m.metric_id = c.metric_id
+                 and c.limit_actual = 'Y')
     loop
       if i.alert_type = 'SINGLELIMIT' then
         if p_metruc_val > i.alert_limit then
           l_obj  := COREOBJ_API.get_obj(i.obj_id);
           COREMOD_ALERTS.add_alert (
-            P_ALERT_ID => L_ALERT_ID,
+            P_ALERT_ID   => L_ALERT_ID,
             P_ALERT_TYPE => i.obj_name,
-            P_OWNER => l_obj.obj_owner,
-            P_MESSAGE => 'Single value limit exceeded. Actual: '||p_metruc_val||' '||i.measure||'; Limit: '||i.ALERT_LIMIT||' '||i.measure||'.',
-            P_LINK_PAGE => 6002,
+            p_created    => p_metric_tim,
+            P_OWNER      => l_obj.obj_owner,
+            P_MESSAGE    => 'Single value limit exceeded. Actual: '||p_metruc_val||' '||i.measure||'; Limit: '||i.ALERT_LIMIT||' '||i.measure||'.',
+            P_LINK_PAGE  => 6002,
             P_LINK_PARAM => p_measur_id) ;
         end if;
       end if;
@@ -32,14 +34,15 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
   end;
 
   procedure save_simple_datapoint(p_metric_id   OPAS_OT_DB_MONITOR_VALS.METRIC_ID%type,
-                                  p_metric_tim  OPAS_OT_DB_MONITOR_VALS.TIM%type,
+                                  p_metric_tim  OPAS_OT_DB_MONITOR_VALS.TIM%type, --varchar2, -- TZ is getting lost somehow
                                   p_metruc_val  OPAS_OT_DB_MONITOR_VALS.VAL%type)
   is
     l_measur_id opas_ot_db_monitor_vals.measur_id%type;
   begin
+--coremod_tasks.log('3: '||to_char(p_metric_tim,COREMOD_ALERTS.gTSWTZFMT));
     --dbms_output.put_line(p_metric_id||'; '||p_metric_tim||'; '||p_metruc_val);
     INSERT INTO opas_ot_db_monitor_vals ( metric_id, tim, val )
-         VALUES ( p_metric_id, p_metric_tim, p_metruc_val) returning measur_id into l_measur_id;
+         VALUES ( p_metric_id, p_metric_tim /*to_timestamp_tz(p_metric_tim,COREMOD_ALERTS.gTSWTZFMT)*/, p_metruc_val) returning measur_id into l_measur_id;
     commit;
     calc_alerts(p_metric_id, p_metric_tim, p_metruc_val, l_measur_id);
     commit;
@@ -49,7 +52,9 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
 --select rdb_status.get_replication_lag().status from dual;
 --declare l_inp INTERVAL DAY TO SECOND :=to_dsinterval(:inp); begin :outp := extract(day from l_inp)*24*60*60 + extract(hour from l_inp)*60*60 + extract(minute from l_inp)*60 + extract(second from l_inp); end;
 
-  procedure execute_simple_metric_i(p_metric_id OPAS_OT_DB_MONITOR.METRIC_ID%type, p_ts out timestamp, p_val out number) AS
+  procedure execute_simple_metric_i(p_metric_id OPAS_OT_DB_MONITOR.METRIC_ID%type,
+                                    p_ts  out OPAS_OT_DB_MONITOR_VALS.TIM%type, --varchar2, -- TZ is getting lost somehow
+                                    p_val out OPAS_OT_DB_MONITOR_VALS.VAL%type) AS
 
 --    l_sql varchar2(16000) := rtrim('select rdb_status.get_replication_lag().status from dual;',';');
 --    l_exp varchar2(16000) := 'declare l_inp INTERVAL DAY TO SECOND :=to_dsinterval(:inp); begin :outp := extract(day from l_inp)*24*60*60 + extract(hour from l_inp)*60*60 + extract(minute from l_inp)*60 + extract(second from l_inp); end;';
@@ -68,7 +73,7 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
     l_metr  varchar2(100);
     --l_val   number;
 
-    l_timfmt varchar2(32) := 'YYYYMMDDHH24MISS.ff6';
+    l_timfmt varchar2(32) := COREMOD_ALERTS.gTSWTZFMT; --'YYYYMMDDHH24MISS.ff6 TZH:TZM';
   BEGIN
     select * into l_mon from OPAS_OT_DB_MONITOR where METRIC_ID = p_metric_id;
 
@@ -89,10 +94,13 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
       execute immediate l_sql;
     end if;
 
-    l_ts   := substr(l_out,1,instr(l_out,'|')-1);
-    p_ts   := to_timestamp(l_ts, l_timfmt);
-    l_metr := substr(l_out,instr(l_out,'|')+1);
+--coremod_tasks.log('1: '||l_out);
 
+    l_ts   := substr(l_out,1,instr(l_out,'|')-1);
+    --p_ts   := l_ts;
+    p_ts   := to_timestamp_tz(l_ts, l_timfmt);
+    l_metr := substr(l_out,instr(l_out,'|')+1);
+--coremod_tasks.log('2: '||to_char(p_ts,l_timfmt));
     --dbms_output.put_line(p_metric_id||'; '||l_ts||'; '||l_metr||'; '||l_sql||'; '||l_out);
 
     l_sql := l_mon.CONVERT_CODE;
@@ -107,12 +115,17 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
 
   procedure execute_simple_metric(p_metric_id OPAS_OT_DB_MONITOR.METRIC_ID%type)
   AS
-    l_ts  timestamp;
+    l_ts  OPAS_OT_DB_MONITOR_VALS.TIM%type; --varchar2(512);
     l_val number;
+    ex_no_connection exception;
+    pragma exception_init(ex_no_connection,-12154); --ORA-12154
   BEGIN
     execute_simple_metric_i(p_metric_id, l_ts, l_val);
     save_simple_datapoint(p_metric_id,l_ts,l_val);
     commit;
+  exception
+    when ex_no_connection then
+      coremod_tasks.log('COREOBJ_DB_MONITOR.execute_simple_metric('||p_metric_id||'); '||sqlerrm);
   END execute_simple_metric;
 
   procedure add   (p_obj_id       out opas_objects.obj_id%type,
@@ -215,14 +228,18 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
                             p_alert_type  opas_ot_db_monitor_alerts_cfg.alert_type%type,
                             p_alert_limit  opas_ot_db_monitor_alerts_cfg.alert_limit%type)
   is
+    l_ts timestamp := systimestamp;
   begin
+    for i in (select x.rowid from opas_ot_db_monitor_alerts_cfg x where metric_id = p_metric_id and alert_type = p_alert_type and limit_actual = 'Y' and decode(alert_limit,p_alert_limit,1,0)=0)
+    loop
+      update opas_ot_db_monitor_alerts_cfg set limit_actual='N', actual_end = l_ts where rowid=i.rowid;
+    end loop;
+
     merge into opas_ot_db_monitor_alerts_cfg t
     using (select p_metric_id metric_id, p_alert_type alert_type, p_alert_limit alert_limit from dual) s
-    on (t.metric_id = s.metric_id and t.alert_type = s.alert_type)
-    when matched then update set
-    t.alert_limit=s.alert_limit
-    when not matched then insert ( t.metric_id, t.alert_type, t.alert_limit)
-      VALUES (s.metric_id, s.alert_type, s.alert_limit);
+    on (t.metric_id = s.metric_id and t.alert_type = s.alert_type and t.limit_actual = 'Y')
+    when not matched then insert ( t.metric_id, t.alert_type, t.alert_limit, t.limit_actual, t.actual_start)
+      VALUES (s.metric_id, s.alert_type, s.alert_limit, 'Y', l_ts);
   end;
 
   procedure drop_alert_limit(p_metric_id   opas_ot_db_monitor_alerts_cfg.metric_id%type,

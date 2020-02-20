@@ -1478,11 +1478,12 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
 
     l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_db_link_name, P_KEY => 'TABCOLLIST_DBA_HIST_SNAPSHOT'));
 
-    if p_params.CON_ID is not null and instr(COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_db_link_name, P_KEY => 'TABCOLLIST_DBA_HIST_SNAPSHOT'),'CON_ID') > 0 then
-      l_sql := replace(l_sql,'<CON_FILTER>','and CON_ID = '||p_params.CON_ID);
-    else
+    --con_id is messy
+    --if p_params.CON_ID is not null and instr(COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_db_link_name, P_KEY => 'TABCOLLIST_DBA_HIST_SNAPSHOT'),'CON_ID') > 0 then
+    --  l_sql := replace(l_sql,'<CON_FILTER>','and CON_ID = '||p_params.CON_ID);
+    --else
       l_sql := replace(l_sql,'<CON_FILTER>','');
-    end if;
+    --end if;
 
     execute immediate l_sql using l_ts1, l_ts2, p_params.DBID;
     l_sql := null;
@@ -1756,7 +1757,8 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                    p_gather_new       boolean,
                    p_dirname      out varchar2)
   is
-    l_folder   opas_objects.obj_id%type;
+    l_folder         opas_objects.obj_id%type;
+    l_existing_sql   opas_objects.obj_id%type;
   begin
     p_dirname := replace(p_current_dir,'\','/');
     p_dirname := substr(p_dirname,instr(p_dirname,'/',-1)+1);
@@ -1775,9 +1777,22 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     end;
 
     if p_gather_new then
+
+      begin
+        select obj_id into l_existing_sql
+          from ( select obj_id
+                   from opas_objects
+                  where obj_prnt=l_folder and OBJ_OT = COREOBJ_API.otSQL_PERFORMANCE_DATA and OBJ_NAME = p_sql_id
+                  order by OBJ_CREATED)
+         where rownum=1;
+      exception
+        when no_data_found then
+          l_existing_sql := l_folder;
+      end;
+
 	  COREOBJ_SQL.add (
         P_OBJ_ID   =>   p_obj_id,
-        P_OBJ_PRNT => l_folder,
+        P_OBJ_PRNT => l_existing_sql,
         P_OWNER    => 'PUBLIC',
         P_DESCR    => 'SQL Data gathering from CMD',
         P_SQL_ID   => p_sql_id,

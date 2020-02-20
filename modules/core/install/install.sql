@@ -79,27 +79,8 @@ begin
 end;
 /
 
+
 /*
-begin
-  COREMOD_TASKS.create_task (  p_taskname  => 'OPAS_REPORT',
-                               p_modname   => '&MODNM.',
-                               p_is_public => 'Y', 
-							   p_task_priority => COREMOD_TASKS.tpNORM,
-                               p_task_body => 'begin coremod_report_utils.execute_report (p_report_id => <B1>) ; end;');
-end;
-/
-
-
-begin
-  COREMOD_TASKS.create_task (  p_taskname  => 'OPAS_UPLOAD_IMP_FILE',
-                               p_modname   => '&MODNM.',
-                               p_is_public => 'Y', 
-                               p_task_body => 'begin COREMOD_EXPIMP.import_file (p_exp_sess_id => <B1>) ; end;');
-end;
-/
-
-
-
 begin
   COREMOD_EXPIMP.init();
 end;

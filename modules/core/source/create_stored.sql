@@ -1,3 +1,4 @@
+set define off
 @@COREMOD_ALERTS_SPEC.SQL
 show errors
 
@@ -118,3 +119,4 @@ show errors
 @@COREOBJ_SQL_UTILS_BODY.SQL
 show errors
 
+set define on

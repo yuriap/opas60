@@ -74,12 +74,14 @@ PACKAGE BODY COREOBJ_FOLDER AS
   is
     pragma autonomous_transaction;
   begin
-    merge into opas_last_nav_folder t
-    using (select V('APP_USER') usr, p_folder fldr from dual) s
-    on (t.apex_user = s.usr)
-    when matched then update set folder_id = s.fldr
-    when not matched then insert (apex_user, folder_id) values (s.usr, s.fldr);
-    commit;
+    if p_folder is not null then
+      merge into opas_last_nav_folder t
+      using (select V('APP_USER') usr, p_folder fldr from dual) s
+      on (t.apex_user = s.usr)
+      when matched then update set folder_id = s.fldr
+      when not matched then insert (apex_user, folder_id) values (s.usr, s.fldr);
+      commit;
+    end if;
   end;
 
   procedure calc_folder_size   (p_folder      opas_objects.obj_id%type)
