@@ -392,6 +392,70 @@ package body COREOBJ_DB_GROWTH is
       end if;
   end;
 
+  function calc_alert_i(p_alert     opas_ot_dbg_monitor_al_cfg%rowtype) return number
+  is
+    l_last_dp opas_ot_dbg_datapoint.dbgdp_id%type;
+    l_prev_dp opas_ot_dbg_datapoint.dbgdp_id%type;
+    refcrsr sys_refcursor;
+    l_sql varchar2(1000);
+    l_res number;
+  begin
+      open refcrsr for select dbgdp_id from opas_ot_dbg_datapoint where dbg_id = p_alert.dbg_id order by snapped desc;
+      fetch refcrsr into l_last_dp;
+      fetch refcrsr into l_prev_dp;
+      close refcrsr;
+
+      case p_alert.alert_type
+        when alrtSIZELIMIT then
+          select sum(used_bytes) into l_res from opas_ot_dbg_ts_sizes where dbgdp_id = l_last_dp;
+        when alrtDELTALIMIT then
+          select s_last - s_prev into l_res from
+          (select sum(used_bytes) s_last from opas_ot_dbg_ts_sizes where dbgdp_id = l_last_dp) lastdp,
+          (select sum(used_bytes) s_prev from opas_ot_dbg_ts_sizes where dbgdp_id = l_prev_dp) prevdp;
+        when alrtFREELIMIT then
+          select sum(free_bytes) into l_res from opas_ot_dbg_ts_sizes where dbgdp_id = l_last_dp;
+          return case when l_res < p_alert.alert_limit then l_res else null end;
+        when alrtOUTOFSPACE then
+          select round(s_free/(s_last - s_prev),3) into l_res from
+          (select sum(used_bytes) s_last from opas_ot_dbg_ts_sizes where dbgdp_id = l_last_dp) lastdp,
+          (select sum(used_bytes) s_prev from opas_ot_dbg_ts_sizes where dbgdp_id = l_prev_dp) prevdp,
+          (select sum(free_bytes) s_free from opas_ot_dbg_ts_sizes where dbgdp_id = l_last_dp);
+          return case when l_res < p_alert.alert_limit then l_res else null end;
+        when alrtREGEXP then
+          l_sql := q'[with objects as
+ (select *
+    from opas_ot_dbg_objects o, opas_ot_dbg_datapoint dp
+   where o.version_dp_id = dp.dbgdp_id
+     and dp.dbg_id = :p_dbg_id
+     and (]' || p_alert.alert_expr || q'[))
+select res from (
+select dbgdp_id, size_bytes - lag(size_bytes) over(order by snapped) res
+  from (select dp.dbgdp_id, dp.snapped, sum(s.size_bytes) size_bytes
+          from objects o, opas_ot_dbg_seg_sizes s, opas_ot_dbg_datapoint dp
+         where o.dbgobj_id = s.dbgobj_id
+           and s.dbgdp_id = dp.dbgdp_id
+           and dp.dbg_id = :p_dbg_id
+           and dp.dbgdp_id in (:p_dp1, :p_dp2)
+         group by dp.dbgdp_id, dp.snapped)) where dbgdp_id = :p_dp2
+     ]';
+          execute immediate l_sql into l_res using in p_alert.dbg_id, p_alert.dbg_id, l_prev_dp, l_last_dp, l_last_dp;
+        else
+          l_res := null;
+      end case;
+      return case when l_res > p_alert.alert_limit then l_res else null end;
+  end;
+
+  function calc_alert(p_alert_id     opas_ot_dbg_monitor_al_cfg.alert_id%type) return number
+  is
+  begin
+    for i in (select x.*
+                from opas_ot_dbg_monitor_al_cfg x
+               where alert_id = p_alert_id)
+    loop
+      return calc_alert_i(i);
+    end loop;
+  end;
+
   procedure take_test_snapshot(p_obj_id       opas_objects.obj_id%type)
   is
   BEGIN
@@ -403,16 +467,41 @@ package body COREOBJ_DB_GROWTH is
   is
     ex_no_connection exception;
     pragma exception_init(ex_no_connection,-12154); --ORA-12154
+
+    l_metric number;
+    L_ALERT_ID number;
+    l_msg      opas_dictionary.display_val%type;
+    l_owner    opas_objects.obj_owner%type;
+    l_ts       timestamp := systimestamp;
   begin
     take_snapshot_i(p_obj_id);
     commit;
+    for i in (select * from opas_ot_dbg_monitor_al_cfg where dbg_id = p_obj_id) loop
+      l_metric := calc_alert_i(i);
+      if l_metric is not null then
+        select obj_owner into l_owner from opas_objects where obj_id=p_obj_id;
+        if i.alert_type = alrtREGEXP then
+          l_msg := i.alert_name;
+        else
+          select display_val into l_msg from opas_dictionary where dic_name='DBGALERT' and val = i.alert_type;
+        end if;
+          COREMOD_ALERTS.add_alert (
+            P_ALERT_ID   => L_ALERT_ID,
+            P_ALERT_TYPE => i.alert_type,
+            p_created    => l_ts,
+            P_OWNER      => l_owner,
+            P_MESSAGE    => 'Database Growth Alert "' || l_msg ||'"! Limit exceeded. Current: '||l_metric||' bytes; Limit: '||i.ALERT_LIMIT ||' bytes.',
+            P_LINK_PAGE  => 5002,
+            P_LINK_PARAM => i.alert_id) ;
+      end if;
+    end loop;
   exception
     when ex_no_connection then
       coremod_tasks.log('COREOBJ_DB_GROWTH.take_snapshot('||p_obj_id||'); '||sqlerrm);
   end;
 
-  procedure add_alert_limit(p_obj_id       opas_objects.obj_id%type,
-                            p_alert_id     opas_ot_dbg_monitor_al_cfg.alert_id%type,
+  procedure add_alert_limit(p_alert_id     opas_ot_dbg_monitor_al_cfg.alert_id%type,
+                            p_dbg_id       opas_ot_dbg_monitor_al_cfg.dbg_id%type,
                             p_alert_name   opas_ot_dbg_monitor_al_cfg.alert_name%type,
                             p_alert_type   opas_ot_dbg_monitor_al_cfg.alert_type%type,
                             p_alert_expr   opas_ot_dbg_monitor_al_cfg.alert_expr%type,
@@ -420,45 +509,56 @@ package body COREOBJ_DB_GROWTH is
   is
     l_ts timestamp := systimestamp;
   begin
+coremod_tasks.log('add_alert_limit('||p_alert_id||'); ');
     --raise_application_error(-20000,p_obj_id||':'||p_alert_name||':'||p_alert_type||';'||p_alert_expr||';'||p_alert_limit);
-    for i in (select x.rowid
-                from opas_ot_dbg_monitor_al_cfg x
-               where alert_id = p_alert_id
-                 and limit_actual = 'Y'
-                 and (decode(alert_limit,p_alert_limit,1,0)=0
-                 or decode(alert_expr,p_alert_expr,1,0)=0))
-    loop
-      update opas_ot_dbg_monitor_al_cfg set limit_actual='N', actual_end = l_ts where rowid=i.rowid;
-    end loop;
+    if p_alert_id is not null then
+      for i in (select x.*
+                  from opas_ot_dbg_monitor_al_cfg x
+                 where alert_id = p_alert_id
+                   and (decode(alert_limit,p_alert_limit,1,0)=0
+                     or decode(alert_expr,p_alert_expr,1,0)=0))
+      loop
 
-    merge into opas_ot_dbg_monitor_al_cfg t
-    using (select p_obj_id dbg_id,
-                  p_alert_id alert_id,
-                  p_alert_name alert_name,
-                  p_alert_type alert_type,
-                  case when p_alert_type in ('REGEXP') then p_alert_expr else null end alert_expr,
-                  p_alert_limit alert_limit
-             from dual) s
-    on (t.dbg_id = s.dbg_id and t.alert_type = s.alert_type and t.limit_actual = 'Y' and t.alert_name = s.alert_name)
-    when not matched then insert
-            ( t.dbg_id, t.alert_name, t.alert_type, t.alert_expr, t.alert_limit, t.limit_actual, t.actual_start)
-      VALUES (s.dbg_id, s.alert_name, s.alert_type, s.alert_expr, s.alert_limit, 'Y',            l_ts);
+        update opas_ot_dbg_monitor_al_cfg set
+               actual_start = l_ts,
+               alert_expr = p_alert_expr,
+               alert_limit = p_alert_limit
+         where alert_id=i.alert_id;
+
+        insert into opas_ot_dbg_monitor_al_cfg_hst
+          (alert_id, dbg_id, alert_name, alert_type, alert_expr, alert_limit, actual_start, actual_end)
+        values
+          (i.alert_id, i.dbg_id, i.alert_name, i.alert_type, i.alert_expr, i.alert_limit, i.actual_start, l_ts);
+
+      end loop;
+    else
+      insert into opas_ot_dbg_monitor_al_cfg
+        (dbg_id, alert_name, alert_type, alert_expr, alert_limit, actual_start)
+      values
+        (p_dbg_id, p_alert_name, p_alert_type, p_alert_expr, p_alert_limit, l_ts);
+
+    end if;
+
   end;
 
-  procedure drop_alert_limit(p_obj_id       opas_objects.obj_id%type,
-                             p_alert_name   opas_ot_dbg_monitor_al_cfg.alert_name%type,
-                             p_alert_type   opas_ot_dbg_monitor_al_cfg.alert_type%type)
+  procedure drop_alert_limit(p_alert_id     opas_ot_dbg_monitor_al_cfg.alert_id%type)
   is
   begin
-    update opas_ot_dbg_monitor_al_cfg
-      set limit_actual='N',
-          actual_end = systimestamp
-    where dbg_id = p_obj_id
-      and alert_type = p_alert_type
-      and limit_actual = 'Y'
-      and alert_name = p_alert_name;
-  end;
 
+    for i in (select x.*
+                from opas_ot_dbg_monitor_al_cfg x
+               where alert_id = p_alert_id)
+    loop
+
+      insert into opas_ot_dbg_monitor_al_cfg_hst
+        (alert_id, dbg_id, alert_name, alert_type, alert_expr, alert_limit, actual_start, actual_end)
+      values
+        (i.alert_id, i.dbg_id, i.alert_name, i.alert_type, i.alert_expr, i.alert_limit, i.actual_start, systimestamp);
+
+    end loop;
+    delete from opas_ot_dbg_monitor_al_cfg where alert_id=p_alert_id;
+
+  end;
 
 end COREOBJ_DB_GROWTH;
 /

@@ -10,19 +10,31 @@ create index idx_opas_ot_dbg_monitor_dbl   on opas_ot_dbg_monitor(dblink);
 create index idx_opas_ot_dbg_monitor_sch   on opas_ot_dbg_monitor(schedule);
 
 create table opas_ot_dbg_monitor_al_cfg (
-dbg_id          number                                           references opas_ot_dbg_monitor (dbg_id) on delete cascade,
 alert_id        number                                           generated always as identity primary key,
+dbg_id          number                                  not null references opas_ot_dbg_monitor (dbg_id) on delete cascade,
 alert_name      varchar2(128)                           not null,
+alert_type      varchar2(128)                           not null,
+alert_expr      varchar2(1024),
+alert_limit     number                                  not null,
+actual_start    timestamp);
+
+create unique index idx_opas_ot_dbg_mon_acgg_u1   on opas_ot_dbg_monitor_al_cfg(decode(alert_type,'REGEXP', null, dbg_id));
+create index idx_opas_ot_dbg_mon_acgg_m           on opas_ot_dbg_monitor_al_cfg(dbg_id);
+
+create table opas_ot_dbg_monitor_al_cfg_hst (
+alert_id        number,
+dbg_id          number                                           references opas_ot_dbg_monitor (dbg_id) on delete cascade,
+alert_name      varchar2(128),
 alert_type      varchar2(128),
 alert_expr      varchar2(1024),
 alert_limit     number,
-limit_actual    varchar2(1) default 'Y',
 actual_start    timestamp,
 actual_end      timestamp);
 
-create unique index idx_opas_ot_dbg_mon_acgg_u1   on opas_ot_dbg_monitor_al_cfg(decode(limit_actual,'Y', alert_name, null));
-create index idx_opas_ot_dbg_mon_acgg_m           on opas_ot_dbg_monitor_al_cfg(dbg_id);
+--create index idx_opas_ot_dbg_mon_acgg_hst           on opas_ot_dbg_monitor_al_cfg_hst(alert_id);
+create index idx_opas_ot_dbg_mon_acgg_hm           on opas_ot_dbg_monitor_al_cfg_hst(dbg_id);
 
+---------------------------------
 create table opas_ot_dbg_datapoint (
 dbgdp_id        number                                           generated always as identity primary key,
 dbg_id          number                                           references opas_ot_dbg_monitor (dbg_id) on delete cascade,
