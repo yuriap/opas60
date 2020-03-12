@@ -157,7 +157,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
         COREMOD_UTILS.get_clob_remotelly(q'[select sql_fulltext into l_out from gv$sql where sql_id=']' || p_data.sql_id || q'[' and rownum=1;]',
                                          COREMOD_API.get_ora_dblink(p_data.dblink),
                                          l_sql);
-        if l_sql = '<NO_DATA_FOUND>' then
+        if nvl(l_sql,'<NO_DATA_FOUND>') = '<NO_DATA_FOUND>' then
           COREMOD_UTILS.get_clob_remotelly(q'[select sql_text into l_out from dba_hist_sqltext where sql_id=']' || p_data.sql_id || q'[';]',
                                            COREMOD_API.get_ora_dblink(p_data.dblink),
                                            l_sql);
@@ -287,7 +287,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     l_rows := sql%rowcount;
     l_sql:=null;
 
-    for i in (select program_id, CHILD_NUMBER from opas_ot_sql_vsql where sql_data_point_id = p_data.sql_data_point_id) loop
+    for i in (select unique program_id, CHILD_NUMBER from opas_ot_sql_vsql where sql_data_point_id = p_data.sql_data_point_id) loop
       l_sql := q'[INSERT INTO opas_ot_sql_vsql_objs
                    ( sql_data_point_id,   CHILD_NUMBER, object_id, owner, object_type, object_name)
            select :p_sql_data_point_id,  :CHILD_NUMBER, object_id, owner, object_type, object_name from dba_objects]' ||
@@ -575,7 +575,8 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                   ,physical_read_bytes path 'stat[@name="read_bytes"]'
                   ) x2;
 
-    select count(1) into l_rows from opas_ot_sql_sqlmon_ref where sql_data_point_id = p_data.sql_data_point_id;
+    l_rows := sql%rowcount;
+    --select count(1) into l_rows from opas_ot_sql_sqlmon_ref where sql_data_point_id = p_data.sql_data_point_id;
 
     insert into opas_ot_tmp_gv$sql_plan_stat_all (
            report_id,
@@ -884,6 +885,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     l_plan_hash  number;
     l_full_plan_hash number;
     l_col_list   varchar2(32765);
+    l_sqlerrm    varchar2(32765);
   begin
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLEP);
 
@@ -958,10 +960,14 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
   exception
     when others then
       rollback;
+      l_sqlerrm := sqlerrm;
       if l_sql is not null then coremod_tasks.log('Error load_sql_ep_plans ('||p_data.sql_data_point_id||'): '||l_sql);  end if;
-      coremod_tasks.log('Error load_sql_ep_plans ('||p_data.sql_data_point_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
-
-      finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLEP, sqlerrm);
+      coremod_tasks.log('Error load_sql_ep_plans ('||p_data.sql_data_point_id||'): '||l_sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      if instr(l_sqlerrm,'ORA-01031')>0 then
+        finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLEP, 'ORA-01031: insufficient privileges. (DML).');
+      else
+        finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLEP, l_sqlerrm);
+      end if;
   end;
 
   procedure load_sql_vash(p_data   opas_ot_sql_data%rowtype)
@@ -1444,7 +1450,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     l_ts2        timestamp with time zone;
     l_found      number;
   begin
-    select DBLINK, dbid, CON_ID into p_params.DBLINK, p_params.DBID, p_params.CON_ID from OPAS_DB_LINK_V$DB where DBLINK = p_db_link_name and IS_ACTUAL = 'Y';
+    select DBLINK, dbid, null CON_ID into p_params.DBLINK, p_params.DBID, p_params.CON_ID from OPAS_DB_LINK_V$DB where DBLINK = p_db_link_name and IS_ACTUAL = 'Y';
 
     delete from opas_dbl_tmp_awrsnaps;
 
@@ -1478,12 +1484,11 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
 
     l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_db_link_name, P_KEY => 'TABCOLLIST_DBA_HIST_SNAPSHOT'));
 
-    --con_id is messy
-    --if p_params.CON_ID is not null and instr(COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_db_link_name, P_KEY => 'TABCOLLIST_DBA_HIST_SNAPSHOT'),'CON_ID') > 0 then
-    --  l_sql := replace(l_sql,'<CON_FILTER>','and CON_ID = '||p_params.CON_ID);
-    --else
+--    if p_params.CON_ID is not null and instr(COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_db_link_name, P_KEY => 'TABCOLLIST_DBA_HIST_SNAPSHOT'),'CON_ID') > 0 then
+--      l_sql := replace(l_sql,'<CON_FILTER>','and CON_ID = '||p_params.CON_ID);
+--    else
       l_sql := replace(l_sql,'<CON_FILTER>','');
-    --end if;
+--    end if;
 
     execute immediate l_sql using l_ts1, l_ts2, p_params.DBID;
     l_sql := null;
@@ -1790,7 +1795,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
           l_existing_sql := l_folder;
       end;
 
-	  COREOBJ_SQL.add (
+    COREOBJ_SQL.add (
         P_OBJ_ID   =>   p_obj_id,
         P_OBJ_PRNT => l_existing_sql,
         P_OWNER    => 'PUBLIC',

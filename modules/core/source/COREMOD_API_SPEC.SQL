@@ -44,6 +44,7 @@ package COREMOD_API as
    function get_ora_dblink(p_db_link_name varchar2) return varchar2;
    function get_dblink_for_query(p_dblink varchar2) return varchar2;
    function get_ora_dblink_cache(p_db_link_name varchar2, p_key varchar2) return varchar2;
+   function get_dblink_user(p_dblink varchar2) return varchar2;
 
    procedure update_dblink_db_info(p_db_link_name varchar2);
 

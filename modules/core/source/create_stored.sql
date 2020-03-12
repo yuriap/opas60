@@ -41,6 +41,9 @@ show errors
 @@COREOBJ_DBLINKS2OBJ_SPEC.SQL
 show errors
 
+@@COREOBJ_DB_GROWTH_SPEC.SQL
+show errors
+
 @@COREOBJ_DB_MONITOR_SPEC.SQL
 show errors
 
@@ -99,6 +102,9 @@ show errors
 show errors
 
 @@COREOBJ_DBLINKS2OBJ_BODY.SQL
+show errors
+
+@@COREOBJ_DB_GROWTH_BODY.SQL
 show errors
 
 @@COREOBJ_DB_MONITOR_BODY.SQL

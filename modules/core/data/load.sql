@@ -37,8 +37,8 @@ insert into OPAS_OBJECT_TYPES (OT_ID,OT_NAME,OT_DESCR,OT_ICON, OT_API_PKG) value
                                                                                                                                                       ,'fa-database-clock'                    ,'');
 insert into OPAS_OBJECT_TYPES (OT_ID,OT_NAME,OT_DESCR,OT_ICON, OT_API_PKG) values (300,'ASHA Cube'         ,'Application "ASHA" Cube data and diagrams','fa-cube'                             ,'');
 insert into OPAS_OBJECT_TYPES (OT_ID,OT_NAME,OT_DESCR,OT_ICON, OT_API_PKG) values (400,'AWR Dump'          ,'Application "AWRWH" AWR stored dump'      ,'fa-database-play'                    ,'');
-insert into OPAS_OBJECT_TYPES (OT_ID,OT_NAME,OT_DESCR,OT_ICON, OT_API_PKG) values (500,'DB Growth Tracker' ,'Application "DB Growth Tracker" data'     ,'fa-combo-chart'                      ,'');
-insert into OPAS_OBJECT_TYPES (OT_ID,OT_NAME,OT_DESCR,OT_ICON, OT_API_PKG) values (600,'Simple DB Monitor' ,'Simple Database monitor to measure scalar metric' ,'fa-eyedropper'                ,'COREOBJ_DB_MONITOR');
+insert into OPAS_OBJECT_TYPES (OT_ID,OT_NAME,OT_DESCR,OT_ICON, OT_API_PKG) values (500,'DB Growth Monitor' ,'Application "DB Growth Monitor" data'     ,'fa-combo-chart'                      ,'COREOBJ_DB_GROWTH');
+insert into OPAS_OBJECT_TYPES (OT_ID,OT_NAME,OT_DESCR,OT_ICON, OT_API_PKG) values (600,'Simple DB Monitor' ,'Simple Database monitor to measure scalar metric' ,'fa-eyedropper'               ,'COREOBJ_DB_MONITOR');
 
 
 INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (1000,         100,   'CREATE',     'Create Folder');
@@ -52,10 +52,13 @@ INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) 
 INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (1401,         140,   'OPEN',       'Show SQL Data');
 --INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (1103,         110,   'EDIT',       'Edit attached file');
 
+INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (5000,         500,   'CREATE',     'Register new Database Growth Monitor');
+INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (5000,         500,   'OPEN',       'Show Database Growth Monitor');
+
+
 INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (6000,         600,   'CREATE',     'Register new Simple DB Monitor');
 INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (6000,         600,   'OPEN',       'Show Simple DB Monitor');
-
-
+INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (6002,         600,   'PREVIEW',    'Preview Simple DB Monitor Graph');
 
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','FILE_MIMETYPE','TXT'                     ,'Text file'   ,null,null,null,10);
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','FILE_MIMETYPE','TEXT/HTML'               ,'HTML file'   ,null,null,null,20);
@@ -85,6 +88,12 @@ INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sp
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLREPSECT','AWR_ASHPLSTATS'             ,'AWR ASH plan staictics'          ,'ash_plsstat',  null,null,200);
 
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SDBMALERT', 'SINGLELIMIT'               ,'Single value limit'   ,null,null,null,10);
+
+INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','DBGALERT',  'SIZELIMIT'                 ,'Total Size'           ,null,null,null,10);
+INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','DBGALERT',  'DELTALIMIT'                ,'Total Delta Size'     ,null,null,null,20);
+INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','DBGALERT',  'FREELIMIT'                 ,'Total Free Size'      ,null,null,null,30);
+INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','DBGALERT',  'OUTOFSPACE'                ,'Days to out of space' ,null,null,null,40);
+INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','DBGALERT',  'REGEXP'                    ,'Regular Expression'   ,null,null,null,50);
 
 
 declare

@@ -1,7 +1,7 @@
 CREATE OR REPLACE
 PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
 
-  gwNarrowSection    constant number := 600;
+  gwNarrowSection    constant number := 620;
   gwWideSection1     constant number := 1400;
   gdHeaderRepeat     constant number := 45;
 
@@ -158,15 +158,15 @@ PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
     p('Source DB: '||l_db_link_display_name);
     for i in (select * from OPAS_OT_SQL_VSQL where sql_data_point_id=p_sql_data_point_id order by inst_id, child_number) loop
       --p(' ');
-      p('=================================================================================================');
+      p('=====================================================================================================');
       p('SQL_ID='||i.sql_id||'; CHILD_NUMBER='||i.child_number||'; PLAN HASH: '||i.PLAN_HASH_VALUE||'; Opt Env Hash: '||i.OPTIMIZER_ENV_HASH_VALUE||';'||' INST_ID: '||i.inst_id);
-	  p('FORCE_MATCHING_SIGN: '||i.force_matching_signature||'; OLD_HASH_VALUE: '||i.OLD_HASH_VALUE);
-	  begin
-  	  select object_type||': '||owner||'.'||object_name into l_on from opas_ot_sql_vsql_objs s where s.object_id=i.program_id and s.CHILD_NUMBER = i.CHILD_NUMBER and s.sql_data_point_id = p_sql_data_point_id;
-	    p(l_on||', line number: '||i.program_line#);
-	    exception when no_data_found then null;
-	  end;
-      p('-------------------------------------------------------------------------------------------------');
+    p('FORCE_MATCHING_SIGN: '||i.force_matching_signature||'; OLD_HASH_VALUE: '||i.OLD_HASH_VALUE);
+    begin
+      select object_type||': '||owner||'.'||object_name into l_on from opas_ot_sql_vsql_objs s where s.object_id=i.program_id and s.CHILD_NUMBER = i.CHILD_NUMBER and s.sql_data_point_id = p_sql_data_point_id;
+      p(l_on||', line number: '||i.program_line#);
+      exception when no_data_found then null;
+    end;
+      p('-----------------------------------------------------------------------------------------------------');
       p('Parsing Schema, Module, Action: '||nvl(i.parsing_schema_name,'<NULL>')||', '||nvl(i.module,'<NULL>')||', '||nvl(i.action,'<NULL>'));
       p('Load_time, First: '||i.first_load_time||', Last: '||i.last_load_time||', Active: '||to_char(i.last_active_time,defDataTimeFullFmt));
       $IF DBMS_DB_VERSION.version<11 $THEN
@@ -175,22 +175,22 @@ PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
         p('IS_OBSOLETE, IS_BIND_SENSITIVE,IS_BIND_AWARE, IS_SHARABLE: '||nvl(i.IS_OBSOLETE,'<NULL>')||','||nvl(i.IS_BIND_SENSITIVE,'<NULL>')||','||nvl(i.IS_BIND_AWARE,'<NULL>')||','||nvl(i.is_shareable,'<NULL>'));
         p('SQL Profile, SQL Patch, SQL Plan BaseLine: '||nvl(i.sql_profile,'<NULL>')||','||nvl(i.sql_patch,'<NULL>')||','||nvl(i.sql_plan_baseline,'<NULL>'));
       $END
-	  p('PX_SERVERS_EXECUTIONS: '||COREMOD_REPORT_UTILS.tptformat(i.PX_SERVERS_EXECUTIONS));
+    p('PX_SERVERS_EXECUTIONS: '||COREMOD_REPORT_UTILS.tptformat(i.PX_SERVERS_EXECUTIONS));
       p('PHY_READ_REQ, PHY_READ_BYTES: '||COREMOD_REPORT_UTILS.tptformat(i.physical_read_requests)||'; '||COREMOD_REPORT_UTILS.tptformat(i.physical_read_bytes));
-	  p('PHY_WRI_REQ, PHY_WRI_BYTES: '||COREMOD_REPORT_UTILS.tptformat(i.physical_write_requests)||'; '||COREMOD_REPORT_UTILS.tptformat(i.physical_write_bytes));
+    p('PHY_WRI_REQ, PHY_WRI_BYTES: '||COREMOD_REPORT_UTILS.tptformat(i.physical_write_requests)||'; '||COREMOD_REPORT_UTILS.tptformat(i.physical_write_bytes));
       p('Calls: Parse, Exec, Fetch, Rows, EndOfFetch '||i.parse_calls||'; '||i.executions||'; '||i.fetches||'; '||i.ROWS_PROCESSED||'; '||i.end_of_fetch_count);
       p('CPU Time, Elapsed Time: '||COREMOD_REPORT_UTILS.tptformat(i.cpu_time,'TIME')||'; '||COREMOD_REPORT_UTILS.tptformat(i.elapsed_time,'TIME'));
       p('PIO, LIO, Direct WR: '||COREMOD_REPORT_UTILS.tptformat(i.disk_reads)||'; '||COREMOD_REPORT_UTILS.tptformat(i.buffer_gets)||'; '||COREMOD_REPORT_UTILS.tptformat(i.DIRECT_WRITES));
-	  p('WAIT: APP, CONCURR, CLUSTER, USER_IO, PL/SQL, JAVA: '||COREMOD_REPORT_UTILS.tptformat(i.application_wait_time,'TIME')||'; '||COREMOD_REPORT_UTILS.tptformat(i.concurrency_wait_time,'TIME')||'; '||COREMOD_REPORT_UTILS.tptformat(i.cluster_wait_time,'TIME')||'; '||COREMOD_REPORT_UTILS.tptformat(i.user_io_wait_time,'TIME')||'; '||COREMOD_REPORT_UTILS.tptformat(i.PLSQL_EXEC_TIME,'TIME')||'; '||COREMOD_REPORT_UTILS.tptformat(i.JAVA_EXEC_TIME,'TIME'));
-	  if i.disk_reads>0 then p('Awg IO time: '||COREMOD_REPORT_UTILS.tptformat(i.user_io_wait_time/i.disk_reads,'TIME'));end if;
-	  if i.buffer_gets>0 then p('CPU sec/1M LIO: '||COREMOD_REPORT_UTILS.tptformat(i.cpu_time/i.buffer_gets));end if;
-      p('-------------------------------------------------------------------------------------------------');
+    p('WAIT: APP, CONCURR, CLUSTER, USER_IO, PL/SQL, JAVA: '||COREMOD_REPORT_UTILS.tptformat(i.application_wait_time,'TIME')||'; '||COREMOD_REPORT_UTILS.tptformat(i.concurrency_wait_time,'TIME')||'; '||COREMOD_REPORT_UTILS.tptformat(i.cluster_wait_time,'TIME')||'; '||COREMOD_REPORT_UTILS.tptformat(i.user_io_wait_time,'TIME')||'; '||COREMOD_REPORT_UTILS.tptformat(i.PLSQL_EXEC_TIME,'TIME')||'; '||COREMOD_REPORT_UTILS.tptformat(i.JAVA_EXEC_TIME,'TIME'));
+    if i.disk_reads>0 then p('Awg IO time: '||COREMOD_REPORT_UTILS.tptformat(i.user_io_wait_time/i.disk_reads,'TIME'));end if;
+    if i.buffer_gets>0 then p('CPU sec/1M LIO: '||COREMOD_REPORT_UTILS.tptformat(i.cpu_time/i.buffer_gets));end if;
+      p('-----------------------------------------------------------------------------------------------------');
       if i.executions>0 then
         p('LIO/Exec, PIO/Exec, CPU/EXEC, ROWS/EXEC, ELA/EXEC: '||COREMOD_REPORT_UTILS.tptformat(round(i.buffer_gets/i.executions,3))||'; '||
-	                                                  COREMOD_REPORT_UTILS.tptformat(round((i.disk_reads+i.DIRECT_WRITES)/i.executions,3))||'; '||
-													  COREMOD_REPORT_UTILS.tptformat(round(i.cpu_time/i.executions,3),'TIME')||'; '||
-													  COREMOD_REPORT_UTILS.tptformat(round(i.ROWS_PROCESSED/i.executions,3))||'; '||
-													  COREMOD_REPORT_UTILS.tptformat(round(i.elapsed_time/i.executions,3),'TIME'));
+                                                    COREMOD_REPORT_UTILS.tptformat(round((i.disk_reads+i.DIRECT_WRITES)/i.executions,3))||'; '||
+                            COREMOD_REPORT_UTILS.tptformat(round(i.cpu_time/i.executions,3),'TIME')||'; '||
+                            COREMOD_REPORT_UTILS.tptformat(round(i.ROWS_PROCESSED/i.executions,3))||'; '||
+                            COREMOD_REPORT_UTILS.tptformat(round(i.elapsed_time/i.executions,3),'TIME'));
       else
         p('LIO/Exec, PIO/Exec, CPU/EXEC, ELA/EXEC: '||COREMOD_REPORT_UTILS.tptformat(round(i.buffer_gets))||'; '||COREMOD_REPORT_UTILS.tptformat(round(i.disk_reads+i.DIRECT_WRITES))||'; '||COREMOD_REPORT_UTILS.tptformat(round(i.cpu_time),'TIME')||'; '||COREMOD_REPORT_UTILS.tptformat(round(i.elapsed_time),'TIME'));
       end if;
@@ -200,16 +200,16 @@ PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
         p('LIO/Row, PIO/Row, CPU/Row, ELA/Row: '||COREMOD_REPORT_UTILS.tptformat(round(i.buffer_gets))||'; '||COREMOD_REPORT_UTILS.tptformat(round(i.disk_reads+i.DIRECT_WRITES))||'; '||COREMOD_REPORT_UTILS.tptformat(round(i.cpu_time),'TIME')||'; '||COREMOD_REPORT_UTILS.tptformat(round(i.elapsed_time),'TIME'));
       end if;
       $IF DBMS_DB_VERSION.version>=11 $THEN
-  	  if i.IO_CELL_OFFLOAD_ELIGIBLE_BYTES>0 then
-	      p('-------------------------------------------------------------------------------------------------');
-		  p('Saved %: '||round(100 * (i.IO_CELL_OFFLOAD_ELIGIBLE_BYTES - i.IO_INTERCONNECT_BYTES) / case when i.IO_CELL_OFFLOAD_ELIGIBLE_BYTES=0 then 1 else i.IO_CELL_OFFLOAD_ELIGIBLE_BYTES end,2));
+      if i.IO_CELL_OFFLOAD_ELIGIBLE_BYTES>0 then
+        p('-----------------------------------------------------------------------------------------------------');
+      p('Saved %: '||round(100 * (i.IO_CELL_OFFLOAD_ELIGIBLE_BYTES - i.IO_INTERCONNECT_BYTES) / case when i.IO_CELL_OFFLOAD_ELIGIBLE_BYTES=0 then 1 else i.IO_CELL_OFFLOAD_ELIGIBLE_BYTES end,2));
           p('IO_CELL_OFFLOAD_ELIGIBLE_BYTES: '||COREMOD_REPORT_UTILS.tptformat(i.IO_CELL_OFFLOAD_ELIGIBLE_BYTES));
-	      p('IO_INTERCONNECT_BYTES:          '||COREMOD_REPORT_UTILS.tptformat(i.IO_INTERCONNECT_BYTES));
-	      p('OPTIMIZED_PHY_READ_REQUESTS:    '||COREMOD_REPORT_UTILS.tptformat(i.OPTIMIZED_PHY_READ_REQUESTS));
-	      p('IO_CELL_UNCOMPRESSED_BYTES:     '||COREMOD_REPORT_UTILS.tptformat(i.IO_CELL_UNCOMPRESSED_BYTES));
-	      p('IO_CELL_OFFLOAD_RETURNED_BYTES: '||COREMOD_REPORT_UTILS.tptformat(i.IO_CELL_OFFLOAD_RETURNED_BYTES));
-          p('=================================================================================================');
-	    end if;
+        p('IO_INTERCONNECT_BYTES:          '||COREMOD_REPORT_UTILS.tptformat(i.IO_INTERCONNECT_BYTES));
+        p('OPTIMIZED_PHY_READ_REQUESTS:    '||COREMOD_REPORT_UTILS.tptformat(i.OPTIMIZED_PHY_READ_REQUESTS));
+        p('IO_CELL_UNCOMPRESSED_BYTES:     '||COREMOD_REPORT_UTILS.tptformat(i.IO_CELL_UNCOMPRESSED_BYTES));
+        p('IO_CELL_OFFLOAD_RETURNED_BYTES: '||COREMOD_REPORT_UTILS.tptformat(i.IO_CELL_OFFLOAD_RETURNED_BYTES));
+          p('=====================================================================================================');
+      end if;
       $END
       p(' ');
 
@@ -524,7 +524,7 @@ p_query => replace(q'[select inst_id,child_number,name,isdefault,value from opas
                                     p_output    out COREMOD_REPORT_UTILS.t_output_lines) AS
     --l_indx number := 1;
     l_display_params varchar2(100);
-    l_capture        varchar2(100);
+    --l_capture        varchar2(100);
     l_header         clob;
     l_plan_filter    varchar2(10);
     l_search0        varchar2(32765);
@@ -532,14 +532,14 @@ p_query => replace(q'[select inst_id,child_number,name,isdefault,value from opas
     l_replace         varchar2(32765);
   begin
     case p_section_name
-      when repsSQLPLLAST  then l_display_params:='LAST ALLSTATS +peeked_binds';          l_capture := 'Display cursor (last)';          l_plan_filter := COREOBJ_SQL_UTILS.srcV$;
+      when repsSQLPLLAST  then l_display_params:='LAST ALLSTATS +peeked_binds';          /*l_capture := 'Display cursor (last)';*/         l_plan_filter := COREOBJ_SQL_UTILS.srcV$;
                                l_search0 := 'Instance number: <INST>; Child number: <CHLD>';
                                l_replace := HTF.ANCHOR(curl=>'#child_all_<INST>_<CHLD>',ctext=>'<REPLTXT>',cname=>'child_last_<INST>_<CHLD>',cattributes=>'class="awr"');
-      when repsSQLPLADV   then l_display_params:='LAST ADVANCED';                        l_capture := 'Display cursor (LAST ADVANCED)'; l_plan_filter := COREOBJ_SQL_UTILS.srcV$;
-      when repsSQLPLALL   then l_display_params:='ALL ALLSTATS +peeked_binds';           l_capture := 'Display cursor (ALL)';           l_plan_filter := COREOBJ_SQL_UTILS.srcV$;
+      when repsSQLPLADV   then l_display_params:='LAST ADVANCED';                        /*l_capture := 'Display cursor (LAST ADVANCED)';*/ l_plan_filter := COREOBJ_SQL_UTILS.srcV$;
+      when repsSQLPLALL   then l_display_params:='ALL ALLSTATS +peeked_binds';           /*l_capture := 'Display cursor (ALL)';*/           l_plan_filter := COREOBJ_SQL_UTILS.srcV$;
                                l_search0 := 'Instance number: <INST>; Child number: <CHLD>';
                                l_replace := HTF.ANCHOR(curl=>'',ctext=>'<REPLTXT>',cname=>'child_all_<INST>_<CHLD>',cattributes=>'class="awr"');
-      when repsSQLPLADAPT then l_display_params:='adaptive LAST ALLSTATS +peeked_binds'; l_capture := 'Display cursor (ADAPTIVE)';      l_plan_filter := COREOBJ_SQL_UTILS.srcV$;
+      when repsSQLPLADAPT then l_display_params:='adaptive LAST ALLSTATS +peeked_binds'; /*l_capture := 'Display cursor (ADAPTIVE)';*/      l_plan_filter := COREOBJ_SQL_UTILS.srcV$;
     end case;
 
     for plans in (select * from (select unique r.PLAN_ID,d.INST_ID,d.PLAN_HASH_VALUE,d.FULL_PLAN_HASH_VALUE,d.CHILD_NUMBER
@@ -593,11 +593,11 @@ q'[select plan_table_output "Plan Table Output" from table(dbms_xplan.display('O
                                        p_output    out COREMOD_REPORT_UTILS.t_output_lines) AS
     --l_indx number := 1;
     l_display_params varchar2(100);
-    l_capture        varchar2(100);
-    l_header         clob;
-    l_plan_filter    varchar2(10);
-    l_search         varchar2(32765);
-    l_replace         varchar2(32765);
+    --l_capture        varchar2(100);
+    --l_header         clob;
+    --l_plan_filter    varchar2(10);
+    --l_search         varchar2(32765);
+    --l_replace         varchar2(32765);
   begin
     for plans in (select * from (select unique r.PLAN_ID,d.SQL_PLAN_HASH_VALUE,d.SQL_FULL_PLAN_HASH_VALUE
                     from OPAS_OT_SQL_PLAN_REF r, OPAS_OT_SQL_EP_PLAN_DET d, OPAS_OT_SQL_PLANS p
@@ -833,12 +833,12 @@ order by b.snap_id,position]','<sql_data_point_id>',p_sql_data_point_id),'<defDT
   procedure print_awr_plans_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
                                          p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
     l_display_params varchar2(100);
-    l_capture        varchar2(100);
-    l_header         clob;
-    l_plan_filter    varchar2(10);
+    --l_capture        varchar2(100);
+    --l_header         clob;
+    --l_plan_filter    varchar2(10);
   begin
     l_display_params:='ADVANCED';
-    l_capture := 'AWR Display cursor';
+    --l_capture := 'AWR Display cursor';
 
     for plans in (select * from (select unique r.PLAN_ID
                     from OPAS_OT_SQL_AWR_PLAN_REF r, OPAS_OT_SQL_AWR_PLAN_DET d, OPAS_OT_SQL_AWR_PLANS p
@@ -980,13 +980,10 @@ order by plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data_poin
                                             p_style_head => 'trchd', --head
                                             p_style_r1 => 'trcr1',   --odd rows
                                             p_style_r2  => 'trcr2', --even rows
-                                            p_style_finrow => null, --'trctotr',
+                                            p_style_finrow => null, --trctotr,
                                             p_header => gdHeaderRepeat, --number default 0,
                                             p_break_col => 'plan_hash_value',
-                                            p_output => print_awr_ashplstats_section_base.p_output);
-
-    --p_output(p_output.count+1) := '<b>Summary for each PLAN HASH per SNAP</b>';
-
+                                            p_output => print_awr_ashplstats_section_base.p_output); --'
     p_output(p_output.count+1):=HTF.BR;
 
     p_output(p_output.count+1):=HTF.header (4,cheader=>HTF.ANCHOR (curl=>'',ctext=>'Summary for each PLAN HASH per HOUR',cname=>'awrash_summ2',cattributes=>'class="awr"'),cattributes=>'class="awr"');
@@ -1030,7 +1027,7 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
                                             p_style_finrow => null, --'trctotr',
                                             p_header => gdHeaderRepeat, --number default 0,
                                             p_break_col => 'SNAP',
-                                            p_output => print_awr_ashplstats_section_base.p_output);
+                                            p_output => print_awr_ashplstats_section_base.p_output); --'
   end;
 /*
   procedure print_sql_text_web(p_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type)
@@ -1158,7 +1155,7 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
     end if;
     htp.small(get_section_duration(p_sql_data_point_id,p_section_name));
 
-	COREMOD_LOG.Stop_SQL_TRACE('COREOBJ_SQL_REPORT_UTILS.PRINT_SECTION_HTML.SQL_TRACE');
+  COREMOD_LOG.Stop_SQL_TRACE('COREOBJ_SQL_REPORT_UTILS.PRINT_SECTION_HTML.SQL_TRACE');
     COREMOD_LOG.Stop_SQL_GATHER_STAT('COREOBJ_SQL_REPORT_UTILS.PRINT_SECTION_HTML.GATHER_SQL_STAT');
   end;
 
@@ -1169,7 +1166,7 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
     l_sql_data_point      opas_ot_sql_data%rowtype;
     l_object              opas_objects%rowtype;
     l_text                clob;
-    l_sub_plan_txtx       boolean := false;
+    --l_sub_plan_txtx       boolean := false;
   begin
 
     COREMOD_LOG.Start_SQL_GATHER_STAT('COREOBJ_SQL_REPORT_UTILS.PRINT_REPORT_HTML.GATHER_SQL_STAT');
@@ -1352,7 +1349,7 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
           P_STYLE_R2 => 'awrnc1',--'trcr2',
           P_OUTPUT => l_output);
         for i in 1..l_output.count loop
-          pipe row (l_output(i));
+          pipe row (substr(l_output(i),1,4000));
         end loop;
         l_output.delete;
       else
@@ -1380,7 +1377,7 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
     pipe row (HTF.BODYCLOSE);
     pipe row (HTF.HTMLCLOSE);
 
-	COREMOD_LOG.Stop_SQL_TRACE('COREOBJ_SQL_REPORT_UTILS.PRINT_REPORT_HTML.SQL_TRACE');
+  COREMOD_LOG.Stop_SQL_TRACE('COREOBJ_SQL_REPORT_UTILS.PRINT_REPORT_HTML.SQL_TRACE');
     COREMOD_LOG.Stop_SQL_GATHER_STAT('COREOBJ_SQL_REPORT_UTILS.PRINT_REPORT_HTML.GATHER_SQL_STAT');
   end;
 END COREOBJ_SQL_REPORT_UTILS;

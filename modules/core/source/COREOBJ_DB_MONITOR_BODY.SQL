@@ -2,7 +2,7 @@ CREATE OR REPLACE
 PACKAGE BODY COREOBJ_DB_MONITOR AS
 
   procedure calc_alerts(p_metric_id   OPAS_OT_DB_MONITOR_VALS.METRIC_ID%type,
-                        p_metric_tim  OPAS_OT_DB_MONITOR_VALS.TIM%type, --varchar2, -- TZ is getting lost somehow
+                        p_metric_tim  OPAS_OT_DB_MONITOR_VALS.TIM%type,
                         p_metruc_val  OPAS_OT_DB_MONITOR_VALS.VAL%type,
                         p_measur_id   OPAS_OT_DB_MONITOR_VALS.measur_id%type)
   is
@@ -34,15 +34,13 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
   end;
 
   procedure save_simple_datapoint(p_metric_id   OPAS_OT_DB_MONITOR_VALS.METRIC_ID%type,
-                                  p_metric_tim  OPAS_OT_DB_MONITOR_VALS.TIM%type, --varchar2, -- TZ is getting lost somehow
+                                  p_metric_tim  OPAS_OT_DB_MONITOR_VALS.TIM%type,
                                   p_metruc_val  OPAS_OT_DB_MONITOR_VALS.VAL%type)
   is
     l_measur_id opas_ot_db_monitor_vals.measur_id%type;
   begin
---coremod_tasks.log('3: '||to_char(p_metric_tim,COREMOD_ALERTS.gTSWTZFMT));
-    --dbms_output.put_line(p_metric_id||'; '||p_metric_tim||'; '||p_metruc_val);
     INSERT INTO opas_ot_db_monitor_vals ( metric_id, tim, val )
-         VALUES ( p_metric_id, p_metric_tim /*to_timestamp_tz(p_metric_tim,COREMOD_ALERTS.gTSWTZFMT)*/, p_metruc_val) returning measur_id into l_measur_id;
+         VALUES ( p_metric_id, p_metric_tim, p_metruc_val) returning measur_id into l_measur_id;
     commit;
     calc_alerts(p_metric_id, p_metric_tim, p_metruc_val, l_measur_id);
     commit;
@@ -71,15 +69,14 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
     l_out   clob;
     l_ts    varchar2(100);
     l_metr  varchar2(100);
-    --l_val   number;
 
     l_timfmt varchar2(32) := COREMOD_ALERTS.gTSWTZFMT; --'YYYYMMDDHH24MISS.ff6 TZH:TZM';
   BEGIN
     select * into l_mon from OPAS_OT_DB_MONITOR where METRIC_ID = p_metric_id;
 
     if l_mon.CALL_TYPE = 'SQL' then
-      l_sql := replace(rtrim(l_mon.CALC_CODE,';'),'select ',q'[SELECT TO_CHAR(SYSTIMESTAMP,']' || l_timfmt || q'[')||'|'||]');
-      l_sql := replace(l_sql,' from',q'[ into l_out FROM]')||';';
+      l_sql := replace(rtrim(l_mon.CALC_CODE,';'),'select<m> ',q'[SELECT TO_CHAR(SYSTIMESTAMP,']' || l_timfmt || q'[')||'|'||]');
+      l_sql := replace(l_sql,' from<m>',q'[ into l_out FROM]')||';';
     elsif l_mon.CALL_TYPE = 'FUNC' then
       l_sql := replace(q'[l_out:=to_char(systimestamp,']' || l_timfmt || q'[')||'|'||<FUNC>;]','<FUNC>',l_mon.CALC_CODE);
     end if;
@@ -90,18 +87,13 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
                                             p_output => l_out,
                                             p_is_output => true);
     else
-      l_sql := 'declare l_out clob; begin '||l_sql||' end;';
-      execute immediate l_sql;
+      l_sql := 'declare l_out clob; begin '||l_sql||' :out:=l_out; end;';
+      execute immediate l_sql using out l_out;
     end if;
 
---coremod_tasks.log('1: '||l_out);
-
     l_ts   := substr(l_out,1,instr(l_out,'|')-1);
-    --p_ts   := l_ts;
     p_ts   := to_timestamp_tz(l_ts, l_timfmt);
     l_metr := substr(l_out,instr(l_out,'|')+1);
---coremod_tasks.log('2: '||to_char(p_ts,l_timfmt));
-    --dbms_output.put_line(p_metric_id||'; '||l_ts||'; '||l_metr||'; '||l_sql||'; '||l_out);
 
     l_sql := l_mon.CONVERT_CODE;
     execute immediate l_sql using l_metr, out p_val;
@@ -115,7 +107,7 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
 
   procedure execute_simple_metric(p_metric_id OPAS_OT_DB_MONITOR.METRIC_ID%type)
   AS
-    l_ts  OPAS_OT_DB_MONITOR_VALS.TIM%type; --varchar2(512);
+    l_ts  OPAS_OT_DB_MONITOR_VALS.TIM%type;
     l_val number;
     ex_no_connection exception;
     pragma exception_init(ex_no_connection,-12154); --ORA-12154
@@ -140,7 +132,7 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
 
     INSERT INTO opas_ot_db_monitor
             ( metric_id, dblink, schedule, call_type, calc_code, convert_code, measure)
-     VALUES ( p_obj_id,  null,   null,     'SQL',     'select 1 from dual', 'declare l_inp varchar2(1000) := :inp; begin :outp := to_number(l_inp); end;', 'parrots');
+     VALUES ( p_obj_id,  null,   null,     'SQL',     'select<m> 1 from<m> dual', 'declare l_inp varchar2(1000) := :inp; begin :outp := to_number(l_inp); end;', 'parrots');
   end;
 
   procedure edit  (p_obj_id           opas_objects.obj_id%type,
@@ -218,7 +210,6 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
   procedure remove  (p_obj_id    opas_objects.obj_id%type,
                      p_cascade   varchar2 default 'N')
   is
-    l_dbm OPAS_OT_DB_MONITOR%rowtype;
   begin
     drop_metric(p_obj_id);
     COREOBJ_API.remove(p_obj_id);
@@ -242,11 +233,12 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
       VALUES (s.metric_id, s.alert_type, s.alert_limit, 'Y', l_ts);
   end;
 
-  procedure drop_alert_limit(p_metric_id   opas_ot_db_monitor_alerts_cfg.metric_id%type,
-                             p_alert_type  opas_ot_db_monitor_alerts_cfg.alert_type%type)
+  procedure drop_alert_limit(p_metric_id   opas_ot_db_monitor_alerts_cfg.metric_id%type/*,
+                             p_alert_type  opas_ot_db_monitor_alerts_cfg.alert_type%type*/)
   is
   begin
-    delete from OPAS_OT_DB_MONITOR_ALERTS_CFG where metric_id = p_metric_id;
+    --delete from OPAS_OT_DB_MONITOR_ALERTS_CFG where metric_id = p_metric_id;
+    update opas_ot_db_monitor_alerts_cfg set limit_actual='N', actual_end = systimestamp where metric_id = p_metric_id;
   end;
 
 END COREOBJ_DB_MONITOR;

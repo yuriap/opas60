@@ -258,6 +258,18 @@ package body COREMOD_API as
     return case when p_dblink <> '$LOCAL$' then '@'||COREMOD_API.get_ora_dblink(p_dblink) else null end;
   end;
 
+  function get_dblink_user(p_dblink varchar2) return varchar2
+  is
+    l_username OPAS_DB_LINKS.username%type;
+  begin
+    if  p_dblink = '$LOCAL$' then
+      return user;
+    else
+      select username into l_username from OPAS_DB_LINKS where db_link_name=upper(p_dblink);
+      return l_username;
+    end if;
+  end;
+
   function get_ora_dblink_cache_i(p_db_link_name varchar2, p_key varchar2) return varchar2
   is
     l_res          opas_db_link_cache.value%type;

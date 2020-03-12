@@ -79,14 +79,16 @@ PACKAGE BODY COREOBJ_SQL AS
     l_files1 tableofnumbers;
     l_files2 tableofnumbers;
     l_plans  tableofnumbers;
-
+    l_sql_id opas_ot_sql_data.sql_id%type;
     l_ids    tableofnumbers;
     l_log_level       varchar2(100) := 'DEBUG';
   begin
     -- remove recursive sql datapoints first
     COREMOD_LOG.log ('remove_dp: Start removing '||p_sql_data_point_id, l_log_level);
 
-    for i in (select sql_data_point_id from opas_ot_sql_data where prnt_data_point_id = p_sql_data_point_id) loop
+    select sql_id into l_sql_id from opas_ot_sql_data where sql_data_point_id = p_sql_data_point_id;
+
+    for i in (select sql_data_point_id, sql_id from opas_ot_sql_data where prnt_data_point_id = p_sql_data_point_id) loop
       COREMOD_LOG.log ('remove_dp: Start removing recursive '||i.sql_data_point_id, l_log_level);
       remove_dp(i.sql_data_point_id);
       COREMOD_LOG.log ('remove_dp: Finish removing recursive '||i.sql_data_point_id, l_log_level);
@@ -105,14 +107,45 @@ PACKAGE BODY COREOBJ_SQL AS
                             and not exists (select 1 from opas_ot_sql_sqlmon_ref i where o.sqlmon_id = i.sqlmon_id and sql_data_point_id != p_sql_data_point_id))
       returning sql_mon_report, sql_mon_hst_report, plan_id bulk collect into l_files1, l_files2, l_plans;
     delete from opas_ot_sql_sqlmon_ref o where sql_data_point_id = p_sql_data_point_id;
-    delete from opas_ot_sql_plans where plan_id in (select column_value from table(l_plans));
+    delete from opas_ot_sql_plans where plan_id in (select column_value from table(l_plans) where column_value is not null);
 
     --remove plans if noone references it
     delete from opas_ot_sql_plans
      where plan_id in (select plan_id from opas_ot_sql_plan_ref o
                         where sql_data_point_id = p_sql_data_point_id
-                          and not exists (select 1 from opas_ot_sql_plan_ref i where o.plan_id = i.plan_id and sql_data_point_id != p_sql_data_point_id));
+                          and not exists
+                            (select 1 from opas_ot_sql_plan_ref i where o.plan_id = i.plan_id and sql_data_point_id != p_sql_data_point_id)
+                       minus
+                       select plan_id from opas_ot_sql_sqlmon where sql_id=l_sql_id
+                       );
+/*
+COREMOD_LOG.log ('remove_dp: opas_ot_sql_plans start: '||p_sql_data_point_id||' '||l_sql_id, l_log_level);
+    for i in (select plan_id from opas_ot_sql_plan_ref o
+                        where sql_data_point_id = p_sql_data_point_id
+                          and not exists
+                            (select 1 from opas_ot_sql_plan_ref i where o.plan_id = i.plan_id and sql_data_point_id != p_sql_data_point_id)
+                       minus
+                       select plan_id from opas_ot_sql_sqlmon where sql_id=l_sql_id)
+    loop
+      COREMOD_LOG.log ('remove_dp: opas_ot_sql_plan_ref start: '||i.plan_id, l_log_level);
+for j in (select x.sqlmon_id from opas_ot_sql_sqlmon x where x.plan_id=i.plan_id)
+loop
+  COREMOD_LOG.log ('remove_dp: opas_ot_sql_sqlmon: '||j.sqlmon_id, l_log_level);
+end loop;
+      delete from opas_ot_sql_plans where plan_id = i.plan_id;
+      COREMOD_LOG.log ('remove_dp: opas_ot_sql_plan_ref finish: '||i.plan_id, l_log_level);
+    end loop;
+*/
     delete from opas_ot_sql_plan_ref o where sql_data_point_id = p_sql_data_point_id;
+
+    --remove AWR plans if noone references it
+    delete from opas_ot_sql_awr_plans
+     where plan_id in (select plan_id from opas_ot_sql_awr_plan_ref o
+                        where sql_data_point_id = p_sql_data_point_id
+                          and not exists
+                            (select 1 from opas_ot_sql_awr_plan_ref i where o.plan_id = i.plan_id and sql_data_point_id != p_sql_data_point_id)
+                       );
+    delete from opas_ot_sql_awr_plan_ref o where sql_data_point_id = p_sql_data_point_id;
 
     for i in 1..l_files1.count loop
       COREMOD_FILE_UTILS.delete_file (  P_FILE_ID => l_files1(i)) ;
