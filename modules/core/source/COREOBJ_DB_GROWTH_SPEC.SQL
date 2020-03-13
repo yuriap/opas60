@@ -35,5 +35,9 @@ package COREOBJ_DB_GROWTH is
   procedure drop_alert_limit(p_alert_id     opas_ot_dbg_monitor_al_cfg.alert_id%type);
 
   function calc_alert(p_alert_id     opas_ot_dbg_monitor_al_cfg.alert_id%type) return number;
+
+  function get_alert_graph_query(p_alert_id        opas_ot_dbg_monitor_al_cfg.alert_id%type,
+                                 p_start_dt in out varchar2,
+                                 p_end_dt   in out varchar2) return varchar2;
 end COREOBJ_DB_GROWTH;
 /

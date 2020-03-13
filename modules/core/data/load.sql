@@ -89,11 +89,11 @@ INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sp
 
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SDBMALERT', 'SINGLELIMIT'               ,'Single value limit'   ,null,null,null,10);
 
-INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','DBGALERT',  'SIZELIMIT'                 ,'Total Size'           ,null,null,null,10);
-INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','DBGALERT',  'DELTALIMIT'                ,'Total Delta Size'     ,null,null,null,20);
-INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','DBGALERT',  'FREELIMIT'                 ,'Total Free Size'      ,null,null,null,30);
-INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','DBGALERT',  'OUTOFSPACE'                ,'Days to out of space' ,null,null,null,40);
-INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','DBGALERT',  'REGEXP'                    ,'Regular Expression'   ,null,null,null,50);
+INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','DBGALERT',  'SIZELIMIT'                 ,'Total Size'           ,'bytes',null,null,10);
+INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','DBGALERT',  'DELTALIMIT'                ,'Total Delta Size'     ,'bytes',null,null,20);
+INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','DBGALERT',  'FREELIMIT'                 ,'Total Free Size'      ,'bytes',null,null,30);
+INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','DBGALERT',  'OUTOFSPACE'                ,'Days to out of space' ,'dates',null,null,40);
+INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','DBGALERT',  'REGEXP'                    ,'Regular Expression'   ,'bytes',null,null,50);
 
 
 declare

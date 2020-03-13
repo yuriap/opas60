@@ -16,9 +16,10 @@ alert_name      varchar2(128)                           not null,
 alert_type      varchar2(128)                           not null,
 alert_expr      varchar2(1024),
 alert_limit     number                                  not null,
+alert_measur    varchar2(100),
 actual_start    timestamp);
 
-create unique index idx_opas_ot_dbg_mon_acgg_u1   on opas_ot_dbg_monitor_al_cfg(decode(alert_type,'REGEXP', null, dbg_id));
+create unique index idx_opas_ot_dbg_mon_acgg_u1   on opas_ot_dbg_monitor_al_cfg(decode(alert_type,'REGEXP', null, alert_type), decode(alert_type,'REGEXP', null, dbg_id));
 create index idx_opas_ot_dbg_mon_acgg_m           on opas_ot_dbg_monitor_al_cfg(dbg_id);
 
 create table opas_ot_dbg_monitor_al_cfg_hst (
@@ -28,6 +29,7 @@ alert_name      varchar2(128),
 alert_type      varchar2(128),
 alert_expr      varchar2(1024),
 alert_limit     number,
+alert_measur    varchar2(100),
 actual_start    timestamp,
 actual_end      timestamp);
 
@@ -47,10 +49,12 @@ create index idx_opas_ot_dbg_dbgm                 on opas_ot_dbg_datapoint(dbg_i
 create table opas_ot_dbg_ts_sizes (
 dbgdp_id         number                                           references opas_ot_dbg_datapoint (dbgdp_id) on delete cascade, 
 ts_name          varchar2(128), 
-free_bytes       number, 
-free_in_files    number, 
-free_to_extend   number, 
-used_bytes       number
+tot_occupied     number, 
+bin_occupied     number, 
+seg_occupied     number generated always as (tot_occupied - bin_occupied),
+tot_free         number, 
+curr_available   number,
+ext_available    number
 ) ROW STORE COMPRESS ADVANCED;
    
 create index idx_opas_ot_dbg_tsdp                on opas_ot_dbg_ts_sizes(dbgdp_id);
