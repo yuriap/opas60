@@ -2,14 +2,14 @@ CREATE OR REPLACE
 PACKAGE BODY COREOBJ_DB_MONITOR AS
 
   procedure calc_alerts(p_metric_id   OPAS_OT_DB_MONITOR_VALS.METRIC_ID%type,
-                        p_metric_tim  OPAS_OT_DB_MONITOR_VALS.TIM%type,
+                        p_metric_tim  OPAS_OT_DB_MONITOR_VALS.TIM%type, --varchar2, -- TZ is getting lost somehow
                         p_metruc_val  OPAS_OT_DB_MONITOR_VALS.VAL%type,
                         p_measur_id   OPAS_OT_DB_MONITOR_VALS.measur_id%type)
   is
     L_ALERT_ID number;
     l_obj      opas_objects%rowtype;
   begin
-    for i in (select c.*,o.obj_name, o.obj_id, m.measure
+    for i in (select c.*,o.obj_name, o.obj_id, m.measure, m.dblink
                 from opas_ot_db_monitor_alerts_cfg c, OPAS_OT_DB_MONITOR m,
                      opas_objects o
                where c.metric_id = p_metric_id
@@ -17,15 +17,17 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
                  and m.metric_id = c.metric_id
                  and c.limit_actual = 'Y')
     loop
+--coremod_tasks.log(i.alert_type||':'||p_metruc_val||':'||i.alert_limit);
       if i.alert_type = 'SINGLELIMIT' then
         if p_metruc_val > i.alert_limit then
           l_obj  := COREOBJ_API.get_obj(i.obj_id);
           COREMOD_ALERTS.add_alert (
             P_ALERT_ID   => L_ALERT_ID,
-            P_ALERT_TYPE => i.obj_name,
+            P_ALERT_TYPE => 'DB Monitor: '||i.obj_name,
+            p_alert_source => i.dblink,
             p_created    => p_metric_tim,
             P_OWNER      => l_obj.obj_owner,
-            P_MESSAGE    => 'Single value limit exceeded. Actual: '||p_metruc_val||' '||i.measure||'; Limit: '||i.ALERT_LIMIT||' '||i.measure||'.',
+            P_MESSAGE    => 'Limit exceeded. Actual: '||p_metruc_val||' '||i.measure||'; Limit: '||i.ALERT_LIMIT||' '||i.measure||'.',
             P_LINK_PAGE  => 6002,
             P_LINK_PARAM => p_measur_id) ;
         end if;

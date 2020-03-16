@@ -68,6 +68,7 @@ create index idx_opas_scheduler_val on opas_scheduler_validation(sch_id);
 create table opas_alert_queue (
 alert_id            number                                           generated always as identity primary key,
 alert_type          varchar2(128)    default 'Default'     not null,
+alert_source        varchar2(128),
 owner               varchar2(128)    default 'PUBLIC'      not null,
 message             varchar2(4000)                         not null,
 link_page           number,
@@ -81,12 +82,16 @@ create or replace force view v$opas_alert_queue as
 select 
   x.*,
   to_char(CREATED_HH,'YYYY-MM-DD HH24') || ' ' || TZHH ||':'||TZMI CREATED_HHTZ,
-  to_char(CREATED_DD,'YYYY-MM-DD') || ' ' || TZHH ||':'||TZMI CREATED_DDTZ
+  to_char(CREATED_DD,'YYYY-MM-DD') || ' ' || TZHH ||':'||TZMI CREATED_DDTZ,
+  to_char(CREATED_LHH,'YYYY-MM-DD HH24') CREATED_LHHTZ,
+  to_char(CREATED_LDD,'YYYY-MM-DD') CREATED_LDDTZ  
 from (
 select 
-       ALERT_ID,OWNER,MESSAGE,LINK_PAGE,LINK_PARAM,CREATED,VIEWED,STATUS,ALERT_TYPE,
-	   trunc(created,'hh') CREATED_HH,
+       ALERT_ID,OWNER,MESSAGE,LINK_PAGE,LINK_PARAM,CREATED,VIEWED,STATUS,ALERT_TYPE,ALERT_SOURCE,
+       trunc(created,'hh') CREATED_HH,
        trunc(created,'dd') CREATED_DD,
+       trunc(CAST(created AS TIMESTAMP WITH LOCAL TIME ZONE),'hh') CREATED_LHH,
+       trunc(CAST(created AS TIMESTAMP WITH LOCAL TIME ZONE),'dd') CREATED_LDD,       
        case when instr(EXTRACT(TIMEZONE_HOUR FROM created),'-')>0 then '-'||lpad(ltrim(EXTRACT(TIMEZONE_HOUR FROM created),'-'),2,'0')else lpad(EXTRACT(TIMEZONE_HOUR FROM created),2,'0') end TZHH, 
        lpad(EXTRACT(TIMEZONE_MINUTE FROM created),2,'0') TZMI
   from opas_alert_queue) x

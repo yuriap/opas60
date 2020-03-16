@@ -27,7 +27,7 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 -- Application Export:
 --   Application:     600
 --   Name:            Oracle Performance Analytic Suite
---   Date and Time:   17:44 Friday March 13, 2020
+--   Date and Time:   19:51 Monday March 16, 2020
 --   Exported By:     OPAS60DADM
 --   Flashback:       0
 --   Export Type:     Application Export
@@ -37,9 +37,9 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 
 -- Application Statistics:
 --   Pages:                     31
---     Items:                  178
+--     Items:                  179
 --     Validations:              2
---     Processes:              108
+--     Processes:              109
 --     Regions:                117
 --     Buttons:                 81
 --     Dynamic Actions:         28
@@ -131,7 +131,7 @@ wwv_flow_api.create_flow(
 ,p_substitution_string_06=>'APP_GRID_DT_FMT_TZ_FULL'
 ,p_substitution_value_06=>'YYYY-MM-DD HH24:MI:SS.ff9 TZH:TZM'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200313173439'
+,p_last_upd_yyyymmddhh24miss=>'20200316184421'
 ,p_file_prefix => nvl(wwv_flow_application_install.get_static_app_file_prefix,'')
 ,p_files_version=>3
 ,p_ui_type_name => null
@@ -10471,7 +10471,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(64517471915168495)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200228092822'
+,p_last_upd_yyyymmddhh24miss=>'20200316171107'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(59044818663995105)
@@ -10512,8 +10512,9 @@ wwv_flow_api.create_page_plug(
 'SELECT',
 '    owner,',
 '    alert_type,',
-'    CREATED_DDTZ created,',
+'    CREATED_LHHTZ created,',
 '    status,',
+'    alert_source,',
 '    count(1) cnt',
 'FROM',
 '(select * from v$opas_alert_queue  --viewed',
@@ -10524,9 +10525,10 @@ wwv_flow_api.create_page_plug(
 'group by     ',
 '    owner,',
 '    alert_type,',
-'    CREATED_DDTZ,',
-'    status',
-'order by created desc, cnt desc, alert_type'))
+'    CREATED_LHHTZ,',
+'    status,',
+'    alert_source',
+'order by created desc, cnt desc, alert_type, alert_source'))
 ,p_plug_source_type=>'NATIVE_IG'
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
 );
@@ -10546,6 +10548,35 @@ wwv_flow_api.create_region_column(
 ,p_is_required=>false
 ,p_enable_filter=>true
 ,p_filter_is_required=>false
+,p_filter_lov_type=>'NONE'
+,p_use_as_row_header=>false
+,p_enable_sort_group=>true
+,p_is_primary_key=>false
+,p_duplicate_value=>true
+,p_include_in_export=>true
+);
+wwv_flow_api.create_region_column(
+ p_id=>wwv_flow_api.id(66991345557316305)
+,p_name=>'ALERT_SOURCE'
+,p_source_type=>'DB_COLUMN'
+,p_source_expression=>'ALERT_SOURCE'
+,p_data_type=>'VARCHAR2'
+,p_is_query_only=>false
+,p_item_type=>'NATIVE_TEXTAREA'
+,p_heading=>'Alert Source'
+,p_heading_alignment=>'LEFT'
+,p_display_sequence=>140
+,p_value_alignment=>'LEFT'
+,p_attribute_01=>'Y'
+,p_attribute_02=>'N'
+,p_attribute_03=>'N'
+,p_attribute_04=>'BOTH'
+,p_is_required=>false
+,p_max_length=>128
+,p_enable_filter=>true
+,p_filter_operators=>'C:S:CASE_INSENSITIVE:REGEXP'
+,p_filter_is_required=>false
+,p_filter_text_case=>'MIXED'
 ,p_filter_lov_type=>'NONE'
 ,p_use_as_row_header=>false
 ,p_enable_sort_group=>true
@@ -10577,7 +10608,7 @@ wwv_flow_api.create_region_column(
 ,p_filter_text_case=>'MIXED'
 ,p_filter_lov_type=>'NONE'
 ,p_use_as_row_header=>false
-,p_enable_sort_group=>false
+,p_enable_sort_group=>true
 ,p_enable_pivot=>false
 ,p_is_primary_key=>true
 ,p_duplicate_value=>true
@@ -10591,7 +10622,7 @@ wwv_flow_api.create_region_column(
 ,p_data_type=>'VARCHAR2'
 ,p_is_query_only=>false
 ,p_item_type=>'NATIVE_DATE_PICKER'
-,p_heading=>'Created'
+,p_heading=>'Created (Local time)'
 ,p_heading_alignment=>'CENTER'
 ,p_display_sequence=>90
 ,p_value_alignment=>'CENTER'
@@ -10599,7 +10630,7 @@ wwv_flow_api.create_region_column(
 ,p_attribute_05=>'N'
 ,p_attribute_07=>'NONE'
 ,p_is_required=>false
-,p_max_length=>29
+,p_max_length=>13
 ,p_enable_filter=>true
 ,p_filter_operators=>'C:S:CASE_INSENSITIVE:REGEXP'
 ,p_filter_is_required=>false
@@ -10637,7 +10668,7 @@ wwv_flow_api.create_region_column(
 ,p_filter_text_case=>'MIXED'
 ,p_filter_lov_type=>'NONE'
 ,p_use_as_row_header=>false
-,p_enable_sort_group=>false
+,p_enable_sort_group=>true
 ,p_enable_pivot=>false
 ,p_is_primary_key=>true
 ,p_duplicate_value=>true
@@ -10667,7 +10698,7 @@ wwv_flow_api.create_region_column(
 ,p_filter_text_case=>'MIXED'
 ,p_filter_lov_type=>'NONE'
 ,p_use_as_row_header=>false
-,p_enable_sort_group=>false
+,p_enable_sort_group=>true
 ,p_enable_pivot=>false
 ,p_is_primary_key=>true
 ,p_duplicate_value=>true
@@ -10681,8 +10712,8 @@ wwv_flow_api.create_interactive_grid(
 ,p_requires_filter=>false
 ,p_show_nulls_as=>'-'
 ,p_fixed_row_height=>true
-,p_pagination_type=>'SCROLL'
-,p_show_total_row_count=>true
+,p_pagination_type=>'SET'
+,p_show_total_row_count=>false
 ,p_no_data_found_message=>'No notifications and alerts'
 ,p_show_toolbar=>true
 ,p_toolbar_buttons=>null
@@ -10715,6 +10746,14 @@ wwv_flow_api.create_ig_report_column(
 ,p_view_id=>wwv_flow_api.id(132874477689732339)
 ,p_display_seq=>11
 ,p_column_id=>wwv_flow_api.id(66470098587548715)
+,p_is_visible=>true
+,p_is_frozen=>false
+);
+wwv_flow_api.create_ig_report_column(
+ p_id=>wwv_flow_api.id(67031372527573665)
+,p_view_id=>wwv_flow_api.id(132874477689732339)
+,p_display_seq=>12
+,p_column_id=>wwv_flow_api.id(66991345557316305)
 ,p_is_visible=>true
 ,p_is_frozen=>false
 );
@@ -10767,9 +10806,10 @@ wwv_flow_api.create_page_plug(
 '       to_char(VIEWED,''&APP_GRID_DT_FMT_L1.'') VIEWED,',
 '       LINK_PAGE,',
 '       LINK_PARAM,',
-'       CREATED_DDTZ created,',
+'       CREATED_LHHTZ created,',
 '       STATUS,',
-'       ALERT_TYPE',
+'       ALERT_TYPE,',
+'       ALERT_SOURCE',
 '  from v$OPAS_ALERT_QUEUE'))
 ,p_plug_source_type=>'NATIVE_IG'
 ,p_master_region_id=>wwv_flow_api.id(132873562540732317)
@@ -10793,7 +10833,7 @@ wwv_flow_api.create_region_column(
 ,p_filter_is_required=>false
 ,p_filter_lov_type=>'NONE'
 ,p_use_as_row_header=>false
-,p_enable_sort_group=>true
+,p_enable_sort_group=>false
 ,p_is_primary_key=>true
 ,p_duplicate_value=>true
 ,p_include_in_export=>true
@@ -10894,7 +10934,7 @@ wwv_flow_api.create_region_column(
 ,p_filter_exact_match=>true
 ,p_filter_lov_type=>'DISTINCT'
 ,p_use_as_row_header=>false
-,p_enable_sort_group=>true
+,p_enable_sort_group=>false
 ,p_is_primary_key=>false
 ,p_duplicate_value=>true
 ,p_include_in_export=>true
@@ -10911,7 +10951,7 @@ wwv_flow_api.create_region_column(
 ,p_attribute_01=>'Y'
 ,p_filter_is_required=>false
 ,p_use_as_row_header=>false
-,p_enable_sort_group=>true
+,p_enable_sort_group=>false
 ,p_is_primary_key=>false
 ,p_duplicate_value=>true
 ,p_include_in_export=>false
@@ -10945,7 +10985,7 @@ wwv_flow_api.create_region_column(
 ,p_attribute_01=>'Y'
 ,p_filter_is_required=>false
 ,p_use_as_row_header=>false
-,p_enable_sort_group=>true
+,p_enable_sort_group=>false
 ,p_is_primary_key=>false
 ,p_parent_column_id=>wwv_flow_api.id(132879301762732389)
 ,p_include_in_export=>false
@@ -10982,6 +11022,23 @@ wwv_flow_api.create_region_column(
 ,p_enable_sort_group=>false
 ,p_is_primary_key=>false
 ,p_parent_column_id=>wwv_flow_api.id(132881112739732392)
+,p_include_in_export=>false
+);
+wwv_flow_api.create_region_column(
+ p_id=>wwv_flow_api.id(66991453098316306)
+,p_name=>'ALERT_SOURCE'
+,p_source_type=>'DB_COLUMN'
+,p_source_expression=>'ALERT_SOURCE'
+,p_data_type=>'VARCHAR2'
+,p_is_query_only=>false
+,p_item_type=>'NATIVE_HIDDEN'
+,p_display_sequence=>110
+,p_attribute_01=>'Y'
+,p_filter_is_required=>false
+,p_use_as_row_header=>false
+,p_enable_sort_group=>false
+,p_is_primary_key=>false
+,p_parent_column_id=>wwv_flow_api.id(66991345557316305)
 ,p_include_in_export=>false
 );
 wwv_flow_api.create_interactive_grid(
@@ -11096,6 +11153,14 @@ wwv_flow_api.create_ig_report_column(
 ,p_view_id=>wwv_flow_api.id(66544029775091484)
 ,p_display_seq=>10
 ,p_column_id=>wwv_flow_api.id(66533912887078614)
+,p_is_visible=>true
+,p_is_frozen=>false
+);
+wwv_flow_api.create_ig_report_column(
+ p_id=>wwv_flow_api.id(67031867908573683)
+,p_view_id=>wwv_flow_api.id(66544029775091484)
+,p_display_seq=>11
+,p_column_id=>wwv_flow_api.id(66991453098316306)
 ,p_is_visible=>true
 ,p_is_frozen=>false
 );
@@ -20876,7 +20941,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(66300724402351173)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200313144821'
+,p_last_upd_yyyymmddhh24miss=>'20200316184421'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(133367989156963093)
@@ -20938,10 +21003,31 @@ wwv_flow_api.create_jet_chart_series(
 ,p_data_source_type=>'SQL'
 ,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'select',
-'  tim, round(val) val, :P5002_METRIC_NAME nm',
-'from OPAS_OT_DB_MONITOR_VALS',
-'where metric_id = :P5002_METRIC_ID',
-'and tim between to_timestamp_tz(:P5002_START_DT,''&APP_GRID_DT_FMT_TZ.'') and to_timestamp_tz(:P5002_END_DT,''&APP_GRID_DT_FMT_TZ.'')',
+'  dtstamp tim, round(chart_val) val, :P5002_METRIC_NAME nm',
+'from opas_ot_tmp_dbg_chart',
+'where chart_id = :P5002_CHART_ID',
+'order by tim'))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(66991745663316309)
+,p_chart_id=>wwv_flow_api.id(67005892161699771)
+,p_seq=>20
+,p_name=>'Metric2'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select',
+'  dtstamp tim, round(chart_val) val, ''t2'' nm',
+'from opas_ot_tmp_dbg_chart',
+'where chart_id = 2',
 'order by tim'))
 ,p_series_name_column_name=>'NM'
 ,p_items_value_column_name=>'VAL'
@@ -20956,7 +21042,7 @@ wwv_flow_api.create_jet_chart_series(
 wwv_flow_api.create_jet_chart_series(
  p_id=>wwv_flow_api.id(67008643968699828)
 ,p_chart_id=>wwv_flow_api.id(67005892161699771)
-,p_seq=>20
+,p_seq=>30
 ,p_name=>'Limit'
 ,p_data_source_type=>'SQL'
 ,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
@@ -20979,11 +21065,12 @@ wwv_flow_api.create_jet_chart_series(
 ,p_marker_shape=>'auto'
 ,p_assigned_to_y2=>'off'
 ,p_items_label_rendered=>false
+,p_display_when_cond_type=>'NEVER'
 );
 wwv_flow_api.create_jet_chart_series(
  p_id=>wwv_flow_api.id(67008014554699826)
 ,p_chart_id=>wwv_flow_api.id(67005892161699771)
-,p_seq=>30
+,p_seq=>40
 ,p_name=>'Alert'
 ,p_data_source_type=>'SQL'
 ,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
@@ -21137,6 +21224,21 @@ wwv_flow_api.create_page_branch(
 ,p_branch_sequence=>30
 );
 wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(66991548541316307)
+,p_name=>'P5002_CHART_ID'
+,p_item_sequence=>10
+,p_item_plug_id=>wwv_flow_api.id(133534820129778232)
+,p_prompt=>'Chart Id'
+,p_display_as=>'NATIVE_TEXT_FIELD'
+,p_cSize=>30
+,p_field_template=>wwv_flow_api.id(59011729453993944)
+,p_item_template_options=>'#DEFAULT#'
+,p_attribute_01=>'N'
+,p_attribute_02=>'N'
+,p_attribute_04=>'TEXT'
+,p_attribute_05=>'BOTH'
+);
+wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(67000397119699724)
 ,p_name=>'P5002_MODE'
 ,p_item_sequence=>10
@@ -21271,6 +21373,30 @@ wwv_flow_api.create_page_process(
 ,p_error_display_location=>'INLINE_IN_NOTIFICATION'
 );
 wwv_flow_api.create_page_process(
+ p_id=>wwv_flow_api.id(66991664504316308)
+,p_process_sequence=>30
+,p_process_point=>'AFTER_HEADER'
+,p_process_type=>'NATIVE_PLSQL'
+,p_process_name=>'InitChart'
+,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'begin',
+'  :P5002_CHART_ID:=1;',
+'  :P5002_METRIC_NAME:=''Test Chart'';',
+'  delete from opas_ot_tmp_dbg_chart where chart_id = :P5002_CHART_ID;',
+'commit;',
+'  insert into opas_ot_tmp_dbg_chart (chart_id, dtstamp, chart_val)',
+'select :P5002_CHART_ID, dp.snapped,t.tot_occupied from OPAS_OT_DBG_TS_SIZES t, opas_ot_dbg_datapoint dp',
+'where t.ts_name=''NC_DATA'' and t.dbgdp_id=dp.dbgdp_id and dp.dbg_id=61;',
+'',
+'  delete from opas_ot_tmp_dbg_chart where chart_id = 2;',
+'commit;',
+'  insert into opas_ot_tmp_dbg_chart (chart_id, dtstamp, chart_val)',
+'select 2, dp.snapped,t.tot_occupied from OPAS_OT_DBG_TS_SIZES t, opas_ot_dbg_datapoint dp',
+'where t.ts_name=''NC_INDEXES'' and t.dbgdp_id=dp.dbgdp_id and dp.dbg_id=61;',
+'end;'))
+,p_error_display_location=>'INLINE_IN_NOTIFICATION'
+);
+wwv_flow_api.create_page_process(
  p_id=>wwv_flow_api.id(67010235032699930)
 ,p_process_sequence=>10
 ,p_process_point=>'AFTER_SUBMIT'
@@ -21373,6 +21499,7 @@ wwv_flow_api.create_page_process(
 '     and m.metric_id = o.obj_id;',
 'end;'))
 ,p_error_display_location=>'INLINE_IN_NOTIFICATION'
+,p_process_when_type=>'NEVER'
 );
 end;
 /
@@ -22056,7 +22183,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(66300724402351173)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200313173439'
+,p_last_upd_yyyymmddhh24miss=>'20200316120347'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(66369818926263502)
@@ -22501,12 +22628,10 @@ wwv_flow_api.create_page_process(
 '    if :P6002_ENTITY_ID is not null then',
 '      select METRIC_ID, tim into :P6002_METRIC_ID, l_alert_time from OPAS_OT_DB_MONITOR_VALS where MEASUR_ID = :P6002_ENTITY_ID;',
 '',
-'      --select dt into l_end_dt from (select MEASUR_ID,lead(tim,5,l_alert_time+1/24)over(order by tim) dt from OPAS_OT_DB_MONITOR_VALS where METRIC_ID = :P6002_METRIC_ID and MEASUR_ID >= :P6002_ENTITY_ID) where MEASUR_ID = :P6002_ENTITY_ID;',
 '      select max(tim) + TO_DSINTERVAL(''0 00:05:00'') into l_end_dt from (select tim, row_number()over(order by tim) rn from OPAS_OT_DB_MONITOR_VALS where METRIC_ID = :P6002_METRIC_ID and MEASUR_ID >= :P6002_ENTITY_ID) where rn<11;',
-'      --select dt into l_start_dt from (select MEASUR_ID,lag(tim,5,l_alert_time-1/24)over(order by tim) dt from OPAS_OT_DB_MONITOR_VALS where METRIC_ID = :P6002_METRIC_ID and MEASUR_ID <= :P6002_ENTITY_ID) where MEASUR_ID = :P6002_ENTITY_ID;',
 '      select min(tim) - TO_DSINTERVAL(''0 00:05:00'') into l_start_dt from (select tim, row_number()over(order by tim desc) rn from OPAS_OT_DB_MONITOR_VALS where METRIC_ID = :P6002_METRIC_ID and MEASUR_ID <= :P6002_ENTITY_ID) where rn<11;',
 '',
-':P6002_END_DT   := to_char(l_end_dt, ''&APP_GRID_DT_FMT_TZ.'');',
+'      :P6002_END_DT   := to_char(l_end_dt, ''&APP_GRID_DT_FMT_TZ.'');',
 '      :P6002_START_DT   := to_char(l_start_dt, ''&APP_GRID_DT_FMT_TZ.'');',
 '    end if;',
 '  end if;',
@@ -22519,19 +22644,14 @@ wwv_flow_api.create_page_process(
 '    :P6002_END_DT   := to_char(l_end_dt, ''&APP_GRID_DT_FMT_TZ.'');',
 '    ',
 '    select to_char(min(tim) - TO_DSINTERVAL(''0 00:05:00''),''&APP_GRID_DT_FMT_TZ.'') into :P6002_START_DT from (select tim, row_number()over(order by tim desc) rn from OPAS_OT_DB_MONITOR_VALS where METRIC_ID = :P6002_METRIC_ID) where rn<101;',
-'    ',
-'    --:P6002_START_DT := to_char(l_end_dt - TO_DSINTERVAL(''1 00:00:00''), ''&APP_GRID_DT_FMT_TZ.'');',
+'',
 '  end if;',
 '',
 '  if :P6002_MODE = ''REFRESH'' then',
 '    :P6002_METRIC_ID := :APP_OBJ_ID;',
 '  end if;',
-'/*',
-'  :P6002_METRIC_ID_I := :P6002_METRIC_ID; :P6002_METRIC_ID := null;',
-'  :P6002_ENTITY_ID_I := :P6002_ENTITY_ID; :P6002_ENTITY_ID := null;',
-'  :P6002_ALERT_ID_I  := :P6002_ALERT_ID;  :P6002_ALERT_ID  := null;',
-'*/',
-'  select o.obj_name, m.measure into :P6002_METRIC_NAME, :P6002_METRIC_MEASURE',
+'',
+'  select o.obj_name || '' (''|| m.dblink ||'')'', m.measure into :P6002_METRIC_NAME, :P6002_METRIC_MEASURE',
 '    from OPAS_OT_DB_MONITOR m, opas_objects o ',
 '   where m.metric_id = :P6002_METRIC_ID',
 '     and m.metric_id = o.obj_id;',

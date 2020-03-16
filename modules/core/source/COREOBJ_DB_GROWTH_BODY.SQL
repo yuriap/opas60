@@ -6,13 +6,15 @@ package body COREOBJ_DB_GROWTH is
     l_dbgm opas_ot_dbg_monitor%rowtype;
     l_status varchar2(32);
   begin
+-- coremod_tasks.log('p_obj_id: '||p_obj_id);
     select * into l_dbgm from opas_ot_dbg_monitor where dbg_id = p_obj_id;
-
+-- coremod_tasks.log('l_dbgm.schedule: '||l_dbgm.schedule);
     if l_dbgm.schedule is null then
       l_status := 'No schedule';
     else
       select status into l_status from OPAS_SCHEDULER where sch_id=l_dbgm.schedule;
     end if;
+-- coremod_tasks.log('l_status: '||l_status);
     return l_status;
   end;
 
@@ -22,7 +24,7 @@ package body COREOBJ_DB_GROWTH is
   begin
     COREOBJ_API.add (  P_OBJ_ID => p_obj_id,
       P_OBJ_PRNT  => p_obj_prnt,
-      P_OBJ_OT    => COREOBJ_API.otSIMPLE_DB_MONITOR,
+      P_OBJ_OT    => COREOBJ_API.otDB_GROWTH_TRACKER,
       P_OBJ_NAME  => 'DB Growth Monitor '||to_char(sysdate,'YYYYMMDD'),
       P_OBJ_DESCR => null);
 
@@ -474,7 +476,7 @@ select dbgdp_id, size_bytes - lag(size_bytes) over(order by snapped) res
           (select sum(seg_occupied) s_last from opas_ot_dbg_ts_sizes where dbgdp_id = l_last_dp) lastdp,
           (select sum(seg_occupied) s_prev from opas_ot_dbg_ts_sizes where dbgdp_id = l_prev_dp) prevdp,
           (select sum(tot_free) s_free from opas_ot_dbg_ts_sizes where dbgdp_id = l_last_dp);
-          return case when l_res < p_alert.alert_limit then l_res else null end;
+          return case when l_res > 0 and l_res < p_alert.alert_limit then l_res else null end;
         when alrtREGEXP then
           l_sql := q'[with objects as
  (select *
@@ -522,33 +524,40 @@ select dbgdp_id, size_bytes - lag(size_bytes) over(order by snapped) res
     ex_no_connection exception;
     pragma exception_init(ex_no_connection,-12154); --ORA-12154
 
-    l_metric number;
-    L_ALERT_ID number;
-    l_msg      opas_dictionary.display_val%type;
-    l_db       opas_ot_dbg_monitor.dblink%type;
-    l_owner    opas_objects.obj_owner%type;
-    l_ts       timestamp := systimestamp;
+    l_metric      number;
+    L_ALERT_ID    number;
+    l_metric_nm   opas_dictionary.display_val%type;
+    l_db          opas_ot_dbg_monitor.dblink%type;
+    l_owner       opas_objects.obj_owner%type;
+    l_ts          timestamp := systimestamp;
   begin
     take_snapshot_i(p_obj_id);
     commit;
     for i in (select * from opas_ot_dbg_monitor_al_cfg where dbg_id = p_obj_id) loop
       l_metric := calc_alert_i(i);
+--coremod_tasks.log('dbg: '||p_obj_id||':'||l_metric||':'||i.alert_type);
       if l_metric is not null then
         select obj_owner, dblink into l_owner, l_db from opas_objects o, opas_ot_dbg_monitor m where obj_id = p_obj_id and obj_id = dbg_id;
+/*
         if i.alert_type = alrtREGEXP then
-          l_msg := i.alert_name;
+          l_metric_nm := i.alert_name;
         else
-          select display_val into l_msg from opas_dictionary where dic_name='DBGALERT' and val = i.alert_type;
+          select display_val into l_metric_nm from opas_dictionary where dic_name='DBGALERT' and val = i.alert_type;
         end if;
-          COREMOD_ALERTS.add_alert (
-            P_ALERT_ID   => L_ALERT_ID,
-            P_ALERT_TYPE => l_msg, --i.alert_type,
-            p_created    => l_ts,
-            P_OWNER      => l_owner,
-            P_MESSAGE    => 'DBG Alert for "' || l_db ||'". Limit exceeded. Current: '||
-                            l_metric||' ' || i.alert_measur || '; Limit: '||i.ALERT_LIMIT ||' ' || i.alert_measur ||'.',
-            P_LINK_PAGE  => 5002,
-            P_LINK_PARAM => i.alert_id) ;
+*/
+        select display_val into l_metric_nm from opas_dictionary where dic_name='DBGALERT' and val = i.alert_type;
+        l_metric_nm := 'DB Growth: '|| l_metric_nm || case when i.alert_type = alrtREGEXP and i.alert_name is not null then ' "'||i.alert_name||'"' else null end;
+
+        COREMOD_ALERTS.add_alert (
+          P_ALERT_ID   => L_ALERT_ID,
+          P_ALERT_TYPE => l_metric_nm,
+          p_alert_source => l_db,
+          p_created    => l_ts,
+          P_OWNER      => l_owner,
+          P_MESSAGE    => 'Limit exceeded. Current: '||
+                          l_metric||' ' || i.alert_measur || '; Limit: '||i.ALERT_LIMIT ||' ' || i.alert_measur ||'.',
+          P_LINK_PAGE  => 5002,
+          P_LINK_PARAM => i.alert_id) ;
       end if;
     end loop;
   exception
@@ -578,12 +587,13 @@ select dbgdp_id, size_bytes - lag(size_bytes) over(order by snapped) res
                alert_expr = p_alert_expr,
                alert_limit = p_alert_limit
          where alert_id=i.alert_id;
-
-        insert into opas_ot_dbg_monitor_al_cfg_hst
-          (alert_id, dbg_id, alert_name, alert_type, alert_expr, alert_limit, actual_start, actual_end, alert_measur)
-        values
-          (i.alert_id, i.dbg_id, i.alert_name, i.alert_type, i.alert_expr, i.alert_limit, i.actual_start, l_ts, i.alert_measur);
-
+--coremod_tasks.log('l_ts: '||l_ts||'; i.actual_start: '||i.actual_start);
+        if l_ts - i.actual_start > to_dsinterval('00 00:10:00') then
+          insert into opas_ot_dbg_monitor_al_cfg_hst
+            (alert_id, dbg_id, alert_name, alert_type, alert_expr, alert_limit, actual_start, actual_end, alert_measur)
+          values
+            (i.alert_id, i.dbg_id, i.alert_name, i.alert_type, i.alert_expr, i.alert_limit, i.actual_start, l_ts, i.alert_measur);
+        end if;
       end loop;
     else
       insert into opas_ot_dbg_monitor_al_cfg
