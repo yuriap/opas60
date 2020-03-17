@@ -9,6 +9,10 @@ package COREOBJ_DB_GROWTH is
   alrtOUTOFSPACE              constant varchar2(30) := 'OUTOFSPACE';         -- Days to out of space
   alrtREGEXP                  constant varchar2(30) := 'REGEXP';             -- Regular Expression
 
+  chrtMain                    constant number := 1;
+  chrtLimit                   constant number := 2;
+  chrtAlert                   constant number := 3;
+
   procedure add   (p_obj_id       out opas_objects.obj_id%type,
                    p_obj_prnt         opas_objects.obj_prnt%type);
   procedure remove  (p_obj_id    opas_objects.obj_id%type,
@@ -36,8 +40,14 @@ package COREOBJ_DB_GROWTH is
 
   function calc_alert(p_alert_id     opas_ot_dbg_monitor_al_cfg.alert_id%type) return number;
 
-  function get_alert_graph_query(p_alert_id        opas_ot_dbg_monitor_al_cfg.alert_id%type,
-                                 p_start_dt in out varchar2,
-                                 p_end_dt   in out varchar2) return varchar2;
+  procedure prepare_chart_data(p_mode varchar2,
+                               p_alert_queue_id  opas_alert_queue.alert_id%type,
+                               p_alert_id in out opas_ot_dbg_monitor_al_cfg.alert_id%type,
+                               p_dt_fmt          varchar2,
+                               p_start_dt in out varchar2,
+                               p_end_dt   in out varchar2,
+                               p_chart_name  out varchar2,
+                               p_chart_meas  out varchar2);
+
 end COREOBJ_DB_GROWTH;
 /

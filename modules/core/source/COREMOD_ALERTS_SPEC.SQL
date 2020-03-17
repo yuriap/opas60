@@ -3,6 +3,10 @@ PACKAGE COREMOD_ALERTS AS
 
   gTSWTZFMT varchar2(32) := 'YYYYMMDDHH24MISS.ff6 TZH:TZM';
 
+  gmSHOWALERT constant varchar2(20) := 'SHOWALERT';
+  gmPREVIEW   constant varchar2(20) := 'PREVIEW';
+  gmREFRESH   constant varchar2(20) := 'REFRESH';
+
   procedure add_alert(p_alert_id  out opas_alert_queue.alert_id%type,
                       p_alert_type    opas_alert_queue.alert_type%type,
                       p_alert_source  opas_alert_queue.alert_source%type,

@@ -84,9 +84,9 @@ package body COREOBJ_DB_GROWTH is
      where dbg_id = p_obj_id;
   end;
 
-  procedure take_snapshot_i(p_obj_id       opas_objects.obj_id%type)
+  procedure take_snapshot_i(p_obj_id       opas_objects.obj_id%type,
+                            p_dbgdp_id out opas_ot_dbg_datapoint.dbgdp_id%type)
   is
-    l_dbgdp_id opas_ot_dbg_datapoint.dbgdp_id%type;
     l_dp_obj number := p_obj_id;
 
     l_dbgm opas_ot_dbg_monitor%rowtype;
@@ -218,7 +218,7 @@ package body COREOBJ_DB_GROWTH is
 
     l_ora_dblink := COREMOD_API.get_dblink_for_query(l_dbgm.dblink);
 
-    insert into opas_ot_dbg_datapoint (dbg_id, snapped) values (l_dp_obj, systimestamp) returning dbgdp_id into l_dbgdp_id;
+    insert into opas_ot_dbg_datapoint (dbg_id, snapped) values (l_dp_obj, systimestamp) returning dbgdp_id into p_dbgdp_id;
 
     l_sql := preprocess_sql(l_segment_sql, l_owner_column);
     execute immediate l_sql;
@@ -259,7 +259,7 @@ package body COREOBJ_DB_GROWTH is
         from (select unique tablespace_name from opas_ot_tmp_dbg_objects where tablespace_name is not null);
 
       l_sql := replace(l_tblsp_sql, '<TSLIST>', l_tblsp_list);
-      execute immediate l_sql using l_dbgdp_id;
+      execute immediate l_sql using p_dbgdp_id;
 
     exception
       when others then COREMOD_LOG.log(sqlerrm); COREMOD_LOG.log(l_sql); COREMOD_LOG.log(l_tblsp_list);
@@ -273,7 +273,7 @@ package body COREOBJ_DB_GROWTH is
     when not matched then insert
       (t.version_dp_id, t.owner, t.object_id, t.data_object_id, t.object_name, t.subobject_name, t.object_type, t.tablespace_name, t.created, t.segment_type)
     values
-      (l_dbgdp_id,      s.owner, s.object_id, s.data_object_id, s.object_name, s.subobject_name, s.object_type, s.tablespace_name, s.created, s.segment_type);
+      (p_dbgdp_id,      s.owner, s.object_id, s.data_object_id, s.object_name, s.subobject_name, s.object_type, s.tablespace_name, s.created, s.segment_type);
 
     merge into opas_ot_tmp_dbg_objects t
     using (select s.object_id, s.data_object_id, max(dbgobj_id) dp_id
@@ -286,12 +286,12 @@ package body COREOBJ_DB_GROWTH is
 
     insert into opas_ot_dbg_seg_sizes
          (   dbgdp_id,    dbgobj_id,    size_bytes)
-    select l_dbgdp_id, ts.dbgobj_id, ts.size_bytes
+    select p_dbgdp_id, ts.dbgobj_id, ts.size_bytes
       from opas_ot_tmp_dbg_objects ts where size_bytes is not null and dbgobj_id is not null;
 
     merge into opas_ot_dbg_objects t
     using opas_ot_tmp_dbg_clusters s
-    on (t.version_dp_id = l_dbgdp_id and t.owner=s.owner and t.object_name=s.cluster_name and t.object_type in ('CLUSTER'))
+    on (t.version_dp_id = p_dbgdp_id and t.owner=s.owner and t.object_name=s.cluster_name and t.object_type in ('CLUSTER'))
     when matched then update set
       t.prnt_table_owner=s.owner,
       t.prnt_table=s.cluster_name,
@@ -300,7 +300,7 @@ package body COREOBJ_DB_GROWTH is
 
     merge into opas_ot_dbg_objects t
     using opas_ot_tmp_dbg_tables s
-    on (t.version_dp_id = l_dbgdp_id and t.owner=s.owner and t.object_name=s.table_name and t.object_type in ('TABLE','TABLE PARTITION','TABLE SUBPARTITION'))
+    on (t.version_dp_id = p_dbgdp_id and t.owner=s.owner and t.object_name=s.table_name and t.object_type in ('TABLE','TABLE PARTITION','TABLE SUBPARTITION'))
     when matched then update set
       t.prnt_table_owner=s.owner,
       t.prnt_table=coalesce(s.iot_name,s.table_name),
@@ -309,7 +309,7 @@ package body COREOBJ_DB_GROWTH is
 
     merge into opas_ot_dbg_objects t
     using opas_ot_tmp_dbg_xml s
-    on (t.version_dp_id = l_dbgdp_id and t.owner=s.owner and t.object_name=s.table_name and t.object_type in ('TABLE'))
+    on (t.version_dp_id = p_dbgdp_id and t.owner=s.owner and t.object_name=s.table_name and t.object_type in ('TABLE'))
     when matched then update set
       t.prnt_table_owner=s.owner,
       t.prnt_table=s.table_name,
@@ -318,7 +318,7 @@ package body COREOBJ_DB_GROWTH is
 
     merge into opas_ot_dbg_objects t
     using opas_ot_tmp_dbg_indexes s
-    on (t.version_dp_id = l_dbgdp_id and t.owner=s.owner and t.object_name=s.index_name and t.object_type in ('INDEX','INDEX PARTITION','INDEX SUBPARTITION'))
+    on (t.version_dp_id = p_dbgdp_id and t.owner=s.owner and t.object_name=s.index_name and t.object_type in ('INDEX','INDEX PARTITION','INDEX SUBPARTITION'))
     when matched then update set
       t.prnt_table_owner=s.table_owner,
       t.prnt_table=s.table_name,
@@ -326,7 +326,7 @@ package body COREOBJ_DB_GROWTH is
 
     merge into opas_ot_dbg_objects t
     using opas_ot_tmp_dbg_lobs s
-    on (t.version_dp_id = l_dbgdp_id and t.owner=s.owner and t.object_name=s.segment_name and t.object_type = 'LOB')
+    on (t.version_dp_id = p_dbgdp_id and t.owner=s.owner and t.object_name=s.segment_name and t.object_type = 'LOB')
     when matched then update set
       t.prnt_table_owner=s.owner,
       t.prnt_table=s.table_name,
@@ -335,7 +335,7 @@ package body COREOBJ_DB_GROWTH is
 
     merge into opas_ot_dbg_objects t
     using opas_ot_tmp_dbg_lob_ps s
-    on (t.version_dp_id = l_dbgdp_id and t.owner=s.table_owner and t.object_name=s.lob_name and t.subobject_name=s.lob_part_name and t.object_type = 'LOB PARTITION')
+    on (t.version_dp_id = p_dbgdp_id and t.owner=s.table_owner and t.object_name=s.lob_name and t.subobject_name=s.lob_part_name and t.object_type = 'LOB PARTITION')
     when matched then update set
       t.prnt_table_owner=s.table_owner,
       t.prnt_table=s.table_name,
@@ -344,7 +344,7 @@ package body COREOBJ_DB_GROWTH is
 
     merge into opas_ot_dbg_objects t
     using opas_ot_tmp_dbg_lob_ps s
-    on (t.version_dp_id = l_dbgdp_id and t.owner=s.table_owner and t.object_name=s.lob_name and t.subobject_name=s.lob_subpart_name and t.object_type = 'LOB SUBPARTITION')
+    on (t.version_dp_id = p_dbgdp_id and t.owner=s.table_owner and t.object_name=s.lob_name and t.subobject_name=s.lob_subpart_name and t.object_type = 'LOB SUBPARTITION')
     when matched then update set
       t.prnt_table_owner=s.table_owner,
       t.prnt_table=s.table_name,
@@ -353,7 +353,7 @@ package body COREOBJ_DB_GROWTH is
 
     merge into opas_ot_dbg_objects t
     using opas_ot_tmp_dbg_nt s
-    on (t.version_dp_id = l_dbgdp_id and t.owner=s.owner and t.object_name=s.table_name and t.object_type = 'TABLE' and t.segment_type = 'NESTED TABLE')
+    on (t.version_dp_id = p_dbgdp_id and t.owner=s.owner and t.object_name=s.table_name and t.object_type = 'TABLE' and t.segment_type = 'NESTED TABLE')
     when matched then update set
       t.prnt_table_owner=s.owner,
       t.prnt_table=s.parent_table_name,
@@ -362,29 +362,29 @@ package body COREOBJ_DB_GROWTH is
 
     update opas_ot_dbg_objects o
       set prnt_table_type='TABLE: NESTED'
-      where version_dp_id = l_dbgdp_id and exists (select 1 from opas_ot_tmp_dbg_nt i where o.owner=i.owner and o.object_name=i.table_name)
+      where version_dp_id = p_dbgdp_id and exists (select 1 from opas_ot_tmp_dbg_nt i where o.owner=i.owner and o.object_name=i.table_name)
         and prnt_table_type is null;
 
 
     update opas_ot_dbg_objects o
       set prnt_table=(select parent_table_name from opas_ot_tmp_dbg_nt i where o.prnt_table_owner=i.owner and o.prnt_table=i.table_name),
           prnt_table_type='TABLE: NESTED'
-      where version_dp_id = l_dbgdp_id and exists (select 1 from opas_ot_tmp_dbg_nt i where o.prnt_table_owner=i.owner and o.prnt_table=i.table_name)
+      where version_dp_id = p_dbgdp_id and exists (select 1 from opas_ot_tmp_dbg_nt i where o.prnt_table_owner=i.owner and o.prnt_table=i.table_name)
         and (prnt_table is null or prnt_table_type is null);
 
 
     update opas_ot_dbg_objects o
       set prnt_table_type=(select prnt_table_type from opas_ot_dbg_objects i where prnt_table_type is not null and i.prnt_table=o.prnt_table and rownum=1 and prnt_table_type<>'TABLE: NESTED')
-      where version_dp_id = l_dbgdp_id and prnt_table_type is null;
+      where version_dp_id = p_dbgdp_id and prnt_table_type is null;
 
     update opas_ot_dbg_objects o
       set prnt_table_type=(select IOT_TYPE from opas_ot_tmp_dbg_tables i where i.table_name=o.prnt_table and i.owner=o.owner and rownum=1)
-      where version_dp_id = l_dbgdp_id and prnt_table_type is null;
+      where version_dp_id = p_dbgdp_id and prnt_table_type is null;
 
     update opas_ot_dbg_objects o
       set   prnt_table = (select cluster_name from opas_ot_tmp_dbg_tables i where o.prnt_table_owner=i.owner and o.prnt_table=i.table_name and i.cluster_name is not null) ||': '||prnt_table,
             prnt_table_type='TABLE: CLUSTERED'
-      where version_dp_id = l_dbgdp_id and prnt_table_type is null
+      where version_dp_id = p_dbgdp_id and prnt_table_type is null
         and exists (select 1 from opas_ot_tmp_dbg_tables i where o.prnt_table_owner=i.owner and o.prnt_table=i.table_name and i.cluster_name is not null);
   exception
     when others then
@@ -396,21 +396,123 @@ package body COREOBJ_DB_GROWTH is
       end if;
   end;
 
-  function get_alert_graph_query(p_alert_id        opas_ot_dbg_monitor_al_cfg.alert_id%type,
-                                 p_start_dt in out varchar2,
-                                 p_end_dt   in out varchar2) return varchar2
+  procedure prepare_chart_data(p_mode varchar2,
+                               p_alert_queue_id  opas_alert_queue.alert_id%type,
+                               p_alert_id in out opas_ot_dbg_monitor_al_cfg.alert_id%type,
+                               p_dt_fmt          varchar2,
+                               p_start_dt in out varchar2,
+                               p_end_dt   in out varchar2,
+                               p_chart_name  out varchar2,
+                               p_chart_meas  out varchar2)
   is
+    l_dbgdp_id   opas_ot_dbg_datapoint.dbgdp_id%type;
+
+    l_start_dbgdp_id   opas_ot_dbg_datapoint.dbgdp_id%type;
+    l_end_dbgdp_id     opas_ot_dbg_datapoint.dbgdp_id%type;
+
+    l_start_dt   opas_ot_dbg_datapoint.snapped%type;
+    l_end_dt     opas_ot_dbg_datapoint.snapped%type;
+
+    l_tmp_dbgdp_id     opas_ot_dbg_datapoint.dbgdp_id%type;
+    l_tmp_dt           opas_ot_dbg_datapoint.snapped%type;
+
+    l_crsr sys_refcursor;
+    l_cycles number;
+    l_alert_snap timestamp;
+
+    l_link_param opas_alert_queue.link_param%type;
   begin
-    for i in (select x.*
-                from opas_ot_dbg_monitor_al_cfg x
-               where alert_id = p_alert_id)
-    loop
+    if  (p_mode in (COREMOD_ALERTS.gmSHOWALERT, COREMOD_ALERTS.gmREFRESH) and p_alert_queue_id is not null) or
+        (p_mode in (COREMOD_ALERTS.gmPREVIEW) and p_alert_id is not null)
+    then
       null;
-/*      case p_alert.alert_type
-        when alrtSIZELIMIT then
-          select sum(seg_occupied) into l_res from opas_ot_dbg_ts_sizes where dbgdp_id = l_last_dp;
+    else
+      raise_application_error(-20000,'Invalid input for COREOBJ_DB_GROWTH.prepare_chart_data: p_mode: '||p_mode||'; p_alert_queue_id: "'||p_alert_queue_id||'"; p_alert_id: "'||p_alert_id||'"');
+    end if;
+
+    if p_mode in (COREMOD_ALERTS.gmSHOWALERT, COREMOD_ALERTS.gmREFRESH) and p_alert_queue_id is not null then
+      select link_param into l_link_param from opas_alert_queue where alert_id = p_alert_queue_id;
+      p_alert_id := substr(l_link_param,1,instr(l_link_param,'-')-1);
+      l_dbgdp_id := substr(l_link_param,instr(l_link_param,'-')+1);
+    end if;
+
+--coremod_tasks.log('prepare_chart_data: p_mode: '||p_mode||'; p_alert_queue_id:'||p_alert_queue_id||'; p_alert_id:'||p_alert_id||'; p_dt_fmt:'||p_dt_fmt);
+--coremod_tasks.log('prepare_chart_data: p_alert_id: '||p_alert_id||'; l_dbgdp_id:'||l_dbgdp_id);
+
+    l_start_dt := to_date(p_start_dt, p_dt_fmt);
+    l_end_dt := to_date(p_end_dt, p_dt_fmt);
+
+    for i in (select x.*, m.dblink
+                from opas_ot_dbg_monitor_al_cfg x,
+                     opas_ot_dbg_monitor m
+               where alert_id = p_alert_id
+                 and m.dbg_id = x.dbg_id)
+    loop
+      delete from opas_ot_tmp_dbg_chart where alert_id = i.alert_id;
+
+      select display_val into p_chart_name from opas_dictionary where dic_name='DBGALERT' and val = i.alert_type;
+      p_chart_name := 'DB Growth: '||
+                      p_chart_name ||
+                      case when i.alert_type = alrtREGEXP and i.alert_name is not null then ' "'||i.alert_name||'"' else null end ||
+                      ' for '||i.dblink;
+      p_chart_meas := i.alert_measur;
+
+      if p_mode = COREMOD_ALERTS.gmSHOWALERT or (p_mode = COREMOD_ALERTS.gmREFRESH and p_alert_queue_id is not null) then
+
+          select snapped into l_alert_snap from opas_ot_dbg_datapoint where dbgdp_id=l_dbgdp_id;
+
+          if nvl(l_end_dt,l_alert_snap)   < l_alert_snap then l_end_dt   := null; end if;
+          if nvl(l_start_dt,l_alert_snap) > l_alert_snap then l_start_dt := null; end if;
+
+          open l_crsr for
+            select dbgdp_id, trunc(snapped,'mi') from opas_ot_dbg_datapoint where dbg_id=i.dbg_id and snapped >= l_alert_snap order by snapped;
+          l_cycles := 0;
+          loop
+            l_cycles := l_cycles + 1;
+            fetch l_crsr into l_tmp_dbgdp_id, l_tmp_dt;
+--coremod_tasks.log('prepare_chart_data: l_tmp_dbgdp_id: '||l_tmp_dbgdp_id||'; l_tmp_dt:'||to_char(l_tmp_dt, p_dt_fmt));
+            if l_end_dt is null then
+              exit when l_crsr%notfound or l_cycles > 11;
+            else
+              exit when l_crsr%notfound or l_tmp_dt > l_end_dt;
+            end if;
+            l_end_dbgdp_id := l_tmp_dbgdp_id;
+            p_end_dt := to_char(l_tmp_dt, p_dt_fmt);
+          end loop;
+
+          open l_crsr for
+            select dbgdp_id, trunc(snapped,'mi') from opas_ot_dbg_datapoint where dbg_id=i.dbg_id and snapped <= l_alert_snap order by snapped desc;
+          l_cycles := 0;
+          loop
+            l_cycles := l_cycles + 1;
+            fetch l_crsr into l_tmp_dbgdp_id, l_tmp_dt;
+            if l_start_dt is null then
+              exit when l_crsr%notfound or l_cycles > 11;
+            else
+              exit when l_crsr%notfound or l_tmp_dt < l_start_dt;
+            end if;
+            l_start_dbgdp_id := l_tmp_dbgdp_id;
+            p_start_dt := to_char(l_tmp_dt, p_dt_fmt);
+          end loop;
+      end if;
+--coremod_tasks.log('prepare_chart_data: i.alert_type: '||i.alert_type||'; l_start_dbgdp_id: '||l_start_dbgdp_id||'; l_end_dbgdp_id:'||l_end_dbgdp_id||'; p_start_dt:'||p_start_dt||'; p_end_dt:'||p_end_dt);
+
+      case i.alert_type
+--        when alrtSIZELIMIT then
+--          select sum(seg_occupied) into l_res from opas_ot_dbg_ts_sizes where dbgdp_id = l_last_dp;
         when alrtDELTALIMIT then
-          select s_last - s_prev into l_res from
+
+          insert into opas_ot_tmp_dbg_chart
+                    (alert_id, chart_id, dtstamp, chart_val)
+            select i.alert_id, chrtMain, dp.snapped, sum(t.seg_occupied)
+              from OPAS_OT_DBG_TS_SIZES t, opas_ot_dbg_datapoint dp
+             where t.dbgdp_id=dp.dbgdp_id and dp.dbg_id=i.dbg_id
+               and dp.dbgdp_id between l_start_dbgdp_id and l_end_dbgdp_id
+             group by i.alert_id, dp.snapped;
+
+--coremod_tasks.log('prepare_chart_data: rc1: '||sql%rowcount);
+
+/*          select s_last - s_prev into l_res from
           (select sum(seg_occupied) s_last from opas_ot_dbg_ts_sizes where dbgdp_id = l_last_dp) lastdp,
           (select sum(seg_occupied) s_prev from opas_ot_dbg_ts_sizes where dbgdp_id = l_prev_dp) prevdp;
         when alrtFREELIMIT then
@@ -440,12 +542,31 @@ select dbgdp_id, size_bytes - lag(size_bytes) over(order by snapped) res
          group by dp.dbgdp_id, dp.snapped)) where dbgdp_id = :p_dp2
      ]';
           execute immediate l_sql into l_res using in p_alert.dbg_id, p_alert.dbg_id, l_prev_dp, l_last_dp, l_last_dp;
-        else
-          l_res := null;
-      end case;*/
+  */      else
+          null;
+      end case;
 
+      insert into opas_ot_tmp_dbg_chart
+                (alert_id, chart_id, dtstamp, chart_val)
+        select i.alert_id, chrtLimit, t.dtstamp, l.alert_limit
+          from opas_ot_tmp_dbg_chart t,
+               (select alert_limit, actual_start, systimestamp actual_end from opas_ot_dbg_monitor_al_cfg where alert_id =  i.alert_id
+                union all
+                select alert_limit, actual_start, actual_end from opas_ot_dbg_monitor_al_cfg_hst where alert_id =  i.alert_id) l
+         where t.alert_id = i.alert_id and chart_id = chrtMain
+           and t.dtstamp between l.actual_start and l.actual_end;
+--coremod_tasks.log('prepare_chart_data: rc2: '||sql%rowcount);
+
+      if p_mode = COREMOD_ALERTS.gmSHOWALERT or (p_mode = COREMOD_ALERTS.gmREFRESH and p_alert_queue_id is not null) then
+        insert into opas_ot_tmp_dbg_chart
+                  (alert_id, chart_id, dtstamp, chart_val)
+          select i.alert_id, chrtAlert, t.dtstamp, decode(l_alert_snap,t.dtstamp, t.chart_val,0)
+            from opas_ot_tmp_dbg_chart t
+           where t.alert_id = i.alert_id and chart_id = chrtMain;
+--coremod_tasks.log('prepare_chart_data: rc3: '||sql%rowcount);
+      end if;
     end loop;
-    return null;
+    --return null;
   end;
 
   function calc_alert_i(p_alert     opas_ot_dbg_monitor_al_cfg%rowtype) return number
@@ -514,8 +635,9 @@ select dbgdp_id, size_bytes - lag(size_bytes) over(order by snapped) res
 
   procedure take_test_snapshot(p_obj_id       opas_objects.obj_id%type)
   is
+    l_dbgdp_id  opas_ot_dbg_datapoint.dbgdp_id%type;
   BEGIN
-    take_snapshot_i(p_obj_id);
+    take_snapshot_i(p_obj_id, l_dbgdp_id);
     rollback;
   end;
 
@@ -530,8 +652,10 @@ select dbgdp_id, size_bytes - lag(size_bytes) over(order by snapped) res
     l_db          opas_ot_dbg_monitor.dblink%type;
     l_owner       opas_objects.obj_owner%type;
     l_ts          timestamp := systimestamp;
+
+    l_dbgdp_id  opas_ot_dbg_datapoint.dbgdp_id%type;
   begin
-    take_snapshot_i(p_obj_id);
+    take_snapshot_i(p_obj_id, l_dbgdp_id);
     commit;
     for i in (select * from opas_ot_dbg_monitor_al_cfg where dbg_id = p_obj_id) loop
       l_metric := calc_alert_i(i);
@@ -549,15 +673,15 @@ select dbgdp_id, size_bytes - lag(size_bytes) over(order by snapped) res
         l_metric_nm := 'DB Growth: '|| l_metric_nm || case when i.alert_type = alrtREGEXP and i.alert_name is not null then ' "'||i.alert_name||'"' else null end;
 
         COREMOD_ALERTS.add_alert (
-          P_ALERT_ID   => L_ALERT_ID,
-          P_ALERT_TYPE => l_metric_nm,
+          P_ALERT_ID     => L_ALERT_ID,
+          P_ALERT_TYPE   => l_metric_nm,
           p_alert_source => l_db,
-          p_created    => l_ts,
-          P_OWNER      => l_owner,
-          P_MESSAGE    => 'Limit exceeded. Current: '||
-                          l_metric||' ' || i.alert_measur || '; Limit: '||i.ALERT_LIMIT ||' ' || i.alert_measur ||'.',
-          P_LINK_PAGE  => 5002,
-          P_LINK_PARAM => i.alert_id) ;
+          p_created      => l_ts,
+          P_OWNER        => l_owner,
+          P_MESSAGE      => 'Limit exceeded. Current: '||
+                            l_metric||' ' || i.alert_measur || '; Limit: '||i.ALERT_LIMIT ||' ' || i.alert_measur ||'.',
+          P_LINK_PAGE    => 5002,
+          P_LINK_PARAM   => i.alert_id||'-'||l_dbgdp_id) ;
       end if;
     end loop;
   exception

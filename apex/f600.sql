@@ -27,7 +27,7 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 -- Application Export:
 --   Application:     600
 --   Name:            Oracle Performance Analytic Suite
---   Date and Time:   19:51 Monday March 16, 2020
+--   Date and Time:   18:29 Tuesday March 17, 2020
 --   Exported By:     OPAS60DADM
 --   Flashback:       0
 --   Export Type:     Application Export
@@ -37,7 +37,7 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 
 -- Application Statistics:
 --   Pages:                     31
---     Items:                  179
+--     Items:                  173
 --     Validations:              2
 --     Processes:              109
 --     Regions:                117
@@ -131,7 +131,7 @@ wwv_flow_api.create_flow(
 ,p_substitution_string_06=>'APP_GRID_DT_FMT_TZ_FULL'
 ,p_substitution_value_06=>'YYYY-MM-DD HH24:MI:SS.ff9 TZH:TZM'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200316184421'
+,p_last_upd_yyyymmddhh24miss=>'20200317181949'
 ,p_file_prefix => nvl(wwv_flow_application_install.get_static_app_file_prefix,'')
 ,p_files_version=>3
 ,p_ui_type_name => null
@@ -10471,7 +10471,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(64517471915168495)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200316171107'
+,p_last_upd_yyyymmddhh24miss=>'20200317163936'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(59044818663995105)
@@ -10827,7 +10827,7 @@ wwv_flow_api.create_region_column(
 ,p_heading_alignment=>'RIGHT'
 ,p_display_sequence=>10
 ,p_value_alignment=>'RIGHT'
-,p_link_target=>'f?p=&APP_ID.:&LINK_PAGE.:&SESSION.::&DEBUG.:RP:P&LINK_PAGE._ENTITY_ID,P&LINK_PAGE._ALERT_ID,APP_PREV_PAGE,P&LINK_PAGE._MODE:&LINK_PARAM.,&ALERT_ID.,1,SHOWALERT'
+,p_link_target=>'f?p=&APP_ID.:&LINK_PAGE.:&SESSION.::&DEBUG.:RP,&LINK_PAGE.:P&LINK_PAGE._ENTITY_ID,P&LINK_PAGE._ALERT_ID,APP_PREV_PAGE,P&LINK_PAGE._MODE:&LINK_PARAM.,&ALERT_ID.,1,SHOWALERT'
 ,p_link_text=>'<img src="#IMAGE_PREFIX#app_ui/img/icons/apex-edit-view.png" class="apex-edit-view" alt="">'
 ,p_enable_filter=>true
 ,p_filter_is_required=>false
@@ -20941,7 +20941,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(66300724402351173)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200316184421'
+,p_last_upd_yyyymmddhh24miss=>'20200317181949'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(133367989156963093)
@@ -20957,7 +20957,7 @@ wwv_flow_api.create_page_plug(
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(133534820129778232)
-,p_plug_name=>'Graph for "&P5002_METRIC_NAME."&P5002_ALERT_INFO.'
+,p_plug_name=>'Graph for "&P5002_CHART_NAME."&P5002_ALERT_INFO.'
 ,p_parent_plug_id=>wwv_flow_api.id(133367989156963093)
 ,p_region_template_options=>'#DEFAULT#:t-Region--scrollBody'
 ,p_escape_on_http_output=>'Y'
@@ -21003,31 +21003,10 @@ wwv_flow_api.create_jet_chart_series(
 ,p_data_source_type=>'SQL'
 ,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'select',
-'  dtstamp tim, round(chart_val) val, :P5002_METRIC_NAME nm',
+'  dtstamp tim, round(chart_val) val, :P5002_CHART_NAME nm',
 'from opas_ot_tmp_dbg_chart',
-'where chart_id = :P5002_CHART_ID',
-'order by tim'))
-,p_series_name_column_name=>'NM'
-,p_items_value_column_name=>'VAL'
-,p_items_label_column_name=>'TIM'
-,p_line_style=>'solid'
-,p_line_type=>'auto'
-,p_marker_rendered=>'auto'
-,p_marker_shape=>'auto'
-,p_assigned_to_y2=>'off'
-,p_items_label_rendered=>false
-);
-wwv_flow_api.create_jet_chart_series(
- p_id=>wwv_flow_api.id(66991745663316309)
-,p_chart_id=>wwv_flow_api.id(67005892161699771)
-,p_seq=>20
-,p_name=>'Metric2'
-,p_data_source_type=>'SQL'
-,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'select',
-'  dtstamp tim, round(chart_val) val, ''t2'' nm',
-'from opas_ot_tmp_dbg_chart',
-'where chart_id = 2',
+'where chart_id = 1',
+'  and alert_id = :P5002_DBG_ALERT_ID',
 'order by tim'))
 ,p_series_name_column_name=>'NM'
 ,p_items_value_column_name=>'VAL'
@@ -21047,15 +21026,11 @@ wwv_flow_api.create_jet_chart_series(
 ,p_data_source_type=>'SQL'
 ,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'select',
-'  tim, ',
-'  alert_limit val, ',
-'  ''Limit'' nm',
-'from OPAS_OT_DB_MONITOR_VALS v, opas_ot_db_monitor_alerts_cfg c',
-'where v.metric_id = :P5002_METRIC_ID',
-'and v.tim between to_timestamp_tz(:P5002_START_DT,''&APP_GRID_DT_FMT_TZ.'') and to_timestamp_tz(:P5002_END_DT,''&APP_GRID_DT_FMT_TZ.'')',
-'and v.metric_id = c.metric_id',
-'and v.tim between c.actual_start and nvl(c.actual_end,systimestamp)',
-'order by v.tim'))
+'  dtstamp tim, round(chart_val) val, ''Limit'' nm',
+'from opas_ot_tmp_dbg_chart',
+'where chart_id = 2',
+'  and alert_id = :P5002_DBG_ALERT_ID',
+'order by tim'))
 ,p_series_name_column_name=>'NM'
 ,p_items_value_column_name=>'VAL'
 ,p_items_label_column_name=>'TIM'
@@ -21065,7 +21040,6 @@ wwv_flow_api.create_jet_chart_series(
 ,p_marker_shape=>'auto'
 ,p_assigned_to_y2=>'off'
 ,p_items_label_rendered=>false
-,p_display_when_cond_type=>'NEVER'
 );
 wwv_flow_api.create_jet_chart_series(
  p_id=>wwv_flow_api.id(67008014554699826)
@@ -21075,10 +21049,11 @@ wwv_flow_api.create_jet_chart_series(
 ,p_data_source_type=>'SQL'
 ,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'select',
-'  tim, round(val) val, ''Alert'' nm',
-'from OPAS_OT_DB_MONITOR_VALS',
-'where metric_id = :P5002_METRIC_ID',
-'and measur_id = :P5002_ENTITY_ID',
+'  dtstamp tim, round(chart_val) val, ''Alert'' nm',
+'from opas_ot_tmp_dbg_chart',
+'where chart_id = 3',
+'  and alert_id = :P5002_DBG_ALERT_ID',
+'order by tim',
 ''))
 ,p_series_name_column_name=>'NM'
 ,p_items_value_column_name=>'VAL'
@@ -21089,8 +21064,6 @@ wwv_flow_api.create_jet_chart_series(
 ,p_marker_shape=>'diamond'
 ,p_assigned_to_y2=>'off'
 ,p_items_label_rendered=>false
-,p_display_when_cond_type=>'ITEM_IS_NOT_NULL'
-,p_display_when_condition=>'P5002_ENTITY_ID'
 );
 wwv_flow_api.create_jet_chart_axis(
  p_id=>wwv_flow_api.id(67006377165699784)
@@ -21224,19 +21197,12 @@ wwv_flow_api.create_page_branch(
 ,p_branch_sequence=>30
 );
 wwv_flow_api.create_page_item(
- p_id=>wwv_flow_api.id(66991548541316307)
-,p_name=>'P5002_CHART_ID'
+ p_id=>wwv_flow_api.id(66991869260316310)
+,p_name=>'P5002_DBG_ALERT_ID'
 ,p_item_sequence=>10
-,p_item_plug_id=>wwv_flow_api.id(133534820129778232)
-,p_prompt=>'Chart Id'
-,p_display_as=>'NATIVE_TEXT_FIELD'
-,p_cSize=>30
-,p_field_template=>wwv_flow_api.id(59011729453993944)
-,p_item_template_options=>'#DEFAULT#'
-,p_attribute_01=>'N'
-,p_attribute_02=>'N'
-,p_attribute_04=>'TEXT'
-,p_attribute_05=>'BOTH'
+,p_item_plug_id=>wwv_flow_api.id(133367989156963093)
+,p_display_as=>'NATIVE_HIDDEN'
+,p_attribute_01=>'Y'
 );
 wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(67000397119699724)
@@ -21263,14 +21229,6 @@ wwv_flow_api.create_page_item(
 ,p_attribute_01=>'Y'
 );
 wwv_flow_api.create_page_item(
- p_id=>wwv_flow_api.id(67001583202699741)
-,p_name=>'XP5002_ALERT_ID_I'
-,p_item_sequence=>40
-,p_item_plug_id=>wwv_flow_api.id(133367989156963093)
-,p_display_as=>'NATIVE_HIDDEN'
-,p_attribute_01=>'Y'
-);
-wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(67001974843699744)
 ,p_name=>'P5002_ENTITY_ID'
 ,p_item_sequence=>50
@@ -21279,25 +21237,9 @@ wwv_flow_api.create_page_item(
 ,p_attribute_01=>'Y'
 );
 wwv_flow_api.create_page_item(
- p_id=>wwv_flow_api.id(67002347070699745)
-,p_name=>'XP5002_ENTITY_ID_I'
-,p_item_sequence=>60
-,p_item_plug_id=>wwv_flow_api.id(133367989156963093)
-,p_display_as=>'NATIVE_HIDDEN'
-,p_attribute_01=>'Y'
-);
-wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(67002753352699746)
-,p_name=>'P5002_METRIC_ID'
+,p_name=>'XP5002_METRIC_ID'
 ,p_item_sequence=>70
-,p_item_plug_id=>wwv_flow_api.id(133367989156963093)
-,p_display_as=>'NATIVE_HIDDEN'
-,p_attribute_01=>'Y'
-);
-wwv_flow_api.create_page_item(
- p_id=>wwv_flow_api.id(67003132473699748)
-,p_name=>'XP5002_METRIC_ID_I'
-,p_item_sequence=>80
 ,p_item_plug_id=>wwv_flow_api.id(133367989156963093)
 ,p_display_as=>'NATIVE_HIDDEN'
 ,p_attribute_01=>'Y'
@@ -21315,12 +21257,12 @@ wwv_flow_api.create_page_item(
 ,p_name=>'P5002_START_DT'
 ,p_item_sequence=>100
 ,p_item_plug_id=>wwv_flow_api.id(133367989156963093)
-,p_prompt=>'Start Date (&APP_GRID_DT_FMT_TZ.)'
+,p_prompt=>'Start Date (&APP_EDIT_DT_FMT.)'
 ,p_display_as=>'NATIVE_TEXT_FIELD'
 ,p_cSize=>30
 ,p_field_template=>wwv_flow_api.id(59011729453993944)
 ,p_item_template_options=>'#DEFAULT#'
-,p_attribute_01=>'N'
+,p_attribute_01=>'Y'
 ,p_attribute_02=>'N'
 ,p_attribute_04=>'TEXT'
 ,p_attribute_05=>'BOTH'
@@ -21330,20 +21272,20 @@ wwv_flow_api.create_page_item(
 ,p_name=>'P5002_END_DT'
 ,p_item_sequence=>110
 ,p_item_plug_id=>wwv_flow_api.id(133367989156963093)
-,p_prompt=>'End Date (&APP_GRID_DT_FMT_TZ.)'
+,p_prompt=>'End Date (&APP_EDIT_DT_FMT.)'
 ,p_display_as=>'NATIVE_TEXT_FIELD'
 ,p_cSize=>30
 ,p_begin_on_new_line=>'N'
 ,p_field_template=>wwv_flow_api.id(59011729453993944)
 ,p_item_template_options=>'#DEFAULT#'
-,p_attribute_01=>'N'
+,p_attribute_01=>'Y'
 ,p_attribute_02=>'N'
 ,p_attribute_04=>'TEXT'
 ,p_attribute_05=>'BOTH'
 );
 wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(67004752198699755)
-,p_name=>'P5002_METRIC_NAME'
+,p_name=>'P5002_CHART_NAME'
 ,p_item_sequence=>120
 ,p_item_plug_id=>wwv_flow_api.id(133367989156963093)
 ,p_display_as=>'NATIVE_HIDDEN'
@@ -21351,7 +21293,7 @@ wwv_flow_api.create_page_item(
 );
 wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(67005136623699756)
-,p_name=>'P5002_METRIC_MEASURE'
+,p_name=>'P5002_CHART_MEASURE'
 ,p_item_sequence=>130
 ,p_item_plug_id=>wwv_flow_api.id(133367989156963093)
 ,p_display_as=>'NATIVE_HIDDEN'
@@ -21380,19 +21322,22 @@ wwv_flow_api.create_page_process(
 ,p_process_name=>'InitChart'
 ,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'begin',
-'  :P5002_CHART_ID:=1;',
-'  :P5002_METRIC_NAME:=''Test Chart'';',
-'  delete from opas_ot_tmp_dbg_chart where chart_id = :P5002_CHART_ID;',
-'commit;',
-'  insert into opas_ot_tmp_dbg_chart (chart_id, dtstamp, chart_val)',
-'select :P5002_CHART_ID, dp.snapped,t.tot_occupied from OPAS_OT_DBG_TS_SIZES t, opas_ot_dbg_datapoint dp',
-'where t.ts_name=''NC_DATA'' and t.dbgdp_id=dp.dbgdp_id and dp.dbg_id=61;',
 '',
-'  delete from opas_ot_tmp_dbg_chart where chart_id = 2;',
-'commit;',
-'  insert into opas_ot_tmp_dbg_chart (chart_id, dtstamp, chart_val)',
-'select 2, dp.snapped,t.tot_occupied from OPAS_OT_DBG_TS_SIZES t, opas_ot_dbg_datapoint dp',
-'where t.ts_name=''NC_INDEXES'' and t.dbgdp_id=dp.dbgdp_id and dp.dbg_id=61;',
+'  if :P5002_ALERT_ID is not null then',
+'      select viewed,',
+'             ''; Alert: ''||to_char(created,''&APP_GRID_DT_FMT_TZ_FULL.'')||'' ''||message',
+'        into :P5002_VIEWED,',
+'             :P5002_ALERT_INFO',
+'        from opas_alert_queue where alert_id = :P5002_ALERT_ID;',
+'  end if;',
+'  coreobj_db_growth.prepare_chart_data(p_mode           => :p5002_mode,',
+'                                       p_alert_queue_id => :P5002_ALERT_ID,',
+'                                       p_alert_id       => :P5002_DBG_ALERT_ID,',
+'                                       p_dt_fmt         => ''&APP_EDIT_DT_FMT.'',',
+'                                       p_start_dt       => :P5002_START_DT,',
+'                                       p_end_dt         => :P5002_END_DT,',
+'                                       p_chart_name     => :P5002_CHART_NAME,',
+'                                       p_chart_meas     => :P5002_CHART_MEASURE);',
 'end;'))
 ,p_error_display_location=>'INLINE_IN_NOTIFICATION'
 );
@@ -22183,7 +22128,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(66300724402351173)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200316120347'
+,p_last_upd_yyyymmddhh24miss=>'20200317095139'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(66369818926263502)
@@ -22483,30 +22428,6 @@ wwv_flow_api.create_page_item(
 ,p_attribute_05=>'BOTH'
 );
 wwv_flow_api.create_page_item(
- p_id=>wwv_flow_api.id(66536389284078638)
-,p_name=>'XP6002_METRIC_ID_I'
-,p_item_sequence=>80
-,p_item_plug_id=>wwv_flow_api.id(66369818926263502)
-,p_display_as=>'NATIVE_HIDDEN'
-,p_attribute_01=>'Y'
-);
-wwv_flow_api.create_page_item(
- p_id=>wwv_flow_api.id(66536476412078639)
-,p_name=>'XP6002_ALERT_ID_I'
-,p_item_sequence=>40
-,p_item_plug_id=>wwv_flow_api.id(66369818926263502)
-,p_display_as=>'NATIVE_HIDDEN'
-,p_attribute_01=>'Y'
-);
-wwv_flow_api.create_page_item(
- p_id=>wwv_flow_api.id(66536546334078640)
-,p_name=>'XP6002_ENTITY_ID_I'
-,p_item_sequence=>60
-,p_item_plug_id=>wwv_flow_api.id(66369818926263502)
-,p_display_as=>'NATIVE_HIDDEN'
-,p_attribute_01=>'Y'
-);
-wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(66537147321078646)
 ,p_name=>'P6002_METRIC_NAME'
 ,p_item_sequence=>120
@@ -22617,7 +22538,7 @@ wwv_flow_api.create_page_process(
 '  :P6002_VIEWED := systimestamp;',
 '  :P6002_ALERT_INFO := null;',
 '',
-'  if :P6002_MODE = ''SHOWALERT'' then',
+'  if :P6002_MODE = COREMOD_ALERTS.gmSHOWALERT then',
 '    if :P6002_ALERT_ID is not null then',
 '      select viewed,',
 '             ''; Alert: ''||to_char(created,''&APP_GRID_DT_FMT_TZ_FULL.'')||'' ''||message',
@@ -22636,7 +22557,7 @@ wwv_flow_api.create_page_process(
 '    end if;',
 '  end if;',
 '  ',
-'  if :P6002_MODE = ''PREVIEW'' then',
+'  if :P6002_MODE = COREMOD_ALERTS.gmPREVIEW then',
 '    l_end_dt := systimestamp;',
 '    :P6002_METRIC_ID := :APP_OBJ_ID;',
 '    :P6002_ENTITY_ID := null;',
@@ -22647,7 +22568,7 @@ wwv_flow_api.create_page_process(
 '',
 '  end if;',
 '',
-'  if :P6002_MODE = ''REFRESH'' then',
+'  if :P6002_MODE = COREMOD_ALERTS.gmREFRESH then',
 '    :P6002_METRIC_ID := :APP_OBJ_ID;',
 '  end if;',
 '',

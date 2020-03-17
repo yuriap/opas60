@@ -36,11 +36,12 @@ actual_end      timestamp);
 --create index idx_opas_ot_dbg_mon_acgg_hst           on opas_ot_dbg_monitor_al_cfg_hst(alert_id);
 create index idx_opas_ot_dbg_mon_acgg_hm           on opas_ot_dbg_monitor_al_cfg_hst(dbg_id);
 
-
+---------------------------------
 create global temporary table opas_ot_tmp_dbg_chart(
-chart_id  number,
-dtstamp   timestamp,
-chart_val number
+alert_id        number,
+chart_id        number,
+dtstamp         timestamp,
+chart_val       number
 ) on commit preserve rows;
 
 ---------------------------------
