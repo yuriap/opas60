@@ -403,7 +403,8 @@ package body COREOBJ_DB_GROWTH is
                                p_start_dt in out varchar2,
                                p_end_dt   in out varchar2,
                                p_chart_name  out varchar2,
-                               p_chart_meas  out varchar2)
+                               p_chart_meas  out varchar2,
+                               p_dbg_id      out opas_ot_dbg_monitor.dbg_id%type)
   is
     l_dbgdp_id   opas_ot_dbg_datapoint.dbgdp_id%type;
 
@@ -421,9 +422,11 @@ package body COREOBJ_DB_GROWTH is
     l_alert_snap timestamp;
 
     l_link_param opas_alert_queue.link_param%type;
+
+    l_sql varchar2(4000);
   begin
-    if  (p_mode in (COREMOD_ALERTS.gmSHOWALERT, COREMOD_ALERTS.gmREFRESH) and p_alert_queue_id is not null) or
-        (p_mode in (COREMOD_ALERTS.gmPREVIEW) and p_alert_id is not null)
+    if  (p_mode in (COREMOD_ALERTS.gmSHOWALERT, COREMOD_ALERTS.gmREFRESH) and p_alert_queue_id is not null and p_alert_id is null) or
+        (p_mode in (COREMOD_ALERTS.gmPREVIEW, COREMOD_ALERTS.gmREFRESH)   and p_alert_queue_id is null     and p_alert_id is not null)
     then
       null;
     else
@@ -434,6 +437,8 @@ package body COREOBJ_DB_GROWTH is
       select link_param into l_link_param from opas_alert_queue where alert_id = p_alert_queue_id;
       p_alert_id := substr(l_link_param,1,instr(l_link_param,'-')-1);
       l_dbgdp_id := substr(l_link_param,instr(l_link_param,'-')+1);
+
+      select snapped into l_alert_snap from opas_ot_dbg_datapoint where dbgdp_id=l_dbgdp_id;
     end if;
 
 --coremod_tasks.log('prepare_chart_data: p_mode: '||p_mode||'; p_alert_queue_id:'||p_alert_queue_id||'; p_alert_id:'||p_alert_id||'; p_dt_fmt:'||p_dt_fmt);
@@ -442,13 +447,20 @@ package body COREOBJ_DB_GROWTH is
     l_start_dt := to_date(p_start_dt, p_dt_fmt);
     l_end_dt := to_date(p_end_dt, p_dt_fmt);
 
-    for i in (select x.*, m.dblink
-                from opas_ot_dbg_monitor_al_cfg x,
-                     opas_ot_dbg_monitor m
-               where alert_id = p_alert_id
-                 and m.dbg_id = x.dbg_id)
+    for i in (select * from
+             (select x.alert_id, x.dbg_id, x.alert_name, x.alert_type, x.alert_measur, x.alert_expr, m.dblink
+                from opas_ot_dbg_monitor_al_cfg x, opas_ot_dbg_monitor m
+               where x.alert_id = p_alert_id and m.dbg_id = x.dbg_id
+              union all
+              select x.alert_id, x.dbg_id, x.alert_name, x.alert_type, x.alert_measur, x.alert_expr, m.dblink
+                from opas_ot_dbg_monitor_al_cfg_hst x, opas_ot_dbg_monitor m
+               where x.alert_id = p_alert_id and l_alert_snap between x.actual_start and x.actual_end and m.dbg_id = x.dbg_id)
+             where rownum=1)
     loop
-      delete from opas_ot_tmp_dbg_chart where alert_id = i.alert_id;
+--coremod_tasks.log('prepare_chart_data: alert_id: '||i.alert_id||'; dbg_id:'||i.dbg_id||'; alert_name:'||i.alert_name||'; alert_type:'||i.alert_type||'; alert_measur:'||i.alert_measur||'; alert_expr:'||i.alert_expr||'; dblink:'||i.dblink);
+      p_dbg_id := i.dbg_id;
+      delete from opas_ot_dbg_charts where alert_id = i.alert_id and apex_sess = V('SESSION');
+      commit;
 
       select display_val into p_chart_name from opas_dictionary where dic_name='DBGALERT' and val = i.alert_type;
       p_chart_name := 'DB Growth: '||
@@ -456,10 +468,8 @@ package body COREOBJ_DB_GROWTH is
                       case when i.alert_type = alrtREGEXP and i.alert_name is not null then ' "'||i.alert_name||'"' else null end ||
                       ' for '||i.dblink;
       p_chart_meas := i.alert_measur;
-
+--============================================================================================================================================
       if p_mode = COREMOD_ALERTS.gmSHOWALERT or (p_mode = COREMOD_ALERTS.gmREFRESH and p_alert_queue_id is not null) then
-
-          select snapped into l_alert_snap from opas_ot_dbg_datapoint where dbgdp_id=l_dbgdp_id;
 
           if nvl(l_end_dt,l_alert_snap)   < l_alert_snap then l_end_dt   := null; end if;
           if nvl(l_start_dt,l_alert_snap) > l_alert_snap then l_start_dt := null; end if;
@@ -496,77 +506,138 @@ package body COREOBJ_DB_GROWTH is
           end loop;
       end if;
 --coremod_tasks.log('prepare_chart_data: i.alert_type: '||i.alert_type||'; l_start_dbgdp_id: '||l_start_dbgdp_id||'; l_end_dbgdp_id:'||l_end_dbgdp_id||'; p_start_dt:'||p_start_dt||'; p_end_dt:'||p_end_dt);
+--============================================================================================================================================
+      if p_mode = COREMOD_ALERTS.gmPREVIEW or (p_mode = COREMOD_ALERTS.gmREFRESH and p_alert_id is not null and p_alert_queue_id is null) then
 
+        select
+               to_char(max(dp.snapped), p_dt_fmt),
+               max(dp.dbgdp_id)
+          into p_end_dt,
+               l_end_dbgdp_id
+          from opas_ot_dbg_datapoint dp, opas_ot_dbg_monitor_al_cfg a
+         where dp.dbg_id = a.dbg_id
+           and a.alert_id = p_alert_id
+           and dp.snapped <= nvl(l_end_dt,systimestamp);
+
+        if l_start_dt is not null then
+          select
+                 to_char(min(dp.snapped), p_dt_fmt),
+                 min(dp.dbgdp_id)
+            into p_start_dt,
+                 l_start_dbgdp_id
+            from opas_ot_dbg_datapoint dp, opas_ot_dbg_monitor_al_cfg a
+           where dp.dbg_id = a.dbg_id
+             and a.alert_id = p_alert_id
+             and dp.snapped >= l_start_dt;
+        else
+          select
+                 to_char(min(snapped), p_dt_fmt),
+                 min(dbgdp_id)
+            into p_start_dt,
+                 l_start_dbgdp_id
+            from ( select dp.snapped, dp.dbgdp_id, row_number() over (order by dp.snapped desc) rn
+                     from opas_ot_dbg_datapoint dp, opas_ot_dbg_monitor_al_cfg a
+                    where dp.dbg_id = a.dbg_id
+                      and a.alert_id = p_alert_id)
+           where rn < 101;
+        end if;
+
+      end if;
       case i.alert_type
---        when alrtSIZELIMIT then
---          select sum(seg_occupied) into l_res from opas_ot_dbg_ts_sizes where dbgdp_id = l_last_dp;
-        when alrtDELTALIMIT then
-
-          insert into opas_ot_tmp_dbg_chart
-                    (alert_id, chart_id, dtstamp, chart_val)
-            select i.alert_id, chrtMain, dp.snapped, sum(t.seg_occupied)
+--==========================================================================
+        when alrtSIZELIMIT then
+          insert into opas_ot_dbg_charts
+                    (alert_id, chart_id, dtstamp, chart_val, apex_sess, created)
+            select i.alert_id, chrtMain, dp.snapped, sum(t.seg_occupied), V('SESSION'), sysdate
               from OPAS_OT_DBG_TS_SIZES t, opas_ot_dbg_datapoint dp
              where t.dbgdp_id=dp.dbgdp_id and dp.dbg_id=i.dbg_id
                and dp.dbgdp_id between l_start_dbgdp_id and l_end_dbgdp_id
              group by i.alert_id, dp.snapped;
-
---coremod_tasks.log('prepare_chart_data: rc1: '||sql%rowcount);
-
-/*          select s_last - s_prev into l_res from
-          (select sum(seg_occupied) s_last from opas_ot_dbg_ts_sizes where dbgdp_id = l_last_dp) lastdp,
-          (select sum(seg_occupied) s_prev from opas_ot_dbg_ts_sizes where dbgdp_id = l_prev_dp) prevdp;
+--==========================================================================
+        when alrtDELTALIMIT then
+          insert into opas_ot_dbg_charts
+                    (alert_id, chart_id, dtstamp, chart_val, apex_sess, created)
+            select alert_id, chart_id, snapped, sz - lag(sz) over (order by snapped), V('SESSION'), sysdate
+            from (select i.alert_id, chrtMain chart_id, dp.snapped, sum(t.seg_occupied) sz
+                    from OPAS_OT_DBG_TS_SIZES t, opas_ot_dbg_datapoint dp
+                   where t.dbgdp_id=dp.dbgdp_id and dp.dbg_id=i.dbg_id
+                     and dp.dbgdp_id between l_start_dbgdp_id and l_end_dbgdp_id
+                   group by i.alert_id, dp.snapped);
+--==========================================================================
         when alrtFREELIMIT then
-          select sum(tot_free) into l_res from opas_ot_dbg_ts_sizes where dbgdp_id = l_last_dp;
-          return case when l_res < p_alert.alert_limit then l_res else null end;
+          insert into opas_ot_dbg_charts
+                    (alert_id, chart_id, dtstamp, chart_val, apex_sess, created)
+            select i.alert_id, chrtMain, dp.snapped, sum(t.tot_free), V('SESSION'), sysdate
+              from OPAS_OT_DBG_TS_SIZES t, opas_ot_dbg_datapoint dp
+             where t.dbgdp_id=dp.dbgdp_id and dp.dbg_id=i.dbg_id
+               and dp.dbgdp_id between l_start_dbgdp_id and l_end_dbgdp_id
+             group by i.alert_id, dp.snapped;
+--==========================================================================
         when alrtOUTOFSPACE then
-          select round(s_free/decode((s_last - s_prev),0,null,(s_last - s_prev)),3) into l_res from
-          (select sum(seg_occupied) s_last from opas_ot_dbg_ts_sizes where dbgdp_id = l_last_dp) lastdp,
-          (select sum(seg_occupied) s_prev from opas_ot_dbg_ts_sizes where dbgdp_id = l_prev_dp) prevdp,
-          (select sum(tot_free) s_free from opas_ot_dbg_ts_sizes where dbgdp_id = l_last_dp);
-          return case when l_res < p_alert.alert_limit then l_res else null end;
+          insert into opas_ot_dbg_charts
+                    (alert_id, chart_id, dtstamp, chart_val, apex_sess, created)
+            select alert_id, chart_id, snapped,
+                   round(s_free/decode((s_occu - lag(s_occu) over (order by snapped)),0,null,(s_occu - lag(s_occu) over (order by snapped))),3),
+                   V('SESSION'), sysdate
+            from (select i.alert_id, chrtMain chart_id, dp.snapped,
+                         sum(t.seg_occupied) s_occu,
+                         sum(tot_free) s_free
+                    from OPAS_OT_DBG_TS_SIZES t, opas_ot_dbg_datapoint dp
+                   where t.dbgdp_id=dp.dbgdp_id and dp.dbg_id=i.dbg_id
+                     and dp.dbgdp_id between l_start_dbgdp_id and l_end_dbgdp_id
+                   group by i.alert_id, dp.snapped);
+--==========================================================================
         when alrtREGEXP then
-          l_sql := q'[with objects as
- (select *
-    from opas_ot_dbg_objects o, opas_ot_dbg_datapoint dp
-   where o.version_dp_id = dp.dbgdp_id
-     and dp.dbg_id = :p_dbg_id
-     and (]' || p_alert.alert_expr || q'[))
-select res from (
-select dbgdp_id, size_bytes - lag(size_bytes) over(order by snapped) res
-  from (select dp.dbgdp_id, dp.snapped, sum(s.size_bytes) size_bytes
-          from objects o, opas_ot_dbg_seg_sizes s, opas_ot_dbg_datapoint dp
-         where o.dbgobj_id = s.dbgobj_id
-           and s.dbgdp_id = dp.dbgdp_id
-           and dp.dbg_id = :p_dbg_id
-           and dp.dbgdp_id in (:p_dp1, :p_dp2)
-         group by dp.dbgdp_id, dp.snapped)) where dbgdp_id = :p_dp2
-     ]';
-          execute immediate l_sql into l_res using in p_alert.dbg_id, p_alert.dbg_id, l_prev_dp, l_last_dp, l_last_dp;
-  */      else
+          l_sql := q'[insert into opas_ot_dbg_charts
+                    (alert_id, chart_id, dtstamp, chart_val, apex_sess, created)
+            with objects as
+             (select *
+                from opas_ot_dbg_objects o, opas_ot_dbg_datapoint dp
+               where o.version_dp_id = dp.dbgdp_id
+                 and dp.dbg_id = :p_dbg_id
+                 and (]' || i.alert_expr || q'[))
+            select alert_id, chart_id, snapped, sz - lag(sz) over (order by snapped), V('SESSION'), sysdate
+            from (select :p_alert_id alert_id, :p_chart chart_id, dp.snapped, sum(s.size_bytes) sz
+                    from objects o, opas_ot_dbg_seg_sizes s, opas_ot_dbg_datapoint dp
+                   where dp.dbg_id=:p_dbg_id
+                     and dp.dbgdp_id between :l_start_dbgdp_id and :l_end_dbgdp_id
+                     and o.dbgobj_id = s.dbgobj_id
+                     and s.dbgdp_id = dp.dbgdp_id
+                   group by dp.snapped)]';
+
+          execute immediate l_sql using in i.dbg_id, i.alert_id, chrtMain, i.dbg_id, l_start_dbgdp_id, l_end_dbgdp_id;
+        else
           null;
       end case;
 
-      insert into opas_ot_tmp_dbg_chart
-                (alert_id, chart_id, dtstamp, chart_val)
-        select i.alert_id, chrtLimit, t.dtstamp, l.alert_limit
-          from opas_ot_tmp_dbg_chart t,
+      insert into opas_ot_dbg_charts
+                (alert_id, chart_id, dtstamp, chart_val, apex_sess, created)
+        select i.alert_id, chrtLimit, t.dtstamp, l.alert_limit, V('SESSION'), sysdate
+          from opas_ot_dbg_charts t,
                (select alert_limit, actual_start, systimestamp actual_end from opas_ot_dbg_monitor_al_cfg where alert_id =  i.alert_id
                 union all
                 select alert_limit, actual_start, actual_end from opas_ot_dbg_monitor_al_cfg_hst where alert_id =  i.alert_id) l
-         where t.alert_id = i.alert_id and chart_id = chrtMain
+         where t.alert_id = i.alert_id and apex_sess = V('SESSION') and chart_id = chrtMain
            and t.dtstamp between l.actual_start and l.actual_end;
 --coremod_tasks.log('prepare_chart_data: rc2: '||sql%rowcount);
 
       if p_mode = COREMOD_ALERTS.gmSHOWALERT or (p_mode = COREMOD_ALERTS.gmREFRESH and p_alert_queue_id is not null) then
-        insert into opas_ot_tmp_dbg_chart
-                  (alert_id, chart_id, dtstamp, chart_val)
-          select i.alert_id, chrtAlert, t.dtstamp, decode(l_alert_snap,t.dtstamp, t.chart_val,0)
-            from opas_ot_tmp_dbg_chart t
-           where t.alert_id = i.alert_id and chart_id = chrtMain;
+        insert into opas_ot_dbg_charts
+                  (alert_id, chart_id, dtstamp, chart_val, apex_sess, created)
+          select i.alert_id, chrtAlert, t.dtstamp, decode(l_alert_snap,t.dtstamp, t.chart_val,0), V('SESSION'), sysdate
+            from opas_ot_dbg_charts t
+           where t.alert_id = i.alert_id and apex_sess = V('SESSION') and chart_id = chrtMain;
 --coremod_tasks.log('prepare_chart_data: rc3: '||sql%rowcount);
       end if;
     end loop;
     --return null;
+  end;
+
+  procedure cleanup_chart_data
+  is
+  begin
+    delete from opas_ot_dbg_charts where created < sysdate-0.5/24;
+    commit;
   end;
 
   function calc_alert_i(p_alert     opas_ot_dbg_monitor_al_cfg%rowtype) return number

@@ -47,7 +47,10 @@ package COREOBJ_DB_GROWTH is
                                p_start_dt in out varchar2,
                                p_end_dt   in out varchar2,
                                p_chart_name  out varchar2,
-                               p_chart_meas  out varchar2);
+                               p_chart_meas  out varchar2,
+                               p_dbg_id      out opas_ot_dbg_monitor.dbg_id%type);
+
+  procedure cleanup_chart_data;
 
 end COREOBJ_DB_GROWTH;
 /
