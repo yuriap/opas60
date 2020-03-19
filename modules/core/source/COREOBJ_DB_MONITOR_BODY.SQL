@@ -243,5 +243,44 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
     update opas_ot_db_monitor_alerts_cfg set limit_actual='N', actual_end = systimestamp where metric_id = p_metric_id;
   end;
 
+  procedure cleanup_chart_data
+  is
+  begin
+    delete from opas_ot_db_chart_lists where created < sysdate-0.5/24;
+    commit;
+  end;
+
+  procedure prepare_charts_data(p_chart_list      varchar2,
+                                p_dt_fmt          varchar2,
+                                p_start_dt in out varchar2,
+                                p_end_dt   in out varchar2)
+  is
+    l_tbl DBMS_UTILITY.LNAME_ARRAY;
+    l_n   number;
+    l_end_dt  timestamp WITH TIME ZONE;
+  begin
+    delete from opas_ot_db_chart_lists where apex_sess = V('SESSION');
+    commit;
+    if p_end_dt is null then l_end_dt := systimestamp; p_end_dt := to_char(l_end_dt,p_dt_fmt); end if;
+    if p_start_dt is null then p_start_dt := to_char(l_end_dt - TO_DSINTERVAL('1 00:00:00'),p_dt_fmt); end if;
+
+    coremod_log.log('p_chart_list: '||p_chart_list);
+
+    if p_chart_list is not null then
+      DBMS_UTILITY.COMMA_TO_TABLE (
+        list   => replace(p_chart_list,':',','),
+        tablen => l_n,
+        tab    => l_tbl);
+
+      for i in 1..l_n loop
+        --coremod_log.log(i||':'||l_tbl(i));
+        insert into opas_ot_db_chart_lists
+          (apex_sess, created, metric_id, chart_id, chart_name)
+        select V('SESSION'), sysdate, metric_id, i, obj_name || ' (' || t.dblink || '), '|| t.measure
+          from opas_ot_db_monitor t, v$opas_objects o
+         where t.metric_id=o.obj_id and metric_id = to_number(replace(l_tbl(i),'M'));
+      end loop;
+    end if;
+  end;
 END COREOBJ_DB_MONITOR;
 /

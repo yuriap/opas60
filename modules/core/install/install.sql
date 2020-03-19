@@ -49,6 +49,15 @@ begin
                                             p_task_body => 'begin COREOBJ_DB_GROWTH.cleanup_chart_data; end;');
 end;
 /
+
+begin
+  coremod_cleanup.register_cleanup_tasks (  P_TASKNAME => 'CLEANUPDBCHARTS',
+                                            P_MODNAME => '&MODNM.',
+                      p_frequency_h => 0.5,
+                                            p_task_body => 'begin COREOBJ_DB_MONITOR.cleanup_chart_data; end;');
+end;
+/
+
 commit;
 
 begin

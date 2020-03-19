@@ -28,5 +28,11 @@ PACKAGE COREOBJ_DB_MONITOR AS
   procedure drop_alert_limit(p_metric_id   opas_ot_db_monitor_alerts_cfg.metric_id%type/*,
                              p_alert_type  opas_ot_db_monitor_alerts_cfg.alert_type%type*/);
 
+  procedure cleanup_chart_data;
+  procedure prepare_charts_data(p_chart_list      varchar2,
+                                p_dt_fmt          varchar2,
+                                p_start_dt in out varchar2,
+                                p_end_dt   in out varchar2);
+
 END COREOBJ_DB_MONITOR;
 /

@@ -2292,6 +2292,12 @@ actual_end      timestamp);
 create unique index idx_opas_ot_db_mon_acgg_u1   on opas_ot_db_monitor_alerts_cfg(decode(limit_actual,'Y', metric_id, null), decode(limit_actual,'Y', alert_type, null));
 create index idx_opas_ot_db_mon_acgg_m    on opas_ot_db_monitor_alerts_cfg(metric_id);
 
+create table opas_ot_db_chart_lists(
+apex_sess       number,
+created         date,
+metric_id       number,
+chart_id        number,
+chart_name      varchar2(1000));
 
 --
 --

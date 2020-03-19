@@ -396,6 +396,84 @@ package body COREOBJ_DB_GROWTH is
       end if;
   end;
 
+  procedure gather_alert_chart_data(p_alert_type       opas_ot_dbg_monitor_al_cfg.alert_type%type,
+                                    p_dbg_id           opas_ot_dbg_monitor_al_cfg.dbg_id%type,
+                                    p_alert_id         opas_ot_dbg_monitor_al_cfg.alert_id%type,
+                                    p_alert_expr       opas_ot_dbg_monitor_al_cfg.alert_expr%type,
+                                    p_chart_id         number,
+                                    p_start_dbgdp_id   opas_ot_dbg_datapoint.dbgdp_id%type,
+                                    p_end_dbgdp_id     opas_ot_dbg_datapoint.dbgdp_id%type)
+  is
+    l_sql varchar2(4000);
+  begin
+      case p_alert_type
+--==========================================================================
+        when alrtSIZELIMIT then
+          insert into opas_ot_dbg_charts
+                    (alert_id, chart_id, dtstamp, chart_val, apex_sess, created)
+            select p_alert_id, p_chart_id, dp.snapped, sum(t.seg_occupied), V('SESSION'), sysdate
+              from OPAS_OT_DBG_TS_SIZES t, opas_ot_dbg_datapoint dp
+             where t.dbgdp_id=dp.dbgdp_id and dp.dbg_id=p_dbg_id
+               and dp.dbgdp_id between p_start_dbgdp_id and p_end_dbgdp_id
+             group by dp.snapped;
+--==========================================================================
+        when alrtDELTALIMIT then
+          insert into opas_ot_dbg_charts
+                    (alert_id, chart_id, dtstamp, chart_val, apex_sess, created)
+            select alert_id, chart_id, snapped, sz - lag(sz) over (order by snapped), V('SESSION'), sysdate
+            from (select p_alert_id alert_id, p_chart_id chart_id, dp.snapped, sum(t.seg_occupied) sz
+                    from OPAS_OT_DBG_TS_SIZES t, opas_ot_dbg_datapoint dp
+                   where t.dbgdp_id=dp.dbgdp_id and dp.dbg_id=p_dbg_id
+                     and dp.dbgdp_id between p_start_dbgdp_id and p_end_dbgdp_id
+                   group by dp.snapped);
+--==========================================================================
+        when alrtFREELIMIT then
+          insert into opas_ot_dbg_charts
+                    (alert_id, chart_id, dtstamp, chart_val, apex_sess, created)
+            select p_alert_id, p_chart_id, dp.snapped, sum(t.tot_free), V('SESSION'), sysdate
+              from OPAS_OT_DBG_TS_SIZES t, opas_ot_dbg_datapoint dp
+             where t.dbgdp_id=dp.dbgdp_id and dp.dbg_id=p_dbg_id
+               and dp.dbgdp_id between p_start_dbgdp_id and p_end_dbgdp_id
+             group by dp.snapped;
+--==========================================================================
+        when alrtOUTOFSPACE then
+          insert into opas_ot_dbg_charts
+                    (alert_id, chart_id, dtstamp, chart_val, apex_sess, created)
+            select alert_id, chart_id, snapped,
+                   round(s_free/decode((s_occu - lag(s_occu) over (order by snapped)),0,null,(s_occu - lag(s_occu) over (order by snapped))),3),
+                   V('SESSION'), sysdate
+            from (select p_alert_id alert_id, p_chart_id chart_id, dp.snapped,
+                         sum(t.seg_occupied) s_occu,
+                         sum(tot_free) s_free
+                    from OPAS_OT_DBG_TS_SIZES t, opas_ot_dbg_datapoint dp
+                   where t.dbgdp_id=dp.dbgdp_id and dp.dbg_id=p_dbg_id
+                     and dp.dbgdp_id between p_start_dbgdp_id and p_end_dbgdp_id
+                   group by dp.snapped);
+--==========================================================================
+        when alrtREGEXP then
+          l_sql := q'[insert into opas_ot_dbg_charts
+                    (alert_id, chart_id, dtstamp, chart_val, apex_sess, created)
+            with objects as
+             (select *
+                from opas_ot_dbg_objects o, opas_ot_dbg_datapoint dp
+               where o.version_dp_id = dp.dbgdp_id
+                 and dp.dbg_id = :p_dbg_id
+                 and (]' || p_alert_expr || q'[))
+            select alert_id, chart_id, snapped, sz - lag(sz) over (order by snapped), V('SESSION'), sysdate
+            from (select :p_alert_id alert_id, :p_chart chart_id, dp.snapped, sum(s.size_bytes) sz
+                    from objects o, opas_ot_dbg_seg_sizes s, opas_ot_dbg_datapoint dp
+                   where dp.dbg_id=:p_dbg_id
+                     and dp.dbgdp_id between :l_start_dbgdp_id and :l_end_dbgdp_id
+                     and o.dbgobj_id = s.dbgobj_id
+                     and s.dbgdp_id = dp.dbgdp_id
+                   group by dp.snapped)]';
+
+          execute immediate l_sql using in p_dbg_id, p_alert_id, p_chart_id, p_dbg_id, p_start_dbgdp_id, p_end_dbgdp_id;
+        else
+          null;
+      end case;
+  end;
+
   procedure prepare_chart_data(p_mode varchar2,
                                p_alert_queue_id  opas_alert_queue.alert_id%type,
                                p_alert_id in out opas_ot_dbg_monitor_al_cfg.alert_id%type,
@@ -423,10 +501,13 @@ package body COREOBJ_DB_GROWTH is
 
     l_link_param opas_alert_queue.link_param%type;
 
-    l_sql varchar2(4000);
+    --l_sql varchar2(4000);
   begin
-    if  (p_mode in (COREMOD_ALERTS.gmSHOWALERT, COREMOD_ALERTS.gmREFRESH) and p_alert_queue_id is not null and p_alert_id is null) or
-        (p_mode in (COREMOD_ALERTS.gmPREVIEW, COREMOD_ALERTS.gmREFRESH)   and p_alert_queue_id is null     and p_alert_id is not null)
+    if  /*(p_mode in (COREMOD_ALERTS.gmSHOWALERT, COREMOD_ALERTS.gmREFRESH) and p_alert_queue_id is not null and p_alert_id is null) or
+        (p_mode in (COREMOD_ALERTS.gmPREVIEW, COREMOD_ALERTS.gmREFRESH)   and p_alert_queue_id is null     and p_alert_id is not null)*/
+        (p_mode in (COREMOD_ALERTS.gmSHOWALERT) and p_alert_queue_id is not null and p_alert_id is null) or
+        (p_mode in (COREMOD_ALERTS.gmREFRESH)) or
+        (p_mode in (COREMOD_ALERTS.gmPREVIEW)   and p_alert_queue_id is null     and p_alert_id is not null)
     then
       null;
     else
@@ -543,7 +624,7 @@ package body COREOBJ_DB_GROWTH is
         end if;
 
       end if;
-      case i.alert_type
+/*      case i.alert_type
 --==========================================================================
         when alrtSIZELIMIT then
           insert into opas_ot_dbg_charts
@@ -608,7 +689,15 @@ package body COREOBJ_DB_GROWTH is
           execute immediate l_sql using in i.dbg_id, i.alert_id, chrtMain, i.dbg_id, l_start_dbgdp_id, l_end_dbgdp_id;
         else
           null;
-      end case;
+      end case;*/
+
+      gather_alert_chart_data(p_alert_type       => i.alert_type,
+                              p_dbg_id           => i.dbg_id,
+                              p_alert_id         => i.alert_id,
+                              p_alert_expr       => i.alert_expr,
+                              p_chart_id         => chrtMain,
+                              p_start_dbgdp_id   => l_start_dbgdp_id,
+                              p_end_dbgdp_id     => l_end_dbgdp_id);
 
       insert into opas_ot_dbg_charts
                 (alert_id, chart_id, dtstamp, chart_val, apex_sess, created)
@@ -629,6 +718,7 @@ package body COREOBJ_DB_GROWTH is
            where t.alert_id = i.alert_id and apex_sess = V('SESSION') and chart_id = chrtMain;
 --coremod_tasks.log('prepare_chart_data: rc3: '||sql%rowcount);
       end if;
+
     end loop;
     --return null;
   end;
