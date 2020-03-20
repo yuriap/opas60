@@ -54,6 +54,7 @@ INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) 
 
 INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (5000,         500,   'CREATE',     'Register new Database Growth Monitor');
 INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (5000,         500,   'OPEN',       'Show Database Growth Monitor');
+INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (5003,         500,   'PREVIEW',    'Preview Database Growth Monitor');
 
 
 INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (6000,         600,   'CREATE',     'Register new Simple DB Monitor');

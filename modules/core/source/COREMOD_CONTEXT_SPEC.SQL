@@ -1,0 +1,6 @@
+CREATE OR REPLACE
+PACKAGE COREMOD_CONTEXT AS
+PROCEDURE set_parameter(p_name   IN  VARCHAR2,
+                        p_value  IN  VARCHAR2);
+END COREMOD_CONTEXT;
+/

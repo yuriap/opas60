@@ -174,3 +174,90 @@ schema_owner        varchar2(128),
 element_name        varchar2(128),
 storage_type        varchar2(128)
 ) on commit preserve rows;
+
+/*
+CREATE OR REPLACE CONTEXT OPAS_CONTEXT USING COREMOD_CONTEXT;
+
+create or replace view v$opas_dbg_selected_objects as
+select *
+    from opas_ot_dbg_objects o, opas_ot_dbg_datapoint dp
+   where o.version_dp_id = dp.dbgdp_id 
+     and dp.dbg_id = SYS_CONTEXT('OPAS_CONTEXT','DBGSO_DBG_ID')
+     and (SYS_CONTEXT('OPAS_CONTEXT','DBGSO_TABLE_NAME_LIKE') is null or 
+            (
+             (SYS_CONTEXT('OPAS_CONTEXT','DBGSO_INVERSE') = 'N' and
+               ((regexp_like (prnt_table,       SYS_CONTEXT('OPAS_CONTEXT','DBGSO_TABLE_NAME_LIKE'), 'i') and SYS_CONTEXT('OPAS_CONTEXT','DBGSO_PRNT_TABLE')      = 'Y') or
+                (regexp_like (prnt_table_type,  SYS_CONTEXT('OPAS_CONTEXT','DBGSO_TABLE_NAME_LIKE'), 'i') and SYS_CONTEXT('OPAS_CONTEXT','DBGSO_PRNT_TABLE_TYPE') = 'Y') or
+                (regexp_like (object_class,     SYS_CONTEXT('OPAS_CONTEXT','DBGSO_TABLE_NAME_LIKE'), 'i') and SYS_CONTEXT('OPAS_CONTEXT','DBGSO_OBJECT_CLASS')    = 'Y') or
+                (regexp_like (object_type,      SYS_CONTEXT('OPAS_CONTEXT','DBGSO_TABLE_NAME_LIKE'), 'i') and SYS_CONTEXT('OPAS_CONTEXT','DBGSO_OBJECT_TYPE')     = 'Y') or
+                (regexp_like (segment_type,     SYS_CONTEXT('OPAS_CONTEXT','DBGSO_TABLE_NAME_LIKE'), 'i') and SYS_CONTEXT('OPAS_CONTEXT','DBGSO_SEGMENT_TYPE')    = 'Y') or
+                (regexp_like (object_name,      SYS_CONTEXT('OPAS_CONTEXT','DBGSO_TABLE_NAME_LIKE'), 'i') and SYS_CONTEXT('OPAS_CONTEXT','DBGSO_OBJECT_NAME')     = 'Y') or
+                (regexp_like (subobject_name,   SYS_CONTEXT('OPAS_CONTEXT','DBGSO_TABLE_NAME_LIKE'), 'i') and SYS_CONTEXT('OPAS_CONTEXT','DBGSO_SUBOBJECT_NAME')  = 'Y') or
+                (regexp_like (tablespace_name,  SYS_CONTEXT('OPAS_CONTEXT','DBGSO_TABLE_NAME_LIKE'), 'i') and SYS_CONTEXT('OPAS_CONTEXT','DBGSO_TABLESPACE_NAME') = 'Y')
+               )
+              ) 
+              or
+             (SYS_CONTEXT('OPAS_CONTEXT','DBGSO_INVERSE') = 'Y' and 
+               ((not regexp_like (prnt_table,       SYS_CONTEXT('OPAS_CONTEXT','DBGSO_TABLE_NAME_LIKE'), 'i') and SYS_CONTEXT('OPAS_CONTEXT','DBGSO_PRNT_TABLE')      = 'Y') or
+                (not regexp_like (prnt_table_type,  SYS_CONTEXT('OPAS_CONTEXT','DBGSO_TABLE_NAME_LIKE'), 'i') and SYS_CONTEXT('OPAS_CONTEXT','DBGSO_PRNT_TABLE_TYPE') = 'Y') or
+                (not regexp_like (object_class,     SYS_CONTEXT('OPAS_CONTEXT','DBGSO_TABLE_NAME_LIKE'), 'i') and SYS_CONTEXT('OPAS_CONTEXT','DBGSO_OBJECT_CLASS')    = 'Y') or
+                (not regexp_like (object_type,      SYS_CONTEXT('OPAS_CONTEXT','DBGSO_TABLE_NAME_LIKE'), 'i') and SYS_CONTEXT('OPAS_CONTEXT','DBGSO_OBJECT_TYPE')     = 'Y') or
+                (not regexp_like (segment_type,     SYS_CONTEXT('OPAS_CONTEXT','DBGSO_TABLE_NAME_LIKE'), 'i') and SYS_CONTEXT('OPAS_CONTEXT','DBGSO_SEGMENT_TYPE')    = 'Y') or                
+                (not regexp_like (object_name,      SYS_CONTEXT('OPAS_CONTEXT','DBGSO_TABLE_NAME_LIKE'), 'i') and SYS_CONTEXT('OPAS_CONTEXT','DBGSO_OBJECT_NAME')     = 'Y') or
+                (not regexp_like (subobject_name,   SYS_CONTEXT('OPAS_CONTEXT','DBGSO_TABLE_NAME_LIKE'), 'i') and SYS_CONTEXT('OPAS_CONTEXT','DBGSO_SUBOBJECT_NAME')  = 'Y') or
+                (not regexp_like (tablespace_name,  SYS_CONTEXT('OPAS_CONTEXT','DBGSO_TABLE_NAME_LIKE'), 'i') and SYS_CONTEXT('OPAS_CONTEXT','DBGSO_TABLESPACE_NAME') = 'Y')
+               )             
+            )
+           )
+         );
+		
+*/
+create table opas_ot_dbg_report_pars(
+apex_sess                number,
+created                  date,
+DBGSO_DBG_ID             number,
+DBGSO_TABLE_NAME_LIKE    varchar2(4000),
+DBGSO_INVERSE            varchar2(1),
+DBGSO_PRNT_TABLE         varchar2(1),
+DBGSO_PRNT_TABLE_TYPE	 varchar2(1),
+DBGSO_OBJECT_CLASS		 varchar2(1),
+DBGSO_OBJECT_TYPE		 varchar2(1),
+DBGSO_SEGMENT_TYPE		 varchar2(1),
+DBGSO_OBJECT_NAME		 varchar2(1),
+DBGSO_SUBOBJECT_NAME	 varchar2(1),
+DBGSO_TABLESPACE_NAME	 varchar2(1)
+);
+
+create or replace view v$opas_dbg_selected_objects as
+select /*+ no_merge leading(p dp o) index(dp idx_opas_ot_dbg_dbgm)*/ o.*, dp.*, p.apex_sess, p.created params_created
+    from opas_ot_dbg_objects o, opas_ot_dbg_datapoint dp, opas_ot_dbg_report_pars p
+   where p.apex_sess = V('SESSION')
+     and o.version_dp_id = dp.dbgdp_id 
+     and dp.dbg_id = DBGSO_DBG_ID
+     and (DBGSO_TABLE_NAME_LIKE is null or 
+            (
+             (DBGSO_INVERSE = 'N' and
+               ((regexp_like (prnt_table,       DBGSO_TABLE_NAME_LIKE, 'i') and DBGSO_PRNT_TABLE      = 'Y') or
+                (regexp_like (prnt_table_type,  DBGSO_TABLE_NAME_LIKE, 'i') and DBGSO_PRNT_TABLE_TYPE = 'Y') or
+                (regexp_like (object_class,     DBGSO_TABLE_NAME_LIKE, 'i') and DBGSO_OBJECT_CLASS    = 'Y') or
+                (regexp_like (object_type,      DBGSO_TABLE_NAME_LIKE, 'i') and DBGSO_OBJECT_TYPE     = 'Y') or
+                (regexp_like (segment_type,     DBGSO_TABLE_NAME_LIKE, 'i') and DBGSO_SEGMENT_TYPE    = 'Y') or
+                (regexp_like (object_name,      DBGSO_TABLE_NAME_LIKE, 'i') and DBGSO_OBJECT_NAME     = 'Y') or
+                (regexp_like (subobject_name,   DBGSO_TABLE_NAME_LIKE, 'i') and DBGSO_SUBOBJECT_NAME  = 'Y') or
+                (regexp_like (tablespace_name,  DBGSO_TABLE_NAME_LIKE, 'i') and DBGSO_TABLESPACE_NAME = 'Y')
+               )
+              ) 
+              or
+             (DBGSO_INVERSE = 'Y' and 
+               ((not regexp_like (prnt_table,       DBGSO_TABLE_NAME_LIKE, 'i') and DBGSO_PRNT_TABLE      = 'Y') or
+                (not regexp_like (prnt_table_type,  DBGSO_TABLE_NAME_LIKE, 'i') and DBGSO_PRNT_TABLE_TYPE = 'Y') or
+                (not regexp_like (object_class,     DBGSO_TABLE_NAME_LIKE, 'i') and DBGSO_OBJECT_CLASS    = 'Y') or
+                (not regexp_like (object_type,      DBGSO_TABLE_NAME_LIKE, 'i') and DBGSO_OBJECT_TYPE     = 'Y') or
+                (not regexp_like (segment_type,     DBGSO_TABLE_NAME_LIKE, 'i') and DBGSO_SEGMENT_TYPE    = 'Y') or                
+                (not regexp_like (object_name,      DBGSO_TABLE_NAME_LIKE, 'i') and DBGSO_OBJECT_NAME     = 'Y') or
+                (not regexp_like (subobject_name,   DBGSO_TABLE_NAME_LIKE, 'i') and DBGSO_SUBOBJECT_NAME  = 'Y') or
+                (not regexp_like (tablespace_name,  DBGSO_TABLE_NAME_LIKE, 'i') and DBGSO_TABLESPACE_NAME = 'Y')
+               )             
+            )
+           )
+         );

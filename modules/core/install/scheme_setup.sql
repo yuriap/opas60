@@ -11,6 +11,7 @@ grant create synonym to &localscheme.;
 grant create job to &localscheme.;
 grant create database link to &localscheme.;
 grant create materialized view to &localscheme.;
+grant CREATE ANY CONTEXT to &localscheme.;
 
 grant connect, resource to &localscheme.;
 grant select_catalog_role to &localscheme.;
