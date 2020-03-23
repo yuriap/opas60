@@ -1,6 +1,12 @@
 CREATE OR REPLACE
 PACKAGE BODY COREMOD_REPORT_UTILS AS
 
+  function to_hr_num (p_number number) return varchar2
+  is
+  begin
+    return case when p_number>=0 then dbms_xplan.format_size(p_number) else '-'||dbms_xplan.format_size(abs(p_number)) end;
+  end;
+
   function tptformat( p_num in number,
                       p_stype in varchar2 default 'STAT',
                       p_precision in number default 2,

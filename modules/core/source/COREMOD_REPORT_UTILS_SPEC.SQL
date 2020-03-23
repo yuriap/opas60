@@ -5,6 +5,8 @@ PACKAGE COREMOD_REPORT_UTILS AS
 
   type t_output_lines is table of varchar2(32767) index by pls_integer;
 
+  function to_hr_num (p_number number) return varchar2;
+
   function tptformat( p_num in number,
                       p_stype in varchar2 default 'STAT',
                       p_precision in number default 2,
