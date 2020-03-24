@@ -2345,3 +2345,4 @@ chart_name      varchar2(1000));
 
 --create index idx_opas_reports_parstske on opas_reports_pars(report_id);
 
+@@create_struct_dbg

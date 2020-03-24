@@ -4,6 +4,11 @@ Version 6.0 PROD
 Release notes:
 ==============
 
+Version 6.1.0 2020-Mar-24
+-------------------------
+New object type added
+ - Database Growth Monitor
+
 Version 6.0.0 2020-Feb-20
 -------------------------
 A brand new approach to manage performance data.

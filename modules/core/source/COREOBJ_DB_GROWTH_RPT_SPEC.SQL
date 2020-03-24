@@ -5,6 +5,11 @@ package COREOBJ_DB_GROWTH_RPT is
   chrtLimit                   constant number := 2;
   chrtAlert                   constant number := 3;
 
+  chrtOccupied                constant number := 4;
+  chrtAvailable               constant number := 5;
+  chrtOccuProjection          constant number := 6;
+  chrtAvailProjection         constant number := 7;
+
   procedure prepare_chart_data(p_mode varchar2,
                                p_alert_queue_id  opas_alert_queue.alert_id%type,
                                p_alert_id in out opas_ot_dbg_monitor_al_cfg.alert_id%type,
@@ -29,7 +34,11 @@ package COREOBJ_DB_GROWTH_RPT is
                                 p_subobject_name   varchar2,
                                 p_tablespace_name  varchar2);
 
-  procedure cleanup_object_filter;
+  procedure prepare_out_of_space_data(p_dbg_id           opas_ot_dbg_monitor.dbg_id%type,
+                                      p_days_to_avg      number,
+                                      p_tablespace       varchar2,
+                                      p_avg_delta    out number,
+                                      p_out_of_space out timestamp);
 
 end COREOBJ_DB_GROWTH_RPT;
 /
