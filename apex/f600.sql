@@ -27,7 +27,7 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 -- Application Export:
 --   Application:     600
 --   Name:            Oracle Performance Analytic Suite
---   Date and Time:   15:09 Tuesday March 24, 2020
+--   Date and Time:   17:43 Thursday March 26, 2020
 --   Exported By:     OPAS60DADM
 --   Flashback:       0
 --   Export Type:     Application Export
@@ -39,7 +39,7 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 --   Pages:                     34
 --     Items:                  195
 --     Validations:              2
---     Processes:              116
+--     Processes:              117
 --     Regions:                133
 --     Buttons:                 89
 --     Dynamic Actions:         28
@@ -131,7 +131,7 @@ wwv_flow_api.create_flow(
 ,p_substitution_string_06=>'APP_GRID_DT_FMT_TZ_FULL'
 ,p_substitution_value_06=>'YYYY-MM-DD HH24:MI:SS.ff9 TZH:TZM'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200324150509'
+,p_last_upd_yyyymmddhh24miss=>'20200326174117'
 ,p_file_prefix => nvl(wwv_flow_application_install.get_static_app_file_prefix,'')
 ,p_files_version=>3
 ,p_ui_type_name => null
@@ -21006,7 +21006,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(67059821906044473)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200320162809'
+,p_last_upd_yyyymmddhh24miss=>'20200326174117'
 );
 wwv_flow_api.create_report_region(
  p_id=>wwv_flow_api.id(66992452640316316)
@@ -21550,6 +21550,21 @@ wwv_flow_api.create_page_process(
 ,p_process_when_button_id=>wwv_flow_api.id(66999974938699715)
 );
 wwv_flow_api.create_page_process(
+ p_id=>wwv_flow_api.id(67280164239803307)
+,p_process_sequence=>40
+,p_process_point=>'AFTER_SUBMIT'
+,p_process_type=>'NATIVE_PLSQL'
+,p_process_name=>'SetDBGID'
+,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'begin',
+'  if :P5002_MODE = COREMOD_ALERTS.gmSHOWALERT then',
+'    :P5002_DBG_ALERT_ID := null;',
+'  end if;',
+'end;'))
+,p_error_display_location=>'INLINE_IN_NOTIFICATION'
+,p_process_when_button_id=>wwv_flow_api.id(66999548755699714)
+);
+wwv_flow_api.create_page_process(
  p_id=>wwv_flow_api.id(66991664504316308)
 ,p_process_sequence=>30
 ,p_process_point=>'BEFORE_HEADER'
@@ -21591,7 +21606,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(67059821906044473)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200324102506'
+,p_last_upd_yyyymmddhh24miss=>'20200326165931'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(66994330458316335)
@@ -22023,19 +22038,24 @@ wwv_flow_api.create_page_plug(
 ')',
 'select /*+ NO_STAR_TRANSFORMATION qb_name(OPAS60_DBG_MAIN_REPORT) */',
 '       to_char(o.snapped,''YYYY-MM-DD HH24:MI'') || ',
-'         ''; Schema delta: '' || COREMOD_REPORT_UTILS.to_hr_num(td.tot_delta)  || '' / Filtered delta: '' || COREMOD_REPORT_UTILS.to_hr_num(od.object_sizes_delta)  || case when td.tot_delta<>0 then  '' ('' || round(100*(od.object_sizes_delta/td.tot_delta),'
-||'2)  || ''%)'' end ||',
-'         ''; Total size: ''   || COREMOD_REPORT_UTILS.to_hr_num(td.seg_occupied) || '' / Filtered size: ''  || COREMOD_REPORT_UTILS.to_hr_num(od.size_bytes)     || '' ('' || round(100*(od.size_bytes/td.seg_occupied),2)|| ''%)'' ',
+'         ''; Schema delta: '' || COREMOD_REPORT_UTILS.to_hr_num(td.tot_delta)  || '' ('' || to_char(td.tot_delta,''FM999g999g999g999g999'') || '') / Filtered delta: '' || COREMOD_REPORT_UTILS.to_hr_num(od.object_sizes_delta)  || '' ('' || to_char(od.object_siz'
+||'es_delta,''FM999g999g999g999g999'') || '')'' ||case when td.tot_delta<>0 then  '' ('' || round(100*(od.object_sizes_delta/td.tot_delta),2)  || ''%)'' end ||',
+'         ''; Total size: ''   || COREMOD_REPORT_UTILS.to_hr_num(td.seg_occupied) || '' ('' || to_char(td.seg_occupied,''FM999g999g999g999g999'') || '') / Filtered size: ''  || COREMOD_REPORT_UTILS.to_hr_num(od.size_bytes)     || '' ('' || to_char(od.size_bytes'
+||',''FM999g999g999g999g999'') || '')'' || case when td.seg_occupied<>0 then  '' ('' || round(100*(od.size_bytes/td.seg_occupied),2)|| ''%)'' end',
 '       snapped_at',
 '       --,o.snapped, o.dbgdp_id',
 '       ,lpad(pd.parent_num,2,''0'')||''.''||lpad(o.seg_num,2,''0'')||''.''|| o.parent_table parent_table, o.sub_object',
 '       ,COREMOD_REPORT_UTILS.to_hr_num(o.size_bytes)                  "Seg size"',
+'       ,to_char(o.size_bytes,''FM999g999g999g999g999'')                 "Seg size, B"',
 '       ,round(100*(o.size_bytes/td.seg_occupied),2)                   "Seg % tot"',
-'       ,COREMOD_REPORT_UTILS.to_hr_num(o.seg_delta)                   "Seg delta"      ',
+'       ,COREMOD_REPORT_UTILS.to_hr_num(o.seg_delta)                   "Seg delta"  ',
+'       ,to_char(o.seg_delta,''FM999g999g999g999g999'')                  "Seg delta, B" ',
 '       ,round(100*(o.seg_delta/od.object_sizes_delta),2)              "Seg delta % flt delta"',
 '       ,round(100*(o.seg_delta/td.tot_delta),2)                       "Seg delta % tot delta"',
 '       ,COREMOD_REPORT_UTILS.to_hr_num(pd.size_bytes)                 "Whole tab"',
+'       ,to_char(pd.size_bytes,''FM999g999g999g999g999'')                "Whole tab, B"',
 '       ,COREMOD_REPORT_UTILS.to_hr_num(pd.parent_table_delta)         "Whole tab delta"',
+'       ,to_char(pd.parent_table_delta,''FM999g999g999g999g999'')        "Whole tab delta, B"',
 '       ,round(100*(pd.parent_table_delta/od.object_sizes_delta),2)    "Tab delta % flt delta"',
 '       ,round(100*(pd.parent_table_delta/td.tot_delta),2)             "Tab delta % tot delta"',
 '       ,round(100*(pd.size_bytes/od.size_bytes),2)                    "Tab % flt"',
@@ -22215,6 +22235,38 @@ wwv_flow_api.create_worksheet_column(
 ,p_column_label=>'Snapped At'
 ,p_column_type=>'STRING'
 );
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67279780155803303)
+,p_db_column_name=>'Seg size, B'
+,p_display_order=>160
+,p_column_identifier=>'O'
+,p_column_label=>'Seg Size, B'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67279804834803304)
+,p_db_column_name=>'Seg delta, B'
+,p_display_order=>170
+,p_column_identifier=>'P'
+,p_column_label=>'Seg Delta, B'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67279993167803305)
+,p_db_column_name=>'Whole tab, B'
+,p_display_order=>180
+,p_column_identifier=>'Q'
+,p_column_label=>'Whole Tab, B'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67280066909803306)
+,p_db_column_name=>'Whole tab delta, B'
+,p_display_order=>190
+,p_column_identifier=>'R'
+,p_column_label=>'Whole Tab Delta, B'
+,p_column_type=>'STRING'
+);
 wwv_flow_api.create_worksheet_rpt(
  p_id=>wwv_flow_api.id(67244365035499083)
 ,p_application_user=>'APXWS_DEFAULT'
@@ -22222,7 +22274,8 @@ wwv_flow_api.create_worksheet_rpt(
 ,p_report_alias=>'672444'
 ,p_status=>'PUBLIC'
 ,p_is_default=>'Y'
-,p_report_columns=>'PARENT_TABLE:SUB_OBJECT:Seg size:Seg % tot:Seg delta:Seg delta % flt delta:Seg delta % tot delta:Whole tab:Whole tab delta:Tab delta % flt delta:Tab delta % tot delta:Tab % flt:Tab % tot:SNAPPED_AT'
+,p_report_columns=>'PARENT_TABLE:SUB_OBJECT:Seg size:Seg % tot:Seg delta:Seg delta % flt delta:Seg delta % tot delta:Whole tab:Whole tab delta:Tab delta % flt delta:Tab delta % tot delta:Tab % flt:Tab % tot:SNAPPED_AT:Seg size, B:Seg delta, B:Whole tab, B:Whole tab delt'
+||'a, B'
 );
 wwv_flow_api.create_report_region(
  p_id=>wwv_flow_api.id(67152604602285135)
@@ -22464,19 +22517,24 @@ wwv_flow_api.create_page_plug(
 ')',
 'select /*+ NO_STAR_TRANSFORMATION qb_name(OPAS60_DBG_MAIN_REPORT) */',
 '       to_char(o.snapped,''YYYY-MM-DD HH24:MI'') || ',
-'         ''; Schema delta: '' || COREMOD_REPORT_UTILS.to_hr_num(td.tot_delta)  || '' / Filtered delta: '' || COREMOD_REPORT_UTILS.to_hr_num(od.object_sizes_delta)  || case when td.tot_delta<>0 then  '' ('' || round(100*(od.object_sizes_delta/td.tot_delta),'
-||'2)  || ''%)'' end ||',
-'         ''; Total size: ''   || COREMOD_REPORT_UTILS.to_hr_num(td.seg_occupied) || '' / Filtered size: ''  || COREMOD_REPORT_UTILS.to_hr_num(od.size_bytes)     || '' ('' || round(100*(od.size_bytes/td.seg_occupied),2)|| ''%)'' ',
+'         ''; Schema delta: '' || COREMOD_REPORT_UTILS.to_hr_num(td.tot_delta)  || '' ('' || to_char(td.tot_delta,''FM999g999g999g999g999'') || '') / Filtered delta: '' || COREMOD_REPORT_UTILS.to_hr_num(od.object_sizes_delta)  || '' ('' || to_char(od.object_siz'
+||'es_delta,''FM999g999g999g999g999'') || '')'' ||case when td.tot_delta<>0 then  '' ('' || round(100*(od.object_sizes_delta/td.tot_delta),2)  || ''%)'' end ||',
+'         ''; Total size: ''   || COREMOD_REPORT_UTILS.to_hr_num(td.seg_occupied) || '' ('' || to_char(td.seg_occupied,''FM999g999g999g999g999'') || '') / Filtered size: ''  || COREMOD_REPORT_UTILS.to_hr_num(od.size_bytes)     || '' ('' || to_char(od.size_bytes'
+||',''FM999g999g999g999g999'') || '')'' || case when td.seg_occupied<>0 then  '' ('' || round(100*(od.size_bytes/td.seg_occupied),2)|| ''%)'' end',
 '       snapped_at',
 '       --,o.snapped, o.dbgdp_id',
 '       ,lpad(pd.parent_num,2,''0'')||''.''||lpad(o.seg_num,2,''0'')||''.''|| o.parent_table parent_table, o.sub_object',
 '       ,COREMOD_REPORT_UTILS.to_hr_num(o.size_bytes)                  "Seg size"',
+'       ,to_char(o.size_bytes,''FM999g999g999g999g999'')                 "Seg size, B"',
 '       ,round(100*(o.size_bytes/td.seg_occupied),2)                   "Seg % tot"',
-'       ,COREMOD_REPORT_UTILS.to_hr_num(o.seg_delta)                   "Seg delta"      ',
+'       ,COREMOD_REPORT_UTILS.to_hr_num(o.seg_delta)                   "Seg delta"  ',
+'       ,to_char(o.seg_delta,''FM999g999g999g999g999'')                  "Seg delta, B" ',
 '       ,round(100*(o.seg_delta/od.object_sizes_delta),2)              "Seg delta % flt delta"',
 '       ,round(100*(o.seg_delta/td.tot_delta),2)                       "Seg delta % tot delta"',
 '       ,COREMOD_REPORT_UTILS.to_hr_num(pd.size_bytes)                 "Whole tab"',
+'       ,to_char(pd.size_bytes,''FM999g999g999g999g999'')                "Whole tab, B"',
 '       ,COREMOD_REPORT_UTILS.to_hr_num(pd.parent_table_delta)         "Whole tab delta"',
+'       ,to_char(pd.parent_table_delta,''FM999g999g999g999g999'')        "Whole tab delta, B"',
 '       ,round(100*(pd.parent_table_delta/od.object_sizes_delta),2)    "Tab delta % flt delta"',
 '       ,round(100*(pd.parent_table_delta/td.tot_delta),2)             "Tab delta % tot delta"',
 '       ,round(100*(pd.size_bytes/od.size_bytes),2)                    "Tab % flt"',
@@ -22659,6 +22717,38 @@ wwv_flow_api.create_worksheet_column(
 ,p_column_label=>'Snapped At'
 ,p_column_type=>'STRING'
 );
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67213796474086649)
+,p_db_column_name=>'Seg size, B'
+,p_display_order=>150
+,p_column_identifier=>'O'
+,p_column_label=>'Seg Size, B'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67213824725086650)
+,p_db_column_name=>'Seg delta, B'
+,p_display_order=>160
+,p_column_identifier=>'P'
+,p_column_label=>'Seg Delta, B'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67279524088803301)
+,p_db_column_name=>'Whole tab, B'
+,p_display_order=>170
+,p_column_identifier=>'Q'
+,p_column_label=>'Whole Tab, B'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67279603299803302)
+,p_db_column_name=>'Whole tab delta, B'
+,p_display_order=>180
+,p_column_identifier=>'R'
+,p_column_label=>'Whole Tab Delta, B'
+,p_column_type=>'STRING'
+);
 wwv_flow_api.create_worksheet_rpt(
  p_id=>wwv_flow_api.id(67257794808160465)
 ,p_application_user=>'APXWS_DEFAULT'
@@ -22666,7 +22756,8 @@ wwv_flow_api.create_worksheet_rpt(
 ,p_report_alias=>'672578'
 ,p_status=>'PUBLIC'
 ,p_is_default=>'Y'
-,p_report_columns=>'PARENT_TABLE:SUB_OBJECT:Seg size:Seg % tot:Seg delta:Seg delta % flt delta:Seg delta % tot delta:Whole tab:Whole tab delta:Tab delta % flt delta:Tab delta % tot delta:Tab % flt:Tab % tot:SNAPPED_AT'
+,p_report_columns=>'PARENT_TABLE:SUB_OBJECT:Seg size:Seg % tot:Seg delta:Seg delta % flt delta:Seg delta % tot delta:Whole tab:Whole tab delta:Tab delta % flt delta:Tab delta % tot delta:Tab % flt:Tab % tot:SNAPPED_AT:Seg size, B:Seg delta, B:Whole tab, B:Whole tab delt'
+||'a, B'
 );
 wwv_flow_api.create_page_button(
  p_id=>wwv_flow_api.id(67151560053285124)

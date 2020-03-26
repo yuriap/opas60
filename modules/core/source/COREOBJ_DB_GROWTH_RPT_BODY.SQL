@@ -116,7 +116,7 @@ package body COREOBJ_DB_GROWTH_RPT is
     then
       null;
     else
-      raise_application_error(-20000,'Invalid input for COREOBJ_DB_GROWTH.prepare_chart_data: p_mode: '||p_mode||'; p_alert_queue_id: "'||p_alert_queue_id||'"; p_alert_id: "'||p_alert_id||'"');
+      raise_application_error(-20000,'Invalid input for COREOBJ_DB_GROWTH_RPT.prepare_chart_data: p_mode: '||p_mode||'; p_alert_queue_id: "'||p_alert_queue_id||'"; p_alert_id: "'||p_alert_id||'"');
     end if;
 
     if p_mode in (COREMOD_ALERTS.gmSHOWALERT, COREMOD_ALERTS.gmREFRESH) and p_alert_queue_id is not null then
