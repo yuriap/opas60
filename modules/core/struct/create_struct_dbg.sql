@@ -53,7 +53,7 @@ snapped         timestamp
 ) 
 ROW STORE COMPRESS ADVANCED;
 
-create index idx_opas_ot_dbg_dbgm                 on opas_ot_dbg_datapoint(dbg_id);
+create index idx_opas_ot_dbg_dbgm                 on opas_ot_dbg_datapoint(dbg_id, snapped);
 
 create table opas_ot_dbg_ts_sizes (
 dbgdp_id         number                                           references opas_ot_dbg_datapoint (dbgdp_id) on delete cascade, 

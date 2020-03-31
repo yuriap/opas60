@@ -27,7 +27,7 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 -- Application Export:
 --   Application:     600
 --   Name:            Oracle Performance Analytic Suite
---   Date and Time:   17:43 Thursday March 26, 2020
+--   Date and Time:   12:41 Tuesday March 31, 2020
 --   Exported By:     OPAS60DADM
 --   Flashback:       0
 --   Export Type:     Application Export
@@ -40,7 +40,7 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 --     Items:                  195
 --     Validations:              2
 --     Processes:              117
---     Regions:                133
+--     Regions:                135
 --     Buttons:                 89
 --     Dynamic Actions:         28
 --   Shared Components:
@@ -131,7 +131,7 @@ wwv_flow_api.create_flow(
 ,p_substitution_string_06=>'APP_GRID_DT_FMT_TZ_FULL'
 ,p_substitution_value_06=>'YYYY-MM-DD HH24:MI:SS.ff9 TZH:TZM'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200326174117'
+,p_last_upd_yyyymmddhh24miss=>'20200331123631'
 ,p_file_prefix => nvl(wwv_flow_application_install.get_static_app_file_prefix,'')
 ,p_files_version=>3
 ,p_ui_type_name => null
@@ -21006,7 +21006,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(67059821906044473)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200326174117'
+,p_last_upd_yyyymmddhh24miss=>'20200331114801'
 );
 wwv_flow_api.create_report_region(
  p_id=>wwv_flow_api.id(66992452640316316)
@@ -21442,7 +21442,7 @@ wwv_flow_api.create_page_item(
 ,p_cSize=>30
 ,p_field_template=>wwv_flow_api.id(59011729453993944)
 ,p_item_template_options=>'#DEFAULT#'
-,p_attribute_01=>'Y'
+,p_attribute_01=>'N'
 ,p_attribute_02=>'N'
 ,p_attribute_04=>'TEXT'
 ,p_attribute_05=>'BOTH'
@@ -21458,7 +21458,7 @@ wwv_flow_api.create_page_item(
 ,p_begin_on_new_line=>'N'
 ,p_field_template=>wwv_flow_api.id(59011729453993944)
 ,p_item_template_options=>'#DEFAULT#'
-,p_attribute_01=>'Y'
+,p_attribute_01=>'N'
 ,p_attribute_02=>'N'
 ,p_attribute_04=>'TEXT'
 ,p_attribute_05=>'BOTH'
@@ -21606,7 +21606,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(67059821906044473)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200326165931'
+,p_last_upd_yyyymmddhh24miss=>'20200331123631'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(66994330458316335)
@@ -21653,7 +21653,7 @@ wwv_flow_api.create_page_plug(
 ,p_region_template_options=>'#DEFAULT#'
 ,p_component_template_options=>'#DEFAULT#'
 ,p_plug_template=>wwv_flow_api.id(58959020573993670)
-,p_plug_display_sequence=>60
+,p_plug_display_sequence=>100
 ,p_plug_display_point=>'BODY'
 ,p_query_type=>'SQL'
 ,p_plug_source=>'select * from v$opas_dbg_selected_objects'
@@ -22347,6 +22347,663 @@ wwv_flow_api.create_report_columns(
 ,p_include_in_export=>'Y'
 );
 wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(67280295389803308)
+,p_plug_name=>'Total space'
+,p_parent_plug_id=>wwv_flow_api.id(67151697618285125)
+,p_region_template_options=>'#DEFAULT#'
+,p_component_template_options=>'#DEFAULT#'
+,p_plug_template=>wwv_flow_api.id(58959020573993670)
+,p_plug_display_sequence=>70
+,p_plug_display_point=>'BODY'
+,p_query_type=>'SQL'
+,p_plug_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select',
+'  dbgdp_id,to_char(snapped,''YYYY-MM-DD HH24:MI'') snapped,',
+'  tot_occupied "Total Occupied, Bytes",                        COREMOD_REPORT_UTILS.to_hr_num(tot_occupied) "Total Occupied",',
+'  delta_tot_occupied "Delta Total Occupied, Bytes",            COREMOD_REPORT_UTILS.to_hr_num(delta_tot_occupied) "Delta Total Occupied",',
+'  bin_occupied "Recycle Bin, Bytes",                           COREMOD_REPORT_UTILS.to_hr_num(bin_occupied) "Recycle Bin",',
+'  delta_bin_occupied "Delta Recycle Bin, Bytes",               COREMOD_REPORT_UTILS.to_hr_num(delta_bin_occupied) "Delta Recycle Bin",',
+'  seg_occupied "Segments, Bytes",                              COREMOD_REPORT_UTILS.to_hr_num(seg_occupied) "Segments",',
+'  delta_seg_occupied "Delta Segments, Bytes",                  COREMOD_REPORT_UTILS.to_hr_num(delta_seg_occupied) "Delta Segments",',
+'  tot_free "Free, Bytes",                                      COREMOD_REPORT_UTILS.to_hr_num(tot_free) "Free",',
+'  delta_tot_free "Delta Free, Bytes",                          COREMOD_REPORT_UTILS.to_hr_num(delta_tot_free) "Delta Free",',
+'  curr_available "Currently Available, Bytes",                 COREMOD_REPORT_UTILS.to_hr_num(curr_available) "Currently Available",',
+'  delta_curr_available "Delta Currently Available, Bytes",     COREMOD_REPORT_UTILS.to_hr_num(delta_curr_available) "Delta Currently Available",',
+'  ext_available "Available with Extension, Bytes",             COREMOD_REPORT_UTILS.to_hr_num(ext_available) "Available with Extension",',
+'  delta_ext_available "Delta Available with Extension, Bytes", COREMOD_REPORT_UTILS.to_hr_num(delta_ext_available) "Delta Available with Extension"',
+'from (',
+'select',
+'  x.*,',
+'  tot_occupied - lag (tot_occupied)over(order by snapped) delta_tot_occupied,',
+'  bin_occupied - lag (bin_occupied)over(order by snapped) delta_bin_occupied,',
+'  seg_occupied - lag (seg_occupied)over(order by snapped) delta_seg_occupied,',
+'  tot_free - lag (tot_free)over(order by snapped) delta_tot_free,',
+'  curr_available - lag (curr_available)over(order by snapped) delta_curr_available,',
+'  ext_available - lag (ext_available)over(order by snapped) delta_ext_available',
+'from (',
+'select dp.dbgdp_id,',
+'       dp.snapped,',
+'       sum(tot_occupied) tot_occupied,',
+'       sum(bin_occupied) bin_occupied,',
+'       sum(seg_occupied) seg_occupied,',
+'       sum(tot_free) tot_free,',
+'       sum(curr_available) curr_available,',
+'       sum(ext_available) ext_available',
+'  from OPAS_OT_DBG_TS_SIZES t, opas_ot_dbg_datapoint dp',
+'  where t.dbgdp_id = dp.dbgdp_id',
+'    and dp.dbgdp_id between :P5003_START_DT and :P5003_END_DT',
+' group by dp.dbgdp_id, dp.snapped) x) x1'))
+,p_plug_source_type=>'NATIVE_IR'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_prn_content_disposition=>'ATTACHMENT'
+,p_prn_document_header=>'APEX'
+,p_prn_units=>'INCHES'
+,p_prn_paper_size=>'LETTER'
+,p_prn_width=>8.5
+,p_prn_height=>11
+,p_prn_orientation=>'HORIZONTAL'
+,p_prn_page_header_font_color=>'#000000'
+,p_prn_page_header_font_family=>'Helvetica'
+,p_prn_page_header_font_weight=>'normal'
+,p_prn_page_header_font_size=>'12'
+,p_prn_page_footer_font_color=>'#000000'
+,p_prn_page_footer_font_family=>'Helvetica'
+,p_prn_page_footer_font_weight=>'normal'
+,p_prn_page_footer_font_size=>'12'
+,p_prn_header_bg_color=>'#9bafde'
+,p_prn_header_font_color=>'#000000'
+,p_prn_header_font_family=>'Helvetica'
+,p_prn_header_font_weight=>'normal'
+,p_prn_header_font_size=>'10'
+,p_prn_body_bg_color=>'#efefef'
+,p_prn_body_font_color=>'#000000'
+,p_prn_body_font_family=>'Helvetica'
+,p_prn_body_font_weight=>'normal'
+,p_prn_body_font_size=>'10'
+,p_prn_border_width=>.5
+,p_prn_page_header_alignment=>'CENTER'
+,p_prn_page_footer_alignment=>'CENTER'
+);
+wwv_flow_api.create_worksheet(
+ p_id=>wwv_flow_api.id(67280365736803309)
+,p_max_row_count=>'1000000'
+,p_show_nulls_as=>'-'
+,p_pagination_type=>'ROWS_X_TO_Y'
+,p_pagination_display_pos=>'BOTTOM_RIGHT'
+,p_report_list_mode=>'TABS'
+,p_show_detail_link=>'N'
+,p_show_notify=>'Y'
+,p_download_formats=>'CSV:HTML:EMAIL:XLS:PDF:RTF'
+,p_owner=>'OPAS60DADM'
+,p_internal_uid=>67280365736803309
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67280492541803310)
+,p_db_column_name=>'DBGDP_ID'
+,p_display_order=>10
+,p_column_identifier=>'A'
+,p_column_label=>'Dbgdp Id'
+,p_column_type=>'NUMBER'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67280518809803311)
+,p_db_column_name=>'SNAPPED'
+,p_display_order=>20
+,p_column_identifier=>'B'
+,p_column_label=>'Snapped'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67280649700803312)
+,p_db_column_name=>'Total Occupied, Bytes'
+,p_display_order=>30
+,p_column_identifier=>'C'
+,p_column_label=>'Total Occupied, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67280792916803313)
+,p_db_column_name=>'Total Occupied'
+,p_display_order=>40
+,p_column_identifier=>'D'
+,p_column_label=>'Total Occupied'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67280885872803314)
+,p_db_column_name=>'Delta Total Occupied, Bytes'
+,p_display_order=>50
+,p_column_identifier=>'E'
+,p_column_label=>'Delta Total Occupied, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67280991619803315)
+,p_db_column_name=>'Delta Total Occupied'
+,p_display_order=>60
+,p_column_identifier=>'F'
+,p_column_label=>'Delta Total Occupied'
+,p_column_type=>'STRING'
+);
+end;
+/
+begin
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67281098091803316)
+,p_db_column_name=>'Recycle Bin, Bytes'
+,p_display_order=>70
+,p_column_identifier=>'G'
+,p_column_label=>'Recycle Bin, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67281148757803317)
+,p_db_column_name=>'Recycle Bin'
+,p_display_order=>80
+,p_column_identifier=>'H'
+,p_column_label=>'Recycle Bin'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67281272730803318)
+,p_db_column_name=>'Delta Recycle Bin, Bytes'
+,p_display_order=>90
+,p_column_identifier=>'I'
+,p_column_label=>'Delta Recycle Bin, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67281384645803319)
+,p_db_column_name=>'Delta Recycle Bin'
+,p_display_order=>100
+,p_column_identifier=>'J'
+,p_column_label=>'Delta Recycle Bin'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67281449050803320)
+,p_db_column_name=>'Segments, Bytes'
+,p_display_order=>110
+,p_column_identifier=>'K'
+,p_column_label=>'Segments, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67281565607803321)
+,p_db_column_name=>'Segments'
+,p_display_order=>120
+,p_column_identifier=>'L'
+,p_column_label=>'Segments'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67281613657803322)
+,p_db_column_name=>'Delta Segments, Bytes'
+,p_display_order=>130
+,p_column_identifier=>'M'
+,p_column_label=>'Delta Segments, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67281722211803323)
+,p_db_column_name=>'Delta Segments'
+,p_display_order=>140
+,p_column_identifier=>'N'
+,p_column_label=>'Delta Segments'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67281869508803324)
+,p_db_column_name=>'Free, Bytes'
+,p_display_order=>150
+,p_column_identifier=>'O'
+,p_column_label=>'Free, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67281996222803325)
+,p_db_column_name=>'Free'
+,p_display_order=>160
+,p_column_identifier=>'P'
+,p_column_label=>'Free'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67282091120803326)
+,p_db_column_name=>'Delta Free, Bytes'
+,p_display_order=>170
+,p_column_identifier=>'Q'
+,p_column_label=>'Delta Free, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67282171620803327)
+,p_db_column_name=>'Delta Free'
+,p_display_order=>180
+,p_column_identifier=>'R'
+,p_column_label=>'Delta Free'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67282253500803328)
+,p_db_column_name=>'Currently Available, Bytes'
+,p_display_order=>190
+,p_column_identifier=>'S'
+,p_column_label=>'Currently Available, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67282308039803329)
+,p_db_column_name=>'Currently Available'
+,p_display_order=>200
+,p_column_identifier=>'T'
+,p_column_label=>'Currently Available'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67282402845803330)
+,p_db_column_name=>'Delta Currently Available, Bytes'
+,p_display_order=>210
+,p_column_identifier=>'U'
+,p_column_label=>'Delta Currently Available, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67282533050803331)
+,p_db_column_name=>'Delta Currently Available'
+,p_display_order=>220
+,p_column_identifier=>'V'
+,p_column_label=>'Delta Currently Available'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67282683576803332)
+,p_db_column_name=>'Available with Extension, Bytes'
+,p_display_order=>230
+,p_column_identifier=>'W'
+,p_column_label=>'Available With Extension, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67282714415803333)
+,p_db_column_name=>'Available with Extension'
+,p_display_order=>240
+,p_column_identifier=>'X'
+,p_column_label=>'Available With Extension'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67282893289803334)
+,p_db_column_name=>'Delta Available with Extension, Bytes'
+,p_display_order=>250
+,p_column_identifier=>'Y'
+,p_column_label=>'Delta Available With Extension, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67282932209803335)
+,p_db_column_name=>'Delta Available with Extension'
+,p_display_order=>260
+,p_column_identifier=>'Z'
+,p_column_label=>'Delta Available With Extension'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_rpt(
+ p_id=>wwv_flow_api.id(67319104967197062)
+,p_application_user=>'APXWS_DEFAULT'
+,p_report_seq=>10
+,p_report_alias=>'673192'
+,p_status=>'PUBLIC'
+,p_is_default=>'Y'
+,p_report_columns=>'DBGDP_ID:SNAPPED:Total Occupied, Bytes:Total Occupied:Delta Total Occupied, Bytes:Delta Total Occupied:Recycle Bin, Bytes:Recycle Bin:Delta Recycle Bin, Bytes:Delta Recycle Bin:Segments, Bytes:Segments:Delta Segments, Bytes:Delta Segments:Free, Bytes'
+||':Free:Delta Free, Bytes:Delta Free:Currently Available, Bytes:Currently Available:Delta Currently Available, Bytes:Delta Currently Available:Available with Extension, Bytes:Available with Extension:Delta Available with Extension, Bytes:Delta Availabl'
+||'e with Extension'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(67321366493213115)
+,p_plug_name=>'Totals by tablespaces'
+,p_parent_plug_id=>wwv_flow_api.id(67151697618285125)
+,p_region_template_options=>'#DEFAULT#'
+,p_component_template_options=>'#DEFAULT#'
+,p_plug_template=>wwv_flow_api.id(58959020573993670)
+,p_plug_display_sequence=>90
+,p_plug_display_point=>'BODY'
+,p_query_type=>'SQL'
+,p_plug_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select',
+'  dbgdp_id,to_char(snapped,''YYYY-MM-DD HH24:MI'') snapped,ts_name "Tablespace",',
+'  tot_occupied "Total Occupied, Bytes",                        COREMOD_REPORT_UTILS.to_hr_num(tot_occupied) "Total Occupied",',
+'  delta_tot_occupied "Delta Total Occupied, Bytes",            COREMOD_REPORT_UTILS.to_hr_num(delta_tot_occupied) "Delta Total Occupied",',
+'  bin_occupied "Recycle Bin, Bytes",                           COREMOD_REPORT_UTILS.to_hr_num(bin_occupied) "Recycle Bin",',
+'  delta_bin_occupied "Delta Recycle Bin, Bytes",               COREMOD_REPORT_UTILS.to_hr_num(delta_bin_occupied) "Delta Recycle Bin",',
+'  seg_occupied "Segments, Bytes",                              COREMOD_REPORT_UTILS.to_hr_num(seg_occupied) "Segments",',
+'  delta_seg_occupied "Delta Segments, Bytes",                  COREMOD_REPORT_UTILS.to_hr_num(delta_seg_occupied) "Delta Segments",',
+'  tot_free "Free, Bytes",                                      COREMOD_REPORT_UTILS.to_hr_num(tot_free) "Free",',
+'  delta_tot_free "Delta Free, Bytes",                          COREMOD_REPORT_UTILS.to_hr_num(delta_tot_free) "Delta Free",',
+'  curr_available "Currently Available, Bytes",                 COREMOD_REPORT_UTILS.to_hr_num(curr_available) "Currently Available",',
+'  delta_curr_available "Delta Currently Available, Bytes",     COREMOD_REPORT_UTILS.to_hr_num(delta_curr_available) "Delta Currently Available",',
+'  ext_available "Available with Extension, Bytes",             COREMOD_REPORT_UTILS.to_hr_num(ext_available) "Available with Extension",',
+'  delta_ext_available "Delta Available with Extension, Bytes", COREMOD_REPORT_UTILS.to_hr_num(delta_ext_available) "Delta Available with Extension"',
+'from (',
+'select',
+'  x.*,',
+'  tot_occupied -   lag (tot_occupied)   over (partition by ts_name order by snapped) delta_tot_occupied,',
+'  bin_occupied -   lag (bin_occupied)   over (partition by ts_name order by snapped) delta_bin_occupied,',
+'  seg_occupied -   lag (seg_occupied)   over (partition by ts_name order by snapped) delta_seg_occupied,',
+'  tot_free -       lag (tot_free)       over (partition by ts_name order by snapped) delta_tot_free,',
+'  curr_available - lag (curr_available) over (partition by ts_name order by snapped) delta_curr_available,',
+'  ext_available -  lag (ext_available)  over (partition by ts_name order by snapped) delta_ext_available',
+'from (',
+'select dp.dbgdp_id,',
+'       dp.snapped,ts_name,',
+'       tot_occupied,',
+'       bin_occupied,',
+'       seg_occupied,',
+'       tot_free,',
+'       curr_available,',
+'       ext_available',
+'  from OPAS_OT_DBG_TS_SIZES t, opas_ot_dbg_datapoint dp',
+'  where t.dbgdp_id = dp.dbgdp_id',
+'    and dp.dbgdp_id between :P5003_START_DT and :P5003_END_DT',
+') x) x1'))
+,p_plug_source_type=>'NATIVE_IR'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_prn_content_disposition=>'ATTACHMENT'
+,p_prn_document_header=>'APEX'
+,p_prn_units=>'INCHES'
+,p_prn_paper_size=>'LETTER'
+,p_prn_width=>8.5
+,p_prn_height=>11
+,p_prn_orientation=>'HORIZONTAL'
+,p_prn_page_header_font_color=>'#000000'
+,p_prn_page_header_font_family=>'Helvetica'
+,p_prn_page_header_font_weight=>'normal'
+,p_prn_page_header_font_size=>'12'
+,p_prn_page_footer_font_color=>'#000000'
+,p_prn_page_footer_font_family=>'Helvetica'
+,p_prn_page_footer_font_weight=>'normal'
+,p_prn_page_footer_font_size=>'12'
+,p_prn_header_bg_color=>'#9bafde'
+,p_prn_header_font_color=>'#000000'
+,p_prn_header_font_family=>'Helvetica'
+,p_prn_header_font_weight=>'normal'
+,p_prn_header_font_size=>'10'
+,p_prn_body_bg_color=>'#efefef'
+,p_prn_body_font_color=>'#000000'
+,p_prn_body_font_family=>'Helvetica'
+,p_prn_body_font_weight=>'normal'
+,p_prn_body_font_size=>'10'
+,p_prn_border_width=>.5
+,p_prn_page_header_alignment=>'CENTER'
+,p_prn_page_footer_alignment=>'CENTER'
+);
+wwv_flow_api.create_worksheet(
+ p_id=>wwv_flow_api.id(67321419969213116)
+,p_max_row_count=>'1000000'
+,p_show_nulls_as=>'-'
+,p_pagination_type=>'ROWS_X_TO_Y'
+,p_pagination_display_pos=>'BOTTOM_RIGHT'
+,p_report_list_mode=>'TABS'
+,p_show_detail_link=>'N'
+,p_show_notify=>'Y'
+,p_download_formats=>'CSV:HTML:EMAIL:XLS:PDF:RTF'
+,p_owner=>'OPAS60DADM'
+,p_internal_uid=>67321419969213116
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67321575414213117)
+,p_db_column_name=>'DBGDP_ID'
+,p_display_order=>10
+,p_column_identifier=>'A'
+,p_column_label=>'Dbgdp Id'
+,p_column_type=>'NUMBER'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67321699951213118)
+,p_db_column_name=>'SNAPPED'
+,p_display_order=>20
+,p_column_identifier=>'B'
+,p_column_label=>'Snapped'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67324179076213143)
+,p_db_column_name=>'Tablespace'
+,p_display_order=>30
+,p_column_identifier=>'AA'
+,p_column_label=>'Tablespace'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67321737188213119)
+,p_db_column_name=>'Total Occupied, Bytes'
+,p_display_order=>40
+,p_column_identifier=>'C'
+,p_column_label=>'Total Occupied, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67321810557213120)
+,p_db_column_name=>'Total Occupied'
+,p_display_order=>50
+,p_column_identifier=>'D'
+,p_column_label=>'Total Occupied'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67321913765213121)
+,p_db_column_name=>'Delta Total Occupied, Bytes'
+,p_display_order=>60
+,p_column_identifier=>'E'
+,p_column_label=>'Delta Total Occupied, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67322066564213122)
+,p_db_column_name=>'Delta Total Occupied'
+,p_display_order=>70
+,p_column_identifier=>'F'
+,p_column_label=>'Delta Total Occupied'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67322164087213123)
+,p_db_column_name=>'Recycle Bin, Bytes'
+,p_display_order=>80
+,p_column_identifier=>'G'
+,p_column_label=>'Recycle Bin, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67322206070213124)
+,p_db_column_name=>'Recycle Bin'
+,p_display_order=>90
+,p_column_identifier=>'H'
+,p_column_label=>'Recycle Bin'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67322317601213125)
+,p_db_column_name=>'Delta Recycle Bin, Bytes'
+,p_display_order=>100
+,p_column_identifier=>'I'
+,p_column_label=>'Delta Recycle Bin, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67322440319213126)
+,p_db_column_name=>'Delta Recycle Bin'
+,p_display_order=>110
+,p_column_identifier=>'J'
+,p_column_label=>'Delta Recycle Bin'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67322582158213127)
+,p_db_column_name=>'Segments, Bytes'
+,p_display_order=>120
+,p_column_identifier=>'K'
+,p_column_label=>'Segments, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67322666256213128)
+,p_db_column_name=>'Segments'
+,p_display_order=>130
+,p_column_identifier=>'L'
+,p_column_label=>'Segments'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67322766139213129)
+,p_db_column_name=>'Delta Segments, Bytes'
+,p_display_order=>140
+,p_column_identifier=>'M'
+,p_column_label=>'Delta Segments, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67322864664213130)
+,p_db_column_name=>'Delta Segments'
+,p_display_order=>150
+,p_column_identifier=>'N'
+,p_column_label=>'Delta Segments'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67322976207213131)
+,p_db_column_name=>'Free, Bytes'
+,p_display_order=>160
+,p_column_identifier=>'O'
+,p_column_label=>'Free, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67323002028213132)
+,p_db_column_name=>'Free'
+,p_display_order=>170
+,p_column_identifier=>'P'
+,p_column_label=>'Free'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67323103142213133)
+,p_db_column_name=>'Delta Free, Bytes'
+,p_display_order=>180
+,p_column_identifier=>'Q'
+,p_column_label=>'Delta Free, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67323270255213134)
+,p_db_column_name=>'Delta Free'
+,p_display_order=>190
+,p_column_identifier=>'R'
+,p_column_label=>'Delta Free'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67323331102213135)
+,p_db_column_name=>'Currently Available, Bytes'
+,p_display_order=>200
+,p_column_identifier=>'S'
+,p_column_label=>'Currently Available, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67323491298213136)
+,p_db_column_name=>'Currently Available'
+,p_display_order=>210
+,p_column_identifier=>'T'
+,p_column_label=>'Currently Available'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67323571608213137)
+,p_db_column_name=>'Delta Currently Available, Bytes'
+,p_display_order=>220
+,p_column_identifier=>'U'
+,p_column_label=>'Delta Currently Available, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67323612545213138)
+,p_db_column_name=>'Delta Currently Available'
+,p_display_order=>230
+,p_column_identifier=>'V'
+,p_column_label=>'Delta Currently Available'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67323753991213139)
+,p_db_column_name=>'Available with Extension, Bytes'
+,p_display_order=>240
+,p_column_identifier=>'W'
+,p_column_label=>'Available With Extension, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67323818490213140)
+,p_db_column_name=>'Available with Extension'
+,p_display_order=>250
+,p_column_identifier=>'X'
+,p_column_label=>'Available With Extension'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67323968290213141)
+,p_db_column_name=>'Delta Available with Extension, Bytes'
+,p_display_order=>260
+,p_column_identifier=>'Y'
+,p_column_label=>'Delta Available With Extension, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67324053728213142)
+,p_db_column_name=>'Delta Available with Extension'
+,p_display_order=>270
+,p_column_identifier=>'Z'
+,p_column_label=>'Delta Available With Extension'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_rpt(
+ p_id=>wwv_flow_api.id(67351633545234443)
+,p_application_user=>'APXWS_DEFAULT'
+,p_report_seq=>10
+,p_report_alias=>'673517'
+,p_status=>'PUBLIC'
+,p_is_default=>'Y'
+,p_report_columns=>'DBGDP_ID:SNAPPED:Tablespace:Total Occupied, Bytes:Total Occupied:Delta Total Occupied, Bytes:Delta Total Occupied:Recycle Bin, Bytes:Recycle Bin:Delta Recycle Bin, Bytes:Delta Recycle Bin:Segments, Bytes:Segments:Delta Segments, Bytes:Delta Segments:'
+||'Free, Bytes:Free:Delta Free, Bytes:Delta Free:Currently Available, Bytes:Currently Available:Delta Currently Available, Bytes:Delta Currently Available:Available with Extension, Bytes:Available with Extension:Delta Available with Extension, Bytes:Del'
+||'ta Available with Extension'
+);
+wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(200725698136405518)
 ,p_plug_name=>'Chart of objects sizes'
 ,p_parent_plug_id=>wwv_flow_api.id(67151697618285125)
@@ -22582,9 +23239,6 @@ wwv_flow_api.create_page_plug(
 ,p_prn_page_header_alignment=>'CENTER'
 ,p_prn_page_footer_alignment=>'CENTER'
 );
-end;
-/
-begin
 wwv_flow_api.create_worksheet(
  p_id=>wwv_flow_api.id(67210907371086621)
 ,p_max_row_count=>'1000000'
@@ -22725,6 +23379,9 @@ wwv_flow_api.create_worksheet_column(
 ,p_column_label=>'Seg Size, B'
 ,p_column_type=>'STRING'
 );
+end;
+/
+begin
 wwv_flow_api.create_worksheet_column(
  p_id=>wwv_flow_api.id(67213824725086650)
 ,p_db_column_name=>'Seg delta, B'
@@ -24093,7 +24750,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(66300724402351173)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200320162831'
+,p_last_upd_yyyymmddhh24miss=>'20200331114455'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(66369818926263502)
@@ -24372,7 +25029,7 @@ wwv_flow_api.create_page_item(
 ,p_cSize=>30
 ,p_field_template=>wwv_flow_api.id(59011729453993944)
 ,p_item_template_options=>'#DEFAULT#'
-,p_attribute_01=>'Y'
+,p_attribute_01=>'N'
 ,p_attribute_02=>'N'
 ,p_attribute_04=>'TEXT'
 ,p_attribute_05=>'BOTH'
@@ -24388,7 +25045,7 @@ wwv_flow_api.create_page_item(
 ,p_begin_on_new_line=>'N'
 ,p_field_template=>wwv_flow_api.id(59011729453993944)
 ,p_item_template_options=>'#DEFAULT#'
-,p_attribute_01=>'Y'
+,p_attribute_01=>'N'
 ,p_attribute_02=>'N'
 ,p_attribute_04=>'TEXT'
 ,p_attribute_05=>'BOTH'
