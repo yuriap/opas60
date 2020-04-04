@@ -1,2 +1,4 @@
-rem prev define MODVER="6.0.0"
-define MODVER="6.1.0"
+
+define COREMODVER="2.0.0"
+define OPASVER="6.1.0"
+define DBGROWTHMODVER="2.0.0"

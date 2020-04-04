@@ -14,8 +14,9 @@ conn &localscheme./&localscheme.@&localdb.
 
 @../modules/core/source/create_stored.sql
 
-exec COREMOD_API.register(p_modname => 'OPASAPP', p_moddescr => 'Oracle Performance Analytic Suite Application', p_modver => '&OPASVER.', p_installed => sysdate);
-exec COREMOD_API.register(p_modname => '&MODNM.', p_moddescr => 'Core Module', p_modver => '&MODVER.', p_installed => sysdate);
+exec COREMOD_API.register(p_modname => '&MODNM.',   p_moddescr => 'Core Module',                                   p_modver => '&COREMODVER.',     p_installed => sysdate);
+exec COREMOD_API.register(p_modname => 'OPASAPP',   p_moddescr => 'Oracle Performance Analytic Suite Application', p_modver => '&OPASVER.',        p_installed => sysdate);
+exec COREMOD_API.register(p_modname => 'DB_GROWTH', p_moddescr => 'DB Growth Monitor',                             p_modver => '&DBGROWTHMODVER.', p_installed => sysdate);
 
 
 @../modules/core/data/load.sql

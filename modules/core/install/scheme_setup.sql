@@ -64,6 +64,27 @@ grant select on dba_hist_active_sess_history to &localscheme.;
 grant select on dba_procedures to &localscheme.;
 grant select on dba_users to &localscheme.;
 
+grant select on dba_free_space to &localscheme.;
+grant select on dba_segments to &localscheme.;
+grant select on dba_tables to &localscheme.;
+grant select on dba_indexes to &localscheme.;
+grant select on dba_lobs to &localscheme.;
+grant select on dba_lob_partitions to &localscheme.;
+grant select on dba_lob_subpartitions to &localscheme.;
+grant select on dba_nested_tables to &localscheme.;
+grant select on dba_clusters to &localscheme.;
+grant select on dba_xml_tables to &localscheme.;
+grant select on user_segments to &localscheme.;
+grant select on user_objects to &localscheme.;
+grant select on user_tables to &localscheme.;
+grant select on user_indexes to &localscheme.;
+grant select on user_lobs to &localscheme.;
+grant select on user_lob_partitions to &localscheme.;
+grant select on user_lob_subpartitions to &localscheme.;
+grant select on user_nested_tables to &localscheme.;
+grant select on user_clusters to &localscheme.;
+grant select on user_xml_tables to &localscheme.;
+
 define job_class_name=JC_&namepref.
 
 begin

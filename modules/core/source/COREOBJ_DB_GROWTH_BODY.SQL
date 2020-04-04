@@ -14,43 +14,46 @@ package body COREOBJ_DB_GROWTH is
       l_status := 'No schedule';
     else
       select status into l_status from OPAS_SCHEDULER where sch_id=l_dbgm.schedule;
-
-      select coremod_report_utils.to_hr_num(size_bytes) || ' per ' || case
-               when dd <= 1.01 then
-                case
-                  when abs(round(dd) - dd) < 0.001 then
-                   round(dd) || ' day'
-                  else
-                   round(dd * 24) || ' hour(s)'
-                end
-               else
-                d || ' days ' || h || ' hours'
-             end ||'; '
-        into l_status2
-        from (select x.*,
-                     extract(day from x.tim) d,
-                     extract(hour from x.tim) h,
-                     extract(minute from x.tim) m,
-                     extract(day from x.tim) + extract(hour from x.tim) / 24 +
-                     extract(minute from x.tim) / 24 / 60 dd
-                from (select snapped - lag(snapped) over(order by snapped) tim,
-                             size_bytes - lag(size_bytes) over(order by snapped) size_bytes
-                        from (select dp.dbgdp_id,
-                                     dp.snapped,
-                                     sum(seg_occupied) size_bytes
-                                from OPAS_OT_DBG_TS_SIZES s,
-                                     opas_ot_dbg_datapoint dp,
-                                     (select dbgdp_id
-                                        from (select dbgdp_id, snapped
-                                                from opas_ot_dbg_datapoint
-                                               where dbg_id = p_obj_id
-                                               order by 2 desc)
-                                       where rownum <= 2) sn
-                               where s.dbgdp_id = dp.dbgdp_id
-                                 and dp.dbg_id = p_obj_id
-                                 and dp.dbgdp_id = sn.dbgdp_id
-                               group by dp.dbgdp_id, dp.snapped)) x
-               where size_bytes is not null) y;
+      begin
+        select coremod_report_utils.to_hr_num(size_bytes) || ' per ' || case
+                 when dd <= 1.01 then
+                  case
+                    when abs(round(dd) - dd) < 0.001 then
+                     round(dd) || ' day'
+                    else
+                     round(dd * 24) || ' hour(s)'
+                  end
+                 else
+                  d || ' days ' || h || ' hours'
+               end ||'; '
+          into l_status2
+          from (select x.*,
+                       extract(day from x.tim) d,
+                       extract(hour from x.tim) h,
+                       extract(minute from x.tim) m,
+                       extract(day from x.tim) + extract(hour from x.tim) / 24 +
+                       extract(minute from x.tim) / 24 / 60 dd
+                  from (select snapped - lag(snapped) over(order by snapped) tim,
+                               size_bytes - lag(size_bytes) over(order by snapped) size_bytes
+                          from (select dp.dbgdp_id,
+                                       dp.snapped,
+                                       sum(seg_occupied) size_bytes
+                                  from OPAS_OT_DBG_TS_SIZES s,
+                                       opas_ot_dbg_datapoint dp,
+                                       (select dbgdp_id
+                                          from (select dbgdp_id, snapped
+                                                  from opas_ot_dbg_datapoint
+                                                 where dbg_id = p_obj_id
+                                                 order by 2 desc)
+                                         where rownum <= 2) sn
+                                 where s.dbgdp_id = dp.dbgdp_id
+                                   and dp.dbg_id = p_obj_id
+                                   and dp.dbgdp_id = sn.dbgdp_id
+                                 group by dp.dbgdp_id, dp.snapped)) x
+                 where size_bytes is not null) y;
+      exception
+        when no_data_found then l_status2 := 'Delta N/A; ';
+      end;
     end if;
 -- coremod_tasks.log('l_status: '||l_status);
     return l_status2||l_status;
