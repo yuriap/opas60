@@ -321,7 +321,9 @@ package body COREOBJ_DB_GROWTH_RPT is
   end;
 
   procedure prepare_out_of_space_data(p_dbg_id           opas_ot_dbg_monitor.dbg_id%type,
-                                      p_days_to_avg      number,
+                                      p_days_to_avg      number default null,
+                                      p_start_dp         opas_ot_dbg_datapoint.dbgdp_id%type default null,
+                                      p_end_dp           opas_ot_dbg_datapoint.dbgdp_id%type default null,
                                       p_tablespace       varchar2,
                                       p_avg_delta    out number,
                                       p_out_of_space out timestamp)
@@ -333,18 +335,90 @@ package body COREOBJ_DB_GROWTH_RPT is
     l_iter           number := 0;
   begin
     delete from opas_ot_dbg_charts where apex_sess = V('SESSION') and chart_id in (chrtOccupied, chrtAvailable, chrtOccuProjection, chrtAvailProjection);
+coremod_tasks.log('prepare_out_of_space_data: p_days_to_avg: '|| p_days_to_avg );
+coremod_tasks.log('prepare_out_of_space_data: p_start_dp: '|| p_start_dp || '; p_end_dp: '|| p_end_dp);
+    if p_days_to_avg is not null then
 
-    insert into opas_ot_dbg_charts
-      (apex_sess, created, alert_id, chart_id, dtstamp, chart_val)
-    select
-       V('SESSION'), sysdate, null,  chrtOccupied,        snapped, sum(seg_occupied)
-    from opas_ot_dbg_ts_sizes s,
-         opas_ot_dbg_datapoint dp
-    where s.dbgdp_id = dp.dbgdp_id
-      and dp.dbg_id = p_dbg_id
-      and dp.snapped > systimestamp - to_dsinterval(to_char(p_days_to_avg + 10) || ' 00:00:00')
-      and s.ts_name = p_tablespace
-      group by snapped;
+      insert into opas_ot_dbg_charts
+        (apex_sess, created, alert_id, chart_id, dtstamp, chart_val)
+      select
+         V('SESSION'), sysdate, null,  chrtOccupied,        snapped, sum(seg_occupied)
+      from opas_ot_dbg_ts_sizes s,
+           opas_ot_dbg_datapoint dp
+      where s.dbgdp_id = dp.dbgdp_id
+        and dp.dbg_id = p_dbg_id
+        and dp.snapped > systimestamp - to_dsinterval(to_char(p_days_to_avg + 10) || ' 00:00:00')
+        and s.ts_name = p_tablespace
+        group by snapped;
+
+      insert into opas_ot_dbg_charts
+        (apex_sess, created, alert_id, chart_id, dtstamp, chart_val)
+      select
+         V('SESSION'), sysdate, null,  chrtAvailable,        snapped, sum(ext_available)
+      from opas_ot_dbg_ts_sizes s,
+           opas_ot_dbg_datapoint dp
+      where s.dbgdp_id = dp.dbgdp_id
+        and dp.dbg_id = p_dbg_id
+        and dp.snapped > systimestamp - to_dsinterval(to_char(p_days_to_avg + 10) || ' 00:00:00')
+        and s.ts_name = p_tablespace
+        group by snapped;
+
+      select round(avg(seg_occupied_delta)) into l_seg_occupied_delta
+      from (
+          select seg_occupied - lag(seg_occupied)over(order by snapped) seg_occupied_delta
+          from (
+              select snapped, sum(seg_occupied) seg_occupied
+               from opas_ot_dbg_ts_sizes s,
+                    opas_ot_dbg_datapoint dp
+              where s.dbgdp_id = dp.dbgdp_id
+                and dp.dbg_id = p_dbg_id
+                and dp.snapped > systimestamp - to_dsinterval(to_char(p_days_to_avg + 1) || ' 00:00:00')
+                and s.ts_name = p_tablespace
+                group by snapped
+                )
+        ) where seg_occupied_delta is not null;
+    --================================================================
+    elsif p_start_dp is not null and p_end_dp is not null then
+
+      insert into opas_ot_dbg_charts
+        (apex_sess, created, alert_id, chart_id, dtstamp, chart_val)
+      select
+         V('SESSION'), sysdate, null,  chrtOccupied,        snapped, sum(seg_occupied)
+      from opas_ot_dbg_ts_sizes s,
+           opas_ot_dbg_datapoint dp
+      where s.dbgdp_id = dp.dbgdp_id
+        and dp.dbg_id = p_dbg_id
+        and dp.dbgdp_id between p_start_dp and p_end_dp
+        and s.ts_name = p_tablespace
+        group by snapped;
+
+      insert into opas_ot_dbg_charts
+        (apex_sess, created, alert_id, chart_id, dtstamp, chart_val)
+      select
+         V('SESSION'), sysdate, null,  chrtAvailable,        snapped, sum(ext_available)
+      from opas_ot_dbg_ts_sizes s,
+           opas_ot_dbg_datapoint dp
+      where s.dbgdp_id = dp.dbgdp_id
+        and dp.dbg_id = p_dbg_id
+        and dp.dbgdp_id between p_start_dp and p_end_dp
+        and s.ts_name = p_tablespace
+        group by snapped;
+
+      select round(avg(seg_occupied_delta)) into l_seg_occupied_delta
+      from (
+          select seg_occupied - lag(seg_occupied)over(order by snapped) seg_occupied_delta
+          from (
+              select snapped, sum(seg_occupied) seg_occupied
+               from opas_ot_dbg_ts_sizes s,
+                    opas_ot_dbg_datapoint dp
+              where s.dbgdp_id = dp.dbgdp_id
+                and dp.dbg_id = p_dbg_id
+                and dp.dbgdp_id between p_start_dp and p_end_dp
+                and s.ts_name = p_tablespace
+                group by snapped
+                )
+        ) where seg_occupied_delta is not null;
+    end if;
 
     select chart_val, dtstamp into l_last_occupied, l_last_snap
     from opas_ot_dbg_charts where apex_sess = V('SESSION') and chart_id = chrtOccupied
@@ -352,38 +426,10 @@ package body COREOBJ_DB_GROWTH_RPT is
 
 --coremod_tasks.log('prepare_out_of_space_data: l_last_occupied: '|| l_last_occupied || '; l_last_snap: '|| l_last_snap);
 
-    insert into opas_ot_dbg_charts
-      (apex_sess, created, alert_id, chart_id, dtstamp, chart_val)
-    select
-       V('SESSION'), sysdate, null,  chrtAvailable,        snapped, sum(ext_available)
-    from opas_ot_dbg_ts_sizes s,
-         opas_ot_dbg_datapoint dp
-    where s.dbgdp_id = dp.dbgdp_id
-      and dp.dbg_id = p_dbg_id
-      and dp.snapped > systimestamp - to_dsinterval(to_char(p_days_to_avg + 10) || ' 00:00:00')
-      and s.ts_name = p_tablespace
-      group by snapped;
-
     select chart_val into l_last_available
     from opas_ot_dbg_charts where apex_sess = V('SESSION') and chart_id = chrtAvailable
     and dtstamp = (select max(dtstamp) from opas_ot_dbg_charts where apex_sess = V('SESSION') and chart_id = chrtAvailable);
-
 --coremod_tasks.log('prepare_out_of_space_data: l_last_available: '|| l_last_available);
-
-    select round(avg(seg_occupied_delta)) into l_seg_occupied_delta
-    from (
-        select seg_occupied - lag(seg_occupied)over(order by snapped) seg_occupied_delta
-        from (
-            select snapped, sum(seg_occupied) seg_occupied
-             from opas_ot_dbg_ts_sizes s,
-                  opas_ot_dbg_datapoint dp
-            where s.dbgdp_id = dp.dbgdp_id
-              and dp.dbg_id = p_dbg_id
-              and dp.snapped > systimestamp - to_dsinterval(to_char(p_days_to_avg + 1) || ' 00:00:00')
-              and s.ts_name = p_tablespace
-              group by snapped
-              )
-      ) where seg_occupied_delta is not null;
 
 --coremod_tasks.log('prepare_out_of_space_data: l_seg_occupied_delta: '||l_seg_occupied_delta);
 

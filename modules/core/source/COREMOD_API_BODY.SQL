@@ -92,7 +92,7 @@ package body COREMOD_API as
                                               g_lops_tab(p_lops_ind).g_units);
   end;
 
-  function getconf(p_key varchar2, p_module opas_modules.modname%type) return varchar2 RESULT_CACHE
+  function getconf(p_key varchar2, p_module opas_modules.modname%type default gMODNAME) return varchar2 RESULT_CACHE
   is
     l_res opas_config.cvalue%type;
   begin
@@ -316,6 +316,14 @@ package body COREMOD_API as
     return l_res;
   exception
     when no_data_found then return get_ora_dblink_cache_i(p_db_link_name, p_key);
+  end;
+
+  function get_dblink_dbid(p_dblink varchar2) return number
+  is
+    l_res number;
+  begin
+    select dbid into l_res from OPAS_DB_LINK_V$DB where dblink = p_dblink;
+    return l_res;
   end;
 
   procedure update_dblink_db_info(p_db_link_name varchar2)

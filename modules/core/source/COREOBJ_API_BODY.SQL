@@ -231,6 +231,31 @@ PACKAGE BODY COREOBJ_API AS
     when others then raise_application_error(-20000,'COREOBJ_API.get_object_status_to_display: '||p_obj_ot||' '||p_obj_id||' '||sqlerrm);
   end;
 
+  function get_object_path(p_obj_id           opas_objects.obj_id%type,
+                           p_including_object varchar2 default 'Y') return varchar2
+  is
+    l_path varchar2(1000) := null;
+  begin
+    with path_calc(obj_id,
+    obj_name,
+    obj_prnt,
+    full_path) as
+     (select obj_id, obj_name, obj_prnt, case when nvl(p_including_object,'~') = 'Y' then '/' || obj_name else null end full_path
+        from opas_objects
+       where obj_id = p_obj_id
+      union all
+      select o.obj_id,
+             o.obj_name,
+             o.obj_prnt,
+             '/' || o.obj_name || p.full_path
+        from opas_objects o, path_calc p
+       where o.obj_id = p.obj_prnt)
+    select full_path into l_path from path_calc where obj_prnt is null;
+    return l_path;
+    exception
+      when no_data_found then return 'Not found for: <'||p_obj_id||'>';
+  end;
+
 begin
   for i in (select * from opas_object_types) loop
     g_ot_icons(i.ot_id) := i.ot_icon;

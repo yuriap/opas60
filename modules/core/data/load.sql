@@ -17,6 +17,9 @@ INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','SQ
 
 --INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','ALERT','HIDEVIEWED', 1,'Hide viewed alerts after N days.');
 
+--new
+INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','RETENTION','SQLSEARCHRETENTION', 60,'Retention time in minutes for SQL Searches.');
+
 insert into opas_groups (group_id,group_name,group_descr) values (0, 'Administrators','Full set of rights');
 insert into opas_groups (group_id,group_name,group_descr) values (1, 'Reas-write users','All application functions');
 insert into opas_groups (group_id,group_name,group_descr) values (2, 'Read-only users','Read-only functions');

@@ -81,5 +81,7 @@ PACKAGE COREOBJ_API AS
   function get_object_status_to_display (p_obj_id          opas_objects.obj_id%type,
                                          p_obj_ot          opas_objects.obj_ot%type) return varchar2;
 
+  function get_object_path(p_obj_id           opas_objects.obj_id%type,
+                           p_including_object varchar2 default 'Y') return varchar2;
 END COREOBJ_API;
 /

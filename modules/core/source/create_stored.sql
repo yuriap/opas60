@@ -65,6 +65,9 @@ show errors
 @@COREOBJ_SQL_REPORT_UTILS_SPEC.SQL
 show errors
 
+@@COREOBJ_SQL_SEARCH_SPEC.SQL
+show errors
+
 @@COREOBJ_SQL_UTILS_SPEC.SQL
 show errors
 
@@ -132,6 +135,9 @@ show errors
 show errors
 
 @@COREOBJ_SQL_REPORT_UTILS_BODY.SQL
+show errors
+
+@@COREOBJ_SQL_SEARCH_BODY.SQL
 show errors
 
 @@COREOBJ_SQL_UTILS_BODY.SQL

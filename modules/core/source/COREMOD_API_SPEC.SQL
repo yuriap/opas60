@@ -22,7 +22,7 @@ package COREMOD_API as
                       p_modver opas_modules.MODVER%type,
                       p_installed opas_modules.INSTALLED%type default sysdate);
 
-   function getconf(p_key varchar2, p_module opas_modules.modname%type) return varchar2 RESULT_CACHE;
+   function getconf(p_key varchar2, p_module opas_modules.modname%type default gMODNAME) return varchar2 RESULT_CACHE;
    --function getscript(p_script_id varchar2) return clob;
    function getmodver(p_module opas_modules.modname%type) return varchar2 RESULT_CACHE;
    function getMODNAME return varchar2;
@@ -45,6 +45,8 @@ package COREMOD_API as
    function get_dblink_for_query(p_dblink varchar2) return varchar2;
    function get_ora_dblink_cache(p_db_link_name varchar2, p_key varchar2) return varchar2;
    function get_dblink_user(p_dblink varchar2) return varchar2;
+
+   function get_dblink_dbid(p_dblink varchar2) return number;
 
    procedure update_dblink_db_info(p_db_link_name varchar2);
 

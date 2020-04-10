@@ -14,6 +14,30 @@ alter table opas_ot_sql_descriptions ROW STORE COMPRESS ADVANCED;
 create index        idx_opas_ot_sql_descr_file  on opas_ot_sql_descriptions(sql_text);
 create index        idx_opas_ot_sql_descr_a_file  on opas_ot_sql_descriptions(sql_text_approx);
 
+create table opas_ot_sql_searches(
+session_id          number generated always as identity primary key,
+apex_sess           number,
+apex_user           varchar2(128),
+local_status        varchar2(100),
+remote_status       varchar2(100),
+created             date,
+search_params       CLOB,
+CONSTRAINT search_pars_json_chk CHECK (search_params IS JSON));
+
+create table opas_ot_sql_search_results(
+session_id          number                                   references opas_ot_sql_searches(session_id) on delete cascade,
+search_source       varchar2(1), -- L local, E - external
+txt_score           number,
+sql_id              varchar2(13),
+sql_text_local      number,
+sql_text_external   clob,
+created_by          varchar2(128),
+first_discovered    timestamp,
+first_discovered_at varchar2(128));
+
+create index idx_sql_sr_sess on opas_ot_sql_search_results(session_id);
+
+
 create sequence opas_ot_sq_dp;
 
 create table opas_ot_sql_data (

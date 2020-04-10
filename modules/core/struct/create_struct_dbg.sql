@@ -229,7 +229,13 @@ DBGSO_TABLESPACE_NAME	 varchar2(1)
 );
 
 create or replace view v$opas_dbg_selected_objects as
-select /*+ no_merge leading(p dp o) index(dp idx_opas_ot_dbg_dbgm)*/ o.*, dp.*, p.apex_sess, p.created params_created
+  select /*+ no_merge leading(p dp o) index(dp idx_opas_ot_dbg_dbgm)*/ 
+         dp.snapped start_date,
+         lead(dp.snapped, 1, systimestamp + to_dsinterval('01 00:00:00')) over(partition by o.object_name, o.subobject_name order by dp.snapped) end_date,
+         o.*, 
+         dp.*, 
+         p.apex_sess, 
+         p.created params_created
     from opas_ot_dbg_objects o, opas_ot_dbg_datapoint dp, opas_ot_dbg_report_pars p
    where p.apex_sess = V('SESSION')
      and o.version_dp_id = dp.dbgdp_id 

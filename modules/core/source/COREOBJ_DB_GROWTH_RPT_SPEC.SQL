@@ -35,7 +35,9 @@ package COREOBJ_DB_GROWTH_RPT is
                                 p_tablespace_name  varchar2);
 
   procedure prepare_out_of_space_data(p_dbg_id           opas_ot_dbg_monitor.dbg_id%type,
-                                      p_days_to_avg      number,
+                                      p_days_to_avg      number default null,
+                                      p_start_dp         opas_ot_dbg_datapoint.dbgdp_id%type default null,
+                                      p_end_dp           opas_ot_dbg_datapoint.dbgdp_id%type default null,
                                       p_tablespace       varchar2,
                                       p_avg_delta    out number,
                                       p_out_of_space out timestamp);

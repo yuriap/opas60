@@ -46,7 +46,7 @@ end;
 begin
   coremod_cleanup.register_cleanup_tasks (  P_TASKNAME => 'CLEANUPDBGCHARTS',
                                             P_MODNAME => '&MODNM.',
-                      p_frequency_h => 0.5,
+                                            p_frequency_h => 0.5,
                                             p_task_body => 'begin COREOBJ_DB_GROWTH_RPT.cleanup_chart_data; end;');
 end;
 /
@@ -54,8 +54,17 @@ end;
 begin
   coremod_cleanup.register_cleanup_tasks (  P_TASKNAME => 'CLEANUPDBCHARTS',
                                             P_MODNAME => '&MODNM.',
-                      p_frequency_h => 0.5,
+                                            p_frequency_h => 0.5,
                                             p_task_body => 'begin COREOBJ_DB_MONITOR.cleanup_chart_data; end;');
+end;
+/
+
+--new
+begin
+  coremod_cleanup.register_cleanup_tasks (  P_TASKNAME => 'CLEANUPSQLSEARCH',
+                                            P_MODNAME => '&MODNM.',
+                                            p_frequency_h => 0.5,
+                                            p_task_body => 'begin coreobj_sql_search.cleanup_sessions; end;');
 end;
 /
 
@@ -72,7 +81,6 @@ begin
                                p_is_public => 'Y', 
 							   p_task_priority => COREMOD_TASKS.tpINTERNAL,
                                p_task_body => 'begin COREOBJ_SQL_UTILS.discover_sql2 (p_sql_data_point_id => <B1>) ; end;');
-							   
 end;
 /
 
@@ -88,7 +96,22 @@ begin
                                p_is_public => 'Y', 
 							   p_task_priority => COREMOD_TASKS.tpINTERNAL,
                                p_task_body => 'begin COREOBJ_SQL_UTILS.discover_sql2 (p_sql_data_point_id => <B1>) ; end;');
-							   
+end;
+/
+
+
+--for sql search
+begin
+  COREMOD_TASKS.create_task (  p_taskname  => 'OPAS_SQL_LOCAL_SEARCH',
+                               p_modname   => '&MODNM.',
+                               p_is_public => 'Y', 
+							   p_task_priority => COREMOD_TASKS.tpLOW,
+                               p_task_body => 'begin COREOBJ_SQL_SEARCH.start_local_search(p_session_id => <B1>) ; end;');
+  COREMOD_TASKS.create_task (  p_taskname  => 'OPAS_SQL_EXTERNAL_SEARCH',
+                               p_modname   => '&MODNM.',
+                               p_is_public => 'Y', 
+							   p_task_priority => COREMOD_TASKS.tpLOW,
+                               p_task_body => 'begin COREOBJ_SQL_SEARCH.start_external_search(p_session_id => <B1>) ; end;');
 end;
 /
 

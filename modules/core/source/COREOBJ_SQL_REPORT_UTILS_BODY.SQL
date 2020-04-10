@@ -5,6 +5,7 @@ PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
   gwWideSection1     constant number := 1400;
   gdHeaderRepeat     constant number := 45;
 
+
   function get_header_refresh_interval(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type) return number
   is
     l_refresh_interval number := 5;
@@ -1236,10 +1237,13 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
     pipe row (HTF.header (3,cheader=>HTF.ANCHOR (curl=>'',ctext=>'Report description',cname=>'report_descr',cattributes=>'class="awr"'),cattributes=>'class="awr"'));
     pipe row (HTF.BR);
 
-    select SYS_CONNECT_BY_PATH(obj_name,' / ') into l_str from opas_objects where CONNECT_BY_ISLEAF = 1 start with obj_id=p_obj_id connect by prior obj_prnt=obj_id;
-    l_str:=ltrim(l_str,' / ');
+    --select SYS_CONNECT_BY_PATH(obj_name,' / ') into l_str from opas_objects where CONNECT_BY_ISLEAF = 1 start with obj_id=p_obj_id connect by prior obj_prnt=obj_id;
+    l_str := coreobj_api.get_object_path(p_obj_id => p_obj_id,
+                                         p_including_object => 'Y');
+
+    --l_str:=ltrim(l_str,' / ');
     l_text:='SQL Data Point'||chr(10);
-    l_text:=l_text||'SQL_ID/Path: '||l_str||chr(10);
+    l_text:=l_text||'Path/SQL_ID: '||l_str||chr(10);
     l_text:=l_text||'DP ID: '||l_sql_data_point.sql_data_point_id||chr(10);
     l_text:=l_text||l_object.OBJ_DESCR||chr(10);
 

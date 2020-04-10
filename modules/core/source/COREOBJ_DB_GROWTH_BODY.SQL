@@ -4,8 +4,8 @@ package body COREOBJ_DB_GROWTH is
   function get_object_status_to_display (p_obj_id          opas_objects.obj_id%type) return varchar2
   is
     l_dbgm opas_ot_dbg_monitor%rowtype;
-    l_status varchar2(32);
-    l_status2 varchar2(32);
+    l_status varchar2(100);
+    l_status2 varchar2(100);
   begin
 -- coremod_tasks.log('p_obj_id: '||p_obj_id);
     select * into l_dbgm from opas_ot_dbg_monitor where dbg_id = p_obj_id;
@@ -15,7 +15,8 @@ package body COREOBJ_DB_GROWTH is
     else
       select status into l_status from OPAS_SCHEDULER where sch_id=l_dbgm.schedule;
       begin
-        select coremod_report_utils.to_hr_num(size_bytes) || ' per ' || case
+        select substr(
+               to_char(snapped,'Mon, DD')||': '||coremod_report_utils.to_hr_num(size_bytes) || ' per ' || case
                  when dd <= 1.01 then
                   case
                     when abs(round(dd) - dd) < 0.001 then
@@ -25,7 +26,7 @@ package body COREOBJ_DB_GROWTH is
                   end
                  else
                   d || ' days ' || h || ' hours'
-               end ||'; '
+               end ||'; ',1,100)
           into l_status2
           from (select x.*,
                        extract(day from x.tim) d,
@@ -33,7 +34,7 @@ package body COREOBJ_DB_GROWTH is
                        extract(minute from x.tim) m,
                        extract(day from x.tim) + extract(hour from x.tim) / 24 +
                        extract(minute from x.tim) / 24 / 60 dd
-                  from (select snapped - lag(snapped) over(order by snapped) tim,
+                  from (select snapped, snapped - lag(snapped) over(order by snapped) tim,
                                size_bytes - lag(size_bytes) over(order by snapped) size_bytes
                           from (select dp.dbgdp_id,
                                        dp.snapped,
@@ -58,7 +59,6 @@ package body COREOBJ_DB_GROWTH is
 -- coremod_tasks.log('l_status: '||l_status);
     return l_status2||l_status;
   end;
-
   procedure add   (p_obj_id       out opas_objects.obj_id%type,
                    p_obj_prnt         opas_objects.obj_prnt%type)
   is
