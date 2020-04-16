@@ -14,6 +14,50 @@ alter table opas_ot_sql_descriptions ROW STORE COMPRESS ADVANCED;
 create index        idx_opas_ot_sql_descr_file  on opas_ot_sql_descriptions(sql_text);
 create index        idx_opas_ot_sql_descr_a_file  on opas_ot_sql_descriptions(sql_text_approx);
 
+--==================================================================
+create table opas_ot_sql_tags (
+tag_name            varchar2(128)                                    primary key,
+tag_prnt            varchar2(128)                                    references opas_ot_sql_tags(tag_name),  
+tag_description     varchar2(4000),
+tag_autoexpr        varchar2(4000)
+);
+
+create table opas_ot_sql_sql2tags(
+sql_id              varchar2(13)                                     references opas_ot_sql_descriptions(sql_id) on delete cascade,
+tag                 varchar2(128)                                    references opas_ot_sql_tags(tag_name),  
+primary key (sql_id,tag))
+organization index;
+
+create table opas_ot_sql_auto_gather_sqls (
+ags_id          number                                           generated always as identity primary key,
+dblink          varchar2(128)                                    references opas_db_links (db_link_name) on delete cascade,
+filter_vsql     varchar2(4000),
+filter_awrstat  varchar2(4000),
+filter_awrash   varchar2(4000),
+sqltext_filter  varchar2(4000),
+schedule        number                                           references opas_scheduler (sch_id) on delete set null,
+row_limit       number,
+time_limit      number,
+descr           varchar2(1000)
+);
+
+create index idx_opas_ot_sql_asg_dbl   on opas_ot_sql_auto_gather_sqls(dblink);
+create index idx_opas_ot_sql_asg_sch   on opas_ot_sql_auto_gather_sqls(schedule);
+
+create global temporary table OPAS_OT_TMP_AGS_LIST (
+sql_id              varchar2(13),
+plan_hash_value     number,
+force_matching_signature varchar2(100)
+) on commit preserve rows;
+
+create global temporary table OPAS_OT_TMP_AGS_SQLS (
+sql_id              varchar2(13),
+plan_hash_value     number,
+sql_text            clob,
+force_matching_signature varchar2(100),
+jaro_winkler_similarity  number
+) on commit preserve rows;
+
 create table opas_ot_sql_searches(
 session_id          number generated always as identity primary key,
 apex_sess           number,
@@ -21,11 +65,12 @@ apex_user           varchar2(128),
 local_status        varchar2(100),
 remote_status       varchar2(100),
 created             date,
+retention           number, --null default, number - days
 search_params       CLOB,
 CONSTRAINT search_pars_json_chk CHECK (search_params IS JSON));
 
 create table opas_ot_sql_search_results(
-session_id          number                                   references opas_ot_sql_searches(session_id) on delete cascade,
+session_id          number                                           references opas_ot_sql_searches(session_id) on delete cascade,
 search_source       varchar2(1), -- L local, E - external
 txt_score           number,
 sql_id              varchar2(13),
@@ -36,7 +81,7 @@ first_discovered    timestamp,
 first_discovered_at varchar2(128));
 
 create index idx_sql_sr_sess on opas_ot_sql_search_results(session_id);
-
+--==================================================================
 
 create sequence opas_ot_sq_dp;
 

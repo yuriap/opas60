@@ -41,6 +41,8 @@ package coremod_tasks as
 
   procedure create_task_job;
   procedure execute_task_proc; --job coord proc
+  procedure exec_coordinator;
+
   procedure execute_task(p_tq_id opas_task_queue.tq_id%type);
   procedure stop_task(p_tq_id opas_task_queue.tq_id%type);
   procedure stop_previous_user_task(p_taskname   opas_task.taskname%type);

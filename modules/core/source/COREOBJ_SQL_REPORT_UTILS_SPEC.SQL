@@ -33,7 +33,8 @@ PACKAGE COREOBJ_SQL_REPORT_UTILS AS
   procedure print_header(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type);
 
   procedure print_section_html(p_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type,
-                               p_section_name varchar2);
+                               p_section_name varchar2,
+                               p_sql_id   opas_ot_sql_data.sql_id%type default null);
 
   --cmd utils
   function gathering_status(p_obj_id  opas_objects.obj_id%type) return TABLEOFSTRINGS pipelined;

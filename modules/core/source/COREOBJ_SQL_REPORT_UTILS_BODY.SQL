@@ -1054,22 +1054,31 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
   end;
 */
   procedure print_sql_text_web(p_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type,
-                               p_output out COREMOD_REPORT_UTILS.t_output_lines)
+                               p_output          out COREMOD_REPORT_UTILS.t_output_lines,
+                               p_sql_id              opas_ot_sql_data.sql_id%type default null)
   is
-    l_text clob;
-    l_length number;
+    l_text     clob;
+    l_length   number;
+    l_file_id   opas_files.file_id%type;
   begin
 --dbms_output.put_line(p_sql_data_point_id);
+--coremod_log.log('print_sql_text_web :'||p_sql_id);
     p_output(1):='<code class="codeView">';
     p_output(1):=p_output(1)||'<ol start="1">';
 
+    if p_sql_id is not null then
+      select nvl(sql_text,sql_text_approx) into l_file_id from OPAS_OT_SQL_DESCRIPTIONS de where sql_id=p_sql_id;
+    else
+      select nvl(sql_text,sql_text_approx) into l_file_id
+        from OPAS_OT_SQL_DESCRIPTIONS de,
+             OPAS_OT_SQL_DATA da
+       where de.sql_id = da.sql_id
+         and da.sql_data_point_id=p_sql_data_point_id;
+    end if;
+
     for i in (SELECT line_number, payload
                 FROM V$OPAS_FILE_CONTENTBYROW
-               where file_id=(select nvl(sql_text,sql_text_approx)
-                                from OPAS_OT_SQL_DESCRIPTIONS de,
-                                     OPAS_OT_SQL_DATA da
-                               where de.sql_id = da.sql_id
-                                 and da.sql_data_point_id=p_sql_data_point_id)
+               where file_id=l_file_id
                order by line_number)
     loop
       l_text:=l_text||'<li id="L'||to_char(i.line_number)||'">'||apex_escape.html(i.payload) ||'</li>';
@@ -1098,11 +1107,13 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
 
   procedure print_section_html_i(p_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type,
                                  p_section_name varchar2,
-                                 p_output out COREMOD_REPORT_UTILS.t_output_lines)
+                                 p_output out COREMOD_REPORT_UTILS.t_output_lines,
+                                 p_sql_id   opas_ot_sql_data.sql_id%type default null)
   is
   begin
+--coremod_log.log('print_section_html_i :'||p_sql_id);
       case p_section_name
-        when repsSQL_TEXT    then print_sql_text_web(p_sql_data_point_id,p_output);
+        when repsSQL_TEXT    then print_sql_text_web(p_sql_data_point_id,p_output,p_sql_id);
         when repsSHARING     then print_nonshared_section_base(p_sql_data_point_id,p_output);
         when repsVSQL        then print_vsql_section_base(p_sql_data_point_id,p_output);
         when repsEXADATA     then print_exa_section_base(p_sql_data_point_id,p_output);
@@ -1128,20 +1139,23 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
   end;
 
   procedure print_section_html(p_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type,
-                               p_section_name varchar2)
+                               p_section_name varchar2,
+                               p_sql_id   opas_ot_sql_data.sql_id%type default null)
   is
     l_status     opas_ot_sql_data_sect.gathering_status%type;
     l_errm       opas_ot_sql_data_sect.error_message%type;
     l_output     COREMOD_REPORT_UTILS.t_output_lines;
   begin
+--coremod_log.log('print_section_html :<'||p_sql_id||'> <'||p_section_name||'> <'||p_sql_data_point_id||'>');
     COREMOD_LOG.Start_SQL_GATHER_STAT('COREOBJ_SQL_REPORT_UTILS.print_section_html.GATHER_SQL_STAT');
     COREMOD_LOG.Start_SQL_TRACE('COREOBJ_SQL_REPORT_UTILS.print_section_html.SQL_TRACE');
 
     COREOBJ_SQL_UTILS.is_section_ready(p_sql_data_point_id,p_section_name,l_status,l_errm);
 --dbms_output.put_line(p_sql_data_point_id||':'||l_status);
-    if l_status = COREOBJ_SQL_UTILS.sstReady then
+    if l_status = COREOBJ_SQL_UTILS.sstReady or
+       (p_section_name = repsSQL_TEXT and p_sql_id  is not null) then
 
-      print_section_html_i(p_sql_data_point_id,p_section_name,l_output);
+      print_section_html_i(p_sql_data_point_id,p_section_name,l_output,p_sql_id);
 
       if l_output is not null then
         print_section_web(l_output);
@@ -1156,7 +1170,7 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
     end if;
     htp.small(get_section_duration(p_sql_data_point_id,p_section_name));
 
-  COREMOD_LOG.Stop_SQL_TRACE('COREOBJ_SQL_REPORT_UTILS.PRINT_SECTION_HTML.SQL_TRACE');
+    COREMOD_LOG.Stop_SQL_TRACE('COREOBJ_SQL_REPORT_UTILS.PRINT_SECTION_HTML.SQL_TRACE');
     COREMOD_LOG.Stop_SQL_GATHER_STAT('COREOBJ_SQL_REPORT_UTILS.PRINT_SECTION_HTML.GATHER_SQL_STAT');
   end;
 

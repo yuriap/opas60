@@ -253,7 +253,7 @@ PACKAGE BODY COREOBJ_API AS
     select full_path into l_path from path_calc where obj_prnt is null;
     return l_path;
     exception
-      when no_data_found then return 'Not found for: <'||p_obj_id||'>';
+      when no_data_found then return case when p_obj_id is null then null else 'Not found for: <'||p_obj_id||'>' end;
   end;
 
 begin

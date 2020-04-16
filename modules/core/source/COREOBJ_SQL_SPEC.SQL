@@ -35,5 +35,10 @@ PACKAGE COREOBJ_SQL AS
 --                    p_folder_id        opas_objects.obj_id%type);
   function get_object_status_to_display (p_obj_id          opas_objects.obj_id%type) return varchar2;
 
+  procedure add_sql_description(p_sql_id                     opas_ot_sql_descriptions.sql_id%type,
+                                p_created_by                 opas_ot_sql_descriptions.created_by%type,
+                                p_first_discovered           opas_ot_sql_descriptions.first_discovered%type,
+                                p_first_discovered_at        opas_ot_sql_descriptions.first_discovered_at%type,
+                                p_sql_text                   opas_ot_sql_descriptions.sql_text%type);
 END COREOBJ_SQL;
 /

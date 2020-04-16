@@ -33,6 +33,8 @@ PACKAGE COREOBJ_SQL_SEARCH AS
   procedure start_external_search(p_session_id opas_ot_sql_searches.session_id%type);
 
   procedure cleanup_sessions;
+  procedure preserve_session(p_session_id opas_ot_sql_searches.session_id%type,
+                             p_days       number);
 
 END COREOBJ_SQL_SEARCH;
 /

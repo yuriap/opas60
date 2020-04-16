@@ -13,7 +13,7 @@ package body COREOBJ_DB_GROWTH is
     if l_dbgm.schedule is null then
       l_status := 'No schedule';
     else
-      select status into l_status from OPAS_SCHEDULER where sch_id=l_dbgm.schedule;
+      select status||'; at '||to_char(start_date,'HH24:MI') into l_status from OPAS_SCHEDULER where sch_id=l_dbgm.schedule;
       begin
         select substr(
                to_char(snapped,'Mon, DD')||': '||coremod_report_utils.to_hr_num(size_bytes) || ' per ' || case
@@ -308,7 +308,7 @@ package body COREOBJ_DB_GROWTH is
 
     l_sql := null;
 
-    merge into opas_ot_dbg_objects t
+    merge into (select * from opas_ot_dbg_objects where version_dp_id in (select dp.dbgdp_id from opas_ot_dbg_datapoint dp where dp.dbg_id = l_dp_obj)) t
     using opas_ot_tmp_dbg_objects s
     on (t.object_id=s.object_id and decode(t.data_object_id,s.data_object_id,1,0)=1)
     when not matched then insert

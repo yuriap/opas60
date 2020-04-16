@@ -143,6 +143,7 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
       COREMOD_TASKS.queue_task ( p_tq_id => l_tq_id ) ;
       commit;
     end if;
+    coremod_tasks.exec_coordinator;
   end;
 
   procedure start_local_search(p_session_id opas_ot_sql_searches.session_id%type)
@@ -157,7 +158,7 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
     l_time timestamp := systimestamp;
     l_duration varchar2(100);
   begin
-    coremod_log.log('COREOBJ_SQL_SEARCH.start_local_search: started for: '||p_session_id);
+    coremod_log.log('COREOBJ_SQL_SEARCH.start_local_search: started for: '||p_session_id,'DEBUG');
     extract_params(p_session_id);
     --------------------------------
     set_search_progress(p_session_id => p_session_id, p_local_message => ssInProgress);
@@ -165,31 +166,31 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
 --search among sql text
 --another search among all files
 
-    if gParams.exists('P1410_ROWS') and gParams('P1410_ROWS') is not null then
-      l_rows := case when gParams('P1410_ROWS') > 1000 then 1000 else gParams('P1410_ROWS') end;
+    if gParams.exists('P1411_ROWS') and gParams('P1411_ROWS') is not null then
+      l_rows := case when gParams('P1411_ROWS') > 1000 then 1000 else gParams('P1411_ROWS') end;
     else
       l_rows := 100;
     end if;
 
-    if gParams.exists('P1410_CONTAINS') and gParams('P1410_CONTAINS') is not null then
-      if gParams.exists('P1410_TEXT_SEARCH_OPTIONS') then
-        if gParams('P1410_TEXT_SEARCH_OPTIONS') = 'ORATEXT' then
+    if gParams.exists('P1411_CONTAINS') and gParams('P1411_CONTAINS') is not null then
+      if gParams.exists('P1411_TEXT_SEARCH_OPTIONS') then
+        if gParams('P1411_TEXT_SEARCH_OPTIONS') = 'ORATEXT' then
            l_sql := replace(l_sql, '<SCORE>', ' SCORE(1) score');
            l_sql := replace(l_sql, '<OPAS_FILES>', ', opas_files f');
-           l_sql := l_sql || q'[ and f.file_type='SQL Text' and nvl(d.sql_text, d.sql_text_approx) = f.file_id and CONTAINS(f.file_contentc, ']' || replace(gParams('P1410_CONTAINS'),'_','\_') || q'[', 1) > 0]';
+           l_sql := l_sql || q'[ and f.file_type='SQL Text' and nvl(d.sql_text, d.sql_text_approx) = f.file_id and CONTAINS(f.file_contentc, ']' || replace(gParams('P1411_CONTAINS'),'_','\_') || q'[', 1) > 0]';
         end if;
-        if gParams('P1410_TEXT_SEARCH_OPTIONS') like '%REGEXP' then
+        if gParams('P1411_TEXT_SEARCH_OPTIONS') like '%REGEXP' then
            l_sql := replace(l_sql, '<OPAS_FILES>', ', opas_files f');
-           l_sql := l_sql || q'[ and f.file_type='SQL Text' and nvl(d.sql_text, d.sql_text_approx) = f.file_id and regexp_like (f.file_contentc, ']' || gParams('P1410_CONTAINS') || q'[', 'i')]';
+           l_sql := l_sql || q'[ and f.file_type='SQL Text' and nvl(d.sql_text, d.sql_text_approx) = f.file_id and regexp_like (f.file_contentc, ']' || gParams('P1411_CONTAINS') || q'[', 'i')]';
         end if;
-        if gParams('P1410_TEXT_SEARCH_OPTIONS') = 'NOTREGEXP' then
+        if gParams('P1411_TEXT_SEARCH_OPTIONS') = 'NOTREGEXP' then
            l_sql := replace(l_sql,'and regexp_like','and not regexp_like');
         end if;
-        if gParams('P1410_TEXT_SEARCH_OPTIONS') like '%LIKE' then
+        if gParams('P1411_TEXT_SEARCH_OPTIONS') like '%LIKE' then
            l_sql := replace(l_sql, '<OPAS_FILES>', ', opas_files f');
-           l_sql := l_sql || q'[ and f.file_type='SQL Text' and nvl(d.sql_text, d.sql_text_approx) = f.file_id and f.file_contentc like ']' || gParams('P1410_CONTAINS') || q'[']';
+           l_sql := l_sql || q'[ and f.file_type='SQL Text' and nvl(d.sql_text, d.sql_text_approx) = f.file_id and f.file_contentc like ']' || gParams('P1411_CONTAINS') || q'[']';
         end if;
-        if gParams('P1410_TEXT_SEARCH_OPTIONS') = 'NOTLIKE' then
+        if gParams('P1411_TEXT_SEARCH_OPTIONS') = 'NOTLIKE' then
            l_sql := replace(l_sql,'file_contentc like','file_contentc not like');
         end if;
       end if;
@@ -197,11 +198,11 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
     l_sql := replace(l_sql, '<SCORE>', '0');
     l_sql := replace(l_sql, '<OPAS_FILES>');
 
-    if gParams.exists('P1410_SQL_ID') and gParams('P1410_SQL_ID') is not null then
-      l_sql := l_sql || q'[ and d.sql_id = ']' || gParams('P1410_SQL_ID') || q'[']' || chr(10);
+    if gParams.exists('P1411_SQL_ID') and gParams('P1411_SQL_ID') is not null then
+      l_sql := l_sql || q'[ and d.sql_id = ']' || gParams('P1411_SQL_ID') || q'[']' || chr(10);
     end if;
 
-    if gParams.exists('P1410_PLAN_HASH') and gParams('P1410_PLAN_HASH') is not null then
+    if gParams.exists('P1411_PLAN_HASH') and gParams('P1411_PLAN_HASH') is not null then
       l_sql := l_sql || q'[ and d.sql_id in (select sql_id from opas_ot_sql_vsql where plan_hash_value = <PLAN_HASH> union
         select sql_id from opas_ot_sql_vash1        where plan_hash_value = <PLAN_HASH> union
         select sql_id from opas_ot_sql_vash2        where plan_hash_value = <PLAN_HASH> union
@@ -212,27 +213,35 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
         select sql_id from opas_ot_sql_awr_plan_det where plan_hash_value = <PLAN_HASH> union
         select sql_id from opas_ot_sql_awr_ash_summ where sql_plan_hash_value = <PLAN_HASH> union
         select sql_id from opas_ot_sql_awr_ash_plst where sql_plan_hash_value = <PLAN_HASH>)]' || chr(10);
-      l_sql := replace(l_sql,'<PLAN_HASH>',gParams('P1410_PLAN_HASH'));
+      l_sql := replace(l_sql,'<PLAN_HASH>',gParams('P1411_PLAN_HASH'));
     end if;
 
-    if gParams.exists('P1410_MODULE') and gParams('P1410_MODULE') is not null then
+    if gParams.exists('P1411_MODULE') and gParams('P1411_MODULE') is not null then
       l_sql := l_sql || q'[ and d.sql_id in (select sql_id from OPAS_OT_SQL_AWR_ASH_SUMM where MODULE like '<MODULE>' union
         select sql_id from OPAS_OT_SQL_AWR_SQLSTAT where MODULE like '<MODULE>' union
         select sql_id from opas_ot_sql_sqlmon m, opas_ot_sql_sqlmon_data da where m.sqlmon_id = da.sqlmon_id and MODULE like '<MODULE>' union
         select sql_id from OPAS_OT_SQL_VSQL where MODULE like '<MODULE>')]' || chr(10); --'
-      l_sql := replace(l_sql,'<MODULE>',gParams('P1410_MODULE'));
+      l_sql := replace(l_sql,'<MODULE>',gParams('P1411_MODULE'));
     end if;
 
-    if gParams.exists('P1410_ACTION') and gParams('P1410_ACTION') is not null then
+    if gParams.exists('P1411_ACTION') and gParams('P1411_ACTION') is not null then
       l_sql := l_sql || q'[ and d.sql_id in (select sql_id from OPAS_OT_SQL_AWR_ASH_SUMM where ACTION like '<ACTION>' union
         select sql_id from OPAS_OT_SQL_AWR_SQLSTAT where ACTION like '<ACTION>' union
         select sql_id from opas_ot_sql_sqlmon m, opas_ot_sql_sqlmon_data da where m.sqlmon_id = da.sqlmon_id and ACTION like '<ACTION>' union
         select sql_id from OPAS_OT_SQL_VSQL where ACTION like '<ACTION>')]' || chr(10); --'
-      l_sql := replace(l_sql,'<ACTION>',gParams('P1410_ACTION'));
+      l_sql := replace(l_sql,'<ACTION>',gParams('P1411_ACTION'));
     end if;
 
-    if gParams.exists('P1410_LOCAL_SQL_EXPRESSION') and gParams('P1410_LOCAL_SQL_EXPRESSION') is not null then
-      l_sql := l_sql || q'[ and d.sql_id in (]' || gParams('P1410_LOCAL_SQL_EXPRESSION') || q'[)]' || chr(10);
+    if gParams.exists('P1411_LOCAL_SQL_EXPRESSION') and gParams('P1411_LOCAL_SQL_EXPRESSION') is not null then
+      l_sql := l_sql || q'[ and d.sql_id in (]' || gParams('P1411_LOCAL_SQL_EXPRESSION') || q'[)]' || chr(10);
+    end if;
+
+    if gParams.exists('P1411_TAGS') and gParams('P1411_TAGS') is not null then
+      l_sql := l_sql || q'[ and d.sql_id in (select sql_id from opas_ot_sql_sql2tags where tag in (]' || coreobj_sql_tags.parse_tag_ist(p_tag_names => gParams('P1411_TAGS'),  p_delim => ',', p_enclosed => 'Y') || '))';
+    end if;
+
+    if gParams.exists('P1411_CREATED_BY') and gParams('P1411_CREATED_BY') is not null then
+      l_sql := l_sql || q'[ and d.created_by like ']' || gParams('P1411_CREATED_BY') || q'[']' || chr(10);
     end if;
 
     -- the last one
@@ -290,70 +299,70 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
     l_time        timestamp := systimestamp;
     l_duration    varchar2(100);
   begin
-    coremod_log.log('COREOBJ_SQL_SEARCH.start_external_search: started for: '||p_session_id);
+    coremod_log.log('COREOBJ_SQL_SEARCH.start_external_search: started for: '||p_session_id,'DEBUG');
     extract_params(p_session_id);
     --------------------------------
 
-    if gParams.exists('P1410_ROWS') and gParams('P1410_ROWS') is not null then
-      l_rows := case when gParams('P1410_ROWS') > 1000 then 1000 else gParams('P1410_ROWS') end;
+    if gParams.exists('P1411_ROWS') and gParams('P1411_ROWS') is not null then
+      l_rows := case when gParams('P1411_ROWS') > 1000 then 1000 else gParams('P1411_ROWS') end;
     else
       l_rows := 100;
     end if;
 
-    if gParams.exists('P1410_DATABASE') and gParams('P1410_DATABASE') is not null
+    if gParams.exists('P1411_DATABASE') and gParams('P1411_DATABASE') is not null
     then
       set_search_progress(p_session_id => p_session_id, p_remote_message => ssInProgress);
 --driving table opas_files
 --search among sql text
 --another search among all files
-      if gParams.exists('P1410_EXT_SEARCH_OPT') and gParams('P1410_EXT_SEARCH_OPT') in ('VSQL','BOTH') then
-        if gParams.exists('P1410_CONTAINS') and gParams('P1410_CONTAINS') is not null then
-          if gParams.exists('P1410_TEXT_SEARCH_OPTIONS') then
-            if gParams('P1410_TEXT_SEARCH_OPTIONS') like '%REGEXP' or gParams('P1410_TEXT_SEARCH_OPTIONS') = 'ORATEXT' then
-               l_v_sql := l_v_sql || q'[ and regexp_like(d.sql_fulltext, ']' || gParams('P1410_CONTAINS') || q'[', 'i')]';
+      if gParams.exists('P1411_EXT_SEARCH_OPT') and gParams('P1411_EXT_SEARCH_OPT') in ('VSQL','BOTH') then
+        if gParams.exists('P1411_CONTAINS') and gParams('P1411_CONTAINS') is not null then
+          if gParams.exists('P1411_TEXT_SEARCH_OPTIONS') then
+            if gParams('P1411_TEXT_SEARCH_OPTIONS') like '%REGEXP' or gParams('P1411_TEXT_SEARCH_OPTIONS') = 'ORATEXT' then
+               l_v_sql := l_v_sql || q'[ and regexp_like(d.sql_fulltext, ']' || gParams('P1411_CONTAINS') || q'[', 'i')]';
             end if;
-            if gParams('P1410_TEXT_SEARCH_OPTIONS') = 'NOTREGEXP' then
+            if gParams('P1411_TEXT_SEARCH_OPTIONS') = 'NOTREGEXP' then
                l_v_sql := replace(l_v_sql,'and regexp_like','and not regexp_like');
             end if;
-            if gParams('P1410_TEXT_SEARCH_OPTIONS') like '%LIKE' then
-               l_v_sql := l_v_sql || q'[ and d.sql_fulltext like ']' || gParams('P1410_CONTAINS') || q'[']';
+            if gParams('P1411_TEXT_SEARCH_OPTIONS') like '%LIKE' then
+               l_v_sql := l_v_sql || q'[ and d.sql_fulltext like ']' || gParams('P1411_CONTAINS') || q'[']';
             end if;
-            if gParams('P1410_TEXT_SEARCH_OPTIONS') = 'NOTLIKE' then
+            if gParams('P1411_TEXT_SEARCH_OPTIONS') = 'NOTLIKE' then
                l_v_sql := replace(l_v_sql,'and d.sql_fulltext like','and d.sql_fulltext not like');
             end if;
           end if;
         end if;
 
-        if gParams.exists('P1410_SQL_ID') and gParams('P1410_SQL_ID') is not null then
-          l_v_sql := l_v_sql || q'[ and d.sql_id = ']' || gParams('P1410_SQL_ID') || q'[']' || chr(10);
+        if gParams.exists('P1411_SQL_ID') and gParams('P1411_SQL_ID') is not null then
+          l_v_sql := l_v_sql || q'[ and d.sql_id = ']' || gParams('P1411_SQL_ID') || q'[']' || chr(10);
         end if;
 
-        if gParams.exists('P1410_PLAN_HASH') and gParams('P1410_PLAN_HASH') is not null then
+        if gParams.exists('P1411_PLAN_HASH') and gParams('P1411_PLAN_HASH') is not null then
           l_v_sql := l_v_sql || q'[ and d.plan_hash_value = <PLAN_HASH>]' || chr(10);
-          l_v_sql := replace(l_v_sql,'<PLAN_HASH>',gParams('P1410_PLAN_HASH'));
+          l_v_sql := replace(l_v_sql,'<PLAN_HASH>',gParams('P1411_PLAN_HASH'));
         end if;
 
-        if gParams.exists('P1410_MODULE') and gParams('P1410_MODULE') is not null then
+        if gParams.exists('P1411_MODULE') and gParams('P1411_MODULE') is not null then
           l_v_sql := l_v_sql || q'[ and d.MODULE like '<MODULE>']' || chr(10); --'
-          l_v_sql := replace(l_v_sql,'<MODULE>',gParams('P1410_MODULE'));
+          l_v_sql := replace(l_v_sql,'<MODULE>',gParams('P1411_MODULE'));
         end if;
 
-        if gParams.exists('P1410_ACTION') and gParams('P1410_ACTION') is not null then
+        if gParams.exists('P1411_ACTION') and gParams('P1411_ACTION') is not null then
           l_v_sql := l_v_sql || q'[ and d.ACTION like '<ACTION>']' || chr(10); --'
-          l_v_sql := replace(l_v_sql,'<ACTION>',gParams('P1410_ACTION'));
+          l_v_sql := replace(l_v_sql,'<ACTION>',gParams('P1411_ACTION'));
         end if;
 
-        if gParams.exists('P1410_EXTERNAL_SQL_EXPRESSION') and gParams('P1410_EXTERNAL_SQL_EXPRESSION') is not null then
-          l_v_sql := l_v_sql || q'[ and d.sql_id in (]' || gParams('P1410_EXTERNAL_SQL_EXPRESSION') || q'[)]' || chr(10);
+        if gParams.exists('P1411_EXTERNAL_SQL_EXPRESSION') and gParams('P1411_EXTERNAL_SQL_EXPRESSION') is not null then
+          l_v_sql := l_v_sql || q'[ and d.sql_id in (]' || gParams('P1411_EXTERNAL_SQL_EXPRESSION') || q'[)]' || chr(10);
         end if;
 
         -- the last one
         l_v_sql := l_v_sql || q'[ and rownum <= ]' || l_rows || chr(10);
 
-        l_v_sql := replace(l_v_sql,'<DBLINK>',COREMOD_API.get_dblink_for_query(gParams('P1410_DATABASE')));
-        l_v_sql := replace(l_v_sql,'<DBLINKNM>',gParams('P1410_DATABASE'));
+        l_v_sql := replace(l_v_sql,'<DBLINK>',COREMOD_API.get_dblink_for_query(gParams('P1411_DATABASE')));
+        l_v_sql := replace(l_v_sql,'<DBLINKNM>',gParams('P1411_DATABASE'));
 
-        coremod_log.log('COREOBJ_SQL_SEARCH.start_external_search v$sql: '||l_v_sql);
+        coremod_log.log('COREOBJ_SQL_SEARCH.start_external_search v$sql: '||l_v_sql,'DEBUG');
 
         l_counter := 0;
         l_sql_id_list := null;
@@ -368,11 +377,11 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
         close l_crsr;
 
         if l_counter > 0 then
-          l_v2_sql := replace(l_v2_sql,'<DBLINK>',COREMOD_API.get_dblink_for_query(gParams('P1410_DATABASE')));
-          l_v2_sql := replace(l_v2_sql,'<DBLINKNM>',gParams('P1410_DATABASE'));
+          l_v2_sql := replace(l_v2_sql,'<DBLINK>',COREMOD_API.get_dblink_for_query(gParams('P1411_DATABASE')));
+          l_v2_sql := replace(l_v2_sql,'<DBLINKNM>',gParams('P1411_DATABASE'));
 
           l_v2_sql := replace(l_v2_sql,'<SQL_ID_LIST>',rtrim(l_sql_id_list,','));
-          coremod_log.log('COREOBJ_SQL_SEARCH.start_external_search v$sql2: '||l_v2_sql);
+          coremod_log.log('COREOBJ_SQL_SEARCH.start_external_search v$sql2: '||l_v2_sql,'DEBUG');
 
           l_sql := l_v2_sql;
           execute immediate l_sql using p_session_id, stExternal;
@@ -384,50 +393,50 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
       end if;
 --====================================================================================================
 
-      if gParams.exists('P1410_EXT_SEARCH_OPT') and gParams('P1410_EXT_SEARCH_OPT') in ('AWR','BOTH') and
+      if gParams.exists('P1411_EXT_SEARCH_OPT') and gParams('P1411_EXT_SEARCH_OPT') in ('AWR','BOTH') and
         l_rows - l_rows_found > 0
       then
-        if gParams.exists('P1410_CONTAINS') and gParams('P1410_CONTAINS') is not null then
-          if gParams.exists('P1410_TEXT_SEARCH_OPTIONS') then
-            if gParams('P1410_TEXT_SEARCH_OPTIONS') like '%REGEXP' or gParams('P1410_TEXT_SEARCH_OPTIONS') = 'ORATEXT' then
-               l_awr_sql := l_awr_sql || q'[ and regexp_like(d.sql_text, ']' || gParams('P1410_CONTAINS') || q'[', 'i')]';
+        if gParams.exists('P1411_CONTAINS') and gParams('P1411_CONTAINS') is not null then
+          if gParams.exists('P1411_TEXT_SEARCH_OPTIONS') then
+            if gParams('P1411_TEXT_SEARCH_OPTIONS') like '%REGEXP' or gParams('P1411_TEXT_SEARCH_OPTIONS') = 'ORATEXT' then
+               l_awr_sql := l_awr_sql || q'[ and regexp_like(d.sql_text, ']' || gParams('P1411_CONTAINS') || q'[', 'i')]';
             end if;
-            if gParams('P1410_TEXT_SEARCH_OPTIONS') = 'NOTREGEXP' then
+            if gParams('P1411_TEXT_SEARCH_OPTIONS') = 'NOTREGEXP' then
                l_awr_sql := replace(l_awr_sql,'and regexp_like','and not regexp_like');
             end if;
-            if gParams('P1410_TEXT_SEARCH_OPTIONS') like '%LIKE' then
-               l_awr_sql := l_awr_sql || q'[ and d.sql_text like ']' || gParams('P1410_CONTAINS') || q'[']';
+            if gParams('P1411_TEXT_SEARCH_OPTIONS') like '%LIKE' then
+               l_awr_sql := l_awr_sql || q'[ and d.sql_text like ']' || gParams('P1411_CONTAINS') || q'[']';
             end if;
-            if gParams('P1410_TEXT_SEARCH_OPTIONS') = 'NOTLIKE' then
+            if gParams('P1411_TEXT_SEARCH_OPTIONS') = 'NOTLIKE' then
                l_awr_sql := replace(l_awr_sql,'and d.sql_text like','and d.sql_text not like');
             end if;
           end if;
         end if;
 
-        if gParams.exists('P1410_SQL_ID') and gParams('P1410_SQL_ID') is not null then
-          l_awr_sql := l_awr_sql || q'[ and d.sql_id = ']' || gParams('P1410_SQL_ID') || q'[']' || chr(10);
+        if gParams.exists('P1411_SQL_ID') and gParams('P1411_SQL_ID') is not null then
+          l_awr_sql := l_awr_sql || q'[ and d.sql_id = ']' || gParams('P1411_SQL_ID') || q'[']' || chr(10);
         end if;
 
-        if (gParams.exists('P1410_PLAN_HASH') and gParams('P1410_PLAN_HASH') is not null) or
-           (gParams.exists('P1410_MODULE') and gParams('P1410_MODULE') is not null) or
-           (gParams.exists('P1410_ACTION') and gParams('P1410_ACTION') is not null)
+        if (gParams.exists('P1411_PLAN_HASH') and gParams('P1411_PLAN_HASH') is not null) or
+           (gParams.exists('P1411_MODULE') and gParams('P1411_MODULE') is not null) or
+           (gParams.exists('P1411_ACTION') and gParams('P1411_ACTION') is not null)
         then
           l_sql := q'[ and d.sql_id in (select sql_id from dba_hist_sqlstat<DBLINK> s where 1=1 <PLAN_HASH> <MODULE> <ACTION> and s.INSTANCE_NUMBER > 0 and s.DBID = <DBID>)]' || chr(10);
 
-          if gParams.exists('P1410_PLAN_HASH') and gParams('P1410_PLAN_HASH') is not null then
-            l_sql := replace(l_sql,'<PLAN_HASH>',q'[ and s.plan_hash_value = ]' || gParams('P1410_PLAN_HASH'));
+          if gParams.exists('P1411_PLAN_HASH') and gParams('P1411_PLAN_HASH') is not null then
+            l_sql := replace(l_sql,'<PLAN_HASH>',q'[ and s.plan_hash_value = ]' || gParams('P1411_PLAN_HASH'));
           else
             l_sql := replace(l_sql,'<PLAN_HASH>');
           end if;
 
-          if gParams.exists('P1410_MODULE') and gParams('P1410_MODULE') is not null then
-            l_sql := replace(l_sql,'<MODULE>',q'[ and s.MODULE like ']' || gParams('P1410_MODULE') || q'[']');
+          if gParams.exists('P1411_MODULE') and gParams('P1411_MODULE') is not null then
+            l_sql := replace(l_sql,'<MODULE>',q'[ and s.MODULE like ']' || gParams('P1411_MODULE') || q'[']');
           else
             l_sql := replace(l_sql,'<MODULE>');
           end if;
 
-          if gParams.exists('P1410_ACTION') and gParams('P1410_ACTION') is not null then
-            l_sql := replace(l_sql,'<ACTION>',q'[ and s.ACTION like ']' || gParams('P1410_ACTION') || q'[']');
+          if gParams.exists('P1411_ACTION') and gParams('P1411_ACTION') is not null then
+            l_sql := replace(l_sql,'<ACTION>',q'[ and s.ACTION like ']' || gParams('P1411_ACTION') || q'[']');
           else
             l_sql := replace(l_sql,'<ACTION>');
           end if;
@@ -435,18 +444,18 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
           l_awr_sql := l_awr_sql || l_sql;
         end if;
 
-        if gParams.exists('P1410_EXTERNAL_SQL_EXPRESSION') and gParams('P1410_EXTERNAL_SQL_EXPRESSION') is not null then
-          l_awr_sql := l_awr_sql || q'[ and d.sql_id in (]' || gParams('P1410_EXTERNAL_SQL_EXPRESSION') || q'[)]' || chr(10);
+        if gParams.exists('P1411_EXTERNAL_SQL_EXPRESSION') and gParams('P1411_EXTERNAL_SQL_EXPRESSION') is not null then
+          l_awr_sql := l_awr_sql || q'[ and d.sql_id in (]' || gParams('P1411_EXTERNAL_SQL_EXPRESSION') || q'[)]' || chr(10);
         end if;
 
         -- the last one
         l_awr_sql := l_awr_sql || q'[ and rownum <= ]' || to_char( l_rows - l_rows_found ) || chr(10);
 
-        l_awr_sql := replace(l_awr_sql,'<DBLINK>',COREMOD_API.get_dblink_for_query(gParams('P1410_DATABASE')));
-        l_awr_sql := replace(l_awr_sql,'<DBLINKNM>',gParams('P1410_DATABASE'));
-        l_awr_sql := replace(l_awr_sql,'<DBID>',coremod_api.get_dblink_dbid(gParams('P1410_DATABASE')));
+        l_awr_sql := replace(l_awr_sql,'<DBLINK>',COREMOD_API.get_dblink_for_query(gParams('P1411_DATABASE')));
+        l_awr_sql := replace(l_awr_sql,'<DBLINKNM>',gParams('P1411_DATABASE'));
+        l_awr_sql := replace(l_awr_sql,'<DBID>',coremod_api.get_dblink_dbid(gParams('P1411_DATABASE')));
 
-        coremod_log.log('COREOBJ_SQL_SEARCH.start_external_search awr: '||l_awr_sql);
+        coremod_log.log('COREOBJ_SQL_SEARCH.start_external_search awr: '||l_awr_sql,'DEBUG');
 
         l_counter := 0;
         l_sql_id_list := null;
@@ -461,11 +470,11 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
         close l_crsr;
 
         if l_counter > 0 then
-          l_awr2_sql := replace(l_awr2_sql,'<DBLINK>',COREMOD_API.get_dblink_for_query(gParams('P1410_DATABASE')));
-          l_awr2_sql := replace(l_awr2_sql,'<DBLINKNM>',gParams('P1410_DATABASE'));
+          l_awr2_sql := replace(l_awr2_sql,'<DBLINK>',COREMOD_API.get_dblink_for_query(gParams('P1411_DATABASE')));
+          l_awr2_sql := replace(l_awr2_sql,'<DBLINKNM>',gParams('P1411_DATABASE'));
 
           l_awr2_sql := replace(l_awr2_sql,'<SQL_ID_LIST>',rtrim(l_sql_id_list,','));
-          coremod_log.log('COREOBJ_SQL_SEARCH.start_external_search awr2: '||l_awr2_sql);
+          coremod_log.log('COREOBJ_SQL_SEARCH.start_external_search awr2: '||l_awr2_sql,'DEBUG');
 
           l_sql := l_awr2_sql;
           execute immediate l_sql using p_session_id, stExternal;
@@ -501,9 +510,20 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
   is
   begin
     delete opas_ot_sql_searches
-          where created < sysdate - to_number(COREMOD_API.getconf('SQLSEARCHRETENTION'))/24/60;
+          where created <
+            case when retention is null
+              then sysdate - to_number(COREMOD_API.getconf('SQLSEARCHRETENTION'))/24/60
+              else sysdate - retention end;
     commit;
   end;
 
+  procedure preserve_session(p_session_id opas_ot_sql_searches.session_id%type,
+                             p_days       number)
+  is
+  begin
+    update opas_ot_sql_searches
+       set retention = p_days
+     where session_id = p_session_id;
+  end;
 END COREOBJ_SQL_SEARCH;
 /

@@ -41,6 +41,9 @@ show errors
 @@COREOBJ_ATTACHMENTS_SPEC.SQL
 show errors
 
+@@COREOBJ_AUTOSQL_SPEC.SQL
+show errors
+
 @@COREOBJ_DBLINKS2OBJ_SPEC.SQL
 show errors
 
@@ -66,6 +69,9 @@ show errors
 show errors
 
 @@COREOBJ_SQL_SEARCH_SPEC.SQL
+show errors
+
+@@COREOBJ_SQL_TAGS_SPEC.SQL
 show errors
 
 @@COREOBJ_SQL_UTILS_SPEC.SQL
@@ -113,6 +119,9 @@ show errors
 @@COREOBJ_ATTACHMENTS_BODY.SQL
 show errors
 
+@@COREOBJ_AUTOSQL_BODY.SQL
+show errors
+
 @@COREOBJ_DBLINKS2OBJ_BODY.SQL
 show errors
 
@@ -138,6 +147,9 @@ show errors
 show errors
 
 @@COREOBJ_SQL_SEARCH_BODY.SQL
+show errors
+
+@@COREOBJ_SQL_TAGS_BODY.SQL
 show errors
 
 @@COREOBJ_SQL_UTILS_BODY.SQL

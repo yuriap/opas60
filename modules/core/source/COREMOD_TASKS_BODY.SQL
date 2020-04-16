@@ -174,6 +174,12 @@ package body coremod_tasks as
       raise;
   end;
 
+  procedure exec_coordinator
+  is
+  begin
+    dbms_scheduler.run_job('OPAS_TASK_COORD',use_current_session => false);
+  end;
+
   procedure execute_task_proc is  --job coordinator
     --l_running_jobs number;
     l_freeslots    number;
@@ -186,6 +192,12 @@ package body coremod_tasks as
     l_low_limit  number := to_number(COREMOD_API.getconf('MAXTHREADS'||tpLOW,COREMOD_API.gMODNAME));
     */
   begin
+    COREMOD_API.lock_resource(
+      P_RESOURCE_NAME => 'OPASTASKCOORD',
+      P_MODE => 6,
+      P_TIMEOUT => 60,
+      P_RELEASE_ON_COMMIT => false);
+
     for i in (select priority_levels.lvl task_priority, count(j.job_name) cnt
                 from (select decode(level,1,tpHIGH,2,tpNORM,3,tpLOW,4,tpINTERNAL) lvl from dual connect by level <=4) priority_levels,
                      USER_SCHEDULER_RUNNING_JOBS j,
@@ -237,6 +249,8 @@ package body coremod_tasks as
           log(DBMS_UTILITY.FORMAT_ERROR_STACK,l_2run(i).tq_id);
       end;
     end loop;
+
+    COREMOD_API.release_resource;
   end;
 
   procedure cancel_task(p_tq_id opas_task_queue.tq_id%type)

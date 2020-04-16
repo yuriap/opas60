@@ -22,6 +22,29 @@ PACKAGE BODY COREOBJ_SQL AS
     end if;
   end;
 
+  procedure add_sql_description(p_sql_id                     opas_ot_sql_descriptions.sql_id%type,
+                                p_created_by                 opas_ot_sql_descriptions.created_by%type,
+                                p_first_discovered           opas_ot_sql_descriptions.first_discovered%type,
+                                p_first_discovered_at        opas_ot_sql_descriptions.first_discovered_at%type,
+                                p_sql_text                   opas_ot_sql_descriptions.sql_text%type)
+  is
+    l_sql_exists number;
+  begin
+    coremod_api.lock_resource(p_resource_name => 'SQLID'||p_sql_id,
+                              p_mode => 6,
+                              p_timeout => 60,
+                              p_release_on_commit => true);
+
+    select count(1) into l_sql_exists from opas_ot_sql_descriptions where sql_id = p_sql_id;
+
+    if l_sql_exists = 0 then
+      INSERT INTO opas_ot_sql_descriptions
+               (  sql_id,  sql_text,   sql_text_approx, created_by,   first_discovered,   first_discovered_at )
+        VALUES (p_sql_id,  p_sql_text, null,            p_created_by, p_first_discovered, p_first_discovered_at);
+    end if;
+
+    coremod_api.release_resource;
+  end;
 
   procedure add   (p_obj_id       out opas_objects.obj_id%type,
                    p_obj_prnt         opas_objects.obj_prnt%type,
@@ -41,13 +64,11 @@ PACKAGE BODY COREOBJ_SQL AS
       P_OBJ_NAME  => p_sql_id,
       P_OBJ_DESCR => p_descr) ;
 
-    select count(1) into l_sql_exists from opas_ot_sql_descriptions where sql_id = p_sql_id;
-
-    if l_sql_exists = 0 then
-      INSERT INTO opas_ot_sql_descriptions
-               (  sql_id,  sql_text,  sql_text_approx, created_by, first_discovered, first_discovered_at )
-        VALUES (p_sql_id,  null,      null,            p_owner,    null,             null);
-    end if;
+    coreobj_sql.add_sql_description(p_sql_id => p_sql_id,
+                                    p_created_by => p_owner,
+                                    p_first_discovered => null,
+                                    p_first_discovered_at => null,
+                                    p_sql_text => null);
 
     INSERT INTO opas_ot_sql_data
              ( sql_data_point_id,     sql_id,   start_gathering_dt,  end_gathering_dt,    dblink,    gathering_status, tq_id, tq_id2, prnt_data_point_id)
