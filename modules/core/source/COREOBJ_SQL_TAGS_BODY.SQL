@@ -19,12 +19,17 @@ package body coreobj_sql_tags is
 
   end;
 
-  procedure edit(p_tag_name opas_ot_sql_tags.tag_name%type,
-                 p_tag_description opas_ot_sql_tags.tag_description%type,
-                 p_tag_autoexpr opas_ot_sql_tags.tag_autoexpr%type)
+  procedure remove(p_tag_name opas_ot_sql_tags.tag_name%type)
   is
   begin
-    null;
+    remove_tag_from_sqls(p_tag_name);
+    delete from opas_ot_sql_tags where tag_name = p_tag_name;
+  end;
+
+  procedure remove_tag_from_sqls(p_tag_name opas_ot_sql_tags.tag_name%type)
+  is
+  begin
+    delete from opas_ot_sql_sql2tags where tag = p_tag_name;
   end;
 
   procedure tag_sql(p_tag_names varchar2,
@@ -128,5 +133,40 @@ package body coreobj_sql_tags is
       close l_crsr;
     end loop;
   end;
+
+  procedure auto_tag_sql_task(p_tag_name opas_ot_sql_tags.tag_name%type)
+  is
+    l_sql_id opas_ot_sql_descriptions.sql_id%type;
+    l_crsr   sys_refcursor;
+  begin
+    --coremod_log.log('coreobj_sql_tags.tag_sql: '||p_tag_names||' -- ' || p_sql_id);
+
+    for i in (select * from opas_ot_sql_tags where tag_name = p_tag_name)
+    loop
+      open l_crsr for
+        q'[select sql_id from opas_ot_sql_descriptions s, opas_files f where s.sql_text = f.file_id and (]'||i.tag_autoexpr||')';
+      loop
+        fetch l_crsr into l_sql_id;
+        exit when l_crsr%notfound;
+
+        merge into opas_ot_sql_sql2tags t
+        using (select l_sql_id sql_id, p_tag_name tag from dual) s
+        on (s.sql_id = t.sql_id and s.tag = t.tag)
+        when not matched then insert (t.sql_id, t.tag) values (s.sql_id, s.tag);
+
+      end loop;
+      close l_crsr;
+    end loop;
+  end;
+
+  procedure start_auto_tag_sql_task(p_tag_name opas_ot_sql_tags.tag_name%type)
+    is
+    l_tq_id      OPAS_TASK_QUEUE.tq_id%type;
+  begin
+    l_tq_id:=COREMOD_TASKS.prep_execute_task (  P_TASKNAME => 'OPAS_SQL_TAGSQL') ;
+    COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => 'B1', p_varchar_par => p_tag_name);
+    COREMOD_TASKS.queue_task ( p_tq_id => l_tq_id ) ;
+  end;
+
 end coreobj_sql_tags;
 /

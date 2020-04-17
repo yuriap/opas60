@@ -1,13 +1,27 @@
 Oracle Performance Analytic Suite and Performance Data Management System
-Version 6.0 PROD
+Version 6.2 PROD
 
 Release notes:
 ==============
 
+Version 6.2.0 2020-Apr-17
+-------------------------
+SQL Registry
+ - Search for an SQL in the local SQL Registry or in a monitored database
+ - Automatic collection of SQL from a monitored database
+ - Categorizing SQL by tagging
+   - Hierarchical structure of tags
+   - Regexp selecting of SQLs for tagging
+   - Bulk tagging and untagging
+   - Automatic tagging of automatically collected SQLs
+
 Version 6.1.0 2020-Mar-24
 -------------------------
-New object type added
+New object types added
  - Database Growth Monitor
+ - Simple Database monitor
+Alerting system based on monitors
+Graphic representation of data collected by monitors
 
 Version 6.0.0 2020-Feb-20
 -------------------------

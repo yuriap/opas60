@@ -75,12 +75,12 @@ begin
                                p_modname   => '&MODNM.',
                                p_is_public => 'Y', 
 							   p_task_priority => COREMOD_TASKS.tpNORM,
-                               p_task_body => 'begin COREOBJ_SQL_UTILS.discover_sql (p_sql_data_point_id => <B1>) ; end;');
+                               p_task_body => 'begin COREOBJ_SQL_UTILS.discover_sql (p_sql_data_point_id => <B1>); end;');
   COREMOD_TASKS.create_task (  p_taskname  => 'OPAS_SQL_DISCOVER2',
                                p_modname   => '&MODNM.',
                                p_is_public => 'Y', 
 							   p_task_priority => COREMOD_TASKS.tpINTERNAL,
-                               p_task_body => 'begin COREOBJ_SQL_UTILS.discover_sql2 (p_sql_data_point_id => <B1>) ; end;');
+                               p_task_body => 'begin COREOBJ_SQL_UTILS.discover_sql2 (p_sql_data_point_id => <B1>); end;');
 end;
 /
 
@@ -90,12 +90,12 @@ begin
                                p_modname   => '&MODNM.',
                                p_is_public => 'Y', 
 							   p_task_priority => COREMOD_TASKS.tpLOW,
-                               p_task_body => 'begin COREOBJ_SQL_UTILS.discover_sql (p_sql_data_point_id => <B1>) ; end;');
+                               p_task_body => 'begin COREOBJ_SQL_UTILS.discover_sql (p_sql_data_point_id => <B1>); end;');
   COREMOD_TASKS.create_task (  p_taskname  => 'OPAS_SQL_DISCOVER2_REC',
                                p_modname   => '&MODNM.',
                                p_is_public => 'Y', 
 							   p_task_priority => COREMOD_TASKS.tpINTERNAL,
-                               p_task_body => 'begin COREOBJ_SQL_UTILS.discover_sql2 (p_sql_data_point_id => <B1>) ; end;');
+                               p_task_body => 'begin COREOBJ_SQL_UTILS.discover_sql2 (p_sql_data_point_id => <B1>); end;');
 end;
 /
 
@@ -106,12 +106,21 @@ begin
                                p_modname   => '&MODNM.',
                                p_is_public => 'Y', 
 							   p_task_priority => COREMOD_TASKS.tpLOW,
-                               p_task_body => 'begin COREOBJ_SQL_SEARCH.start_local_search(p_session_id => <B1>) ; end;');
+                               p_task_body => 'begin COREOBJ_SQL_SEARCH.start_local_search(p_session_id => <B1>); end;');
   COREMOD_TASKS.create_task (  p_taskname  => 'OPAS_SQL_EXTERNAL_SEARCH',
                                p_modname   => '&MODNM.',
                                p_is_public => 'Y', 
 							   p_task_priority => COREMOD_TASKS.tpLOW,
-                               p_task_body => 'begin COREOBJ_SQL_SEARCH.start_external_search(p_session_id => <B1>) ; end;');
+                               p_task_body => 'begin COREOBJ_SQL_SEARCH.start_external_search(p_session_id => <B1>); end;');
+end;
+/
+
+begin
+  COREMOD_TASKS.create_task (  p_taskname  => 'OPAS_SQL_TAGSQL',
+                               p_modname   => '&MODNM.',
+                               p_is_public => 'Y', 
+							   p_task_priority => COREMOD_TASKS.tpLOW,
+                               p_task_body => 'begin coreobj_sql_tags.auto_tag_sql_task(p_tag_name => <B1>); end;');
 end;
 /
 
