@@ -72,6 +72,17 @@ PACKAGE BODY COREOBJ_API AS
      WHERE obj_id = p_obj_id;
   end;
 
+  procedure edit_descr  (p_obj_id          opas_objects.obj_id%type,
+                         p_obj_name        opas_objects.obj_name%type,
+                         p_obj_descr       opas_objects.obj_descr%type)
+  is
+  begin
+    UPDATE opas_objects
+       SET obj_name = p_obj_name,
+           obj_descr = p_obj_descr
+     WHERE obj_id = p_obj_id;
+  end;
+
   procedure remove(p_obj_id opas_objects.obj_id%type)
   is
   begin

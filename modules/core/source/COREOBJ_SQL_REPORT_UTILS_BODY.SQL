@@ -82,7 +82,8 @@ PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
     end loop;
   end;
 
-  procedure print_header(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type)
+  procedure print_header(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                         p_mode                 number default 0) -- 0 -- full
   is
   begin
     for i in (select r.OBJ_ID, x.*,to_char(cast((x.END_GATHERING_DT-x.START_GATHERING_DT) AS INTERVAL DAY(2) TO SECOND(3))) dur,
@@ -90,20 +91,28 @@ PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
                         from (select gathering_status, count(1) cnt
                                 from OPAS_OT_SQL_DATA_SECT where sql_data_point_id = p_sql_data_point_id group by gathering_status)) sect_statuses
                 from opas_ot_sql_data x, OPAS_OT_SQL_DATA_POINT_REF r where x.sql_data_point_id = p_sql_data_point_id and x.sql_data_point_id = r.sql_data_point_id) loop
-      htp.p('<b>Gathering status:</b> '||i.gathering_status||'; ');
-      if i.START_GATHERING_DT is not null then
-        htp.p('<b>Started:</b> '||to_char(i.START_GATHERING_DT,defDataTimeFmt)||'; ');
+
+      if p_mode = 0 then
+        htp.p('<b>Gathering status:</b> '||i.gathering_status||'; ');
+
+        if i.START_GATHERING_DT is not null then
+          htp.p('<b>Started:</b> '||to_char(i.START_GATHERING_DT,defDataTimeFmt)||'; ');
+        end if;
       end if;
+
       if i.END_GATHERING_DT is not null then
-        htp.p('<b>Finished:</b> '||to_char(i.END_GATHERING_DT,defDataTimeFmt)||'; <b>Duration:</b> '||i.dur);
+        htp.p('<b>Finished:</b> '||to_char(i.END_GATHERING_DT,defDataTimeFmt)|| case when p_mode = 0 then '; <b>Duration:</b> '||i.dur end);
       end if;
-      if i.sect_statuses is not null and i.END_GATHERING_DT is null then
-        htp.p('<b>Sections:</b> '||i.sect_statuses);
+
+      if p_mode = 0 then
+        if i.sect_statuses is not null and i.END_GATHERING_DT is null then
+          htp.p('<b>Sections:</b> '||i.sect_statuses);
+        end if;
+
+        htp.p(
+          nvl( COREOBJ_API.get_param_c(i.OBJ_ID, COREOBJ_SQL_UTILS.pnAllParsDispl, false),print_data_point_params(p_sql_data_point_id))
+          );
       end if;
-      --htp.p(' <b>sysdate:</b> '||to_char(sysdate,'YYYY-MON-DD HH24:MI:SS'));
-      htp.p(
-        nvl( COREOBJ_API.get_param_c(i.OBJ_ID, COREOBJ_SQL_UTILS.pnAllParsDispl, false),print_data_point_params(p_sql_data_point_id))
-        );
     end loop;
   end;
 
@@ -203,13 +212,13 @@ PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
       $IF DBMS_DB_VERSION.version>=11 $THEN
       if i.IO_CELL_OFFLOAD_ELIGIBLE_BYTES>0 then
         p('-----------------------------------------------------------------------------------------------------');
-      p('Saved %: '||round(100 * (i.IO_CELL_OFFLOAD_ELIGIBLE_BYTES - i.IO_INTERCONNECT_BYTES) / case when i.IO_CELL_OFFLOAD_ELIGIBLE_BYTES=0 then 1 else i.IO_CELL_OFFLOAD_ELIGIBLE_BYTES end,2));
-          p('IO_CELL_OFFLOAD_ELIGIBLE_BYTES: '||COREMOD_REPORT_UTILS.tptformat(i.IO_CELL_OFFLOAD_ELIGIBLE_BYTES));
+        p('Saved %: '||round(100 * (i.IO_CELL_OFFLOAD_ELIGIBLE_BYTES - i.IO_INTERCONNECT_BYTES) / case when i.IO_CELL_OFFLOAD_ELIGIBLE_BYTES=0 then 1 else i.IO_CELL_OFFLOAD_ELIGIBLE_BYTES end,2));
+        p('IO_CELL_OFFLOAD_ELIGIBLE_BYTES: '||COREMOD_REPORT_UTILS.tptformat(i.IO_CELL_OFFLOAD_ELIGIBLE_BYTES));
         p('IO_INTERCONNECT_BYTES:          '||COREMOD_REPORT_UTILS.tptformat(i.IO_INTERCONNECT_BYTES));
         p('OPTIMIZED_PHY_READ_REQUESTS:    '||COREMOD_REPORT_UTILS.tptformat(i.OPTIMIZED_PHY_READ_REQUESTS));
         p('IO_CELL_UNCOMPRESSED_BYTES:     '||COREMOD_REPORT_UTILS.tptformat(i.IO_CELL_UNCOMPRESSED_BYTES));
         p('IO_CELL_OFFLOAD_RETURNED_BYTES: '||COREMOD_REPORT_UTILS.tptformat(i.IO_CELL_OFFLOAD_RETURNED_BYTES));
-          p('=====================================================================================================');
+        p('=====================================================================================================');
       end if;
       $END
       p(' ');
@@ -273,7 +282,7 @@ p_query => replace(q'[select inst_id,
        round(buffer_gets / decode(nvl(executions, 0), 0, 1, executions)) avg_lio
   from OPAS_OT_SQL_VSQL s
  where sql_data_point_id = '<sql_data_point_id>'
-order by 1,2]','<sql_data_point_id>',p_sql_data_point_id),
+order by 1,2]','<sql_data_point_id>',p_sql_data_point_id), --'
                                             p_width => gwNarrowSection,
                                             p_summary => 'Exadata details',
                                             --p_search varchar2 default null,
@@ -307,7 +316,7 @@ order by 1,2]','<sql_data_point_id>',p_sql_data_point_id),
       p_output(l_k) := HTF.LISTITEM(cattributes=>'class="awr"',
                                ctext=>HTF.ANCHOR (curl=>'#sqlmonhst'||i.SQLMON_ID,
                                                   ctext=>i.rn ||'. SQL_EXEC_ID: '||i.SQL_EXEC_ID||' SQL_EXEC_START: '||to_char(i.SQL_EXEC_START,defDataTimeFullFmt),
-                                                  cattributes=>'class="awr"'
+                                                  cattributes=>'class="awr"' --'
                                                   )
                               );
       l_k:=l_k+1;
@@ -488,7 +497,7 @@ p_query => replace(q'[select inst_id,
  where sql_data_point_id = <sql_data_point_id>
  order by inst_id, child_number, operation_id]','<sql_data_point_id>',p_sql_data_point_id),
                                             p_width => gwWideSection1,
-                                            p_summary => 'Workareas',
+                                            p_summary => 'Workareas',--'
                                             --p_search varchar2 default null,
                                             --p_replacement varchar2 default null,
                                             p_style_tab => 'trctd',
@@ -574,7 +583,7 @@ p_query => replace(q'[select inst_id,child_number,name,isdefault,value from opas
                                             p_query => replace(replace(
 q'[select plan_table_output "Plan Table Output" from table(dbms_xplan.display('OPAS_OT_SQL_PLAN_DET', null, '<display_params>', 'plan_id=<PLAN_ID>'))]'
                                               ,'<PLAN_ID>',plans.PLAN_ID)
-                                              ,'<display_params>',l_display_params),
+                                              ,'<display_params>',l_display_params),--'
                                             p_width => gwWideSection1,
                                             p_summary => 'Execution plan',
                                             --p_search varchar2 default null,
@@ -634,7 +643,7 @@ q'[select plan_table_output "Plan Table Output" from table(dbms_xplan.display('O
                                             p_query => replace(replace(
 q'[select plan_table_output "Plan Table Output" from table(dbms_xplan.display('OPAS_OT_SQL_EP_PLAN_DET', null, null, 'plan_id=<PLAN_ID>'))]'
                                               ,'<PLAN_ID>',plans.PLAN_ID)
-                                              ,'<display_params>',l_display_params),
+                                              ,'<display_params>',l_display_params),--'
                                             p_width => gwWideSection1,
                                             p_summary => 'Execution plan',
                                             p_search => 'Plan hash value: ([[:digit:]]*)',
@@ -660,7 +669,7 @@ q'[select plan_table_output "Plan Table Output" from table(dbms_xplan.display('O
                                             p_query => replace(replace(
 q'[select plan_table_output "Plan Table Output" from table(dbms_xplan.display('OPAS_OT_SQL_EP_PLAN_DET', null, 'ADVANCED', 'plan_id=<PLAN_ID>'))]'
                                               ,'<PLAN_ID>',plans.PLAN_ID)
-                                              ,'<display_params>',l_display_params),
+                                              ,'<display_params>',l_display_params),--'
                                             p_width => gwWideSection1,
                                             p_summary => 'Execution plan (advanced)',
                                             p_search => 'Plan hash value: ([[:digit:]]*)',
@@ -718,7 +727,7 @@ p_query => replace(q'[select plan_hash_value, id, row_src "Row source", event, c
 p_query => replace(replace(replace(q'[select to_char(SQL_EXEC_START,'<defDTFullFmt>') SQL_EXEC_START, to_char(sql_exec_end,'<defDTFullFmt>') sql_exec_end, plan_hash_value, id, row_src, event, cnt, tim_pct, tim_id_pct, obj, tbs
   from OPAS_OT_SQL_VASH1 x where sql_data_point_id = <sql_data_point_id>
  order by SQL_EXEC_START, plan_hash_value, id, event]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt),
-                                            p_width => gwWideSection1,
+                                            p_width => gwWideSection1,--'
                                             p_summary => 'V$ASH Details',
                                             --p_search varchar2 default null,
                                             --p_replacement varchar2 default null,
@@ -784,7 +793,7 @@ SELECT
   1 noprn_lastrow
 FROM data1
 order by snap nulls last, inst_id]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt),
-                                            p_width => gwWideSection1,
+                                            p_width => gwWideSection1,--'
                                             p_summary => 'AWR SQL statistics',
                                             p_search => 'PLAN_HASH',
                                             p_replacement => HTF.ANCHOR (curl=>'#awrplan_\1',ctext=>'\1',cattributes=>'class="awr"'),
@@ -817,7 +826,7 @@ and dp.INCARNATION# = sn.INCARNATION#
 and dp.INCARNATION# = b.INCARNATION#
 and dp.SQL_DATA_POINT_ID = <sql_data_point_id>
 order by b.snap_id,position]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt),
-                                            p_width => gwWideSection1,
+                                            p_width => gwWideSection1,--'
                                             p_summary => 'AWR SQL binds',
                                             --p_search varchar2 default null,
                                             --p_replacement varchar2 default null,
@@ -852,7 +861,7 @@ order by b.snap_id,position]','<sql_data_point_id>',p_sql_data_point_id),'<defDT
                                             p_query => replace(replace(
 q'[select plan_table_output "Plan Table Output" from table(dbms_xplan.display('OPAS_OT_SQL_AWR_PLAN_DET', null, '<display_params>', 'plan_id=<PLAN_ID>'))]'
                                               ,'<PLAN_ID>',plans.PLAN_ID)
-                                              ,'<display_params>',l_display_params),
+                                              ,'<display_params>',l_display_params),--'
                                             p_width => gwWideSection1,
                                             p_summary => 'AWR execution plan',
                                             p_search => 'Plan hash value: ([[:digit:]]*)',
@@ -887,7 +896,7 @@ and dp.INCARNATION# = s.INCARNATION#
 and dp.SQL_DATA_POINT_ID = <sql_data_point_id>
 and (PLSQL_TOP is not null or PLSQL_END is not null)
 order by s.snap_id]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt),
-                                            p_width => gwWideSection1,
+                                            p_width => gwWideSection1,--'
                                             p_summary => 'AWR PL/SQL source',
                                             --p_search varchar2 default null,
                                             --p_replacement varchar2 default null,
@@ -923,7 +932,7 @@ and dp.INCARNATION# = sn.INCARNATION#
 and dp.INCARNATION# = s.INCARNATION#
 and dp.SQL_DATA_POINT_ID = <sql_data_point_id>
 order by s.snap_id, topn]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt),
-                                            p_width => gwWideSection1,
+                                            p_width => gwWideSection1,--'
                                             p_summary => 'AWR ASH Top executions',
                                             --p_search varchar2 default null,
                                             --p_replacement varchar2 default null,
@@ -1017,7 +1026,7 @@ and dp.INCARNATION# = s.INCARNATION#
 and dp.SQL_DATA_POINT_ID = <sql_data_point_id>
 group by s.snap_id, sn.end_interval_time, sql_plan_hash_value, SQL_FULL_PLAN_HASH_VALUE, SQL_PLAN_LINE_ID, SQL_PLAN_OPERATION, SQL_PLAN_OPTIONS, EVENT, obj, tbs)
 order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt),
-                                            p_width => gwWideSection1,
+                                            p_width => gwWideSection1,--'
                                             p_summary => 'AWR ASH Plan stats per snap',
                                             p_search => 'PLAN_HASH',
                                             p_replacement => HTF.ANCHOR (curl=>'#awrplan_\1',ctext=>'\1',cattributes=>'class="awr"'),
@@ -1053,9 +1062,8 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
     htp.p('</code>');
   end;
 */
-  procedure print_sql_text_web(p_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type,
-                               p_output          out COREMOD_REPORT_UTILS.t_output_lines,
-                               p_sql_id              opas_ot_sql_data.sql_id%type default null)
+  procedure print_sql_text_web(p_sql_id              opas_ot_sql_data.sql_id%type,
+                               p_output          out COREMOD_REPORT_UTILS.t_output_lines)
   is
     l_text     clob;
     l_length   number;
@@ -1066,15 +1074,15 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
     p_output(1):='<code class="codeView">';
     p_output(1):=p_output(1)||'<ol start="1">';
 
-    if p_sql_id is not null then
+--    if p_sql_id is not null then
       select nvl(sql_text,sql_text_approx) into l_file_id from OPAS_OT_SQL_DESCRIPTIONS de where sql_id=p_sql_id;
-    else
+/*    else
       select nvl(sql_text,sql_text_approx) into l_file_id
         from OPAS_OT_SQL_DESCRIPTIONS de,
              OPAS_OT_SQL_DATA da
        where de.sql_id = da.sql_id
          and da.sql_data_point_id=p_sql_data_point_id;
-    end if;
+    end if;*/
 
     for i in (SELECT line_number, payload
                 FROM V$OPAS_FILE_CONTENTBYROW
@@ -1085,10 +1093,10 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
     end loop;
 
     l_length := dbms_lob.getlength(l_text);
-    l_text := substr(l_text,1,32735);
+    l_text := substr(l_text,1,32600);
     p_output(1) := p_output(1)||l_text;
 
-    if l_length > 32735 then
+    if l_length > 32600 then
       p_output(1) := p_output(1)||'...Truncated...';
     end if;
 
@@ -1105,15 +1113,23 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
     end loop;
   end;
 
-  procedure print_section_html_i(p_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type,
-                                 p_section_name varchar2,
-                                 p_output out COREMOD_REPORT_UTILS.t_output_lines,
-                                 p_sql_id   opas_ot_sql_data.sql_id%type default null)
+  procedure print_sql_text_web(p_sql_id opas_ot_sql_data.sql_id%type)
+  is
+    l_output     COREMOD_REPORT_UTILS.t_output_lines;
+  begin
+    print_sql_text_web(p_sql_id, l_output);
+    print_section_web(l_output);
+  end;
+
+  procedure print_section_html_i(p_sql_id              opas_ot_sql_data.sql_id%type,
+                                 p_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type,
+                                 p_section_name        varchar2,
+                                 p_output          out COREMOD_REPORT_UTILS.t_output_lines)
   is
   begin
---coremod_log.log('print_section_html_i :'||p_sql_id);
+
       case p_section_name
-        when repsSQL_TEXT    then print_sql_text_web(p_sql_data_point_id,p_output,p_sql_id);
+        when repsSQL_TEXT    then print_sql_text_web(p_sql_id,p_output);
         when repsSHARING     then print_nonshared_section_base(p_sql_data_point_id,p_output);
         when repsVSQL        then print_vsql_section_base(p_sql_data_point_id,p_output);
         when repsEXADATA     then print_exa_section_base(p_sql_data_point_id,p_output);
@@ -1139,36 +1155,50 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
   end;
 
   procedure print_section_html(p_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type,
-                               p_section_name varchar2,
-                               p_sql_id   opas_ot_sql_data.sql_id%type default null)
+                               p_section_name        varchar2,
+                               p_sql_id              opas_ot_sql_data.sql_id%type)
   is
     l_status     opas_ot_sql_data_sect.gathering_status%type;
     l_errm       opas_ot_sql_data_sect.error_message%type;
     l_output     COREMOD_REPORT_UTILS.t_output_lines;
+    l_mode       number := case when p_sql_data_point_id is null then 1 else 0 end; --0 data point mode; 1 - all data point mode
+    l_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type;
   begin
---coremod_log.log('print_section_html :<'||p_sql_id||'> <'||p_section_name||'> <'||p_sql_data_point_id||'>');
+
     COREMOD_LOG.Start_SQL_GATHER_STAT('COREOBJ_SQL_REPORT_UTILS.print_section_html.GATHER_SQL_STAT');
     COREMOD_LOG.Start_SQL_TRACE('COREOBJ_SQL_REPORT_UTILS.print_section_html.SQL_TRACE');
 
-    COREOBJ_SQL_UTILS.is_section_ready(p_sql_data_point_id,p_section_name,l_status,l_errm);
---dbms_output.put_line(p_sql_data_point_id||':'||l_status);
-    if l_status = COREOBJ_SQL_UTILS.sstReady or
-       (p_section_name = repsSQL_TEXT and p_sql_id  is not null) then
+    for i in (select sql_data_point_id from opas_ot_sql_data where sql_id = p_sql_id and l_mode = 1 union
+              select sql_data_point_id from opas_ot_sql_data where sql_data_point_id = p_sql_data_point_id and l_mode = 0
+              order by 1)
+    loop
+      l_sql_data_point_id := i.sql_data_point_id;
+      COREOBJ_SQL_UTILS.is_section_ready(l_sql_data_point_id,p_section_name,l_status,l_errm);
 
-      print_section_html_i(p_sql_data_point_id,p_section_name,l_output,p_sql_id);
+      if l_status = COREOBJ_SQL_UTILS.sstReady or
+         (p_section_name = repsSQL_TEXT and l_status = COREOBJ_SQL_UTILS.sstNoSection)
+      then
+        if l_mode = 1 and p_section_name != repsSQL_TEXT then
+          print_header(l_sql_data_point_id, 1);
+        end if;
+        print_section_html_i(p_sql_id, l_sql_data_point_id,p_section_name,l_output);
 
-      if l_output is not null then
-        print_section_web(l_output);
+        if l_output is not null then
+          print_section_web(l_output);
+        end if;
+
+      elsif l_status = COREOBJ_SQL_UTILS.sstFailed then
+        htp.p('<b>Section name:</b> '|| COREMOD_DICT.gdicSQLREPSECT(p_section_name) ||'; <br>'|| l_errm);
+      elsif l_status in (COREOBJ_SQL_UTILS.sstNotStarted, COREOBJ_SQL_UTILS.sstInProgress) then
+        htp.p('<b>Section name:</b> '|| COREMOD_DICT.gdicSQLREPSECT(p_section_name) || ' <b>is not ready.</b>');
+      elsif l_status = COREOBJ_SQL_UTILS.sstEmpty then
+        htp.p('<b>Section name:</b> '|| COREMOD_DICT.gdicSQLREPSECT(p_section_name) || ' <b>is empty.</b>');
       end if;
+      htp.small(get_section_duration(l_sql_data_point_id,p_section_name));
+      htp.p('<br>');htp.p('<br>');
 
-    elsif l_status = COREOBJ_SQL_UTILS.sstFailed then
-      htp.p('<b>Section name:</b> '|| COREMOD_DICT.gdicSQLREPSECT(p_section_name) ||'; <br>'|| l_errm);
-    elsif l_status in (COREOBJ_SQL_UTILS.sstNotStarted, COREOBJ_SQL_UTILS.sstInProgress) then
-      htp.p('<b>Section name:</b> '|| COREMOD_DICT.gdicSQLREPSECT(p_section_name) || ' <b>is not ready.</b>');
-    elsif l_status = COREOBJ_SQL_UTILS.sstEmpty then
-      htp.p('<b>Section name:</b> '|| COREMOD_DICT.gdicSQLREPSECT(p_section_name) || ' <b>is empty.</b>');
-    end if;
-    htp.small(get_section_duration(p_sql_data_point_id,p_section_name));
+      if p_section_name = repsSQL_TEXT then exit; end if;
+    end loop;
 
     COREMOD_LOG.Stop_SQL_TRACE('COREOBJ_SQL_REPORT_UTILS.PRINT_SECTION_HTML.SQL_TRACE');
     COREMOD_LOG.Stop_SQL_GATHER_STAT('COREOBJ_SQL_REPORT_UTILS.PRINT_SECTION_HTML.GATHER_SQL_STAT');
@@ -1371,7 +1401,7 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
         end loop;
         l_output.delete;
       else
-        print_section_html_i(l_sql_data_point.sql_data_point_id,i.SECTION_NAME,l_output);
+        print_section_html_i(l_sql_data_point.sql_id, l_sql_data_point.sql_data_point_id,i.SECTION_NAME,l_output);
         for i in 1..l_output.count loop
           if length(l_output(i))>4000 then
             l_str := l_output(i);

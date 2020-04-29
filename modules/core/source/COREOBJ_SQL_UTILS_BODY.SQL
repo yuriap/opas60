@@ -13,7 +13,25 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       from opas_ot_sql_data_sect x
      where sql_data_point_id = p_sql_data_point_id and section_name = p_section_name;
   exception
-    when no_data_found then p_status := null; p_errm := null;
+    when no_data_found then p_status := sstNoSection; p_errm := null;
+  end;
+
+  function  is_section_no_data(p_sql_id              opas_ot_sql_data.sql_id%type,
+                                p_section_name           varchar2) return boolean
+  is
+    l_cnt number;
+  begin
+    case
+      when p_section_name = COREOBJ_SQL_REPORT_UTILS.repsSQL_TEXT then
+        select count(1) into l_cnt from opas_ot_sql_descriptions where sql_id = p_sql_id and (sql_text is not null or sql_text_approx is not null);
+      else
+       select count(1) into l_cnt
+        from opas_ot_sql_data_sect x
+       where sql_data_point_id in (select sql_data_point_id from opas_ot_sql_data where sql_id = p_sql_id)
+         and section_name = p_section_name
+         and gathering_status = sstReady;
+    end case;
+    return l_cnt=0;
   end;
 
   function  is_section_empty(p_sql_data_point_id      opas_ot_sql_data.sql_data_point_id%type,
@@ -128,7 +146,8 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     update opas_ot_sql_data_sect
        set end_gathering_dt = systimestamp,
            gathering_status = case when p_exception is null then case when p_rows_processed > 0 then sstReady else sstEmpty end else sstFailed end,
-           error_message    = p_exception
+           error_message    = p_exception,
+           amount_gathered  = p_rows_processed
      where sql_data_point_id = p_sql_data_point_id and section_name = p_section_name;
     commit;
   end;
@@ -187,6 +206,8 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
           first_discovered    = systimestamp,
           FIRST_DISCOVERED_AT = p_data.dblink
         where sql_id = p_data.sql_id;
+
+        coreobj_sql_tags.auto_tag_sql(p_sql_id => p_data.sql_id);
       else
         l_rows := 0;
       end if;
@@ -792,7 +813,8 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
            from gv$sql_optimizer_env]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || ' where sql_id=:p_sql_id';
 
     execute immediate l_sql using p_data.sql_data_point_id, p_data.sql_id;
-    l_rows := sql%rowcount;
+    --l_rows := sql%rowcount;
+    select count(distinct inst_id||':'||child_number) into l_rows from opas_ot_sql_opt_env where sql_data_point_id = p_data.sql_data_point_id;
 
     finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsOPTENV, p_rows_processed => l_rows);
   exception
@@ -1264,7 +1286,9 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                              p_awr_params t_awr_params_rec)
   is
     l_sql        varchar2(32765);
-    l_rows       number;
+    l_rows1      number;
+    l_rows2      number;
+    --l_rows3      number;
     l_obj_lst    varchar2(32765);
   begin
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_PLSQLSRC);
@@ -1295,7 +1319,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     l_sql := replace(l_sql,'<INST_LST>', p_awr_params.INSTANCE_LIST_C);
 
     execute immediate l_sql using p_data.sql_id, p_awr_params.DBID, p_awr_params.SNAP_START, p_awr_params.SNAP_END;
-    l_rows := sql%rowcount;
+    --l_rows := sql%rowcount;
 
     for i in (select plsql_entry_object_id, plsql_entry_subprogram_id from opas_ot_tmp_dbh_ash where plsql_entry_object_id is not null union
               select PLSQL_OBJECT_ID, PLSQL_SUBPROGRAM_ID from opas_ot_tmp_dbh_ash where PLSQL_OBJECT_ID is not null) loop
@@ -1384,6 +1408,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
         s.SESSION_TYPE, s.CON_ID, s.CON_DBID, s.USERNAME, s.PLSQL_TOP, s.PLSQL_END, s.MIN_SAMPLE_TIME, s.MAX_SAMPLE_TIME, s.SAMPLES, s.PGA_ALLOCATED, s.TEMP_SPACE_ALLOCATED,
         p_awr_params.INCARNATION#
       );
+    l_rows1 := sql%rowcount;
 
     merge into opas_ot_sql_awr_ash_plst t
       using (select
@@ -1419,10 +1444,11 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
         s.sql_id, s.DBID, s.SNAP_ID, s.SQL_PLAN_HASH_VALUE, s.SQL_FULL_PLAN_HASH_VALUE, s.SQL_PLAN_LINE_ID, s.SQL_PLAN_OPERATION,
         s.SQL_PLAN_OPTIONS, s.EVENT, s.SAMPLES, p_data.dblink, s.INSTANCE_NUMBER, s.OBJ, s.TBS, p_awr_params.INCARNATION#
       );
+    l_rows2 := sql%rowcount;
 
-    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_PLSQLSRC, p_rows_processed => l_rows);
-    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_ASHINVOKER, p_rows_processed => l_rows);
-    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_ASHPLSTATS, p_rows_processed => l_rows);
+    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_PLSQLSRC, p_rows_processed => l_rows1);
+    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_ASHINVOKER, p_rows_processed => l_rows1);
+    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_ASHPLSTATS, p_rows_processed => l_rows2);
   exception
     when others then
       rollback;

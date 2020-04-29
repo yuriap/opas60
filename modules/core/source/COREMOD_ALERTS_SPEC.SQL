@@ -17,6 +17,9 @@ PACKAGE COREMOD_ALERTS AS
                       p_link_param    opas_alert_queue.link_param%type) ;
 
   procedure viewed(p_alert_id  opas_alert_queue.alert_id%type);
+  procedure viewed(p_alert_type    opas_alert_queue.alert_type%type,
+                   p_alert_source  opas_alert_queue.alert_source%type,
+                   p_CREATED_LHHTZ varchar2);
 
   procedure cleanup;
 

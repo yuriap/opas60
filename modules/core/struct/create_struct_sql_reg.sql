@@ -24,9 +24,10 @@ tag_autoexpr        varchar2(4000)
 
 create table opas_ot_sql_sql2tags(
 sql_id              varchar2(13)                                     references opas_ot_sql_descriptions(sql_id) on delete cascade,
-tag                 varchar2(128)                                    references opas_ot_sql_tags(tag_name),  
+tag                 varchar2(128)                                    references opas_ot_sql_tags(tag_name),
+tag_type            varchar2(1),  --M MANUAL, A AUTO
 primary key (sql_id,tag))
-organization index;
+organization index including tag_type overflow;
 
 create table opas_ot_sql_auto_gather_sqls (
 ags_id          number                                           generated always as identity primary key,
@@ -116,7 +117,8 @@ section_name        varchar2(30)                           not null,
 start_gathering_dt  timestamp,
 end_gathering_dt    timestamp,
 gathering_status    varchar2(32)     default 'NOT_STARTED' not null,
-error_message       varchar2(4000)
+error_message       varchar2(4000),
+amount_gathered     number
 );
 
 alter table opas_ot_sql_data_sect ROW STORE COMPRESS ADVANCED;

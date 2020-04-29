@@ -6,6 +6,7 @@ PACKAGE COREOBJ_SQL_UTILS AS
   sstReady         constant varchar2(30) := 'Ready';
   sstFailed        constant varchar2(30) := 'Failed';
   sstEmpty         constant varchar2(30) := 'Empty';
+  sstNoSection     constant varchar2(30) := 'No section';
 
   srcV$            constant varchar2(30) := 'V$';
   srcHST           constant varchar2(30) := 'HST';
@@ -46,6 +47,8 @@ PACKAGE COREOBJ_SQL_UTILS AS
 
   function  is_section_empty(p_sql_data_point_id      opas_ot_sql_data.sql_data_point_id%type,
                              p_section_name           varchar2) return boolean;
+  function  is_section_no_data(p_sql_id              opas_ot_sql_data.sql_id%type,
+                                p_section_name           varchar2) return boolean;
 
   procedure init_section_statuses(p_sql_data_point_id opas_ot_sql_data.sql_data_point_id%type);
   procedure refresh_section(p_sql_data_point_id       opas_ot_sql_data.sql_data_point_id%type,

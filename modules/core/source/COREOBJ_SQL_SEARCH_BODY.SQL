@@ -181,7 +181,7 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
         end if;
         if gParams('P1411_TEXT_SEARCH_OPTIONS') like '%REGEXP' then
            l_sql := replace(l_sql, '<OPAS_FILES>', ', opas_files f');
-           l_sql := l_sql || q'[ and f.file_type='SQL Text' and nvl(d.sql_text, d.sql_text_approx) = f.file_id and regexp_like (f.file_contentc, ']' || gParams('P1411_CONTAINS') || q'[', 'i')]';
+           l_sql := l_sql || q'[ and f.file_type='SQL Text' and nvl(d.sql_text, d.sql_text_approx) = f.file_id and regexp_like (f.file_contentc, ']' || gParams('P1411_CONTAINS') || q'[', 'in')]';
         end if;
         if gParams('P1411_TEXT_SEARCH_OPTIONS') = 'NOTREGEXP' then
            l_sql := replace(l_sql,'and regexp_like','and not regexp_like');
@@ -319,7 +319,7 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
         if gParams.exists('P1411_CONTAINS') and gParams('P1411_CONTAINS') is not null then
           if gParams.exists('P1411_TEXT_SEARCH_OPTIONS') then
             if gParams('P1411_TEXT_SEARCH_OPTIONS') like '%REGEXP' or gParams('P1411_TEXT_SEARCH_OPTIONS') = 'ORATEXT' then
-               l_v_sql := l_v_sql || q'[ and regexp_like(d.sql_fulltext, ']' || gParams('P1411_CONTAINS') || q'[', 'i')]';
+               l_v_sql := l_v_sql || q'[ and regexp_like(d.sql_fulltext, ']' || gParams('P1411_CONTAINS') || q'[', 'in')]';
             end if;
             if gParams('P1411_TEXT_SEARCH_OPTIONS') = 'NOTREGEXP' then
                l_v_sql := replace(l_v_sql,'and regexp_like','and not regexp_like');
@@ -399,7 +399,7 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
         if gParams.exists('P1411_CONTAINS') and gParams('P1411_CONTAINS') is not null then
           if gParams.exists('P1411_TEXT_SEARCH_OPTIONS') then
             if gParams('P1411_TEXT_SEARCH_OPTIONS') like '%REGEXP' or gParams('P1411_TEXT_SEARCH_OPTIONS') = 'ORATEXT' then
-               l_awr_sql := l_awr_sql || q'[ and regexp_like(d.sql_text, ']' || gParams('P1411_CONTAINS') || q'[', 'i')]';
+               l_awr_sql := l_awr_sql || q'[ and regexp_like(d.sql_text, ']' || gParams('P1411_CONTAINS') || q'[', 'in')]';
             end if;
             if gParams('P1411_TEXT_SEARCH_OPTIONS') = 'NOTREGEXP' then
                l_awr_sql := replace(l_awr_sql,'and regexp_like','and not regexp_like');

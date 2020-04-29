@@ -30,11 +30,14 @@ PACKAGE COREOBJ_SQL_REPORT_UTILS AS
   defDataTimeFullFmt          constant varchar2(30) := 'YYYY/MM/DD HH24:MI:SS';
 
   function  get_header_refresh_interval(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type) return number;
-  procedure print_header(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type);
+  procedure print_header(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                         p_mode                 number default 0);
 
   procedure print_section_html(p_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type,
                                p_section_name varchar2,
-                               p_sql_id   opas_ot_sql_data.sql_id%type default null);
+                               p_sql_id   opas_ot_sql_data.sql_id%type);
+
+  procedure print_sql_text_web(p_sql_id opas_ot_sql_data.sql_id%type);
 
   --cmd utils
   function gathering_status(p_obj_id  opas_objects.obj_id%type) return TABLEOFSTRINGS pipelined;

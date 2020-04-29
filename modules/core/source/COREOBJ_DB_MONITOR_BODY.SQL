@@ -264,7 +264,7 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
     if p_end_dt is null then l_end_dt := systimestamp; p_end_dt := to_char(l_end_dt,p_dt_fmt); end if;
     if p_start_dt is null then p_start_dt := to_char(l_end_dt - TO_DSINTERVAL('1 00:00:00'),p_dt_fmt); end if;
 
-    coremod_log.log('p_chart_list: '||p_chart_list);
+    --coremod_log.log('p_chart_list: '||p_chart_list);
 
     if p_chart_list is not null then
       DBMS_UTILITY.COMMA_TO_TABLE (

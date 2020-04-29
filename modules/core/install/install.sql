@@ -105,12 +105,12 @@ begin
   COREMOD_TASKS.create_task (  p_taskname  => 'OPAS_SQL_LOCAL_SEARCH',
                                p_modname   => '&MODNM.',
                                p_is_public => 'Y', 
-							   p_task_priority => COREMOD_TASKS.tpLOW,
+							   p_task_priority => COREMOD_TASKS.tpHIGH,
                                p_task_body => 'begin COREOBJ_SQL_SEARCH.start_local_search(p_session_id => <B1>); end;');
   COREMOD_TASKS.create_task (  p_taskname  => 'OPAS_SQL_EXTERNAL_SEARCH',
                                p_modname   => '&MODNM.',
                                p_is_public => 'Y', 
-							   p_task_priority => COREMOD_TASKS.tpLOW,
+							   p_task_priority => COREMOD_TASKS.tpHIGH,
                                p_task_body => 'begin COREOBJ_SQL_SEARCH.start_external_search(p_session_id => <B1>); end;');
 end;
 /

@@ -44,6 +44,10 @@ PACKAGE COREOBJ_API AS
                    p_is_readonly     opas_objects.is_readonly%type default 'N',
                    p_retention       number default -1);
 
+  procedure edit_descr  (p_obj_id          opas_objects.obj_id%type,
+                         p_obj_name        opas_objects.obj_name%type,
+                         p_obj_descr       opas_objects.obj_descr%type);
+
   procedure remove(p_obj_id opas_objects.obj_id%type);
 
   procedure copy  (p_src_obj_id       opas_objects.obj_id%type,

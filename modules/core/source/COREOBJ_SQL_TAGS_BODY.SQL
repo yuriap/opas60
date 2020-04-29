@@ -19,17 +19,19 @@ package body coreobj_sql_tags is
 
   end;
 
-  procedure remove(p_tag_name opas_ot_sql_tags.tag_name%type)
+  procedure remove(p_tag_name opas_ot_sql_tags.tag_name%type,
+                   p_tag_type opas_ot_sql_sql2tags.tag_type%type default '%')
   is
   begin
-    remove_tag_from_sqls(p_tag_name);
+    remove_tag_from_sqls(p_tag_name, p_tag_type);
     delete from opas_ot_sql_tags where tag_name = p_tag_name;
   end;
 
-  procedure remove_tag_from_sqls(p_tag_name opas_ot_sql_tags.tag_name%type)
+  procedure remove_tag_from_sqls(p_tag_name opas_ot_sql_tags.tag_name%type,
+                                 p_tag_type opas_ot_sql_sql2tags.tag_type%type default 'A')
   is
   begin
-    delete from opas_ot_sql_sql2tags where tag = p_tag_name;
+    delete from opas_ot_sql_sql2tags where tag = p_tag_name and tag_type like p_tag_type;
   end;
 
   procedure tag_sql(p_tag_names varchar2,
@@ -50,10 +52,12 @@ package body coreobj_sql_tags is
         l_tag := l_names;
       end if;
       --coremod_log.log('coreobj_sql_tags.tag_sql: '||l_cnt||' -- '||l_tag);
-      insert into opas_ot_sql_sql2tags
-        (sql_id, tag)
-      values
-        (p_sql_id, l_tag);
+      if l_tag is not null then
+        insert into opas_ot_sql_sql2tags
+          (sql_id, tag, tag_type)
+        values
+          (p_sql_id, l_tag, 'M');
+      end if;
       l_names := substr(l_names,instr(l_names,':')+1);
       --coremod_log.log('coreobj_sql_tags.tag_sql: '||l_names);
       exit when l_names is null; -- or l_cnt > 10;
@@ -106,12 +110,6 @@ package body coreobj_sql_tags is
     return rtrim(l_parsed,p_delim);
   end;
 
-  procedure test_tag_expr(p_tag_name opas_ot_sql_tags.tag_name%type)
-  is
-  begin
-    null;
-  end;
-
   procedure auto_tag_sql(p_sql_id    opas_ot_sql_descriptions.sql_id%type)
   is
     l_sql_id opas_ot_sql_descriptions.sql_id%type;
@@ -126,9 +124,9 @@ package body coreobj_sql_tags is
       fetch l_crsr into l_sql_id;
       if l_crsr%found then
         insert into opas_ot_sql_sql2tags
-          (sql_id, tag)
+          (sql_id, tag, tag_type)
         values
-          (p_sql_id, i.tag_name);
+          (p_sql_id, i.tag_name, 'A');
       end if;
       close l_crsr;
     end loop;
@@ -152,7 +150,7 @@ package body coreobj_sql_tags is
         merge into opas_ot_sql_sql2tags t
         using (select l_sql_id sql_id, p_tag_name tag from dual) s
         on (s.sql_id = t.sql_id and s.tag = t.tag)
-        when not matched then insert (t.sql_id, t.tag) values (s.sql_id, s.tag);
+        when not matched then insert (t.sql_id, t.tag, t.tag_type) values (s.sql_id, s.tag, 'A');
 
       end loop;
       close l_crsr;
@@ -166,6 +164,32 @@ package body coreobj_sql_tags is
     l_tq_id:=COREMOD_TASKS.prep_execute_task (  P_TASKNAME => 'OPAS_SQL_TAGSQL') ;
     COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => 'B1', p_varchar_par => p_tag_name);
     COREMOD_TASKS.queue_task ( p_tq_id => l_tq_id ) ;
+  end;
+
+  procedure tag_sql_by_expr(p_tag_name opas_ot_sql_tags.tag_name%type,
+                            p_expr     varchar2)
+  is
+    l_sql_id opas_ot_sql_descriptions.sql_id%type;
+    l_crsr   sys_refcursor;
+  begin
+    --coremod_log.log('coreobj_sql_tags.tag_sql: '||p_tag_names||' -- ' || p_sql_id);
+
+    for i in (select * from opas_ot_sql_tags where tag_name = p_tag_name)
+    loop
+      open l_crsr for
+        q'[select sql_id from opas_ot_sql_descriptions s, opas_files f where s.sql_text = f.file_id and (]'||p_expr||')';
+      loop
+        fetch l_crsr into l_sql_id;
+        exit when l_crsr%notfound;
+
+        merge into opas_ot_sql_sql2tags t
+        using (select l_sql_id sql_id, p_tag_name tag from dual) s
+        on (s.sql_id = t.sql_id and s.tag = t.tag)
+        when not matched then insert (t.sql_id, t.tag, t.tag_type) values (s.sql_id, s.tag, 'M');
+
+      end loop;
+      close l_crsr;
+    end loop;
   end;
 
 end coreobj_sql_tags;

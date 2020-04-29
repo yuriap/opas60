@@ -166,11 +166,11 @@ package body coreobj_autosql is
     loop
       for i in (select plan_hash_value from OPAS_OT_TMP_AGS_SQLS where plan_hash_value<>0 group by plan_hash_value having count(1)>1)
       loop
-        for j in (select * from (select * from OPAS_OT_TMP_AGS_SQLS where plan_hash_value = i.plan_hash_value order by dbms_random.value) where rownum=1)
+        for j in (select sql_id,cast(substr(sql_text,1,4000) as varchar2(4000)) sql_text from (select * from OPAS_OT_TMP_AGS_SQLS where plan_hash_value = i.plan_hash_value order by dbms_random.value) where rownum=1)
         loop
           for k in (select x.rowid rd from OPAS_OT_TMP_AGS_SQLS x where plan_hash_value = i.plan_hash_value and sql_id <> j.sql_id)
           loop
-            update OPAS_OT_TMP_AGS_SQLS xx set jaro_winkler_similarity = UTL_MATCH.jaro_winkler_similarity(j.sql_text,xx.sql_text) where xx.rowid=k.rd;
+            update OPAS_OT_TMP_AGS_SQLS xx set jaro_winkler_similarity = UTL_MATCH.jaro_winkler_similarity(j.sql_text,cast(substr(xx.sql_text,1,4000) as varchar2(4000))) where xx.rowid=k.rd;
           end loop;
         end loop;
       end loop;
@@ -181,12 +181,14 @@ package body coreobj_autosql is
       update OPAS_OT_TMP_AGS_SQLS set jaro_winkler_similarity = null;
     end loop;
 
+    l_iter := 0;
     open l_crsr for
       q'[select sql_id, sql_text from OPAS_OT_TMP_AGS_SQLS where (]'||l_ags.sqltext_filter||')';
     loop
       fetch l_crsr into l_sql_id, l_sql_text;
       exit when l_crsr%notfound;
 
+      l_iter := l_iter + 1;
       l_file_id := COREMOD_FILE_UTILS.create_file(P_MODNAME => COREMOD_API.gMODNAME,
                                                   P_FILE_TYPE => 'SQL Text',
                                                   P_FILE_NAME => l_sql_id,
@@ -205,9 +207,12 @@ package body coreobj_autosql is
     --load into reg
     --set tags
     commit;
+    coremod_tasks.log('coreobj_autosql.execute_autosql '||l_iter||' added in total');
   exception
     when others then rollback;
-    raise;
+      coremod_tasks.log('Error coreobj_autosql.execute_autosql ('||p_ags_id||'): '||sqlerrm);
+      coremod_tasks.log('Error coreobj_autosql.execute_autosql error stack: '||DBMS_UTILITY.FORMAT_ERROR_STACK);
+      raise_application_error(-20000, 'Error coreobj_autosql.execute_autosql ('||p_ags_id||'): '||sqlerrm);
   end;
 
 end coreobj_autosql;

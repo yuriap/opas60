@@ -707,6 +707,8 @@ create table opas_object_pars (
 
 create unique index idx_opas_obj_pars on opas_object_pars(obj_id, par_name);
 
+alter table opas_object_pars add jsparams       CLOB;
+alter table opas_object_pars add CONSTRAINT obj_pars_json_chk CHECK (jsparams IS JSON);
 
 ---------------------------------------------------------------------------------------------
 -- task execution infrasrtucture
