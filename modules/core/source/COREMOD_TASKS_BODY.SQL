@@ -214,6 +214,8 @@ package body coremod_tasks as
       else
         if i.cnt < to_number(COREMOD_API.getconf('MAXTHREADS'||i.task_priority,COREMOD_API.gMODNAME)) then
           l_freeslots:= to_number(COREMOD_API.getconf('MAXTHREADS'||i.task_priority,COREMOD_API.gMODNAME)) - i.cnt;
+        else
+          l_freeslots := 0;
         end if;
       end if;
 

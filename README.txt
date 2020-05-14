@@ -4,6 +4,11 @@ Version 6.2 PROD
 Release notes:
 ==============
 
+Version 6.3.0 2020-May-14
+-------------------------
+SQL Cacther
+ - automates collecting of SQL performance data
+
 Version 6.2.0 2020-Apr-17
 -------------------------
 SQL Registry

@@ -1437,3 +1437,39 @@ chart_name      varchar2(1000));
 
 --create unique index idx_opas_lists2sqls_sql_l on opas_ot_lists2sqls(sqllst_id, sql_id);
 --create index idx_opas_lists2sqls_sql   on opas_ot_lists2sqls(sql_id);
+
+
+create table opas_ot_sqlcatch (
+ obj_id                            number                                 not null  references opas_objects(obj_id) on delete cascade,
+ srcdb                             varchar2(128)                                    references opas_db_links (db_link_name),
+ search_condition                  varchar2(4000),
+ sql_num_limit                     number,
+ sql_time_limit                    number,
+ check_interval                    number,
+ status                            varchar2(10),
+ tq_id                             number,
+ primary key (obj_id)
+);
+
+--create index idx_opas_sql_dp_ref_dp  on opas_ot_sql_data_point_ref(sql_data_point_id);
+--create unique index idx_opas_sql_dp_rep_mon on opas_ot_sql_data_point_ref(obj_id);
+
+
+create table opas_ot_sqlcatch_sqls (
+ obj_id                            number                                 not null  references opas_ot_sqlcatch(obj_id) on delete cascade,
+ sql_id                            varchar2(13 byte), 
+ status                            varchar2(10),
+ execs_num_to_init                 number,
+ actual_execs                      number,
+ sql_text                          varchar2(4000)
+ primary key (obj_id, sql_id)
+);
+
+--create index idx_opas_sql_dp_ref_dp  on opas_ot_sql_data_point_ref(sql_data_point_id);
+--create unique index idx_opas_sql_dp_rep_mon on opas_ot_sql_data_point_ref(obj_id);
+
+create global temporary table opas_ot_tmp_sqlcatch_sqls (
+ sql_id                            varchar2(13 byte), 
+ actual_execs                      number,
+ sql_text                          varchar2(4000)
+) on commit preserve rows;

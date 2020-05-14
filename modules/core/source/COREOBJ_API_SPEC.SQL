@@ -14,6 +14,7 @@ PACKAGE COREOBJ_API AS
   otAWR_DUMP                  constant number := 400;
   otDB_GROWTH_TRACKER         constant number := 500;
   otSIMPLE_DB_MONITOR         constant number := 600;
+  otSQL_Catcher               constant number := 700;
 
   type t_string_indexed_tbl is table of varchar2(4000) index by pls_integer;
 

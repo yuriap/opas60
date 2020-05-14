@@ -62,7 +62,8 @@ PACKAGE BODY COREOBJ_SQL AS
       P_OBJ_PRNT  => P_OBJ_PRNT,
       P_OBJ_OT    => COREOBJ_API.otSQL_PERFORMANCE_DATA,
       P_OBJ_NAME  => p_sql_id,
-      P_OBJ_DESCR => p_descr) ;
+      P_OBJ_DESCR => p_descr,
+      p_obj_owner => p_owner) ;
 
     coreobj_sql.add_sql_description(p_sql_id => p_sql_id,
                                     p_created_by => p_owner,
@@ -237,6 +238,8 @@ end loop;
      where r.obj_id=p_obj_id and r.SQL_DATA_POINT_ID=d.SQL_DATA_POINT_ID;
 
     return l_status;
+  exception
+    when others then return 'Broken: '||SQLCODE;
   end;
 
 END COREOBJ_SQL;

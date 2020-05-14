@@ -1476,6 +1476,14 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     l_ts2        timestamp with time zone;
     l_found      number;
   begin
+
+    coremod_log.log('update_dblink_db_info_awrsn','DEBUG');
+    coremod_log.log('p_db_link_name: '||p_db_link_name,'DEBUG');
+    coremod_log.log('p_days: '||p_days,'DEBUG');
+    coremod_log.log('p_sql_id: '||p_sql_id,'DEBUG');
+    coremod_log.log('p_start_dt: '||to_char(p_start_dt,'YYYY-MM-DD HH24:MI:SS'),'DEBUG');
+    coremod_log.log('p_end_dt: '||to_char(p_end_dt,'YYYY-MM-DD HH24:MI:SS'),'DEBUG');
+
     select DBLINK, dbid, null CON_ID into p_params.DBLINK, p_params.DBID, p_params.CON_ID from OPAS_DB_LINK_V$DB where DBLINK = p_db_link_name and IS_ACTUAL = 'Y';
 
     delete from opas_dbl_tmp_awrsnaps;
@@ -1484,7 +1492,10 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     execute immediate l_sql into p_params.INCARNATION#;
     l_sql := null;
 
-    if p_days is not null then
+    if p_start_dt is not null and p_end_dt is not null then
+      l_ts1 := p_start_dt;
+      l_ts2 := p_end_dt;
+    else -- p_days is not null then
       if p_search_last_days then
         l_sql :=q'[select max(END_INTERVAL_TIME), count(1) found_cnt from dba_hist_snapshot]' || COREMOD_API.get_dblink_for_query(p_db_link_name) ||
                 q'[ s, dba_hist_sqlstat]' || COREMOD_API.get_dblink_for_query(p_db_link_name) ||
@@ -1498,10 +1509,10 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
         l_ts2 := systimestamp;
       end if;
       l_ts1 := l_ts2 - NUMTODSINTERVAL(p_days, 'day');
-    else
-      l_ts1 := p_start_dt;
-      l_ts2 := p_end_dt;
     end if;
+
+    coremod_log.log('l_ts1: '||to_char(l_ts1,'YYYY-MM-DD HH24:MI:SS'),'DEBUG');
+    coremod_log.log('l_ts2: '||to_char(l_ts2,'YYYY-MM-DD HH24:MI:SS'),'DEBUG');
 
     l_sql :=q'[INSERT /*+ OPAS60_DBLINK_AWRSN */ INTO opas_dbl_tmp_awrsnaps (<SRC_DB_COL_LICT>)
               select <SRC_DB_COL_LICT> from dba_hist_snapshot]' || COREMOD_API.get_dblink_for_query(p_db_link_name) ||
@@ -1544,6 +1555,16 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
        p_params.INCARNATION#
        );
     --commit;
+    coremod_log.log('t_awr_params_rec','DEBUG');
+    coremod_log.log('DBLINK: '||p_params.DBLINK,'DEBUG');
+    coremod_log.log('DBID: '||p_params.DBID,'DEBUG');
+    coremod_log.log('CON_ID: '||p_params.CON_ID,'DEBUG');
+    coremod_log.log('INSTANCE_LIST_C: '||p_params.INSTANCE_LIST_C,'DEBUG');
+    coremod_log.log('SNAP_START: '||p_params.SNAP_START,'DEBUG');
+    coremod_log.log('SNAP_END: '||p_params.SNAP_END,'DEBUG');
+    coremod_log.log('BEGIN_INTERVAL_TIME: '||to_char(p_params.BEGIN_INTERVAL_TIME,'YYYY-MM-DD HH24:MI:SS'),'DEBUG');
+    coremod_log.log('END_INTERVAL_TIME: '||to_char(p_params.END_INTERVAL_TIME,'YYYY-MM-DD HH24:MI:SS'),'DEBUG');
+    coremod_log.log('INCARNATION#: '||p_params.INCARNATION#,'DEBUG');
   exception
     when others then
       rollback;
@@ -1617,8 +1638,8 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     l_end_dt           timestamp with time zone;
     l_search_last_days boolean := false;
   begin
-    l_start_dt := COREOBJ_API.get_param_z(p_obj_id, pnAWRStartDT, false);
-    l_end_dt := COREOBJ_API.get_param_z(p_obj_id, pnAWREndDT, false);
+    l_start_dt := COREOBJ_API.get_param_d(p_obj_id, pnAWRStartDT, false);
+    l_end_dt := COREOBJ_API.get_param_d(p_obj_id, pnAWREndDT, false);
 
     if l_start_dt is not null and l_end_dt is not null then
       l_awrdays := null;
