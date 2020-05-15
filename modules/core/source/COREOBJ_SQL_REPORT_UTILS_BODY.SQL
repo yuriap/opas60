@@ -3,7 +3,7 @@ PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
 
   gwNarrowSection    constant number := 620;
   gwWideSection1     constant number := 1400;
-  gdHeaderRepeat     constant number := 45;
+  gdHeaderRepeat     constant number := 30;
 
 
   function get_header_refresh_interval(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type) return number
@@ -690,8 +690,28 @@ q'[select plan_table_output "Plan Table Output" from table(dbms_xplan.display('O
   begin
 
 --    p_output(1) := '<b>Summary for each PLAN HASH</b>';
+    p_output(1):=HTF.header (4,cheader=>HTF.ANCHOR (curl=>'',ctext=>'V$ASH Identitiy',cname=>'vash_ident',cattributes=>'class="awr"'),cattributes=>'class="awr"');
+    p_output(p_output.count+1):=HTF.BR;
 
-    p_output(1):=HTF.header (4,cheader=>HTF.ANCHOR (curl=>'',ctext=>'Summary for each PLAN HASH',cname=>'vash_summ1',cattributes=>'class="awr"'),cattributes=>'class="awr"');
+    COREMOD_REPORT_UTILS.print_query_result_html (
+p_query => replace(replace(q'[select to_char(MIN_SAMPLE_TIME,'<DTFMT>') MIN_SAMPLE_TIME, to_char(MAX_SAMPLE_TIME,'<DTFMT>') MAX_SAMPLE_TIME,to_char(SQL_EXEC_START,'<DTFMT>') SQL_EXEC_START,PROGRAM,MODULE,ACTION,CLIENT_ID,SAMPLES_CNT
+  from opas_ot_sql_ash_ident x where sql_data_point_id = <sql_data_point_id> and source_tab='V$'
+ order by SAMPLES_CNT desc]','<sql_data_point_id>',p_sql_data_point_id),'<DTFMT>',defDataTimeFmt),
+                                            p_width => gwWideSection1,
+                                            p_summary => 'V$ASH Identity',
+                                            --p_search varchar2 default null,
+                                            --p_replacement varchar2 default null,
+                                            p_style_tab => 'trctd',
+                                            p_style_head => 'trchd', --head
+                                            p_style_r1 => 'trcr1',   --odd rows
+                                            p_style_r2  => 'trcr2', --even rows
+                                            p_style_finrow => null, --'trctotr',
+                                            p_header => gdHeaderRepeat, --number default 0,
+                                            p_break_col => null, --'plan_hash_value',
+                                            p_output => print_vash_section_base.p_output);
+    p_output(p_output.count+1):=HTF.BR;
+
+    p_output(p_output.count+1):=HTF.header (4,cheader=>HTF.ANCHOR (curl=>'',ctext=>'Summary for each PLAN HASH',cname=>'vash_summ1',cattributes=>'class="awr"'),cattributes=>'class="awr"');
 
     p_output(p_output.count+1):=HTF.LISTITEM(cattributes=>'class="awr"',ctext=>HTF.ANCHOR (curl=>'#vash_summ1',ctext=>'Summary for each PLAN HASH',cattributes=>'class="awr"'));
     p_output(p_output.count+1):=HTF.LISTITEM(cattributes=>'class="awr"',ctext=>HTF.ANCHOR (curl=>'#vash_summ2',ctext=>'Summary for each PLAN HASH per HOUR',cattributes=>'class="awr"'));
@@ -953,7 +973,28 @@ order by s.snap_id, topn]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt
   begin
     --p_output(1) := '<b>Summary for each PLAN HASH</b>';
 
-    p_output(1):=HTF.header (4,cheader=>HTF.ANCHOR (curl=>'',ctext=>'Summary for each PLAN HASH',cname=>'awrash_summ1',cattributes=>'class="awr"'),cattributes=>'class="awr"');
+    p_output(1):=HTF.header (4,cheader=>HTF.ANCHOR (curl=>'',ctext=>'AWR ASH Identitiy',cname=>'awrash_ident',cattributes=>'class="awr"'),cattributes=>'class="awr"');
+    p_output(p_output.count+1):=HTF.BR;
+
+    COREMOD_REPORT_UTILS.print_query_result_html (
+p_query => replace(replace(q'[select to_char(MIN_SAMPLE_TIME,'<DTFMT>') MIN_SAMPLE_TIME, to_char(MAX_SAMPLE_TIME,'<DTFMT>') MAX_SAMPLE_TIME,to_char(SQL_EXEC_START,'<DTFMT>') SQL_EXEC_START,PROGRAM,MODULE,ACTION,CLIENT_ID,SAMPLES_CNT
+  from opas_ot_sql_ash_ident x where sql_data_point_id = <sql_data_point_id> and source_tab='AWR'
+ order by SAMPLES_CNT desc]','<sql_data_point_id>',p_sql_data_point_id),'<DTFMT>',defDataTimeFmt),
+                                            p_width => gwWideSection1,
+                                            p_summary => 'AWR ASH Identity',
+                                            --p_search varchar2 default null,
+                                            --p_replacement varchar2 default null,
+                                            p_style_tab => 'trctd',
+                                            p_style_head => 'trchd', --head
+                                            p_style_r1 => 'trcr1',   --odd rows
+                                            p_style_r2  => 'trcr2', --even rows
+                                            p_style_finrow => null, --'trctotr',
+                                            p_header => gdHeaderRepeat, --number default 0,
+                                            p_break_col => null, --'plan_hash_value',
+                                            p_output => print_awr_ashplstats_section_base.p_output);
+    p_output(p_output.count+1):=HTF.BR;
+
+    p_output(p_output.count+1):=HTF.header (4,cheader=>HTF.ANCHOR (curl=>'',ctext=>'Summary for each PLAN HASH',cname=>'awrash_summ1',cattributes=>'class="awr"'),cattributes=>'class="awr"');
 
     p_output(p_output.count+1):=HTF.LISTITEM(cattributes=>'class="awr"',ctext=>HTF.ANCHOR (curl=>'#awrash_summ1',ctext=>'Summary for each PLAN HASH',cattributes=>'class="awr"'));
     p_output(p_output.count+1):=HTF.LISTITEM(cattributes=>'class="awr"',ctext=>HTF.ANCHOR (curl=>'#awrash_summ2',ctext=>'Summary for each PLAN HASH per HOUR',cattributes=>'class="awr"'));
@@ -1204,7 +1245,8 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
     COREMOD_LOG.Stop_SQL_GATHER_STAT('COREOBJ_SQL_REPORT_UTILS.PRINT_SECTION_HTML.GATHER_SQL_STAT');
   end;
 
-  function print_report_html(p_obj_id  opas_objects.obj_id%type) return TABLEOFSTRINGS pipelined
+  function print_report_html(p_obj_id  opas_objects.obj_id%type,
+                             p_section_list varchar2 default null) return TABLEOFSTRINGS pipelined
   is
     l_output              COREMOD_REPORT_UTILS.t_output_lines;
     l_str                 varchar2(32765);
@@ -1212,6 +1254,11 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
     l_object              opas_objects%rowtype;
     l_text                clob;
     --l_sub_plan_txtx       boolean := false;
+    function doprint(p_section_nm varchar2) return boolean
+    is
+    begin
+      return nvl(p_section_list, 'ALLSECTIONS') = 'ALLSECTIONS' or instr(p_section_list,p_section_nm)>0;
+    end;
   begin
 
     COREMOD_LOG.Start_SQL_GATHER_STAT('COREOBJ_SQL_REPORT_UTILS.PRINT_REPORT_HTML.GATHER_SQL_STAT');
@@ -1252,7 +1299,7 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
                           )
               );
 
-    for i in (select d.DISPLAY_VAL,d.SPARSE1,s.GATHERING_STATUS
+    for i in (select d.DISPLAY_VAL,d.SPARSE1,s.GATHERING_STATUS, s.section_name
                 from OPAS_DICTIONARY d, OPAS_OT_SQL_DATA_SECT s
                where d.val=s.SECTION_NAME
                  and s.SQL_DATA_POINT_ID=l_sql_data_point.sql_data_point_id
@@ -1260,19 +1307,21 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
                  and d.DIC_NAME='SQLREPSECT'
                order by d.DIC_ORDR)
     loop
-      if i.GATHERING_STATUS<>COREOBJ_SQL_UTILS.sstReady then
-      pipe row (HTF.LISTITEM(cattributes=>'class="awr"',
-                             ctext=>i.DISPLAY_VAL||' ('||i.GATHERING_STATUS||')'
-                            )
-                );
-      else
+      if doprint(i.section_name) then
+        if i.GATHERING_STATUS<>COREOBJ_SQL_UTILS.sstReady then
         pipe row (HTF.LISTITEM(cattributes=>'class="awr"',
-                               ctext=>HTF.ANCHOR (curl=>'#'||i.SPARSE1,
-                                                  ctext=>i.DISPLAY_VAL,
-                                                  cattributes=>'class="awr"'
-                                                  )
+                               ctext=>i.DISPLAY_VAL||' ('||i.GATHERING_STATUS||')'
                               )
                   );
+        else
+          pipe row (HTF.LISTITEM(cattributes=>'class="awr"',
+                                 ctext=>HTF.ANCHOR (curl=>'#'||i.SPARSE1,
+                                                    ctext=>i.DISPLAY_VAL,
+                                                    cattributes=>'class="awr"'
+                                                    )
+                                )
+                    );
+        end if;
       end if;
     end loop;
     pipe row (HTF.BR);
@@ -1326,45 +1375,21 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
                  and dp.sql_data_point_id=s.sql_data_point_id
                order by d.DIC_ORDR)
     loop
+      if doprint(i.section_name) then
+        pipe row (HTF.header (3,cheader=>HTF.ANCHOR (curl=>'',ctext=>i.DISPLAY_VAL,cname=>i.SPARSE1,cattributes=>'class="awr"'),cattributes=>'class="awr"'));
 
-      pipe row (HTF.header (3,cheader=>HTF.ANCHOR (curl=>'',ctext=>i.DISPLAY_VAL,cname=>i.SPARSE1,cattributes=>'class="awr"'),cattributes=>'class="awr"'));
+        if i.SECTION_NAME like 'SQLPL%' then
 
-      if i.SECTION_NAME like 'SQLPL%' then
-
-        for i in (select d.DISPLAY_VAL,d.SPARSE1,s.GATHERING_STATUS
-                    from OPAS_DICTIONARY d, OPAS_OT_SQL_DATA_SECT s
-                   where d.val=s.SECTION_NAME
-                     and s.SQL_DATA_POINT_ID=l_sql_data_point.sql_data_point_id
-                     and d.MODNAME=COREMOD_API.getMODNAME
-                     and d.DIC_NAME='SQLREPSECT'
-                     and s.SECTION_NAME like 'SQLPL%'
-                     and s.GATHERING_STATUS=COREOBJ_SQL_UTILS.sstReady
-                   order by d.DIC_ORDR)
-        loop
-          pipe row (HTF.LISTITEM(cattributes=>'class="awr"',
-                                 ctext=>HTF.ANCHOR (curl=>'#'||i.SPARSE1,
-                                                    ctext=>i.DISPLAY_VAL,
-                                                    cattributes=>'class="awr"'
-                                                    )
-                                )
-                    );
-        end loop;
-        pipe row (HTF.BR);
-      end if;
-      pipe row (HTF.BR);
-
-      if i.SECTION_NAME like 'AWR_%' then
-
-        for i in (select d.DISPLAY_VAL,d.SPARSE1,s.GATHERING_STATUS
-                    from OPAS_DICTIONARY d, OPAS_OT_SQL_DATA_SECT s
-                   where d.val=s.SECTION_NAME
-                     and s.SQL_DATA_POINT_ID=l_sql_data_point.sql_data_point_id
-                     and d.MODNAME=COREMOD_API.getMODNAME
-                     and d.DIC_NAME='SQLREPSECT'
-                     and s.SECTION_NAME like 'AWR_%'
-                     and s.GATHERING_STATUS=COREOBJ_SQL_UTILS.sstReady
-                   order by d.DIC_ORDR)
-        loop
+          for i in (select d.DISPLAY_VAL,d.SPARSE1,s.GATHERING_STATUS
+                      from OPAS_DICTIONARY d, OPAS_OT_SQL_DATA_SECT s
+                     where d.val=s.SECTION_NAME
+                       and s.SQL_DATA_POINT_ID=l_sql_data_point.sql_data_point_id
+                       and d.MODNAME=COREMOD_API.getMODNAME
+                       and d.DIC_NAME='SQLREPSECT'
+                       and s.SECTION_NAME like 'SQLPL%'
+                       and s.GATHERING_STATUS=COREOBJ_SQL_UTILS.sstReady
+                     order by d.DIC_ORDR)
+          loop
             pipe row (HTF.LISTITEM(cattributes=>'class="awr"',
                                    ctext=>HTF.ANCHOR (curl=>'#'||i.SPARSE1,
                                                       ctext=>i.DISPLAY_VAL,
@@ -1372,61 +1397,125 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
                                                       )
                                   )
                       );
-        end loop;
+          end loop;
+          pipe row (HTF.BR);
+        end if;
+
+        pipe row (HTF.BR);
+
+        if i.SECTION_NAME like 'AWR_%' then
+
+          for i in (select d.DISPLAY_VAL,d.SPARSE1,s.GATHERING_STATUS
+                      from OPAS_DICTIONARY d, OPAS_OT_SQL_DATA_SECT s
+                     where d.val=s.SECTION_NAME
+                       and s.SQL_DATA_POINT_ID=l_sql_data_point.sql_data_point_id
+                       and d.MODNAME=COREMOD_API.getMODNAME
+                       and d.DIC_NAME='SQLREPSECT'
+                       and s.SECTION_NAME like 'AWR_%'
+                       and s.GATHERING_STATUS=COREOBJ_SQL_UTILS.sstReady
+                     order by d.DIC_ORDR)
+          loop
+            pipe row (HTF.LISTITEM(cattributes=>'class="awr"',
+                                   ctext=>HTF.ANCHOR (curl=>'#'||i.SPARSE1,
+                                                      ctext=>i.DISPLAY_VAL,
+                                                      cattributes=>'class="awr"'
+                                                      )
+                                  )
+                      );
+          end loop;
+          pipe row (HTF.BR);
+        end if;
+        pipe row (HTF.BR);
+
+        if i.SECTION_NAME = repsSQL_TEXT then
+          if i.txt is not null then
+            COREMOD_FILE_UTILS.get_locator(i.txt, l_text);
+          else
+            l_text := 'No SQL text acailable';
+          end if;
+          COREMOD_REPORT_UTILS.convert_to_html_table (
+            P_TEXT => 'SQL Text'||chr(10)||l_text,
+            P_INPUT => l_output,
+            P_T_HEADER => '#FIRST_LINE#',
+            P_WIDTH => 0, --auto width
+            --P_SEARCH => P_SEARCH,
+            --P_REPLACEMENT => P_REPLACEMENT,
+            --P_COMPARISON => P_COMPARISON,
+            P_STYLE_TAB => 'trctd',
+            P_STYLE_HEAD => 'trchd',
+            P_STYLE_R1 => 'awrc1',--'trcr1',
+            P_STYLE_R2 => 'awrnc1',--'trcr2',
+            P_OUTPUT => l_output);
+          for i in 1..l_output.count loop
+            pipe row (substr(l_output(i),1,4000));
+          end loop;
+          l_output.delete;
+        else
+          print_section_html_i(l_sql_data_point.sql_id, l_sql_data_point.sql_data_point_id,i.SECTION_NAME,l_output);
+          for i in 1..l_output.count loop
+            if length(l_output(i))>4000 then
+              l_str := l_output(i);
+              loop
+                pipe row (substr(l_str,1,4000));
+                l_str := substr(l_str,4000);
+                exit when l_str is null;
+              end loop;
+            else
+              pipe row (l_output(i));
+            end if;
+          end loop;
+        end if;
+        l_output.delete;
+
+        pipe row (HTF.BR);
+        pipe row (HTF.LISTITEM(cattributes=>'class="awr"',ctext=>HTF.ANCHOR (curl=>'#tblofcont',ctext=>'Back to top',cattributes=>'class="awr"')));
         pipe row (HTF.BR);
       end if;
-      pipe row (HTF.BR);
-
-      if i.SECTION_NAME = repsSQL_TEXT then
-        if i.txt is not null then
-          COREMOD_FILE_UTILS.get_locator(i.txt, l_text);
-        else
-          l_text := 'No SQL text acailable';
-        end if;
-        COREMOD_REPORT_UTILS.convert_to_html_table (
-          P_TEXT => 'SQL Text'||chr(10)||l_text,
-          P_INPUT => l_output,
-          P_T_HEADER => '#FIRST_LINE#',
-          P_WIDTH => 0, --auto width
-          --P_SEARCH => P_SEARCH,
-          --P_REPLACEMENT => P_REPLACEMENT,
-          --P_COMPARISON => P_COMPARISON,
-          P_STYLE_TAB => 'trctd',
-          P_STYLE_HEAD => 'trchd',
-          P_STYLE_R1 => 'awrc1',--'trcr1',
-          P_STYLE_R2 => 'awrnc1',--'trcr2',
-          P_OUTPUT => l_output);
-        for i in 1..l_output.count loop
-          pipe row (substr(l_output(i),1,4000));
-        end loop;
-        l_output.delete;
-      else
-        print_section_html_i(l_sql_data_point.sql_id, l_sql_data_point.sql_data_point_id,i.SECTION_NAME,l_output);
-        for i in 1..l_output.count loop
-          if length(l_output(i))>4000 then
-            l_str := l_output(i);
-            loop
-              pipe row (substr(l_str,1,4000));
-              l_str := substr(l_str,4000);
-              exit when l_str is null;
-            end loop;
-          else
-            pipe row (l_output(i));
-          end if;
-        end loop;
-      end if;
-      l_output.delete;
-
-      pipe row (HTF.BR);
-      pipe row (HTF.LISTITEM(cattributes=>'class="awr"',ctext=>HTF.ANCHOR (curl=>'#tblofcont',ctext=>'Back to top',cattributes=>'class="awr"')));
-      pipe row (HTF.BR);
     end loop;
 
     pipe row (HTF.BODYCLOSE);
     pipe row (HTF.HTMLCLOSE);
 
-  COREMOD_LOG.Stop_SQL_TRACE('COREOBJ_SQL_REPORT_UTILS.PRINT_REPORT_HTML.SQL_TRACE');
+    COREMOD_LOG.Stop_SQL_TRACE('COREOBJ_SQL_REPORT_UTILS.PRINT_REPORT_HTML.SQL_TRACE');
     COREMOD_LOG.Stop_SQL_GATHER_STAT('COREOBJ_SQL_REPORT_UTILS.PRINT_REPORT_HTML.GATHER_SQL_STAT');
   end;
+
+  function prepare_report_4download(p_obj_id  opas_objects.obj_id%type,
+                                    p_section_list varchar2) return opas_files.file_id%type
+  is
+    l_file_id    opas_files.file_id%type;
+    l_sql_data_point      opas_ot_sql_data%rowtype;
+    l_text                clob;
+  begin
+
+    COREMOD_LOG.Start_SQL_GATHER_STAT('COREOBJ_SQL_REPORT_UTILS.PRINT_REPORT_HTML.GATHER_SQL_STAT');
+    COREMOD_LOG.Start_SQL_TRACE('COREOBJ_SQL_REPORT_UTILS.PRINT_REPORT_HTML.SQL_TRACE');
+
+    select d.*
+      into l_sql_data_point
+      from OPAS_OT_SQL_DATA_POINT_REF r, OPAS_OT_SQL_DATA d
+     where r.obj_id=p_obj_id and r.sql_data_point_id=d.sql_data_point_id;
+
+    l_file_id := COREMOD_FILE_UTILS.create_tmp_4downl(
+      P_FILE_NAME => 'opas60_sqldp_'||l_sql_data_point.sql_id||'.html',
+      P_MIMETYPE => COREMOD_FILE_UTILS.mtHTML);
+
+    for i in (select column_value from table(COREOBJ_SQL_REPORT_UTILS.print_report_html(p_obj_id, p_section_list)))
+    loop
+      l_text := l_text || i.column_value || chr(10);
+    end loop;
+
+    COREMOD_FILE_UTILS.store_content (
+       P_FILE_ID => l_file_id,
+       P_CONTENT => l_text) ;
+
+    coremod_file_utils.clob2blob_prep(p_file_id => l_file_id);
+
+    COREMOD_LOG.Stop_SQL_TRACE('COREOBJ_SQL_REPORT_UTILS.PRINT_REPORT_HTML.SQL_TRACE');
+    COREMOD_LOG.Stop_SQL_GATHER_STAT('COREOBJ_SQL_REPORT_UTILS.PRINT_REPORT_HTML.GATHER_SQL_STAT');
+
+    return l_file_id;
+  end;
+
 END COREOBJ_SQL_REPORT_UTILS;
 /

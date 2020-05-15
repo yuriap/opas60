@@ -8,11 +8,17 @@ PACKAGE COREMOD_FILE_UTILS AS
   mtAPPBIN    constant varchar2(100) := 'APPLICATION/OCTET-STREAM';
   mtRTF       constant varchar2(100) := 'APPLICATION/RTF';
 
+  ftTMP2DOWNLOAD constant varchar2(100) := 'TMP2DOWNLOAD';
+
   function clob2tab(p_file_id    opas_files.file_id%type) return clob_page pipelined;
 
   --download preparation/depreparation
   procedure clob2blob_prep   (p_file_id    opas_files.file_id%type);
   procedure clob2blob_cleanup;
+  function create_tmp_4downl
+                      (p_file_name opas_files.file_name%type,
+                       p_mimetype  opas_files.file_mimetype%type
+                      ) return     opas_files.file_id%type;
 
   --File Operatios
   function create_file(p_modname   opas_files.modname%type,

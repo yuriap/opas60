@@ -41,9 +41,13 @@ PACKAGE COREOBJ_SQL_REPORT_UTILS AS
 
   --cmd utils
   function gathering_status(p_obj_id  opas_objects.obj_id%type) return TABLEOFSTRINGS pipelined;
-  function print_report_html(p_obj_id  opas_objects.obj_id%type) return TABLEOFSTRINGS pipelined;
+  function print_report_html(p_obj_id  opas_objects.obj_id%type,
+                             p_section_list varchar2 default null) return TABLEOFSTRINGS pipelined;
 
   function print_data_point_params(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type) return varchar2 result_cache;
+
+  function prepare_report_4download(p_obj_id  opas_objects.obj_id%type,
+                                    p_section_list varchar2) return opas_files.file_id%type;
 
 END COREOBJ_SQL_REPORT_UTILS;
 /

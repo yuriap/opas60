@@ -1000,8 +1000,10 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
   begin
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsVASH);
 
-    l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_VASH */ INTO opas_ot_tmp_gv$ash (sql_id,sample_time,SQL_EXEC_START,sql_plan_hash_value,sql_plan_line_id,sql_plan_operation,sql_plan_options,event,CURRENT_OBJ#,CURRENT_FILE#)
-              select sql_id,sample_time,SQL_EXEC_START,sql_plan_hash_value,sql_plan_line_id,sql_plan_operation,sql_plan_options,event,CURRENT_OBJ#,CURRENT_FILE# from gv$active_session_history]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || q'[ where sql_id = :p_sql_id]';
+    l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_VASH */ INTO opas_ot_tmp_gv$ash
+                    (sql_id,sample_time,SQL_EXEC_START,sql_plan_hash_value,sql_plan_line_id,sql_plan_operation,sql_plan_options,event,CURRENT_OBJ#,CURRENT_FILE#,program,module,action,client_id)
+              select sql_id,sample_time,SQL_EXEC_START,sql_plan_hash_value,sql_plan_line_id,sql_plan_operation,sql_plan_options,event,CURRENT_OBJ#,CURRENT_FILE#,program,module,action,client_id
+                from gv$active_session_history]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || q'[ where sql_id = :p_sql_id]';
     --l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_GV_$ACTIVE_SESSION_HISTORY'));
     execute immediate l_sql using p_data.sql_id;
     l_sql := null;
@@ -1025,6 +1027,16 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       execute immediate l_sql;
       l_sql := null;
     end if;
+
+    INSERT INTO opas_ot_sql_ash_ident
+         ( sql_data_point_id,        source_tab, sql_id, min_sample_time,  max_sample_time,  sql_exec_start, program, module, action, client_id, samples_cnt)
+    select * from (
+    select p_data.sql_data_point_id, srcV$,      sql_id, min(sample_time), max(sample_time), sql_exec_start, program, module, action, client_id, count(1) cnt
+      from opas_ot_tmp_gv$ash
+     group by sql_id, sql_exec_start, program, module, action, client_id
+     order by cnt desc
+    ) where rownum<=10;
+    l_rows := l_rows + sql%rowcount;
 
     INSERT INTO opas_ot_sql_vash1 ( sql_data_point_id, sql_id, sql_exec_start, sql_exec_end, plan_hash_value, id, row_src, event, cnt, tim_pct, tim_id_pct, obj, tbs)
     select p_data.sql_data_point_id,p_data.sql_id,
@@ -1286,6 +1298,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                              p_awr_params t_awr_params_rec)
   is
     l_sql        varchar2(32765);
+    l_rows0      number;
     l_rows1      number;
     l_rows2      number;
     --l_rows3      number;
@@ -1361,6 +1374,16 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       execute immediate l_sql;
       l_sql := null;
     end if;
+
+    INSERT INTO opas_ot_sql_ash_ident
+         ( sql_data_point_id,        source_tab, sql_id, min_sample_time,  max_sample_time,  sql_exec_start, program, module, action, client_id, samples_cnt)
+    select * from (
+    select p_data.sql_data_point_id, srcAWR,     sql_id, min(sample_time), max(sample_time), sql_exec_start, program, module, action, client_id, count(1) cnt
+      from opas_ot_tmp_gv$ash
+     group by sql_id, sql_exec_start, program, module, action, client_id
+     order by cnt desc
+    ) where rownum<=10;
+    l_rows0 := sql%rowcount;
 
     merge into opas_ot_sql_awr_ash_summ t
       using (
@@ -1448,7 +1471,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
 
     finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_PLSQLSRC, p_rows_processed => l_rows1);
     finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_ASHINVOKER, p_rows_processed => l_rows1);
-    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_ASHPLSTATS, p_rows_processed => l_rows2);
+    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_ASHPLSTATS, p_rows_processed => l_rows2+l_rows0);
   exception
     when others then
       rollback;

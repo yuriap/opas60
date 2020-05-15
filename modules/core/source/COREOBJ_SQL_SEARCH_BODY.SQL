@@ -319,13 +319,13 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
         if gParams.exists('P1411_CONTAINS') and gParams('P1411_CONTAINS') is not null then
           if gParams.exists('P1411_TEXT_SEARCH_OPTIONS') then
             if gParams('P1411_TEXT_SEARCH_OPTIONS') like '%REGEXP' or gParams('P1411_TEXT_SEARCH_OPTIONS') = 'ORATEXT' then
-               l_v_sql := l_v_sql || q'[ and regexp_like(d.sql_fulltext, ']' || gParams('P1411_CONTAINS') || q'[', 'in')]';
+               l_v_sql := l_v_sql || q'[ and regexp_like(d.sql_fulltext, q'~]' || gParams('P1411_CONTAINS') || q'[~', 'in')]';
             end if;
             if gParams('P1411_TEXT_SEARCH_OPTIONS') = 'NOTREGEXP' then
                l_v_sql := replace(l_v_sql,'and regexp_like','and not regexp_like');
             end if;
             if gParams('P1411_TEXT_SEARCH_OPTIONS') like '%LIKE' then
-               l_v_sql := l_v_sql || q'[ and d.sql_fulltext like ']' || gParams('P1411_CONTAINS') || q'[']';
+               l_v_sql := l_v_sql || q'[ and d.sql_fulltext like q'~]' || gParams('P1411_CONTAINS') || q'[~']';
             end if;
             if gParams('P1411_TEXT_SEARCH_OPTIONS') = 'NOTLIKE' then
                l_v_sql := replace(l_v_sql,'and d.sql_fulltext like','and d.sql_fulltext not like');
@@ -334,7 +334,7 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
         end if;
 
         if gParams.exists('P1411_SQL_ID') and gParams('P1411_SQL_ID') is not null then
-          l_v_sql := l_v_sql || q'[ and d.sql_id = ']' || gParams('P1411_SQL_ID') || q'[']' || chr(10);
+          l_v_sql := l_v_sql || q'[ and d.sql_id = q'~]' || gParams('P1411_SQL_ID') || q'[~']' || chr(10);
         end if;
 
         if gParams.exists('P1411_PLAN_HASH') and gParams('P1411_PLAN_HASH') is not null then
@@ -343,12 +343,12 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
         end if;
 
         if gParams.exists('P1411_MODULE') and gParams('P1411_MODULE') is not null then
-          l_v_sql := l_v_sql || q'[ and d.MODULE like '<MODULE>']' || chr(10); --'
+          l_v_sql := l_v_sql || q'[ and d.MODULE like q'~<MODULE>~']' || chr(10); --'
           l_v_sql := replace(l_v_sql,'<MODULE>',gParams('P1411_MODULE'));
         end if;
 
         if gParams.exists('P1411_ACTION') and gParams('P1411_ACTION') is not null then
-          l_v_sql := l_v_sql || q'[ and d.ACTION like '<ACTION>']' || chr(10); --'
+          l_v_sql := l_v_sql || q'[ and d.ACTION like q'~<ACTION>~']' || chr(10); --'
           l_v_sql := replace(l_v_sql,'<ACTION>',gParams('P1411_ACTION'));
         end if;
 
@@ -399,13 +399,13 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
         if gParams.exists('P1411_CONTAINS') and gParams('P1411_CONTAINS') is not null then
           if gParams.exists('P1411_TEXT_SEARCH_OPTIONS') then
             if gParams('P1411_TEXT_SEARCH_OPTIONS') like '%REGEXP' or gParams('P1411_TEXT_SEARCH_OPTIONS') = 'ORATEXT' then
-               l_awr_sql := l_awr_sql || q'[ and regexp_like(d.sql_text, ']' || gParams('P1411_CONTAINS') || q'[', 'in')]';
+               l_awr_sql := l_awr_sql || q'[ and regexp_like(d.sql_text, q'~]' || gParams('P1411_CONTAINS') || q'[~', 'in')]';
             end if;
             if gParams('P1411_TEXT_SEARCH_OPTIONS') = 'NOTREGEXP' then
                l_awr_sql := replace(l_awr_sql,'and regexp_like','and not regexp_like');
             end if;
             if gParams('P1411_TEXT_SEARCH_OPTIONS') like '%LIKE' then
-               l_awr_sql := l_awr_sql || q'[ and d.sql_text like ']' || gParams('P1411_CONTAINS') || q'[']';
+               l_awr_sql := l_awr_sql || q'[ and d.sql_text like q'~]' || gParams('P1411_CONTAINS') || q'[~']';
             end if;
             if gParams('P1411_TEXT_SEARCH_OPTIONS') = 'NOTLIKE' then
                l_awr_sql := replace(l_awr_sql,'and d.sql_text like','and d.sql_text not like');
@@ -414,7 +414,7 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
         end if;
 
         if gParams.exists('P1411_SQL_ID') and gParams('P1411_SQL_ID') is not null then
-          l_awr_sql := l_awr_sql || q'[ and d.sql_id = ']' || gParams('P1411_SQL_ID') || q'[']' || chr(10);
+          l_awr_sql := l_awr_sql || q'[ and d.sql_id = q'~]' || gParams('P1411_SQL_ID') || q'[~']' || chr(10);
         end if;
 
         if (gParams.exists('P1411_PLAN_HASH') and gParams('P1411_PLAN_HASH') is not null) or
@@ -430,13 +430,13 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
           end if;
 
           if gParams.exists('P1411_MODULE') and gParams('P1411_MODULE') is not null then
-            l_sql := replace(l_sql,'<MODULE>',q'[ and s.MODULE like ']' || gParams('P1411_MODULE') || q'[']');
+            l_sql := replace(l_sql,'<MODULE>',q'[ and s.MODULE like q'~]' || gParams('P1411_MODULE') || q'[~']');
           else
             l_sql := replace(l_sql,'<MODULE>');
           end if;
 
           if gParams.exists('P1411_ACTION') and gParams('P1411_ACTION') is not null then
-            l_sql := replace(l_sql,'<ACTION>',q'[ and s.ACTION like ']' || gParams('P1411_ACTION') || q'[']');
+            l_sql := replace(l_sql,'<ACTION>',q'[ and s.ACTION like q'~]' || gParams('P1411_ACTION') || q'[~']');
           else
             l_sql := replace(l_sql,'<ACTION>');
           end if;

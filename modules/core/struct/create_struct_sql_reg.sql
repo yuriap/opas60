@@ -731,6 +731,28 @@ create index idx_opas_sql_oe_dp    on opas_ot_sql_opt_env(sql_data_point_id) com
 create index idx_opas_sql_oe_sqlid on opas_ot_sql_opt_env(sql_id) compress;
 ---
 
+CREATE TABLE opas_ot_sql_ash_ident
+(	
+sql_data_point_id   number,
+source_tab          varchar2(10),
+SQL_ID              VARCHAR2(13 BYTE), 
+MIN_SAMPLE_TIME     TIMESTAMP (3), 
+MAX_SAMPLE_TIME     TIMESTAMP (3), 
+SQL_EXEC_START      DATE, 
+PROGRAM             VARCHAR2(48 BYTE), 
+MODULE              VARCHAR2(64 BYTE), 
+ACTION              VARCHAR2(64 BYTE), 
+CLIENT_ID           VARCHAR2(64 BYTE), 
+SAMPLES_CNT         NUMBER
+);
+
+alter table opas_ot_sql_ash_ident ROW STORE COMPRESS ADVANCED;
+alter table opas_ot_sql_ash_ident add constraint fk_sql_vashid_dp    foreign key (sql_data_point_id) references opas_ot_sql_data(sql_data_point_id) on delete cascade;
+alter table opas_ot_sql_ash_ident add constraint fk_sql_vashid_sqlid foreign key (sql_id) references opas_ot_sql_descriptions(sql_id) on delete cascade;
+
+create index idx_opas_sql_vashid_dp    on opas_ot_sql_ash_ident(sql_data_point_id) compress;
+create index idx_opas_sql_vashid_sqlid on opas_ot_sql_ash_ident(sql_id) compress;
+
 create table opas_ot_sql_vash1 (
 sql_data_point_id   number,
 sql_id              varchar2(13), 

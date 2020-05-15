@@ -96,6 +96,7 @@ PACKAGE BODY COREMOD_FILE_UTILS AS
   is
     l_cnt number;
   begin
+    delete from opas_files where blob_prepared + 1/24 < systimestamp and file_mimetype in (mtTEXT, mtHTML) and file_type = ftTMP2DOWNLOAD;
     update opas_files set file_contentb = empty_blob(), blob_prepared = null where blob_prepared + 1/24 < systimestamp and file_mimetype in (mtTEXT, mtHTML);
     l_cnt := sql%rowcount;
     if l_cnt > 0 then
@@ -129,6 +130,21 @@ PACKAGE BODY COREMOD_FILE_UTILS AS
         warning        => l_wrng);
 
       update opas_files set file_contentc = m_c1, file_contentb = null where file_id = p_file_id;
+  end;
+
+  function create_tmp_4downl
+                      (p_file_name opas_files.file_name%type,
+                       p_mimetype  opas_files.file_mimetype%type
+                      ) return     opas_files.file_id%type
+  is
+    l_file opas_files.file_id%type;
+  begin
+    l_file := coremod_file_utils.create_file(p_modname => coremod_api.gmodname,
+                                             p_file_type => ftTMP2DOWNLOAD,
+                                             p_file_name => create_tmp_4downl.p_file_name,
+                                             p_mimetype => create_tmp_4downl.p_mimetype,
+                                             p_owner => 'PUBLIC');
+    return l_file;
   end;
   -------------------------------------------------------------------
   function create_file(p_modname   opas_files.modname%type,
