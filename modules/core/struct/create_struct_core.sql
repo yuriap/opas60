@@ -803,7 +803,7 @@ create or replace force view v$opas_task_queue_longops as
 select tq.*,
        case 
          when message is null then 'N/A' 
-         else opname || ':' || message || '; elapsed: ' || elapsed_seconds || '; remaining: ' || nvl(to_char(time_remaining), 'N/A') end msg,
+         else /*opname || ':' || */ message || '; elapsed: ' || elapsed_seconds || '; remaining: ' || nvl(to_char(time_remaining), 'N/A') end msg,
        round(100 * (sofar / decode(totalwork,0,1,totalwork))) pct_done,
        units,opname,module,action
   from v$opas_task_queue           tq,

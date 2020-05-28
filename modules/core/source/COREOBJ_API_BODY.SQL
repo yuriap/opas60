@@ -1,6 +1,8 @@
 CREATE OR REPLACE
 PACKAGE BODY COREOBJ_API AS
 
+  gCurrentParamsObject opas_objects.obj_id%type;
+
   function get_obj(p_obj_id           opas_objects.obj_id%type) return opas_objects%rowtype
   is
     l_obj opas_objects%rowtype;
@@ -74,12 +76,14 @@ PACKAGE BODY COREOBJ_API AS
 
   procedure edit_descr  (p_obj_id          opas_objects.obj_id%type,
                          p_obj_name        opas_objects.obj_name%type,
-                         p_obj_descr       opas_objects.obj_descr%type)
+                         p_obj_descr       opas_objects.obj_descr%type,
+                         p_obj_owner       opas_objects.obj_owner%type default null)
   is
   begin
     UPDATE opas_objects
        SET obj_name = p_obj_name,
-           obj_descr = p_obj_descr
+           obj_descr = p_obj_descr,
+           obj_owner = nvl(p_obj_owner,obj_owner)
      WHERE obj_id = p_obj_id;
   end;
 
@@ -265,6 +269,86 @@ PACKAGE BODY COREOBJ_API AS
     return l_path;
     exception
       when no_data_found then return case when p_obj_id is null then null else 'Not found for: <'||p_obj_id||'>' end;
+  end;
+
+  procedure add_jparam(p_obj_id           opas_objects.obj_id%type,
+                       p_pname      varchar2,
+                       p_value      varchar2)
+  is
+  begin
+    if gCurrentParamsObject = p_obj_id then
+      gParams(p_pname):=p_value;
+    else
+      raise_application_error(-20000,'Parameters OBJ_ID mismatch current:specified '||gCurrentParamsObject||':'||p_obj_id);
+    end if;
+  end;
+
+  procedure store_jparams(p_obj_id           opas_objects.obj_id%type)
+  is
+    l_indx varchar2(100);
+    --pragma autonomous_transaction;
+  begin
+    APEX_JSON.initialize_clob_output;
+    APEX_JSON.open_object;
+    APEX_JSON.open_array('params');
+
+    l_indx := gParams.first;
+    loop
+      if gParams(l_indx) is not null then
+        APEX_JSON.open_object;
+        APEX_JSON.write('param_name', l_indx);
+        APEX_JSON.write('param_value', gParams(l_indx));
+        APEX_JSON.close_object;
+      end if;
+      l_indx := gParams.next(l_indx);
+      exit when l_indx is null;
+    end loop;
+
+    APEX_JSON.close_array;
+    APEX_JSON.close_object;
+
+    merge into opas_object_pars t
+    using (select p_obj_id obj_id, jsParamName par_name, APEX_JSON.get_clob_output jsparams from dual) s
+    on (t.obj_id = s.obj_id and t.par_name = s.par_name)
+    when matched then update set jsparams = APEX_JSON.get_clob_output
+    when not matched then insert (t.obj_id, t.par_name, t.jsparams)
+      values (s.obj_id, s.par_name, s.jsparams);
+
+    APEX_JSON.free_output;
+    --commit;
+  end;
+
+
+  procedure extract_jparams(p_obj_id           opas_objects.obj_id%type)
+  is
+    l_json_text VARCHAR2(32767);
+    l_count     PLS_INTEGER;
+  begin
+    gCurrentParamsObject := p_obj_id;
+    gParams.delete;
+
+    select jsparams into l_json_text from opas_object_pars where obj_id = p_obj_id;
+
+    APEX_JSON.parse(l_json_text);
+    l_count := APEX_JSON.get_count(p_path => 'params');
+
+    FOR i IN 1 .. l_count LOOP
+      gParams(APEX_JSON.get_varchar2(p_path => 'params[%d].param_name', p0 => i)) := APEX_JSON.get_varchar2(p_path => 'params[%d].param_value', p0 => i);
+    END LOOP;
+  exception
+      when no_data_found then null;
+  end;
+
+  procedure get_jparam(p_obj_id           opas_objects.obj_id%type,
+                       p_pname      varchar2,
+                       p_value  out varchar2)
+  is
+  begin
+    if COREOBJ_API.gParams.exists(p_pname) then
+      p_value := COREOBJ_API.gParams(p_pname);
+    else
+      p_value := null;
+    end if;
   end;
 
 begin

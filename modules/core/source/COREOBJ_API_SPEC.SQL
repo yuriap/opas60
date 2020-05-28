@@ -15,12 +15,19 @@ PACKAGE COREOBJ_API AS
   otDB_GROWTH_TRACKER         constant number := 500;
   otSIMPLE_DB_MONITOR         constant number := 600;
   otSQL_Catcher               constant number := 700;
+  otSQL_COMPARISON            constant number := 800;
+
 
   type t_string_indexed_tbl is table of varchar2(4000) index by pls_integer;
 
   g_ot_icons         t_string_indexed_tbl;
   g_ot_api           t_string_indexed_tbl;
   g_ot_create_page   t_string_indexed_tbl;
+
+  type t_params is table of varchar2(4000) index by varchar2(100);
+  gParams t_params;
+
+  jsParamName            constant opas_object_pars.par_name%type := 'OPASSYSJSPAR';
 
   procedure lock_object(p_obj_id opas_objects.obj_id%type, p_mode varchar2 default 'NOWAIT', p_wait number default 60);
 
@@ -47,7 +54,8 @@ PACKAGE COREOBJ_API AS
 
   procedure edit_descr  (p_obj_id          opas_objects.obj_id%type,
                          p_obj_name        opas_objects.obj_name%type,
-                         p_obj_descr       opas_objects.obj_descr%type);
+                         p_obj_descr       opas_objects.obj_descr%type,
+                         p_obj_owner       opas_objects.obj_owner%type default null);
 
   procedure remove(p_obj_id opas_objects.obj_id%type);
 
@@ -88,5 +96,15 @@ PACKAGE COREOBJ_API AS
 
   function get_object_path(p_obj_id           opas_objects.obj_id%type,
                            p_including_object varchar2 default 'Y') return varchar2;
+
+  procedure add_jparam(p_obj_id           opas_objects.obj_id%type,
+                      p_pname      varchar2,
+                      p_value      varchar2);
+  procedure extract_jparams(p_obj_id           opas_objects.obj_id%type);
+  procedure get_jparam(p_obj_id           opas_objects.obj_id%type,
+                      p_pname      varchar2,
+                      p_value  out varchar2);
+  procedure store_jparams(p_obj_id           opas_objects.obj_id%type);
+
 END COREOBJ_API;
 /

@@ -304,5 +304,120 @@ PACKAGE BODY COREMOD_REPORT_UTILS AS
       raise_application_error(-20000, 'print_query_result_html'||chr(10)||sqlerrm||chr(10)||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
   end print_query_result_html;
 
+  procedure print_tables_of_arrays
+                       (p_t_header      varchar2,
+                        p_width         number,
+                        p_style_r1      varchar2, --odd rows
+                        p_style_r2      varchar2, --even rows
+                        p_style_head    varchar2, --head
+                        p_style_tab     varchar2,
+                        p_output in out COREMOD_REPORT_UTILS.t_output_lines,
+                        p_col1          COREMOD_REPORT_UTILS.t_output_lines,
+                        p_col2          COREMOD_REPORT_UTILS.t_output_lines,
+                        p_col3          COREMOD_REPORT_UTILS.t_output_lines,
+                        p_col4          COREMOD_REPORT_UTILS.t_output_lines,
+                        p_col5          COREMOD_REPORT_UTILS.t_output_lines,
+                        p_col6          COREMOD_REPORT_UTILS.t_output_lines,
+                        p_col7          COREMOD_REPORT_UTILS.t_output_lines,
+                        p_col8          COREMOD_REPORT_UTILS.t_output_lines,
+                        p_col9          COREMOD_REPORT_UTILS.t_output_lines,
+                        p_col10         COREMOD_REPORT_UTILS.t_output_lines)
+  is
+    l_indx        number := p_output.count + 1;
+    l_style       varchar2(100);
+    l_char_width  number := 0;
+    l_tag1_indx   number;
+
+    procedure p(p_line varchar2) is
+    begin
+      p_output(l_indx):=p_line;
+      l_indx := l_indx + 1;
+    end;
+    procedure replace_tag(p_tag varchar2, p_val varchar2, p_line_num number)
+    is
+    begin
+      p_output(p_line_num) := replace(p_output(p_line_num),p_tag,p_val);
+    end;
+  begin
+    l_tag1_indx:=l_indx;
+    p(HTF.TABLEOPEN(cborder=>0,cattributes=>'width="'||case when p_width = 0 then '<#WIDTH#>' else to_char(p_width) end||'" class="'||p_style_tab||'" summary="'||p_t_header||'"'));
+
+    if p_t_header<>'#FIRST_LINE#' then
+      p(HTF.TABLEROWOPEN);
+      p(HTF.TABLEHEADER(cvalue=>replace(p_t_header,' ','&nbsp;'),calign=>'left',cattributes=>'class="'||p_style_head||'" scope="col"'));
+      if p_col2.count > 0 then p(HTF.TABLEHEADER(cvalue=>null,calign=>'left',cattributes=>'class="'||p_style_head||'" scope="col"')); end if;
+      if p_col3.count > 0 then p(HTF.TABLEHEADER(cvalue=>null,calign=>'left',cattributes=>'class="'||p_style_head||'" scope="col"')); end if;
+      if p_col4.count > 0 then p(HTF.TABLEHEADER(cvalue=>null,calign=>'left',cattributes=>'class="'||p_style_head||'" scope="col"')); end if;
+      if p_col5.count > 0 then p(HTF.TABLEHEADER(cvalue=>null,calign=>'left',cattributes=>'class="'||p_style_head||'" scope="col"')); end if;
+      if p_col6.count > 0 then p(HTF.TABLEHEADER(cvalue=>null,calign=>'left',cattributes=>'class="'||p_style_head||'" scope="col"')); end if;
+      if p_col7.count > 0 then p(HTF.TABLEHEADER(cvalue=>null,calign=>'left',cattributes=>'class="'||p_style_head||'" scope="col"')); end if;
+      if p_col8.count > 0 then p(HTF.TABLEHEADER(cvalue=>null,calign=>'left',cattributes=>'class="'||p_style_head||'" scope="col"')); end if;
+      if p_col9.count > 0 then p(HTF.TABLEHEADER(cvalue=>null,calign=>'left',cattributes=>'class="'||p_style_head||'" scope="col"')); end if;
+      if p_col10.count > 0 then p(HTF.TABLEHEADER(cvalue=>null,calign=>'left',cattributes=>'class="'||p_style_head||'" scope="col"')); end if;
+      p(HTF.TABLEROWCLOSE);
+    end if;
+
+    for i in 1..p_col1.count loop
+      l_style := case when mod(i,2)=0 then p_style_r1 else p_style_r2 end;
+      p(HTF.TABLEROWOPEN);
+      p(HTF.TABLEDATA(cvalue=>replace(rtrim(p_col1(i)),'  ','&nbsp;&nbsp;'),calign=>'left',cattributes=>'class="'|| l_style ||'"'));
+      if p_col2.count > 0 then p(HTF.TABLEDATA(cvalue=>replace(rtrim(p_col2(i)),'  ','&nbsp;&nbsp;'),calign=>'left',cattributes=>'class="'|| l_style ||'"')); end if;
+      if p_col3.count > 0 then p(HTF.TABLEDATA(cvalue=>replace(rtrim(p_col3(i)),'  ','&nbsp;&nbsp;'),calign=>'left',cattributes=>'class="'|| l_style ||'"')); end if;
+      if p_col4.count > 0 then p(HTF.TABLEDATA(cvalue=>replace(rtrim(p_col4(i)),'  ','&nbsp;&nbsp;'),calign=>'left',cattributes=>'class="'|| l_style ||'"')); end if;
+      if p_col5.count > 0 then p(HTF.TABLEDATA(cvalue=>replace(rtrim(p_col5(i)),'  ','&nbsp;&nbsp;'),calign=>'left',cattributes=>'class="'|| l_style ||'"')); end if;
+      if p_col6.count > 0 then p(HTF.TABLEDATA(cvalue=>replace(rtrim(p_col6(i)),'  ','&nbsp;&nbsp;'),calign=>'left',cattributes=>'class="'|| l_style ||'"')); end if;
+      if p_col7.count > 0 then p(HTF.TABLEDATA(cvalue=>replace(rtrim(p_col7(i)),'  ','&nbsp;&nbsp;'),calign=>'left',cattributes=>'class="'|| l_style ||'"')); end if;
+      if p_col8.count > 0 then p(HTF.TABLEDATA(cvalue=>replace(rtrim(p_col8(i)),'  ','&nbsp;&nbsp;'),calign=>'left',cattributes=>'class="'|| l_style ||'"')); end if;
+      if p_col9.count > 0 then p(HTF.TABLEDATA(cvalue=>replace(rtrim(p_col9(i)),'  ','&nbsp;&nbsp;'),calign=>'left',cattributes=>'class="'|| l_style ||'"')); end if;
+      if p_col10.count > 0 then p(HTF.TABLEDATA(cvalue=>replace(rtrim(p_col10(i)),'  ','&nbsp;&nbsp;'),calign=>'left',cattributes=>'class="'|| l_style ||'"')); end if;
+      p(HTF.TABLEROWCLOSE);
+      l_char_width := greatest(l_char_width, length(rtrim(p_col1(i))) + length(rtrim(p_col2(i))) + length(rtrim(p_col3(i))));
+    end loop;
+    p(HTF.TABLECLOSE);
+
+    if p_width = 0 then
+      replace_tag('<#WIDTH#>', to_char(round(l_char_width * COREMOD_REPORT_UTILS.gPixelPerChar*0.8)), l_tag1_indx);
+    end if;
+  end;
+  procedure print_3arrays
+                       (p_t_header      varchar2,
+                        p_width         number,
+                        p_style_r1      varchar2, --odd rows
+                        p_style_r2      varchar2, --even rows
+                        p_style_head    varchar2, --head
+                        p_style_tab     varchar2,
+                        p_output in out COREMOD_REPORT_UTILS.t_output_lines,
+                        p_col1          COREMOD_REPORT_UTILS.t_output_lines,
+                        p_col2          COREMOD_REPORT_UTILS.t_output_lines,
+                        p_col3          COREMOD_REPORT_UTILS.t_output_lines)
+  is
+                        p_col4          COREMOD_REPORT_UTILS.t_output_lines;
+                        p_col5          COREMOD_REPORT_UTILS.t_output_lines;
+                        p_col6          COREMOD_REPORT_UTILS.t_output_lines;
+                        p_col7          COREMOD_REPORT_UTILS.t_output_lines;
+                        p_col8          COREMOD_REPORT_UTILS.t_output_lines;
+                        p_col9          COREMOD_REPORT_UTILS.t_output_lines;
+                        p_col10         COREMOD_REPORT_UTILS.t_output_lines;
+  begin
+    print_tables_of_arrays
+                       (p_t_header      => print_3arrays.p_t_header,
+                        p_width         => print_3arrays.p_width,
+                        p_style_r1      => print_3arrays.p_style_r1,
+                        p_style_r2      => print_3arrays.p_style_r2,
+                        p_style_head    => print_3arrays.p_style_head,
+                        p_style_tab     => print_3arrays.p_style_tab,
+                        p_output        => print_3arrays.p_output,
+                        p_col1          => print_3arrays.p_col1,
+                        p_col2          => print_3arrays.p_col2,
+                        p_col3          => print_3arrays.p_col3,
+                        p_col4          => print_3arrays.p_col4,
+                        p_col5          => print_3arrays.p_col5,
+                        p_col6          => print_3arrays.p_col6,
+                        p_col7          => print_3arrays.p_col7,
+                        p_col8          => print_3arrays.p_col8,
+                        p_col9          => print_3arrays.p_col9,
+                        p_col10         => print_3arrays.p_col10);
+  end;
+
 END COREMOD_REPORT_UTILS;
 /

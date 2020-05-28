@@ -34,6 +34,7 @@ grant update on apex_190100.WWV_FLOW_TEMP_FILES to &localscheme.;
 --
 grant select on gv_$active_session_history to &localscheme.;
 grant select on v_$database to &localscheme.;
+grant select on v_$database_incarnation to &localscheme.;
 grant select on gv_$instance to &localscheme.;
 grant select on v_$parameter to &localscheme.;
 grant select on v_$pdbs to &localscheme.;
@@ -50,6 +51,7 @@ grant select on dba_hist_database_instance to &localscheme.;
 grant select on dba_hist_reports to &localscheme.;
 grant select on dba_hist_reports_details to &localscheme.;
 grant select on dba_hist_sqltext to &localscheme.;
+grant select on dba_hist_snapshot to &localscheme.;
 --
 grant select on dba_data_files to &localscheme.;
 grant select on dba_objects to &localscheme.;

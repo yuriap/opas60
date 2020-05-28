@@ -29,6 +29,10 @@ PACKAGE COREOBJ_SQL_REPORT_UTILS AS
   defDataTimeFmt              constant varchar2(30) := 'YYYY/MM/DD HH24:MI';
   defDataTimeFullFmt          constant varchar2(30) := 'YYYY/MM/DD HH24:MI:SS';
 
+  gwNarrowSection    constant number := 620;
+  gwWideSection1     constant number := 1400;
+  gdHeaderRepeat     constant number := 30;
+
   function  get_header_refresh_interval(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type) return number;
   procedure print_header(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
                          p_mode                 number default 0);

@@ -143,7 +143,11 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
       COREMOD_TASKS.queue_task ( p_tq_id => l_tq_id ) ;
       commit;
     end if;
-    coremod_tasks.exec_coordinator;
+    begin
+      coremod_tasks.exec_coordinator;
+    exception
+      when others then null;
+    end;
   end;
 
   procedure start_local_search(p_session_id opas_ot_sql_searches.session_id%type)
@@ -272,20 +276,20 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
   is
     l_rows_found number := 0;
 
-    l_v2_sql varchar2(32765) := q'[      insert into opas_ot_sql_search_results
+    l_v2_sql varchar2(32765) := q'[      insert /*+ qb_name(OPAS60) */ into opas_ot_sql_search_results
         (session_id,    search_source, sql_id, sql_text_external, created_by,          first_discovered, first_discovered_at, txt_score)
-      select
+      select /*+ qb_name(OPAS60) */
          :p_session_id, :p_source,     sql_id, sql_fulltext,      parsing_schema_name, sysdate,          '<DBLINKNM>/V$SQL',          0
       from gv$sql<DBLINK> d where (inst_id, child_number, sql_id) in
         (select inst_id, child_number, sql_id from (select inst_id, child_number, sql_id, row_number()over(partition by sql_id order by child_number) rn from gv$sql<DBLINK> where sql_id in (<SQL_ID_LIST>)) where rn = 1)]' || chr(10); --'
 
-    l_v_sql varchar2(32765) := q'[select unique sql_id from gv$sql<DBLINK> d where 1=1 ]' || chr(10); --'
+    l_v_sql varchar2(32765) := q'[select /*+ qb_name(OPAS60) */ unique sql_id from gv$sql<DBLINK> d where 1=1 ]' || chr(10); --'
 
-    l_awr_sql varchar2(32765) := q'[select unique sql_id from dba_hist_sqltext<DBLINK> d where d.DBID = <DBID>]' || chr(10); --'
+    l_awr_sql varchar2(32765) := q'[select /*+ qb_name(OPAS60) */ unique sql_id from dba_hist_sqltext<DBLINK> d where d.DBID = <DBID>]' || chr(10); --'
 
-    l_awr2_sql varchar2(32765) := q'[insert into opas_ot_sql_search_results
+    l_awr2_sql varchar2(32765) := q'[insert /*+ qb_name(OPAS60) */ into opas_ot_sql_search_results
         (session_id,    search_source, sql_id, sql_text_external, created_by,  first_discovered, first_discovered_at, txt_score)
-      select
+      select /*+ qb_name(OPAS60) */
          :p_session_id, :p_source,     sql_id, sql_text,          null,        sysdate,          '<DBLINKNM>/AWR',          0
       from dba_hist_sqltext<DBLINK> where sql_id in (<SQL_ID_LIST>)]' || chr(10); --'
 
@@ -485,12 +489,14 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
         end if;
       end if;
 
+      delete from opas_ot_sql_search_results where session_id = p_session_id and sql_text_external like '%OPAS60%';
+      l_rows_found := l_rows_found - sql%rowcount;
+
       select to_char(cast((systimestamp - l_time) AS INTERVAL DAY(2) TO SECOND(3))) into l_duration from dual;
       set_search_progress(p_session_id => p_session_id,
                           p_remote_message => 'Found: '||l_rows_found||' rows in '|| l_duration);
 
     end if;
-
     --------------------------------
     gCurrentSession := null;
     gParams.delete;

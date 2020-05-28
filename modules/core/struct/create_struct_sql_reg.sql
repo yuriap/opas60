@@ -1470,6 +1470,7 @@ create table opas_ot_sqlcatch (
  check_interval                    number,
  status                            varchar2(10),
  tq_id                             number,
+ sql_exec_def                      number,
  primary key (obj_id)
 );
 

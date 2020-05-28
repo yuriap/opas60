@@ -1,11 +1,6 @@
 CREATE OR REPLACE
 PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
 
-  gwNarrowSection    constant number := 620;
-  gwWideSection1     constant number := 1400;
-  gdHeaderRepeat     constant number := 30;
-
-
   function get_header_refresh_interval(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type) return number
   is
     l_refresh_interval number := 5;
@@ -639,6 +634,8 @@ q'[select plan_table_output "Plan Table Output" from table(dbms_xplan.display('O
       p_output(p_output.count+1):=HTF.LISTITEM(cattributes=>'class="awr"',ctext=>HTF.ANCHOR (curl=>'#dp_ep_adv',ctext=>'Explain plan (advanced)',cattributes=>'class="awr"'));
       p_output(p_output.count+1):=HTF.BR;
 
+      l_display_params := '';
+
       COREMOD_REPORT_UTILS.print_query_result_html (
                                             p_query => replace(replace(
 q'[select plan_table_output "Plan Table Output" from table(dbms_xplan.display('OPAS_OT_SQL_EP_PLAN_DET', null, null, 'plan_id=<PLAN_ID>'))]'
@@ -664,6 +661,8 @@ q'[select plan_table_output "Plan Table Output" from table(dbms_xplan.display('O
       p_output(p_output.count+1):=HTF.LISTITEM(cattributes=>'class="awr"',ctext=>HTF.ANCHOR (curl=>'#dp_ep_smpl',ctext=>'Explain plan (simple)',cattributes=>'class="awr"'));
       p_output(p_output.count+1):=HTF.LISTITEM(cattributes=>'class="awr"',ctext=>HTF.ANCHOR (curl=>'#dp_ep_adv',ctext=>'Explain plan (advanced)',cattributes=>'class="awr"'));
       p_output(p_output.count+1):=HTF.BR;
+
+      l_display_params := 'ADVANCED';
 
       COREMOD_REPORT_UTILS.print_query_result_html (
                                             p_query => replace(replace(
