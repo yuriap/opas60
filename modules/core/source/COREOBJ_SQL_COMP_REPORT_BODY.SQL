@@ -11,7 +11,8 @@ package body COREOBJ_SQL_COMP_REPORT is
                                                              'Note',
                                                              'Column Projection Information',
                                                              'Predicate Information',
-                                                             'Query Block Registry');
+                                                             'Query Block Registry',
+                                                             'Hint Report');
   --g_params COREMOD_REPORT_UTILS.t_params;
 
   procedure add   (p_obj_id       out opas_objects.obj_id%type,

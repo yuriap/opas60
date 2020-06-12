@@ -62,5 +62,7 @@ package COREMOD_API as
    procedure release_resource(p_handle varchar2);
    procedure release_resource;
 
+   function get_dic_displ_val(p_dic_name varchar2, p_dic_val varchar2) return varchar2;
+
 end COREMOD_API;
 /

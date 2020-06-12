@@ -2,6 +2,7 @@ CREATE OR REPLACE
 PACKAGE BODY COREOBJ_SQL_UTILS AS
 
   gAWRParams   t_awr_params_rec;
+  gModuleName varchar2(100):='SQL Discover';
 
   procedure is_section_ready(p_sql_data_point_id      opas_ot_sql_data.sql_data_point_id%type,
                              p_section_name           varchar2,
@@ -103,6 +104,8 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     update opas_ot_sql_data set gathering_status = COREOBJ_SQL.sdoWaitFor2 where sql_data_point_id = p_sql_data_point_id returning TQ_ID2 into l_tq_id;
     commit;
 
+    coremod_api.start_longops_section(p_module_name => gModuleName,
+                                      p_action_name => 'Waiting for Discovery 2');
     begin
       coremod_tasks.wait_task_finish(l_tq_id, to_number(COREMOD_API.getconf('SECONDARYTASKTIMEOUT',COREMOD_API.gMODNAME)));
     exception
@@ -134,6 +137,9 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
            gathering_status = sstInProgress
      where sql_data_point_id = p_sql_data_point_id and section_name = p_section_name;
     commit;
+
+    coremod_api.start_longops_section(p_module_name => gModuleName,
+                                      p_action_name => coremod_api.get_dic_displ_val('SQLREPSECT',p_section_name));
   end;
 
   procedure finish_section(p_sql_data_point_id         opas_ot_sql_data.sql_data_point_id%type,
@@ -357,7 +363,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
         con_name, ecid, snap_id, dbid, instance_number, con_dbid,
         dblink)
       values (
-        opas_ot_sq_sqlmon_id.nextval, sql_id, null, null, 'V$', report_id, status, first_refresh_time,
+        opas_ot_sq_sqlmon_id.nextval, sql_id, null, null, srcV$, report_id, status, first_refresh_time,
         last_refresh_time, refresh_count, sql_exec_start, sql_exec_id, sid, session_serial#, con_id,
         con_name, ecid, null, null, inst_id, null,
         p_data.dblink)
@@ -389,7 +395,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       WHEN op = 'I' THEN
       INTO opas_ot_sql_sqlmon_ref ( sql_data_point_id, sqlmon_id)
       values( p_data.sql_data_point_id, opas_ot_sq_sqlmon_id.currval)
-      WHEN op = 'L' THEN
+      WHEN op = 'L' and 1=2 THEN
       INTO opas_ot_sql_sqlmon_ref ( sql_data_point_id, sqlmon_id)
       values( p_data.sql_data_point_id, sqlmon_id)
     SELECT 'I' op, t.*, null sqlmon_id FROM opas_ot_tmp_gv$sql_monitor t
@@ -411,7 +417,9 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       and report_id not in (select report_id from opas_ot_sql_sqlmon where sql_id = p_data.sql_id and dblink = p_data.dblink)
     union all
     SELECT 'L' op, t.*, p.sqlmon_id FROM opas_ot_tmp_gv$sql_monitor t, opas_ot_sql_sqlmon p
-    where t.report_id = p.report_id and t.sql_id = p.sql_id and p.dblink = p_data.dblink and t.report_id <> 0
+    where t.report_id(+) <> 0 and t.report_id(+) = p.report_id and t.sql_id(+) = p.sql_id
+      and p.dblink = p_data.dblink and p.sql_id = p_data.sql_id
+      and p.source = srcV$
       and not exists (select 1 from opas_ot_sql_sqlmon_ref i where sql_data_point_id = p_data.sql_data_point_id and i.sqlmon_id=p.sqlmon_id);
 
     select count(1) into l_rows from opas_ot_sql_sqlmon_ref where sql_data_point_id = p_data.sql_data_point_id;
@@ -558,7 +566,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       WHEN op = 'I' THEN
       INTO opas_ot_sql_sqlmon_ref ( sql_data_point_id, sqlmon_id)
       values( p_data.sql_data_point_id, opas_ot_sq_sqlmon_id.currval)
-      WHEN op = 'L' THEN
+      WHEN op = 'L' and 1=2 THEN
       INTO opas_ot_sql_sqlmon_ref ( sql_data_point_id, sqlmon_id)
       values( p_data.sql_data_point_id, sqlmon_id)
     select x.*, x1.*, x2.*--, XMLCast(xmlquery('$p/report/sql_monitor_report/target/sql_fulltext' passing xmltype(x.report) as "p" RETURNING CONTENT) as varchar2(2000)) sql_text
@@ -572,9 +580,10 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
            union all
            SELECT 'L' op, t.*, p.sqlmon_id, d.report
              FROM opas_ot_tmp_dba_hist_reports t, opas_ot_sql_sqlmon p, opas_ot_tmp_dba_hist_rep_xml d
-            where t.report_id = p.report_id and t.key1 = p.sql_id and p.dblink = p_data.dblink and p.sql_id = p_data.sql_id
+            where t.report_id(+) = p.report_id and t.key1(+) = p.sql_id
+              and p.dblink = p_data.dblink and p.sql_id = p_data.sql_id and p.source = srcHST
               and not exists (select 1 from opas_ot_sql_sqlmon_ref i where sql_data_point_id = p_data.sql_data_point_id and i.sqlmon_id=p.sqlmon_id)
-              and t.report_id=d.report_id) x,
+              and t.report_id=d.report_id(+)) x,
            xmltable('/report/sql_monitor_report/target'
                   PASSING xmlparse(document x.report) COLUMNS
                   STATUS path 'status'
@@ -1674,7 +1683,8 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
   end;
 
   procedure load_awr_data(p_data   opas_ot_sql_data%rowtype,
-                          p_obj_id opas_ot_sql_data_point_ref.obj_id%type)
+                          p_obj_id opas_ot_sql_data_point_ref.obj_id%type,
+                          p_lops_ind in out pls_integer)
   is
     l_awrdays          number;
     l_start_dt         timestamp with time zone;
@@ -1707,12 +1717,16 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     commit;
 
     load_awr_sqlstats(p_data, gAWRParams);
+    coremod_api.end_longops_section(p_sofar => 6, p_lops_ind => p_lops_ind);
     commit;
     load_awr_sqlbinds(p_data, gAWRParams);
+    coremod_api.end_longops_section(p_sofar => 7, p_lops_ind => p_lops_ind);
     commit;
     load_awr_plans(p_data, gAWRParams);
+    coremod_api.end_longops_section(p_sofar => 8, p_lops_ind => p_lops_ind);
     commit;
     load_awr_sqlash(p_data, gAWRParams);
+    coremod_api.end_longops_section(p_sofar => 9, p_lops_ind => p_lops_ind);
     commit;
 
     set_status_prep_recursive(p_data.sql_data_point_id);
@@ -1729,6 +1743,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     L_TASKNAME   OPAS_TASK.TASKNAME%type := 'OPAS_SQL_DISCOVER2';
     l_tq_id      OPAS_TASK_QUEUE.tq_id%type;
     l_obj_id     opas_ot_sql_data_point_ref.obj_id%type;
+    l_lops_ind          pls_integer;
   BEGIN
     COREMOD_LOG.Start_SQL_GATHER_STAT('COREOBJ_SQL_UTILS.DISCOVER_SQL.GATHER_SQL_STAT');
     COREMOD_LOG.Start_SQL_TRACE('COREOBJ_SQL_UTILS.DISCOVER_SQL.SQL_TRACE');
@@ -1744,20 +1759,33 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     update opas_ot_sql_data set tq_id2 = l_tq_id where sql_data_point_id = p_sql_data_point_id;
     commit;
 
+    coremod_api.init_longops(p_op_name => gModuleName,
+                             p_target_desc => 'steps',
+                             p_units => 'step',
+                             p_totalwork => 11,
+                             p_lops_ind => l_lops_ind);
+
     load_non_shared(l_data);
+    coremod_api.end_longops_section(p_sofar => 1, p_lops_ind => l_lops_ind);
     commit;
     load_vsql(l_data);
+    coremod_api.end_longops_section(p_sofar => 2, p_lops_ind => l_lops_ind);
     commit;
     load_work_area(l_data);
+    coremod_api.end_longops_section(p_sofar => 3, p_lops_ind => l_lops_ind);
     commit;
     load_opt_env(l_data);
+    coremod_api.end_longops_section(p_sofar => 4, p_lops_ind => l_lops_ind);
     commit;
     load_sql_vash(l_data);
+    coremod_api.end_longops_section(p_sofar => 5, p_lops_ind => l_lops_ind);
     commit;
-    load_awr_data(l_data, l_obj_id);
+    load_awr_data(l_data, l_obj_id, l_lops_ind);
+    coremod_api.end_longops_section(p_sofar => 10, p_lops_ind => l_lops_ind);
     commit;
 
     wait_processing_of_discovery2(p_sql_data_point_id);
+    coremod_api.end_longops_section(p_sofar => 11, p_lops_ind => l_lops_ind);
 
     finalize_section_statuses(p_sql_data_point_id);
     finish_processing(p_sql_data_point_id);
@@ -1776,21 +1804,33 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
   AS
     l_data opas_ot_sql_data%rowtype;
     l_obj_id     opas_ot_sql_data_point_ref.obj_id%type;
+    l_lops_ind          pls_integer;
   BEGIN
     COREMOD_LOG.Start_SQL_GATHER_STAT('COREOBJ_SQL_UTILS.DISCOVER_SQL2.GATHER_SQL_STAT');
     COREMOD_LOG.Start_SQL_TRACE('COREOBJ_SQL_UTILS.DISCOVER_SQL2.SQL_TRACE');
 
     start_processing2(p_sql_data_point_id, l_data, l_obj_id);
 
+    coremod_api.init_longops(p_op_name => gModuleName,
+                             p_target_desc => 'steps',
+                             p_units => 'step',
+                             p_totalwork => 5,
+                             p_lops_ind => l_lops_ind);
+
     load_sql_text(l_data);
+    coremod_api.end_longops_section(p_sofar => 1, p_lops_ind => l_lops_ind);
     commit;
     load_sql_ep_plans(l_data);
+    coremod_api.end_longops_section(p_sofar => 2, p_lops_ind => l_lops_ind);
     commit;
     load_sql_plans(l_data);
+    coremod_api.end_longops_section(p_sofar => 3, p_lops_ind => l_lops_ind);
     commit;
     load_sql_mon(l_data, l_obj_id);
+    coremod_api.end_longops_section(p_sofar => 4, p_lops_ind => l_lops_ind);
     commit;
     load_sql_mon_hst(l_data, l_obj_id);
+    coremod_api.end_longops_section(p_sofar => 5, p_lops_ind => l_lops_ind);
     commit;
 
     COREMOD_LOG.Stop_SQL_TRACE('COREOBJ_SQL_UTILS.DISCOVER_SQL2.SQL_TRACE');

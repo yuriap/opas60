@@ -795,7 +795,7 @@ select
   q.serial#, 
   q.inst_id,
   q.job_name
-from opas_task t left outer join opas_task_queue q on (t.taskname = q.taskname and q.owner=decode(t.is_public,'y',q.owner,nvl(v('APP_USER'),'~^')))
+from opas_task t left outer join opas_task_queue q on (t.taskname = q.taskname and q.owner=decode(t.is_public,'Y',q.owner,nvl(v('APP_USER'),'~^')))
 where 1=decode(t.is_public,'Y',1, coremod_sec.is_role_assigned_n(t.modname,'REAS-WRITE USERS'))
 ;
 

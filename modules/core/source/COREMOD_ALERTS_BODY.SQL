@@ -29,12 +29,22 @@ PACKAGE BODY COREMOD_ALERTS AS
                    p_CREATED_LHHTZ varchar2)
   is
   begin
---    coremod_log.log('COREMOD_ALERTS.viewed: '||p_alert_type||':'||p_alert_source||':'||p_CREATED_LHHTZ);
     for i in (select alert_id from v$opas_alert_queue
                where alert_type = replace(replace(p_alert_type,'&',':'),'~','#')
                  and alert_source = p_alert_source
                  and created_lhhtz = p_CREATED_LHHTZ) loop
---      coremod_log.log('COREMOD_ALERTS.viewed: '||i.alert_id);
+      viewed(i.alert_id);
+    end loop;
+  end;
+
+  procedure viewed(p_alert_type_n_source varchar2)
+  is
+  begin
+    --coremod_log.log('COREMOD_ALERTS.viewed: <'||substr(p_alert_type_n_source,1,instr(p_alert_type_n_source,';')-1)||'>:<'||substr(p_alert_type_n_source,instr(p_alert_type_n_source,';')+1)||'>');
+
+    for i in (select alert_id from v$opas_alert_queue
+               where alert_type = substr(p_alert_type_n_source,1,instr(p_alert_type_n_source,';')-1)
+                 and alert_source = substr(p_alert_type_n_source,instr(p_alert_type_n_source,';')+1)) loop
       viewed(i.alert_id);
     end loop;
   end;

@@ -20,7 +20,7 @@ PACKAGE COREMOD_ALERTS AS
   procedure viewed(p_alert_type    opas_alert_queue.alert_type%type,
                    p_alert_source  opas_alert_queue.alert_source%type,
                    p_CREATED_LHHTZ varchar2);
-
+  procedure viewed(p_alert_type_n_source varchar2);
   procedure cleanup;
 
 END COREMOD_ALERTS;

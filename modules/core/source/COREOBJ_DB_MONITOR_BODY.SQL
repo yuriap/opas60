@@ -282,5 +282,85 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
       end loop;
     end if;
   end;
+
+  procedure init_dashboard_data(p_dt_fmt           varchar2,
+                                p_start_dt  in out varchar2,
+                                p_end_dt    in out varchar2,
+                                p_page_refresh out number)
+  is
+    l_start_dt  opas_ot_db_dashboard.start_dt%type;
+    l_end_dt    opas_ot_db_dashboard.end_dt%type;
+    l_dp        opas_ot_db_dashboard%rowtype;
+  begin
+    --coremod_log.log(p_dt_fmt);
+    --coremod_log.log(p_start_dt);
+    --coremod_log.log(p_end_dt);
+    select * into l_dp from opas_ot_db_dashboard where apex_user = v('APP_USER');
+    p_page_refresh:=l_dp.refresh_int;
+    if l_dp.data_interv is not null then
+      l_end_dt := systimestamp; p_end_dt := to_char(l_end_dt,p_dt_fmt);
+      l_start_dt := l_end_dt - l_dp.data_interv; p_start_dt := to_char(l_start_dt, p_dt_fmt);
+    else
+      if p_end_dt is null then
+        l_end_dt := systimestamp; p_end_dt := to_char(l_end_dt,p_dt_fmt);
+      else
+        l_end_dt := to_timestamp_tz(p_end_dt, p_dt_fmt);
+      end if;
+      if p_start_dt is null then
+        l_start_dt := l_end_dt - TO_DSINTERVAL('1 00:00:00'); p_start_dt := to_char(l_start_dt,p_dt_fmt);
+      else
+        l_start_dt := to_timestamp_tz(p_start_dt, p_dt_fmt);
+      end if;
+    end if;
+
+    update opas_ot_db_dashboard
+       set start_dt = l_start_dt,
+           end_dt = l_end_dt
+     where apex_user = v('APP_USER');
+  exception
+    when no_data_found then
+      p_start_dt := null;
+      p_end_dt   := null;
+      p_page_refresh   := null;
+  end;
+
+  procedure save_dachboard_conf(p_graph_num       opas_ot_db_dashboard_graphs.graph_num%type,
+                                p_chart_list      varchar2,
+                                p_data_interv     opas_ot_db_dashboard.data_interv%type,
+                                p_refresh_int     opas_ot_db_dashboard.refresh_int%type)
+  is
+    l_tbl DBMS_UTILITY.LNAME_ARRAY;
+    l_n   number;
+  begin
+    merge into opas_ot_db_dashboard t
+    using (select v('APP_USER') apex_user from dual) s
+    on (t.apex_user = s.apex_user)
+    when matched then update set
+      t.refresh_int = p_refresh_int,
+      t.data_interv = p_data_interv,
+      t.last_modified = sysdate
+    when not matched then insert
+      (apex_user, last_modified, refresh_int, data_interv)
+    values
+      (v('APP_USER'), sysdate, p_refresh_int, p_data_interv);
+
+    delete from opas_ot_db_dashboard_graphs where  apex_user = v('APP_USER') and graph_num = p_graph_num;
+
+    if p_chart_list is not null then
+      DBMS_UTILITY.COMMA_TO_TABLE (
+        list   => replace(p_chart_list,':',','),
+        tablen => l_n,
+        tab    => l_tbl);
+
+      for i in 1..l_n loop
+        --coremod_log.log(i||':'||l_tbl(i));
+        insert into opas_ot_db_dashboard_graphs
+          (apex_user, graph_num, metric_id, chart_id, chart_name)
+        select v('APP_USER'), p_graph_num, metric_id, i, obj_name || ' (' || t.dblink || '), '|| t.measure
+          from opas_ot_db_monitor t, v$opas_objects o
+         where t.metric_id=o.obj_id and metric_id = to_number(replace(l_tbl(i),'M'));
+      end loop;
+    end if;
+  end;
 END COREOBJ_DB_MONITOR;
 /

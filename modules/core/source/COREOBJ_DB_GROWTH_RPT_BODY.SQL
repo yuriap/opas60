@@ -105,8 +105,6 @@ package body COREOBJ_DB_GROWTH_RPT is
     l_alert_snap timestamp;
 
     l_link_param opas_alert_queue.link_param%type;
-
-    --l_sql varchar2(4000);
   begin
     if  /*(p_mode in (COREMOD_ALERTS.gmSHOWALERT, COREMOD_ALERTS.gmREFRESH) and p_alert_queue_id is not null and p_alert_id is null) or
         (p_mode in (COREMOD_ALERTS.gmPREVIEW, COREMOD_ALERTS.gmREFRESH)   and p_alert_queue_id is null     and p_alert_id is not null)*/
@@ -127,9 +125,6 @@ package body COREOBJ_DB_GROWTH_RPT is
       select snapped into l_alert_snap from opas_ot_dbg_datapoint where dbgdp_id=l_dbgdp_id;
     end if;
 
---coremod_tasks.log('prepare_chart_data: p_mode: '||p_mode||'; p_alert_queue_id:'||p_alert_queue_id||'; p_alert_id:'||p_alert_id||'; p_dt_fmt:'||p_dt_fmt);
---coremod_tasks.log('prepare_chart_data: p_alert_id: '||p_alert_id||'; l_dbgdp_id:'||l_dbgdp_id);
-
     l_start_dt := to_date(p_start_dt, p_dt_fmt);
     l_end_dt := to_date(p_end_dt, p_dt_fmt);
 
@@ -143,7 +138,6 @@ package body COREOBJ_DB_GROWTH_RPT is
                where x.alert_id = p_alert_id and l_alert_snap between x.actual_start and x.actual_end and m.dbg_id = x.dbg_id)
              where rownum=1)
     loop
---coremod_tasks.log('prepare_chart_data: alert_id: '||i.alert_id||'; dbg_id:'||i.dbg_id||'; alert_name:'||i.alert_name||'; alert_type:'||i.alert_type||'; alert_measur:'||i.alert_measur||'; alert_expr:'||i.alert_expr||'; dblink:'||i.dblink);
       p_dbg_id := i.dbg_id;
       delete from opas_ot_dbg_charts where alert_id = i.alert_id and apex_sess = V('SESSION');
       commit;
@@ -166,7 +160,7 @@ package body COREOBJ_DB_GROWTH_RPT is
           loop
             l_cycles := l_cycles + 1;
             fetch l_crsr into l_tmp_dbgdp_id, l_tmp_dt;
---coremod_tasks.log('prepare_chart_data: l_tmp_dbgdp_id: '||l_tmp_dbgdp_id||'; l_tmp_dt:'||to_char(l_tmp_dt, p_dt_fmt));
+
             if l_end_dt is null then
               exit when l_crsr%notfound or l_cycles > 11;
             else
@@ -191,7 +185,6 @@ package body COREOBJ_DB_GROWTH_RPT is
             p_start_dt := to_char(l_tmp_dt, p_dt_fmt);
           end loop;
       end if;
---coremod_tasks.log('prepare_chart_data: i.alert_type: '||i.alert_type||'; l_start_dbgdp_id: '||l_start_dbgdp_id||'; l_end_dbgdp_id:'||l_end_dbgdp_id||'; p_start_dt:'||p_start_dt||'; p_end_dt:'||p_end_dt);
 --============================================================================================================================================
       if p_mode = COREMOD_ALERTS.gmPREVIEW or (p_mode = COREMOD_ALERTS.gmREFRESH and p_alert_id is not null and p_alert_queue_id is null) then
 
@@ -247,7 +240,6 @@ package body COREOBJ_DB_GROWTH_RPT is
                 select alert_limit, actual_start, actual_end from opas_ot_dbg_monitor_al_cfg_hst where alert_id =  i.alert_id) l
          where t.alert_id = i.alert_id and apex_sess = V('SESSION') and chart_id = chrtMain
            and t.dtstamp between l.actual_start and l.actual_end;
---coremod_tasks.log('prepare_chart_data: rc2: '||sql%rowcount);
 
       if p_mode = COREMOD_ALERTS.gmSHOWALERT or (p_mode = COREMOD_ALERTS.gmREFRESH and p_alert_queue_id is not null) then
         insert into opas_ot_dbg_charts
@@ -255,7 +247,6 @@ package body COREOBJ_DB_GROWTH_RPT is
           select i.alert_id, chrtAlert, t.dtstamp, decode(l_alert_snap,t.dtstamp, t.chart_val,0), V('SESSION'), sysdate
             from opas_ot_dbg_charts t
            where t.alert_id = i.alert_id and apex_sess = V('SESSION') and chart_id = chrtMain;
---coremod_tasks.log('prepare_chart_data: rc3: '||sql%rowcount);
       end if;
 
     end loop;
@@ -280,44 +271,21 @@ package body COREOBJ_DB_GROWTH_RPT is
                                 p_segment_type     varchar2,
                                 p_object_name      varchar2,
                                 p_subobject_name   varchar2,
-                                p_tablespace_name  varchar2)
+                                p_tablespace_name  varchar2,
+                                p_start_snap       number,
+                                p_end_snap         number)
   is
   begin
-/*    coremod_context.set_parameter(p_name => 'DBGSO_DBG_ID',          p_value => p_dbg_id);
-    coremod_context.set_parameter(p_name => 'DBGSO_TABLE_NAME_LIKE', p_value => p_table_name_like);
-    coremod_context.set_parameter(p_name => 'DBGSO_INVERSE',         p_value => p_inverse);
-    coremod_context.set_parameter(p_name => 'DBGSO_PRNT_TABLE',      p_value => p_prnt_table);
-    coremod_context.set_parameter(p_name => 'DBGSO_PRNT_TABLE_TYPE', p_value => p_prnt_table_type);
-    coremod_context.set_parameter(p_name => 'DBGSO_OBJECT_CLASS',    p_value => p_object_class);
-    coremod_context.set_parameter(p_name => 'DBGSO_OBJECT_TYPE',     p_value => p_object_type);
-    coremod_context.set_parameter(p_name => 'DBGSO_SEGMENT_TYPE',    p_value => p_segment_type);
-    coremod_context.set_parameter(p_name => 'DBGSO_OBJECT_NAME',     p_value => p_object_name);
-    coremod_context.set_parameter(p_name => 'DBGSO_SUBOBJECT_NAME',  p_value => p_subobject_name);
-    coremod_context.set_parameter(p_name => 'DBGSO_TABLESPACE_NAME', p_value => p_tablespace_name);*/
     delete from opas_ot_dbg_report_pars where apex_sess = V('SESSION');
     insert into opas_ot_dbg_report_pars
       (apex_sess, created,   dbgso_dbg_id, dbgso_table_name_like, dbgso_inverse, dbgso_prnt_table, dbgso_prnt_table_type,
-       dbgso_object_class, dbgso_object_type, dbgso_segment_type, dbgso_object_name, dbgso_subobject_name, dbgso_tablespace_name)
+       dbgso_object_class, dbgso_object_type, dbgso_segment_type, dbgso_object_name, dbgso_subobject_name, dbgso_tablespace_name,
+       DBGSO_START_SNAP, DBGSO_END_SNAP)
     values
       (V('SESSION'), sysdate,    p_dbg_id,     p_table_name_like,     p_inverse,     p_prnt_table,     p_prnt_table_type,
-           p_object_class,     p_object_type,     p_segment_type,     p_object_name,     p_subobject_name,     p_tablespace_name);
+           p_object_class,     p_object_type,     p_segment_type,     p_object_name,     p_subobject_name,     p_tablespace_name,
+       p_start_snap, p_end_snap);
     commit;
-  end;
-
-  procedure cleanup_object_filter
-  is
-  begin
-    coreobj_db_growth_rpt.setup_object_filter(p_dbg_id => null,
-                                              p_table_name_like => null,
-                                              p_inverse => null,
-                                              p_prnt_table => null,
-                                              p_prnt_table_type => null,
-                                              p_object_class => null,
-                                              p_object_type => null,
-                                              p_segment_type => null,
-                                              p_object_name => null,
-                                              p_subobject_name => null,
-                                              p_tablespace_name => null);
   end;
 
   procedure prepare_out_of_space_data(p_dbg_id           opas_ot_dbg_monitor.dbg_id%type,
@@ -335,8 +303,7 @@ package body COREOBJ_DB_GROWTH_RPT is
     l_iter           number := 0;
   begin
     delete from opas_ot_dbg_charts where apex_sess = V('SESSION') and chart_id in (chrtOccupied, chrtAvailable, chrtOccuProjection, chrtAvailProjection);
-coremod_tasks.log('prepare_out_of_space_data: p_days_to_avg: '|| p_days_to_avg );
-coremod_tasks.log('prepare_out_of_space_data: p_start_dp: '|| p_start_dp || '; p_end_dp: '|| p_end_dp);
+
     if p_days_to_avg is not null then
 
       insert into opas_ot_dbg_charts
@@ -424,14 +391,9 @@ coremod_tasks.log('prepare_out_of_space_data: p_start_dp: '|| p_start_dp || '; p
     from opas_ot_dbg_charts where apex_sess = V('SESSION') and chart_id = chrtOccupied
     and dtstamp = (select max(dtstamp) from opas_ot_dbg_charts where apex_sess = V('SESSION') and chart_id = chrtOccupied);
 
---coremod_tasks.log('prepare_out_of_space_data: l_last_occupied: '|| l_last_occupied || '; l_last_snap: '|| l_last_snap);
-
     select chart_val into l_last_available
     from opas_ot_dbg_charts where apex_sess = V('SESSION') and chart_id = chrtAvailable
     and dtstamp = (select max(dtstamp) from opas_ot_dbg_charts where apex_sess = V('SESSION') and chart_id = chrtAvailable);
---coremod_tasks.log('prepare_out_of_space_data: l_last_available: '|| l_last_available);
-
---coremod_tasks.log('prepare_out_of_space_data: l_seg_occupied_delta: '||l_seg_occupied_delta);
 
     if l_seg_occupied_delta > 0 then
       loop

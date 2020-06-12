@@ -27,7 +27,7 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 -- Application Export:
 --   Application:     600
 --   Name:            Oracle Performance Analytic Suite
---   Date and Time:   15:51 Thursday May 28, 2020
+--   Date and Time:   10:24 Friday June 12, 2020
 --   Exported By:     OPAS60DADM
 --   Flashback:       0
 --   Export Type:     Application Export
@@ -36,22 +36,22 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 --
 
 -- Application Statistics:
---   Pages:                     47
---     Items:                  303
+--   Pages:                     50
+--     Items:                  316
 --     Validations:              4
---     Processes:              186
---     Regions:                207
---     Buttons:                151
+--     Processes:              193
+--     Regions:                229
+--     Buttons:                166
 --     Dynamic Actions:         53
 --   Shared Components:
 --     Logic:
---       Items:                  5
---       Processes:              2
+--       Items:                 10
+--       Processes:              3
 --       Computations:           1
 --     Navigation:
 --       Lists:                  6
 --       Breadcrumbs:            1
---         Entries:             26
+--         Entries:             28
 --     Security:
 --       Authentication:         1
 --       Authorization:          3
@@ -59,7 +59,7 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 --       Themes:                 1
 --       Templates:
 --         Page:                10
---         Region:              15
+--         Region:              16
 --         Label:                7
 --         List:                12
 --         Popup LOV:            1
@@ -132,7 +132,7 @@ wwv_flow_api.create_flow(
 ,p_substitution_string_06=>'APP_GRID_DT_FMT_TZ_FULL'
 ,p_substitution_value_06=>'YYYY-MM-DD HH24:MI:SS.ff9 TZH:TZM'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200528155025'
+,p_last_upd_yyyymmddhh24miss=>'20200611123928'
 ,p_file_prefix => nvl(wwv_flow_application_install.get_static_app_file_prefix,'')
 ,p_files_version=>3
 ,p_ui_type_name => null
@@ -153,6 +153,15 @@ wwv_flow_api.create_list_item(
 ,p_list_item_link_target=>'f?p=&APP_ID.:1:&APP_SESSION.::&DEBUG.:'
 ,p_list_item_icon=>'fa-home'
 ,p_list_item_current_type=>'TARGET_PAGE'
+);
+wwv_flow_api.create_list_item(
+ p_id=>wwv_flow_api.id(77349111426331248)
+,p_list_item_display_sequence=>15
+,p_list_item_link_text=>'Dashboard'
+,p_list_item_link_target=>'f?p=&APP_ID.:6005:&SESSION.::&DEBUG.::::'
+,p_list_item_icon=>'fa-dashboard'
+,p_list_item_current_type=>'COLON_DELIMITED_PAGE_LIST'
+,p_list_item_current_for_pages=>'6005'
 );
 wwv_flow_api.create_list_item(
  p_id=>wwv_flow_api.id(62702557163167953)
@@ -176,10 +185,10 @@ wwv_flow_api.create_list_item(
  p_id=>wwv_flow_api.id(76404948389493998)
 ,p_list_item_display_sequence=>40
 ,p_list_item_link_text=>'SQL Registry'
-,p_list_item_link_target=>'f?p=&APP_ID.:1410:&SESSION.::&DEBUG.::::'
+,p_list_item_link_target=>'f?p=&APP_ID.:1410:&SESSION.::&DEBUG.:1410:::'
 ,p_list_item_icon=>'fa-database-search'
 ,p_list_item_current_type=>'COLON_DELIMITED_PAGE_LIST'
-,p_list_item_current_for_pages=>'1410,1414,1415,1418'
+,p_list_item_current_for_pages=>'1410,1414,1415,1418,1412'
 );
 wwv_flow_api.create_list_item(
  p_id=>wwv_flow_api.id(76408950132549621)
@@ -187,6 +196,17 @@ wwv_flow_api.create_list_item(
 ,p_list_item_link_text=>'Search SQL'
 ,p_list_item_link_target=>'f?p=&APP_ID.:1411:&SESSION.::&DEBUG.::P1411_MODE:COMMON:'
 ,p_list_item_icon=>'fa-file-sql'
+,p_parent_list_item_id=>wwv_flow_api.id(76404948389493998)
+,p_list_item_current_type=>'TARGET_PAGE'
+);
+wwv_flow_api.create_list_item(
+ p_id=>wwv_flow_api.id(77734957196447905)
+,p_list_item_display_sequence=>43
+,p_list_item_link_text=>'Current Folder SQLs'
+,p_list_item_link_target=>'f?p=&APP_ID.:1410:&SESSION.::&DEBUG.:RP:P1410_FOLDER_ID:&APP_FOLDER_ID.:'
+,p_list_item_icon=>'fa-folder-file'
+,p_list_item_disp_cond_type=>'EXISTS'
+,p_list_item_disp_condition=>'select 1 from opas_objects where obj_prnt = :APP_FOLDER_ID and obj_ot = 140'
 ,p_parent_list_item_id=>wwv_flow_api.id(76404948389493998)
 ,p_list_item_current_type=>'TARGET_PAGE'
 );
@@ -613,6 +633,24 @@ end;
 prompt --application/shared_components/logic/application_processes
 begin
 wwv_flow_api.create_flow_process(
+ p_id=>wwv_flow_api.id(77327269747586841)
+,p_process_sequence=>1000
+,p_process_point=>'AFTER_HEADER'
+,p_process_type=>'NATIVE_PLSQL'
+,p_process_name=>'CalcPrevNextObjects'
+,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'begin',
+'  select max(obj_id), count(1) into :APP_PREV_OBJ, :APP_NUM_BEFORE from v$opas_objects where obj_ot = :APP_CURR_OBJ_OT and obj_prnt = :APP_FOLDER_ID and obj_id < :app_obj_id;',
+'  select min(obj_id), count(1) into :APP_NEXT_OBJ, :APP_NUM_AFTER from v$opas_objects where obj_ot = :APP_CURR_OBJ_OT and obj_prnt = :APP_FOLDER_ID and obj_id > :app_obj_id; ',
+'end;'))
+,p_process_when=>'5000,6000,7000,1401,8000'
+,p_process_when_type=>'CURRENT_PAGE_IN_CONDITION'
+);
+end;
+/
+prompt --application/shared_components/logic/application_processes
+begin
+wwv_flow_api.create_flow_process(
  p_id=>wwv_flow_api.id(65148959849167073)
 ,p_process_sequence=>1
 ,p_process_point=>'AFTER_LOGIN'
@@ -649,9 +687,29 @@ end;
 prompt --application/shared_components/logic/application_items
 begin
 wwv_flow_api.create_flow_item(
+ p_id=>wwv_flow_api.id(77326916769551772)
+,p_name=>'APP_CURR_OBJ_OT'
+,p_protection_level=>'I'
+);
+wwv_flow_api.create_flow_item(
  p_id=>wwv_flow_api.id(64760347673463755)
 ,p_name=>'APP_FOLDER_ID'
 ,p_protection_level=>'N'
+);
+wwv_flow_api.create_flow_item(
+ p_id=>wwv_flow_api.id(77326372761544306)
+,p_name=>'APP_NEXT_OBJ'
+,p_protection_level=>'I'
+);
+wwv_flow_api.create_flow_item(
+ p_id=>wwv_flow_api.id(77326744454550763)
+,p_name=>'APP_NUM_AFTER'
+,p_protection_level=>'I'
+);
+wwv_flow_api.create_flow_item(
+ p_id=>wwv_flow_api.id(77326544553549627)
+,p_name=>'APP_NUM_BEFORE'
+,p_protection_level=>'I'
 );
 wwv_flow_api.create_flow_item(
  p_id=>wwv_flow_api.id(64363091969812851)
@@ -663,6 +721,11 @@ wwv_flow_api.create_flow_item(
  p_id=>wwv_flow_api.id(66731537388572543)
 ,p_name=>'APP_PAGE_STACK'
 ,p_protection_level=>'N'
+);
+wwv_flow_api.create_flow_item(
+ p_id=>wwv_flow_api.id(77326133111535469)
+,p_name=>'APP_PREV_OBJ'
+,p_protection_level=>'I'
 );
 wwv_flow_api.create_flow_item(
  p_id=>wwv_flow_api.id(65049575899910322)
@@ -1135,6 +1198,20 @@ wwv_flow_api.create_menu_option(
 ,p_short_name=>'SQL Comparison'
 ,p_link=>'f?p=&APP_ID.:8000:&SESSION.'
 ,p_page_id=>8000
+);
+wwv_flow_api.create_menu_option(
+ p_id=>wwv_flow_api.id(77347468731321989)
+,p_parent_id=>wwv_flow_api.id(58913745031993378)
+,p_short_name=>'Dashboard Configuration'
+,p_link=>'f?p=&APP_ID.:6004:&SESSION.'
+,p_page_id=>6004
+);
+wwv_flow_api.create_menu_option(
+ p_id=>wwv_flow_api.id(77359772654331366)
+,p_parent_id=>wwv_flow_api.id(58913745031993378)
+,p_short_name=>'Dashboard'
+,p_link=>'f?p=&APP_ID.:6005:&SESSION.'
+,p_page_id=>6005
 );
 end;
 /
@@ -4180,6 +4257,56 @@ wwv_flow_api.create_plug_tmpl_display_point(
 ,p_placeholder=>'SUB_REGIONS'
 ,p_has_grid_support=>true
 ,p_glv_new_row=>true
+);
+end;
+/
+prompt --application/shared_components/user_interface/templates/region/splitter
+begin
+wwv_flow_api.create_plug_template(
+ p_id=>wwv_flow_api.id(77250880029271863)
+,p_layout=>'TABLE'
+,p_template=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'<div id="#REGION_STATIC_ID#" #REGION_ATTRIBUTES# class="resize #REGION_CSS_CLASSES#"> ',
+'#BODY#',
+'<div id="#REGION_STATIC_ID#_content" class="resize" style="height: 400px;width:400px;">',
+'#SUB_REGIONS#',
+'</div>',
+'</div>',
+''))
+,p_page_plug_template_name=>'Splitter'
+,p_internal_name=>'SPLITTER'
+,p_javascript_file_urls=>'#IMAGE_PREFIX#/libraries/apex/#MIN_DIRECTORY#widget.splitter#MIN#.js'
+,p_javascript_code_onload=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'var orientation = "horizontal";',
+'var positionedFrom = "begin";',
+'var e = apex.jQuery("##REGION_STATIC_ID#", apex.gPageContext$);',
+'',
+'if (e.hasClass("js-vertical")) {',
+'    orientation = "vertical";',
+'}',
+'if (e.hasClass("js-toEnd")) {',
+'    positionedFrom = "end";',
+'}',
+'',
+'apex.jQuery("##REGION_STATIC_ID#_content").splitter({',
+'    orientation: orientation,',
+'    positionedFrom: positionedFrom,',
+'    position: 300',
+'});',
+''))
+,p_theme_id=>42
+,p_theme_class_id=>19
+,p_preset_template_options=>'margin-bottom-none'
+,p_default_label_alignment=>'RIGHT'
+,p_default_field_alignment=>'LEFT'
+);
+wwv_flow_api.create_plug_tmpl_display_point(
+ p_id=>wwv_flow_api.id(77252045406292951)
+,p_plug_template_id=>wwv_flow_api.id(77250880029271863)
+,p_name=>'Two Sub Regions'
+,p_placeholder=>'SUB_REGIONS'
+,p_has_grid_support=>false
+,p_glv_new_row=>false
 );
 end;
 /
@@ -13321,7 +13448,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(64517471915168495)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200420113028'
+,p_last_upd_yyyymmddhh24miss=>'20200605160049'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(59044818663995105)
@@ -14040,6 +14167,19 @@ wwv_flow_api.create_ig_report_column(
 ,p_is_visible=>true
 ,p_is_frozen=>false
 );
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(77154807791300417)
+,p_button_sequence=>70
+,p_button_plug_id=>wwv_flow_api.id(132873562540732317)
+,p_button_name=>'Viewed'
+,p_button_action=>'SUBMIT'
+,p_button_template_options=>'#DEFAULT#:t-Button--large:t-Button--simple:t-Button--gapTop'
+,p_button_template_id=>wwv_flow_api.id(59012285338993961)
+,p_button_image_alt=>'Viewed'
+,p_button_position=>'BODY'
+,p_grid_new_row=>'N'
+,p_grid_new_column=>'Y'
+);
 wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(66373072726263534)
 ,p_name=>'P1_DAYS_VIEWED'
@@ -14100,6 +14240,29 @@ wwv_flow_api.create_page_item(
 ,p_display_as=>'NATIVE_HIDDEN'
 ,p_attribute_01=>'Y'
 );
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(77154778975300416)
+,p_name=>'P1_SETVIEWEDLST'
+,p_item_sequence=>60
+,p_item_plug_id=>wwv_flow_api.id(132873562540732317)
+,p_prompt=>'Set To Viewed'
+,p_display_as=>'NATIVE_SELECT_LIST'
+,p_lov=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select alert_type||'':''||alert_source ||''(''|| count(1) ||'')'' d, alert_type||'';''||alert_source r from v$opas_alert_queue  --non-viewed',
+'  where viewed is null and created >= systimestamp - TO_DSINTERVAL(:P1_DAYS_NONVIEWED)',
+'group by     ',
+'    alert_type,',
+'    alert_source',
+'order by 1'))
+,p_cHeight=>1
+,p_begin_on_new_line=>'N'
+,p_field_template=>wwv_flow_api.id(59011729453993944)
+,p_item_template_options=>'#DEFAULT#'
+,p_warn_on_unsaved_changes=>'I'
+,p_lov_display_extra=>'NO'
+,p_attribute_01=>'NONE'
+,p_attribute_02=>'N'
+);
 wwv_flow_api.create_page_process(
  p_id=>wwv_flow_api.id(66648855317809423)
 ,p_process_sequence=>10
@@ -14131,6 +14294,72 @@ wwv_flow_api.create_page_process(
 'end;'))
 ,p_error_display_location=>'INLINE_IN_NOTIFICATION'
 );
+wwv_flow_api.create_page_process(
+ p_id=>wwv_flow_api.id(77154953767300418)
+,p_process_sequence=>10
+,p_process_point=>'AFTER_SUBMIT'
+,p_process_type=>'NATIVE_PLSQL'
+,p_process_name=>'BulkViewed'
+,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'begin',
+'  -- Call the procedure',
+'  coremod_alerts.viewed(p_alert_type_n_source => :P1_SETVIEWEDLST);',
+'end;',
+''))
+,p_error_display_location=>'INLINE_IN_NOTIFICATION'
+);
+end;
+/
+prompt --application/pages/page_00002
+begin
+wwv_flow_api.create_page(
+ p_id=>2
+,p_user_interface_id=>wwv_flow_api.id(59034179868994205)
+,p_name=>'test'
+,p_step_title=>'test'
+,p_step_sub_title_type=>'TEXT_WITH_SUBSTITUTIONS'
+,p_autocomplete_on_off=>'OFF'
+,p_page_template_options=>'#DEFAULT#'
+,p_last_updated_by=>'OPAS60DADM'
+,p_last_upd_yyyymmddhh24miss=>'20200529161535'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(77154498173300413)
+,p_plug_name=>'Splitter'
+,p_region_name=>'splitter'
+,p_region_template_options=>'#DEFAULT#:margin-bottom-none'
+,p_plug_template=>wwv_flow_api.id(77250880029271863)
+,p_plug_display_sequence=>10
+,p_include_in_reg_disp_sel_yn=>'Y'
+,p_plug_display_point=>'BODY'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(77154593352300414)
+,p_plug_name=>'Reg1'
+,p_parent_plug_id=>wwv_flow_api.id(77154498173300413)
+,p_region_template_options=>'#DEFAULT#:t-Region--scrollBody'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>20
+,p_plug_display_point=>'BODY'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(77154642893300415)
+,p_plug_name=>'Reg2'
+,p_parent_plug_id=>wwv_flow_api.id(77154498173300413)
+,p_region_template_options=>'#DEFAULT#:t-Region--scrollBody'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>30
+,p_plug_display_point=>'BODY'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
 end;
 /
 prompt --application/pages/page_00010
@@ -14147,7 +14376,7 @@ wwv_flow_api.create_page(
 ,p_page_template_options=>'#DEFAULT#'
 ,p_required_role=>wwv_flow_api.id(64510375970101025)
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200515125334'
+,p_last_upd_yyyymmddhh24miss=>'20200611103540'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(58654036113400237)
@@ -14657,6 +14886,22 @@ wwv_flow_api.create_page_button(
 ,p_button_condition=>'COREMOD_SEC.can_move_folder_content(:APP_FOLDER_ID)'
 ,p_button_condition_type=>'PLSQL_EXPRESSION'
 ,p_icon_css_classes=>'fa-folders'
+,p_security_scheme=>wwv_flow_api.id(64510632529107389)
+);
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(77704448016359431)
+,p_button_sequence=>40
+,p_button_plug_id=>wwv_flow_api.id(65261971267164035)
+,p_button_name=>'SQLDataPoints'
+,p_button_action=>'REDIRECT_PAGE'
+,p_button_template_options=>'#DEFAULT#'
+,p_button_template_id=>wwv_flow_api.id(59012147360993949)
+,p_button_image_alt=>'SQL Data Points'
+,p_button_position=>'RIGHT_OF_IR_SEARCH_BAR'
+,p_button_redirect_url=>'f?p=&APP_ID.:1410:&SESSION.::&DEBUG.:RP:P1410_FOLDER_ID,APP_PREV_PAGE:&APP_FOLDER_ID.,10'
+,p_button_condition=>'select 1 from opas_objects where obj_prnt = :APP_FOLDER_ID and obj_ot = 140'
+,p_button_condition_type=>'EXISTS'
+,p_icon_css_classes=>'fa-file-sql'
 ,p_security_scheme=>wwv_flow_api.id(64510632529107389)
 );
 wwv_flow_api.create_page_branch(
@@ -22490,7 +22735,7 @@ wwv_flow_api.create_page(
 ,p_step_template=>wwv_flow_api.id(58924046682993504)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200525092823'
+,p_last_upd_yyyymmddhh24miss=>'20200607090612'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(65432222784589311)
@@ -23254,11 +23499,11 @@ wwv_flow_api.create_page_item(
 ,p_item_plug_id=>wwv_flow_api.id(65433202643589321)
 ,p_prompt=>'Select All'
 ,p_display_as=>'NATIVE_CHECKBOX'
-,p_lov=>'STATIC:Select All;Y,Deselect All;N'
+,p_lov=>'STATIC:Select;Y,Deselect;N'
 ,p_field_template=>wwv_flow_api.id(59011422309993928)
 ,p_item_template_options=>'#DEFAULT#'
 ,p_lov_display_extra=>'NO'
-,p_attribute_01=>'1'
+,p_attribute_01=>'2'
 );
 wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(76467578941721266)
@@ -24086,6 +24331,8 @@ wwv_flow_api.create_page_process(
 'declare',
 '  l_sql_data_status opas_ot_sql_data.GATHERING_STATUS%type;',
 'begin',
+'  :APP_CURR_OBJ_OT := 140;',
+'  ',
 '  select sql_de.sql_text, ',
 '         sql_de.sql_id,',
 '         sql_da.sql_data_point_id,',
@@ -24132,7 +24379,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(65526486119996516)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200417155619'
+,p_last_upd_yyyymmddhh24miss=>'20200611104934'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(76371333510543706)
@@ -24194,6 +24441,8 @@ wwv_flow_api.create_page_plug(
 '  a.dblink = dbl.db_link_name(+)'))
 ,p_plug_source_type=>'NATIVE_IR'
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_plug_display_condition_type=>'ITEM_IS_NULL'
+,p_plug_display_when_condition=>'P1410_FOLDER_ID'
 ,p_prn_content_disposition=>'ATTACHMENT'
 ,p_prn_document_header=>'APEX'
 ,p_prn_units=>'INCHES'
@@ -24281,6 +24530,211 @@ wwv_flow_api.create_worksheet_rpt(
 ,p_report_columns=>'AGS_ID:SOURCE_DB:DESCRIPTION:SCHEDULE'
 );
 wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(154092762204183443)
+,p_plug_name=>'SQL Data Points in current Folder'
+,p_parent_plug_id=>wwv_flow_api.id(76492832170688714)
+,p_region_template_options=>'#DEFAULT#'
+,p_component_template_options=>'#DEFAULT#'
+,p_plug_template=>wwv_flow_api.id(58959020573993670)
+,p_plug_display_sequence=>30
+,p_plug_display_point=>'BODY'
+,p_query_type=>'SQL'
+,p_plug_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select d.sql_id, s.created_by, s.first_discovered, dbl.display_name first_discovered_at,',
+'       d.end_gathering_dt data_point_dt ,dbl2.display_name data_point_from, d.gathering_status,',
+'       o.obj_descr, o.obj_owner, o.obj_id, o.obj_prnt,',
+'       COREOBJ_SQL_SEARCH.get_shorten_sql_text_for_html_expose(t.file_contentc,256) sql_text,',
+'       coreobj_sql_tags.tags(s.sql_id) tags',
+'from OPAS_OT_SQL_DESCRIPTIONS s, v$opas_db_links dbl,',
+'     opas_ot_sql_data d, v$opas_db_links dbl2, opas_ot_sql_data_point_ref d2o,',
+'     opas_objects o,',
+'     opas_files t',
+'where s.sql_id=d.sql_id and s.first_discovered_at = dbl.db_link_name(+)',
+'  and d.sql_data_point_id = d2o.sql_data_point_id and d.dblink = dbl2.db_link_name(+)',
+'  and d2o.obj_id = o.obj_id',
+'  and o.obj_prnt = :P1410_FOLDER_ID',
+'  and nvl(s.sql_text,s.sql_text_approx) = t.file_id(+)'))
+,p_plug_source_type=>'NATIVE_IR'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_plug_display_condition_type=>'ITEM_IS_NOT_NULL'
+,p_plug_display_when_condition=>'P1410_FOLDER_ID'
+,p_prn_content_disposition=>'ATTACHMENT'
+,p_prn_document_header=>'APEX'
+,p_prn_units=>'INCHES'
+,p_prn_paper_size=>'LETTER'
+,p_prn_width=>8.5
+,p_prn_height=>11
+,p_prn_orientation=>'HORIZONTAL'
+,p_prn_page_header_font_color=>'#000000'
+,p_prn_page_header_font_family=>'Helvetica'
+,p_prn_page_header_font_weight=>'normal'
+,p_prn_page_header_font_size=>'12'
+,p_prn_page_footer_font_color=>'#000000'
+,p_prn_page_footer_font_family=>'Helvetica'
+,p_prn_page_footer_font_weight=>'normal'
+,p_prn_page_footer_font_size=>'12'
+,p_prn_header_bg_color=>'#9bafde'
+,p_prn_header_font_color=>'#000000'
+,p_prn_header_font_family=>'Helvetica'
+,p_prn_header_font_weight=>'normal'
+,p_prn_header_font_size=>'10'
+,p_prn_body_bg_color=>'#efefef'
+,p_prn_body_font_color=>'#000000'
+,p_prn_body_font_family=>'Helvetica'
+,p_prn_body_font_weight=>'normal'
+,p_prn_body_font_size=>'10'
+,p_prn_border_width=>.5
+,p_prn_page_header_alignment=>'CENTER'
+,p_prn_page_footer_alignment=>'CENTER'
+);
+wwv_flow_api.create_worksheet(
+ p_id=>wwv_flow_api.id(154092867319183444)
+,p_max_row_count=>'1000000'
+,p_show_nulls_as=>'-'
+,p_pagination_type=>'ROWS_X_TO_Y'
+,p_pagination_display_pos=>'TOP_AND_BOTTOM_RIGHT'
+,p_report_list_mode=>'TABS'
+,p_show_detail_link=>'N'
+,p_show_notify=>'Y'
+,p_download_formats=>'CSV:HTML:EMAIL:XLS:PDF:RTF'
+,p_owner=>'OPAS60DADM'
+,p_internal_uid=>154092867319183444
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77721984840639758)
+,p_db_column_name=>'SQL_ID'
+,p_display_order=>20
+,p_column_identifier=>'B'
+,p_column_label=>'SQL_ID'
+,p_column_link=>'f?p=&APP_ID.:1412:&SESSION.::&DEBUG.:RP:P1412_SQL_ID,APP_PREV_PAGE:#SQL_ID#,1410'
+,p_column_linktext=>'#SQL_ID#'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77722378287639759)
+,p_db_column_name=>'CREATED_BY'
+,p_display_order=>30
+,p_column_identifier=>'C'
+,p_column_label=>'Created By'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77722710081639760)
+,p_db_column_name=>'FIRST_DISCOVERED'
+,p_display_order=>40
+,p_column_identifier=>'D'
+,p_column_label=>'First Discovered'
+,p_column_type=>'DATE'
+,p_column_alignment=>'CENTER'
+,p_format_mask=>'&APP_GRID_DT_FMT.'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77723107508639760)
+,p_db_column_name=>'FIRST_DISCOVERED_AT'
+,p_display_order=>50
+,p_column_identifier=>'E'
+,p_column_label=>'First Discovered At'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77723519365639761)
+,p_db_column_name=>'DATA_POINT_DT'
+,p_display_order=>60
+,p_column_identifier=>'F'
+,p_column_label=>'Data Point DT'
+,p_column_link=>'f?p=&APP_ID.:1401:&SESSION.::&DEBUG.:RP:APP_PREV_PAGE,APP_OBJ_ID,APP_FOLDER_ID:1410,#OBJ_ID#,#OBJ_PRNT#'
+,p_column_linktext=>'#DATA_POINT_DT#'
+,p_column_type=>'DATE'
+,p_column_alignment=>'CENTER'
+,p_format_mask=>'&APP_GRID_DT_FMT.'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77723998175639764)
+,p_db_column_name=>'DATA_POINT_FROM'
+,p_display_order=>70
+,p_column_identifier=>'G'
+,p_column_label=>'Data Point From'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77724360402639764)
+,p_db_column_name=>'GATHERING_STATUS'
+,p_display_order=>80
+,p_column_identifier=>'H'
+,p_column_label=>'Status'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77724719388639765)
+,p_db_column_name=>'OBJ_DESCR'
+,p_display_order=>90
+,p_column_identifier=>'I'
+,p_column_label=>'Description'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77725100223639766)
+,p_db_column_name=>'OBJ_OWNER'
+,p_display_order=>100
+,p_column_identifier=>'J'
+,p_column_label=>'Owner'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77725515430639767)
+,p_db_column_name=>'OBJ_ID'
+,p_display_order=>110
+,p_column_identifier=>'K'
+,p_column_label=>'Obj Id'
+,p_column_type=>'NUMBER'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77725940011639768)
+,p_db_column_name=>'OBJ_PRNT'
+,p_display_order=>120
+,p_column_identifier=>'L'
+,p_column_label=>'Obj Prnt'
+,p_column_type=>'NUMBER'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77704577076359432)
+,p_db_column_name=>'SQL_TEXT'
+,p_display_order=>130
+,p_column_identifier=>'M'
+,p_column_label=>'Sql Text'
+,p_allow_sorting=>'N'
+,p_allow_ctrl_breaks=>'N'
+,p_allow_aggregations=>'N'
+,p_allow_computations=>'N'
+,p_allow_charting=>'N'
+,p_allow_group_by=>'N'
+,p_allow_pivot=>'N'
+,p_column_type=>'CLOB'
+,p_display_text_as=>'WITHOUT_MODIFICATION'
+,p_rpt_show_filter_lov=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77704624626359433)
+,p_db_column_name=>'TAGS'
+,p_display_order=>140
+,p_column_identifier=>'N'
+,p_column_label=>'Tags'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_rpt(
+ p_id=>wwv_flow_api.id(154156211091632837)
+,p_application_user=>'APXWS_DEFAULT'
+,p_report_seq=>10
+,p_report_alias=>'777263'
+,p_status=>'PUBLIC'
+,p_is_default=>'Y'
+,p_report_columns=>'SQL_ID:CREATED_BY:FIRST_DISCOVERED:FIRST_DISCOVERED_AT:DATA_POINT_DT:DATA_POINT_FROM:GATHERING_STATUS:OBJ_DESCR:OBJ_OWNER:OBJ_ID:OBJ_PRNT:SQL_TEXT:TAGS'
+);
+wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(229176647084120563)
 ,p_plug_name=>'All SQLs'
 ,p_parent_plug_id=>wwv_flow_api.id(76492832170688714)
@@ -24313,6 +24767,8 @@ wwv_flow_api.create_page_plug(
 'end;'))
 ,p_plug_source_type=>'NATIVE_IR'
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_plug_display_condition_type=>'ITEM_IS_NULL'
+,p_plug_display_when_condition=>'P1410_FOLDER_ID'
 ,p_prn_content_disposition=>'ATTACHMENT'
 ,p_prn_document_header=>'APEX'
 ,p_prn_units=>'INCHES'
@@ -24473,6 +24929,14 @@ wwv_flow_api.create_page_item(
 ,p_attribute_14=>'Y'
 ,p_attribute_15=>'5'
 );
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(77704351500359430)
+,p_name=>'P1410_FOLDER_ID'
+,p_item_sequence=>10
+,p_item_plug_id=>wwv_flow_api.id(154092762204183443)
+,p_display_as=>'NATIVE_HIDDEN'
+,p_attribute_01=>'Y'
+);
 end;
 /
 prompt --application/pages/page_01411
@@ -24488,7 +24952,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(65526486119996516)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200526111956'
+,p_last_upd_yyyymmddhh24miss=>'20200529095312'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(143739510708326651)
@@ -25215,6 +25679,9 @@ wwv_flow_api.create_page_process(
 'declare',
 '  l_cnt number;',
 'begin',
+'  select count(1) into l_cnt from OPAS_OT_SQL_SEARCHES where apex_user = V(''APP_USER'') and session_id = :P1411_SESSION;',
+'  if l_cnt = 0 then :P1411_SESSION := null; end if;',
+'  ',
 '  if :P1411_SESSION is not null then',
 '    select count(1), max(retention) into l_cnt, :P1411_DAYS from OPAS_OT_SQL_SEARCHES where session_id = :P1411_SESSION and apex_user = V(''APP_USER'');',
 '    if l_cnt > 0 then',
@@ -25402,16 +25869,64 @@ wwv_flow_api.create_page(
 ''))
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200427124144'
+,p_last_upd_yyyymmddhh24miss=>'20200611122422'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(76375388508543746)
+,p_plug_name=>'Tags'
+,p_region_template_options=>'#DEFAULT#:t-Region--removeHeader:t-Region--scrollBody'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>20
+,p_include_in_reg_disp_sel_yn=>'Y'
+,p_plug_display_point=>'BODY'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(76429543357896224)
+,p_plug_name=>'Breadcrumb'
+,p_region_template_options=>'#DEFAULT#:t-BreadcrumbRegion--useBreadcrumbTitle'
+,p_component_template_options=>'#DEFAULT#'
+,p_plug_template=>wwv_flow_api.id(58969580676993713)
+,p_plug_display_sequence=>10
+,p_plug_display_point=>'REGION_POSITION_01'
+,p_menu_id=>wwv_flow_api.id(58913514827993374)
+,p_plug_source_type=>'NATIVE_BREADCRUMB'
+,p_menu_template_id=>wwv_flow_api.id(59013031676993965)
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(76491627110688702)
+,p_plug_name=>'Actions'
+,p_region_template_options=>'#DEFAULT#:t-Region--removeHeader:t-Region--scrollBody'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>10
+,p_include_in_reg_disp_sel_yn=>'Y'
+,p_plug_display_point=>'BODY'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(77572596056769531)
+,p_plug_name=>'Tabs'
+,p_region_template_options=>'#DEFAULT#:js-useLocalStorage:t-TabsRegion-mod--simple'
+,p_plug_template=>wwv_flow_api.id(58966904872993703)
+,p_plug_display_sequence=>50
+,p_include_in_reg_disp_sel_yn=>'Y'
+,p_plug_display_point=>'BODY'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(76371513036543708)
-,p_plug_name=>'SQL Data'
+,p_plug_name=>'SQL Data Points'
+,p_parent_plug_id=>wwv_flow_api.id(77572596056769531)
 ,p_region_template_options=>'#DEFAULT#'
 ,p_component_template_options=>'#DEFAULT#'
 ,p_plug_template=>wwv_flow_api.id(58959020573993670)
 ,p_plug_display_sequence=>40
-,p_include_in_reg_disp_sel_yn=>'Y'
 ,p_plug_display_point=>'BODY'
 ,p_query_type=>'SQL'
 ,p_plug_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
@@ -25486,9 +26001,8 @@ wwv_flow_api.create_worksheet_column(
 ,p_display_order=>20
 ,p_column_identifier=>'B'
 ,p_column_label=>'SQL_ID'
-,p_column_link=>'f?p=&APP_ID.:1401:&SESSION.::&DEBUG.:RP:APP_PREV_PAGE,APP_OBJ_ID,APP_FOLDER_ID:1412,#OBJ_ID#,#OBJ_PRNT#'
-,p_column_linktext=>'#SQL_ID#'
 ,p_column_type=>'STRING'
+,p_display_text_as=>'HIDDEN'
 );
 wwv_flow_api.create_worksheet_column(
  p_id=>wwv_flow_api.id(76371967646543712)
@@ -25523,6 +26037,8 @@ wwv_flow_api.create_worksheet_column(
 ,p_display_order=>60
 ,p_column_identifier=>'F'
 ,p_column_label=>'Data Point DT'
+,p_column_link=>'f?p=&APP_ID.:1401:&SESSION.::&DEBUG.:RP:APP_PREV_PAGE,APP_OBJ_ID,APP_FOLDER_ID:1412,#OBJ_ID#,#OBJ_PRNT#'
+,p_column_linktext=>'#DATA_POINT_DT#'
 ,p_column_type=>'DATE'
 ,p_column_alignment=>'CENTER'
 ,p_format_mask=>'&APP_GRID_DT_FMT.'
@@ -25590,11 +26106,11 @@ wwv_flow_api.create_worksheet_rpt(
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(76373707268543730)
 ,p_plug_name=>'SQL Text'
-,p_region_template_options=>'#DEFAULT#:js-useLocalStorage:is-expanded:t-Region--scrollBody'
+,p_parent_plug_id=>wwv_flow_api.id(77572596056769531)
+,p_region_template_options=>'#DEFAULT#:t-Region--scrollBody'
 ,p_component_template_options=>'#DEFAULT#'
-,p_plug_template=>wwv_flow_api.id(58949013847993646)
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
 ,p_plug_display_sequence=>30
-,p_include_in_reg_disp_sel_yn=>'Y'
 ,p_plug_display_point=>'BODY'
 ,p_plug_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'begin',
@@ -25606,40 +26122,957 @@ wwv_flow_api.create_page_plug(
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
 );
 wwv_flow_api.create_page_plug(
- p_id=>wwv_flow_api.id(76375388508543746)
-,p_plug_name=>'Tags'
-,p_region_template_options=>'#DEFAULT#:t-Region--removeHeader:t-Region--scrollBody'
-,p_plug_template=>wwv_flow_api.id(58960191682993672)
-,p_plug_display_sequence=>20
-,p_include_in_reg_disp_sel_yn=>'Y'
-,p_plug_display_point=>'BODY'
-,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
-,p_attribute_01=>'N'
-,p_attribute_02=>'HTML'
-);
-wwv_flow_api.create_page_plug(
- p_id=>wwv_flow_api.id(76429543357896224)
-,p_plug_name=>'Breadcrumb'
-,p_region_template_options=>'#DEFAULT#:t-BreadcrumbRegion--useBreadcrumbTitle'
+ p_id=>wwv_flow_api.id(77632823394022348)
+,p_plug_name=>'V$SQL Data'
+,p_parent_plug_id=>wwv_flow_api.id(77572596056769531)
+,p_region_template_options=>'#DEFAULT#'
 ,p_component_template_options=>'#DEFAULT#'
-,p_plug_template=>wwv_flow_api.id(58969580676993713)
-,p_plug_display_sequence=>10
-,p_plug_display_point=>'REGION_POSITION_01'
-,p_menu_id=>wwv_flow_api.id(58913514827993374)
-,p_plug_source_type=>'NATIVE_BREADCRUMB'
-,p_menu_template_id=>wwv_flow_api.id(59013031676993965)
+,p_plug_template=>wwv_flow_api.id(58959020573993670)
+,p_plug_display_sequence=>60
+,p_plug_display_point=>'BODY'
+,p_query_type=>'SQL'
+,p_plug_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select coreobj_api.get_object_path(p_obj_id => o.obj_prnt, p_including_object => ''Y'') path_to_folder,',
+'       d.end_gathering_dt data_point_dt,dbl2.display_name data_point_from,o.obj_descr, ',
+'       COREMOD_REPORT_UTILS.tptformat(dd.cpu_time,''TIME'') cpu_time,',
+'       COREMOD_REPORT_UTILS.tptformat(dd.elapsed_time,''TIME'') elapsed_time,',
+'       COREMOD_REPORT_UTILS.tptformat(dd.user_io_wait_time/(case when dd.disk_reads <> 0 then dd.disk_reads else null end),''TIME'') avg_io_time,',
+'       COREMOD_REPORT_UTILS.tptformat(round(dd.elapsed_time/(case when dd.executions <> 0 then dd.executions else null end),3),''TIME'') avg_exec_time,    ',
+'       COREMOD_REPORT_UTILS.tptformat(dd.user_io_wait_time,''TIME'') user_io_wait_time,          ',
+'       COREMOD_REPORT_UTILS.tptformat(dd.disk_reads) disk_reads,',
+'       COREMOD_REPORT_UTILS.tptformat(dd.buffer_gets) buffer_gets,',
+'       COREMOD_REPORT_UTILS.tptformat(dd.direct_writes) direct_writes,',
+'       dd.plan_hash_value,',
+'       dd.module,',
+'       dd.action,',
+'       dd.last_active_time,',
+'       dd.executions,',
+'       dd.fetches,',
+'       dd.rows_processed,',
+'       dd.end_of_fetch_count,',
+'       o.obj_owner, o.obj_id, o.obj_prnt',
+'from OPAS_OT_SQL_DESCRIPTIONS s,',
+'     opas_ot_sql_data d,',
+'     v$opas_db_links dbl2, ',
+'     opas_ot_sql_data_point_ref d2o,',
+'     opas_objects o,',
+'     opas_ot_sql_vsql dd',
+'where s.sql_id=d.sql_id(+)',
+'  and d.sql_data_point_id = d2o.sql_data_point_id(+) and d.dblink = dbl2.db_link_name(+)',
+'  and d2o.obj_id = o.obj_id(+)',
+'  and s.sql_id=dd.sql_id(+) and d.sql_data_point_id = dd.sql_data_point_id(+)',
+'  and s.sql_id = :P1412_SQL_ID'))
+,p_plug_source_type=>'NATIVE_IR'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_prn_content_disposition=>'ATTACHMENT'
+,p_prn_document_header=>'APEX'
+,p_prn_units=>'INCHES'
+,p_prn_paper_size=>'LETTER'
+,p_prn_width=>8.5
+,p_prn_height=>11
+,p_prn_orientation=>'HORIZONTAL'
+,p_prn_page_header_font_color=>'#000000'
+,p_prn_page_header_font_family=>'Helvetica'
+,p_prn_page_header_font_weight=>'normal'
+,p_prn_page_header_font_size=>'12'
+,p_prn_page_footer_font_color=>'#000000'
+,p_prn_page_footer_font_family=>'Helvetica'
+,p_prn_page_footer_font_weight=>'normal'
+,p_prn_page_footer_font_size=>'12'
+,p_prn_header_bg_color=>'#9bafde'
+,p_prn_header_font_color=>'#000000'
+,p_prn_header_font_family=>'Helvetica'
+,p_prn_header_font_weight=>'normal'
+,p_prn_header_font_size=>'10'
+,p_prn_body_bg_color=>'#efefef'
+,p_prn_body_font_color=>'#000000'
+,p_prn_body_font_family=>'Helvetica'
+,p_prn_body_font_weight=>'normal'
+,p_prn_body_font_size=>'10'
+,p_prn_border_width=>.5
+,p_prn_page_header_alignment=>'CENTER'
+,p_prn_page_footer_alignment=>'CENTER'
+);
+wwv_flow_api.create_worksheet(
+ p_id=>wwv_flow_api.id(77632999569022349)
+,p_max_row_count=>'1000000'
+,p_show_nulls_as=>'-'
+,p_pagination_type=>'ROWS_X_TO_Y'
+,p_pagination_display_pos=>'BOTTOM_RIGHT'
+,p_report_list_mode=>'TABS'
+,p_show_detail_link=>'N'
+,p_show_notify=>'Y'
+,p_download_formats=>'CSV:HTML:EMAIL:XLS:PDF:RTF'
+,p_owner=>'OPAS60DADM'
+,p_internal_uid=>77632999569022349
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77633046465022350)
+,p_db_column_name=>'PATH_TO_FOLDER'
+,p_display_order=>10
+,p_column_identifier=>'A'
+,p_column_label=>'Path To Folder'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77657084092087401)
+,p_db_column_name=>'DATA_POINT_DT'
+,p_display_order=>20
+,p_column_identifier=>'B'
+,p_column_label=>'Data Point Date'
+,p_column_link=>'f?p=&APP_ID.:1401:&SESSION.::&DEBUG.:RP:APP_PREV_PAGE,APP_OBJ_ID,APP_FOLDER_ID:1412,#OBJ_ID#,#OBJ_PRNT#'
+,p_column_linktext=>'#DATA_POINT_DT#'
+,p_column_type=>'DATE'
+,p_column_alignment=>'CENTER'
+,p_format_mask=>'&APP_GRID_DT_FMT.'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77657185923087402)
+,p_db_column_name=>'DATA_POINT_FROM'
+,p_display_order=>30
+,p_column_identifier=>'C'
+,p_column_label=>'Data Point From'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77657290336087403)
+,p_db_column_name=>'OBJ_DESCR'
+,p_display_order=>40
+,p_column_identifier=>'D'
+,p_column_label=>'Description'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77657300034087404)
+,p_db_column_name=>'CPU_TIME'
+,p_display_order=>50
+,p_column_identifier=>'E'
+,p_column_label=>'Cpu Time'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77657406158087405)
+,p_db_column_name=>'ELAPSED_TIME'
+,p_display_order=>60
+,p_column_identifier=>'F'
+,p_column_label=>'Elapsed Time'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77657506544087406)
+,p_db_column_name=>'AVG_IO_TIME'
+,p_display_order=>70
+,p_column_identifier=>'G'
+,p_column_label=>'Avg IO Time'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77657654752087407)
+,p_db_column_name=>'AVG_EXEC_TIME'
+,p_display_order=>80
+,p_column_identifier=>'H'
+,p_column_label=>'Avg Exec Time'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77657779909087408)
+,p_db_column_name=>'USER_IO_WAIT_TIME'
+,p_display_order=>90
+,p_column_identifier=>'I'
+,p_column_label=>'User IO Wait Time'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77657823114087409)
+,p_db_column_name=>'DISK_READS'
+,p_display_order=>100
+,p_column_identifier=>'J'
+,p_column_label=>'Disk Reads'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77657953379087410)
+,p_db_column_name=>'BUFFER_GETS'
+,p_display_order=>110
+,p_column_identifier=>'K'
+,p_column_label=>'Buffer Gets'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77658031527087411)
+,p_db_column_name=>'DIRECT_WRITES'
+,p_display_order=>120
+,p_column_identifier=>'L'
+,p_column_label=>'Direct Writes'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77658102901087412)
+,p_db_column_name=>'PLAN_HASH_VALUE'
+,p_display_order=>130
+,p_column_identifier=>'M'
+,p_column_label=>'Plan Hash Value'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77658251914087413)
+,p_db_column_name=>'MODULE'
+,p_display_order=>140
+,p_column_identifier=>'N'
+,p_column_label=>'Module'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77658365541087414)
+,p_db_column_name=>'ACTION'
+,p_display_order=>150
+,p_column_identifier=>'O'
+,p_column_label=>'Action'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77658493683087415)
+,p_db_column_name=>'LAST_ACTIVE_TIME'
+,p_display_order=>160
+,p_column_identifier=>'P'
+,p_column_label=>'Last Active Time'
+,p_column_type=>'DATE'
+,p_column_alignment=>'CENTER'
+,p_format_mask=>'&APP_GRID_DT_FMT.'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77658517820087416)
+,p_db_column_name=>'EXECUTIONS'
+,p_display_order=>170
+,p_column_identifier=>'Q'
+,p_column_label=>'Executions'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77658635209087417)
+,p_db_column_name=>'FETCHES'
+,p_display_order=>180
+,p_column_identifier=>'R'
+,p_column_label=>'Fetches'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77658773389087418)
+,p_db_column_name=>'ROWS_PROCESSED'
+,p_display_order=>190
+,p_column_identifier=>'S'
+,p_column_label=>'Rows Processed'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77658803267087419)
+,p_db_column_name=>'END_OF_FETCH_COUNT'
+,p_display_order=>200
+,p_column_identifier=>'T'
+,p_column_label=>'End Of Fetch Count'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77658982149087420)
+,p_db_column_name=>'OBJ_OWNER'
+,p_display_order=>210
+,p_column_identifier=>'U'
+,p_column_label=>'Owner'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77659047297087421)
+,p_db_column_name=>'OBJ_ID'
+,p_display_order=>220
+,p_column_identifier=>'V'
+,p_column_label=>'Obj Id'
+,p_column_type=>'NUMBER'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77659174888087422)
+,p_db_column_name=>'OBJ_PRNT'
+,p_display_order=>230
+,p_column_identifier=>'W'
+,p_column_label=>'Obj Prnt'
+,p_column_type=>'NUMBER'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_rpt(
+ p_id=>wwv_flow_api.id(77679360395098774)
+,p_application_user=>'APXWS_DEFAULT'
+,p_report_seq=>10
+,p_report_alias=>'776794'
+,p_status=>'PUBLIC'
+,p_is_default=>'Y'
+,p_report_columns=>'PATH_TO_FOLDER:DATA_POINT_DT:DATA_POINT_FROM:OBJ_DESCR:CPU_TIME:ELAPSED_TIME:AVG_IO_TIME:AVG_EXEC_TIME:USER_IO_WAIT_TIME:DISK_READS:BUFFER_GETS:DIRECT_WRITES:PLAN_HASH_VALUE:MODULE:ACTION:LAST_ACTIVE_TIME:EXECUTIONS:FETCHES:ROWS_PROCESSED:END_OF_FETC'
+||'H_COUNT:OBJ_OWNER:OBJ_ID:OBJ_PRNT'
 );
 wwv_flow_api.create_page_plug(
- p_id=>wwv_flow_api.id(76491627110688702)
-,p_plug_name=>'Actions'
-,p_region_template_options=>'#DEFAULT#:t-Region--removeHeader:t-Region--scrollBody'
-,p_plug_template=>wwv_flow_api.id(58960191682993672)
-,p_plug_display_sequence=>10
-,p_include_in_reg_disp_sel_yn=>'Y'
+ p_id=>wwv_flow_api.id(77659269588087423)
+,p_plug_name=>'AWR Data'
+,p_parent_plug_id=>wwv_flow_api.id(77572596056769531)
+,p_region_template_options=>'#DEFAULT#'
+,p_component_template_options=>'#DEFAULT#'
+,p_plug_template=>wwv_flow_api.id(58959020573993670)
+,p_plug_display_sequence=>60
 ,p_plug_display_point=>'BODY'
+,p_query_type=>'SQL'
+,p_plug_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select coreobj_api.get_object_path(p_obj_id => o.obj_prnt, p_including_object => ''Y'') path_to_folder,',
+'       d.end_gathering_dt data_point_dt,dbl2.display_name data_point_from,o.obj_descr, ',
+'       COREMOD_REPORT_UTILS.tptformat(dd.cpu_time_delta,''TIME'') cpu_time_delta,',
+'       COREMOD_REPORT_UTILS.tptformat(dd.elapsed_time_delta,''TIME'') elapsed_time_delta,',
+'       COREMOD_REPORT_UTILS.tptformat(dd.iowait_delta/(case when dd.disk_reads_delta <> 0 then dd.disk_reads_delta else null end),''TIME'') avg_io_time,',
+'       COREMOD_REPORT_UTILS.tptformat(round(dd.elapsed_time_delta/(case when dd.executions_delta <> 0 then dd.executions_delta else null end),3),''TIME'') avg_exec_time,    ',
+'       COREMOD_REPORT_UTILS.tptformat(dd.iowait_delta,''TIME'') iowait_delta,          ',
+'       COREMOD_REPORT_UTILS.tptformat(dd.disk_reads_delta) disk_reads_delta,',
+'       COREMOD_REPORT_UTILS.tptformat(dd.buffer_gets_delta) buffer_gets_delta,',
+'       COREMOD_REPORT_UTILS.tptformat(dd.direct_writes_delta) direct_writes_delta,',
+'       dd.plan_hash_value,',
+'       dd.module,',
+'       dd.action,',
+'       dd.executions_delta,',
+'       dd.fetches_delta,',
+'       dd.rows_processed_delta,',
+'       d.incarnation#,d.awr_snap_start,d.awr_snap_end,',
+'       o.obj_owner, o.obj_id, o.obj_prnt',
+'from OPAS_OT_SQL_DESCRIPTIONS s,',
+'     opas_ot_sql_data d,',
+'     v$opas_db_links dbl2, ',
+'     opas_ot_sql_data_point_ref d2o,',
+'     opas_objects o,',
+'     opas_ot_sql_awr_sqlstat dd',
+'where s.sql_id=d.sql_id(+)',
+'  and d.sql_data_point_id = d2o.sql_data_point_id(+) and d.dblink = dbl2.db_link_name(+)',
+'  and d2o.obj_id = o.obj_id(+)',
+'  and s.sql_id=dd.sql_id(+) and dd.snap_id(+) between d.awr_snap_start and d.awr_snap_end and d.incarnation# = dd.incarnation#(+)',
+'  and d.dblink = dd.dblink(+)',
+'  and s.sql_id = :P1412_SQL_ID'))
+,p_plug_source_type=>'NATIVE_IR'
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
-,p_attribute_01=>'N'
-,p_attribute_02=>'HTML'
+,p_prn_content_disposition=>'ATTACHMENT'
+,p_prn_document_header=>'APEX'
+,p_prn_units=>'INCHES'
+,p_prn_paper_size=>'LETTER'
+,p_prn_width=>8.5
+,p_prn_height=>11
+,p_prn_orientation=>'HORIZONTAL'
+,p_prn_page_header_font_color=>'#000000'
+,p_prn_page_header_font_family=>'Helvetica'
+,p_prn_page_header_font_weight=>'normal'
+,p_prn_page_header_font_size=>'12'
+,p_prn_page_footer_font_color=>'#000000'
+,p_prn_page_footer_font_family=>'Helvetica'
+,p_prn_page_footer_font_weight=>'normal'
+,p_prn_page_footer_font_size=>'12'
+,p_prn_header_bg_color=>'#9bafde'
+,p_prn_header_font_color=>'#000000'
+,p_prn_header_font_family=>'Helvetica'
+,p_prn_header_font_weight=>'normal'
+,p_prn_header_font_size=>'10'
+,p_prn_body_bg_color=>'#efefef'
+,p_prn_body_font_color=>'#000000'
+,p_prn_body_font_family=>'Helvetica'
+,p_prn_body_font_weight=>'normal'
+,p_prn_body_font_size=>'10'
+,p_prn_border_width=>.5
+,p_prn_page_header_alignment=>'CENTER'
+,p_prn_page_footer_alignment=>'CENTER'
+);
+wwv_flow_api.create_worksheet(
+ p_id=>wwv_flow_api.id(77659332354087424)
+,p_max_row_count=>'1000000'
+,p_show_nulls_as=>'-'
+,p_pagination_type=>'ROWS_X_TO_Y'
+,p_pagination_display_pos=>'BOTTOM_RIGHT'
+,p_report_list_mode=>'TABS'
+,p_show_detail_link=>'N'
+,p_show_notify=>'Y'
+,p_download_formats=>'CSV:HTML:EMAIL:XLS:PDF:RTF'
+,p_owner=>'OPAS60DADM'
+,p_internal_uid=>77659332354087424
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77659463327087425)
+,p_db_column_name=>'PATH_TO_FOLDER'
+,p_display_order=>10
+,p_column_identifier=>'A'
+,p_column_label=>'Path To Folder'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77659550191087426)
+,p_db_column_name=>'DATA_POINT_DT'
+,p_display_order=>20
+,p_column_identifier=>'B'
+,p_column_label=>'Data Point Date'
+,p_column_link=>'f?p=&APP_ID.:1401:&SESSION.::&DEBUG.:RP:APP_PREV_PAGE,APP_OBJ_ID,APP_FOLDER_ID:1412,#OBJ_ID#,#OBJ_PRNT#'
+,p_column_linktext=>'#DATA_POINT_DT#'
+,p_column_type=>'DATE'
+,p_column_alignment=>'CENTER'
+,p_format_mask=>'&APP_GRID_DT_FMT.'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77659675510087427)
+,p_db_column_name=>'DATA_POINT_FROM'
+,p_display_order=>30
+,p_column_identifier=>'C'
+,p_column_label=>'Data Point From'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77659717019087428)
+,p_db_column_name=>'OBJ_DESCR'
+,p_display_order=>40
+,p_column_identifier=>'D'
+,p_column_label=>'Description'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77659866291087429)
+,p_db_column_name=>'CPU_TIME_DELTA'
+,p_display_order=>50
+,p_column_identifier=>'E'
+,p_column_label=>'Cpu Time Delta'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77659946923087430)
+,p_db_column_name=>'ELAPSED_TIME_DELTA'
+,p_display_order=>60
+,p_column_identifier=>'F'
+,p_column_label=>'Elapsed Time Delta'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77660063366087431)
+,p_db_column_name=>'AVG_IO_TIME'
+,p_display_order=>70
+,p_column_identifier=>'G'
+,p_column_label=>'Avg IO Time'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77660185584087432)
+,p_db_column_name=>'AVG_EXEC_TIME'
+,p_display_order=>80
+,p_column_identifier=>'H'
+,p_column_label=>'Avg Exec Time'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77660275789087433)
+,p_db_column_name=>'IOWAIT_DELTA'
+,p_display_order=>90
+,p_column_identifier=>'I'
+,p_column_label=>'IO wait Delta'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77660358309087434)
+,p_db_column_name=>'DISK_READS_DELTA'
+,p_display_order=>100
+,p_column_identifier=>'J'
+,p_column_label=>'Disk Reads Delta'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77660447531087435)
+,p_db_column_name=>'BUFFER_GETS_DELTA'
+,p_display_order=>110
+,p_column_identifier=>'K'
+,p_column_label=>'Buffer Gets Delta'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77660561493087436)
+,p_db_column_name=>'DIRECT_WRITES_DELTA'
+,p_display_order=>120
+,p_column_identifier=>'L'
+,p_column_label=>'Direct Writes Delta'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77660667338087437)
+,p_db_column_name=>'PLAN_HASH_VALUE'
+,p_display_order=>130
+,p_column_identifier=>'M'
+,p_column_label=>'Plan Hash Value'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77660706422087438)
+,p_db_column_name=>'MODULE'
+,p_display_order=>140
+,p_column_identifier=>'N'
+,p_column_label=>'Module'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77660888460087439)
+,p_db_column_name=>'ACTION'
+,p_display_order=>150
+,p_column_identifier=>'O'
+,p_column_label=>'Action'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77660948791087440)
+,p_db_column_name=>'EXECUTIONS_DELTA'
+,p_display_order=>160
+,p_column_identifier=>'P'
+,p_column_label=>'Executions Delta'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77661019129087441)
+,p_db_column_name=>'FETCHES_DELTA'
+,p_display_order=>170
+,p_column_identifier=>'Q'
+,p_column_label=>'Fetches Delta'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77661148618087442)
+,p_db_column_name=>'ROWS_PROCESSED_DELTA'
+,p_display_order=>180
+,p_column_identifier=>'R'
+,p_column_label=>'Rows Processed Delta'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77661253731087443)
+,p_db_column_name=>'INCARNATION#'
+,p_display_order=>190
+,p_column_identifier=>'S'
+,p_column_label=>'Incarnation#'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77661349003087444)
+,p_db_column_name=>'AWR_SNAP_START'
+,p_display_order=>200
+,p_column_identifier=>'T'
+,p_column_label=>'AWR Snap Start'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77661457932087445)
+,p_db_column_name=>'AWR_SNAP_END'
+,p_display_order=>210
+,p_column_identifier=>'U'
+,p_column_label=>'AWR Snap End'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77661544134087446)
+,p_db_column_name=>'OBJ_OWNER'
+,p_display_order=>220
+,p_column_identifier=>'V'
+,p_column_label=>'Owner'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77661638400087447)
+,p_db_column_name=>'OBJ_ID'
+,p_display_order=>230
+,p_column_identifier=>'W'
+,p_column_label=>'Obj Id'
+,p_column_type=>'NUMBER'
+,p_display_text_as=>'HIDDEN'
+);
+end;
+/
+begin
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77661710351087448)
+,p_db_column_name=>'OBJ_PRNT'
+,p_display_order=>240
+,p_column_identifier=>'X'
+,p_column_label=>'Obj Prnt'
+,p_column_type=>'NUMBER'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_rpt(
+ p_id=>wwv_flow_api.id(77699580024146761)
+,p_application_user=>'APXWS_DEFAULT'
+,p_report_seq=>10
+,p_report_alias=>'776996'
+,p_status=>'PUBLIC'
+,p_is_default=>'Y'
+,p_report_columns=>'PATH_TO_FOLDER:DATA_POINT_DT:DATA_POINT_FROM:OBJ_DESCR:CPU_TIME_DELTA:ELAPSED_TIME_DELTA:AVG_IO_TIME:AVG_EXEC_TIME:IOWAIT_DELTA:DISK_READS_DELTA:BUFFER_GETS_DELTA:DIRECT_WRITES_DELTA:PLAN_HASH_VALUE:MODULE:ACTION:EXECUTIONS_DELTA:FETCHES_DELTA:ROWS_P'
+||'ROCESSED_DELTA:INCARNATION#:AWR_SNAP_START:AWR_SNAP_END:OBJ_OWNER:OBJ_ID:OBJ_PRNT'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(77661855717087449)
+,p_plug_name=>'SQL Monitor Data'
+,p_parent_plug_id=>wwv_flow_api.id(77572596056769531)
+,p_region_template_options=>'#DEFAULT#'
+,p_component_template_options=>'#DEFAULT#'
+,p_plug_template=>wwv_flow_api.id(58959020573993670)
+,p_plug_display_sequence=>60
+,p_plug_display_point=>'BODY'
+,p_query_type=>'SQL'
+,p_plug_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select * from (',
+'select coreobj_api.get_object_path(p_obj_id => o.obj_prnt, p_including_object => ''Y'') path_to_folder,',
+'       d.end_gathering_dt data_point_dt,dbl2.display_name data_point_from,o.obj_descr,',
+'       m.source,m.status,m.first_refresh_time,m.last_refresh_time,m.sql_exec_start,',
+'       COREMOD_REPORT_UTILS.tptformat(dd.cpu_time,''TIME'') cpu_time,',
+'       COREMOD_REPORT_UTILS.tptformat(dd.elapsed_time,''TIME'') elapsed_time,',
+'       COREMOD_REPORT_UTILS.tptformat(dd.user_io_wait_time/(case when dd.disk_reads <> 0 then dd.disk_reads else null end),''TIME'') avg_io_time,',
+'       COREMOD_REPORT_UTILS.tptformat(dd.user_io_wait_time,''TIME'') user_io_wait_time,          ',
+'       COREMOD_REPORT_UTILS.tptformat(dd.disk_reads) disk_reads,',
+'       COREMOD_REPORT_UTILS.tptformat(dd.buffer_gets) buffer_gets,',
+'       COREMOD_REPORT_UTILS.tptformat(dd.direct_writes) direct_writes,',
+'       dd.fetches,',
+'       dd.sql_plan_hash_value,      ',
+'       m.instance_number,',
+'       dd.module,',
+'       dd.action,',
+'       dd.client_identifier,',
+'       dd.program,',
+'       dd.process_name,',
+'       dd.error_message,',
+'       o.obj_owner, o.obj_id, o.obj_prnt,',
+'       row_number()over(partition by d.sql_data_point_id, dd.process_name order by m.first_refresh_time desc) rn',
+'from OPAS_OT_SQL_DESCRIPTIONS s,',
+'     opas_ot_sql_data d,',
+'     v$opas_db_links dbl2, ',
+'     opas_ot_sql_data_point_ref d2o,',
+'     opas_objects o,',
+'     opas_ot_sql_sqlmon_ref d2m,',
+'     OPAS_OT_SQL_SQLMON m,',
+'     OPAS_OT_SQL_SQLMON_DATA dd',
+'where s.sql_id=d.sql_id(+)',
+'  and d.sql_data_point_id = d2o.sql_data_point_id(+) and d.dblink = dbl2.db_link_name(+)',
+'  and d2o.obj_id = o.obj_id(+)',
+'  and d.sql_data_point_id = d2m.sql_data_point_id(+)',
+'  and d2m.sqlmon_id = m.sqlmon_id(+)',
+'  and d2m.sqlmon_id = dd.sqlmon_id(+)',
+'  and s.sql_id = :P1412_SQL_ID',
+'  ) where rn<=1'))
+,p_plug_source_type=>'NATIVE_IR'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_prn_content_disposition=>'ATTACHMENT'
+,p_prn_document_header=>'APEX'
+,p_prn_units=>'INCHES'
+,p_prn_paper_size=>'LETTER'
+,p_prn_width=>8.5
+,p_prn_height=>11
+,p_prn_orientation=>'HORIZONTAL'
+,p_prn_page_header_font_color=>'#000000'
+,p_prn_page_header_font_family=>'Helvetica'
+,p_prn_page_header_font_weight=>'normal'
+,p_prn_page_header_font_size=>'12'
+,p_prn_page_footer_font_color=>'#000000'
+,p_prn_page_footer_font_family=>'Helvetica'
+,p_prn_page_footer_font_weight=>'normal'
+,p_prn_page_footer_font_size=>'12'
+,p_prn_header_bg_color=>'#9bafde'
+,p_prn_header_font_color=>'#000000'
+,p_prn_header_font_family=>'Helvetica'
+,p_prn_header_font_weight=>'normal'
+,p_prn_header_font_size=>'10'
+,p_prn_body_bg_color=>'#efefef'
+,p_prn_body_font_color=>'#000000'
+,p_prn_body_font_family=>'Helvetica'
+,p_prn_body_font_weight=>'normal'
+,p_prn_body_font_size=>'10'
+,p_prn_border_width=>.5
+,p_prn_page_header_alignment=>'CENTER'
+,p_prn_page_footer_alignment=>'CENTER'
+);
+wwv_flow_api.create_worksheet(
+ p_id=>wwv_flow_api.id(77661998032087450)
+,p_max_row_count=>'1000000'
+,p_show_nulls_as=>'-'
+,p_pagination_type=>'ROWS_X_TO_Y'
+,p_pagination_display_pos=>'BOTTOM_RIGHT'
+,p_report_list_mode=>'TABS'
+,p_show_detail_link=>'N'
+,p_show_notify=>'Y'
+,p_download_formats=>'CSV:HTML:EMAIL:XLS:PDF:RTF'
+,p_owner=>'OPAS60DADM'
+,p_internal_uid=>77661998032087450
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77701439895359401)
+,p_db_column_name=>'PATH_TO_FOLDER'
+,p_display_order=>10
+,p_column_identifier=>'A'
+,p_column_label=>'Path To Folder'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77701563077359402)
+,p_db_column_name=>'DATA_POINT_DT'
+,p_display_order=>20
+,p_column_identifier=>'B'
+,p_column_label=>'Data Point DT'
+,p_column_link=>'f?p=&APP_ID.:1401:&SESSION.::&DEBUG.:RP:APP_PREV_PAGE,APP_OBJ_ID,APP_FOLDER_ID:1412,#OBJ_ID#,#OBJ_PRNT#'
+,p_column_linktext=>'#DATA_POINT_DT#'
+,p_column_type=>'DATE'
+,p_column_alignment=>'CENTER'
+,p_format_mask=>'&APP_GRID_DT_FMT.'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77701687502359403)
+,p_db_column_name=>'DATA_POINT_FROM'
+,p_display_order=>30
+,p_column_identifier=>'C'
+,p_column_label=>'Data Point From'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77701722715359404)
+,p_db_column_name=>'OBJ_DESCR'
+,p_display_order=>40
+,p_column_identifier=>'D'
+,p_column_label=>'Description'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77701899771359405)
+,p_db_column_name=>'SOURCE'
+,p_display_order=>50
+,p_column_identifier=>'E'
+,p_column_label=>'Source'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77701979433359406)
+,p_db_column_name=>'STATUS'
+,p_display_order=>60
+,p_column_identifier=>'F'
+,p_column_label=>'Status'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77702036712359407)
+,p_db_column_name=>'FIRST_REFRESH_TIME'
+,p_display_order=>70
+,p_column_identifier=>'G'
+,p_column_label=>'First Refresh Time'
+,p_column_type=>'DATE'
+,p_column_alignment=>'CENTER'
+,p_format_mask=>'&APP_GRID_DT_FMT_L1.'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77702149722359408)
+,p_db_column_name=>'LAST_REFRESH_TIME'
+,p_display_order=>80
+,p_column_identifier=>'H'
+,p_column_label=>'Last Refresh Time'
+,p_column_type=>'DATE'
+,p_column_alignment=>'CENTER'
+,p_format_mask=>'&APP_GRID_DT_FMT_L1.'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77702236299359409)
+,p_db_column_name=>'SQL_EXEC_START'
+,p_display_order=>90
+,p_column_identifier=>'I'
+,p_column_label=>'Sql Exec Start'
+,p_column_type=>'DATE'
+,p_column_alignment=>'CENTER'
+,p_format_mask=>'&APP_GRID_DT_FMT_L1.'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77702345348359410)
+,p_db_column_name=>'CPU_TIME'
+,p_display_order=>100
+,p_column_identifier=>'J'
+,p_column_label=>'Cpu Time'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77702445351359411)
+,p_db_column_name=>'ELAPSED_TIME'
+,p_display_order=>110
+,p_column_identifier=>'K'
+,p_column_label=>'Elapsed Time'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77702569634359412)
+,p_db_column_name=>'AVG_IO_TIME'
+,p_display_order=>120
+,p_column_identifier=>'L'
+,p_column_label=>'Avg Io Time'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77702635727359413)
+,p_db_column_name=>'USER_IO_WAIT_TIME'
+,p_display_order=>130
+,p_column_identifier=>'M'
+,p_column_label=>'User Io Wait Time'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77702765776359414)
+,p_db_column_name=>'DISK_READS'
+,p_display_order=>140
+,p_column_identifier=>'N'
+,p_column_label=>'Disk Reads'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77702842091359415)
+,p_db_column_name=>'BUFFER_GETS'
+,p_display_order=>150
+,p_column_identifier=>'O'
+,p_column_label=>'Buffer Gets'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77702976198359416)
+,p_db_column_name=>'DIRECT_WRITES'
+,p_display_order=>160
+,p_column_identifier=>'P'
+,p_column_label=>'Direct Writes'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77703081898359417)
+,p_db_column_name=>'FETCHES'
+,p_display_order=>170
+,p_column_identifier=>'Q'
+,p_column_label=>'Fetches'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77703126178359418)
+,p_db_column_name=>'SQL_PLAN_HASH_VALUE'
+,p_display_order=>180
+,p_column_identifier=>'R'
+,p_column_label=>'Sql Plan Hash Value'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77703259902359419)
+,p_db_column_name=>'INSTANCE_NUMBER'
+,p_display_order=>190
+,p_column_identifier=>'S'
+,p_column_label=>'Instance Number'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77703374951359420)
+,p_db_column_name=>'MODULE'
+,p_display_order=>200
+,p_column_identifier=>'T'
+,p_column_label=>'Module'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77703472301359421)
+,p_db_column_name=>'ACTION'
+,p_display_order=>210
+,p_column_identifier=>'U'
+,p_column_label=>'Action'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77703598418359422)
+,p_db_column_name=>'CLIENT_IDENTIFIER'
+,p_display_order=>220
+,p_column_identifier=>'V'
+,p_column_label=>'Client Identifier'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77703605371359423)
+,p_db_column_name=>'PROGRAM'
+,p_display_order=>230
+,p_column_identifier=>'W'
+,p_column_label=>'Program'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77703728242359424)
+,p_db_column_name=>'PROCESS_NAME'
+,p_display_order=>240
+,p_column_identifier=>'X'
+,p_column_label=>'Process Name'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77703806086359425)
+,p_db_column_name=>'ERROR_MESSAGE'
+,p_display_order=>250
+,p_column_identifier=>'Y'
+,p_column_label=>'Error Message'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77703925637359426)
+,p_db_column_name=>'OBJ_OWNER'
+,p_display_order=>260
+,p_column_identifier=>'Z'
+,p_column_label=>'Owner'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77704031334359427)
+,p_db_column_name=>'OBJ_ID'
+,p_display_order=>270
+,p_column_identifier=>'AA'
+,p_column_label=>'Obj Id'
+,p_column_type=>'NUMBER'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77704111704359428)
+,p_db_column_name=>'OBJ_PRNT'
+,p_display_order=>280
+,p_column_identifier=>'AB'
+,p_column_label=>'Obj Prnt'
+,p_column_type=>'NUMBER'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77704216201359429)
+,p_db_column_name=>'RN'
+,p_display_order=>290
+,p_column_identifier=>'AC'
+,p_column_label=>'Rn'
+,p_column_type=>'NUMBER'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_rpt(
+ p_id=>wwv_flow_api.id(77718406548382029)
+,p_application_user=>'APXWS_DEFAULT'
+,p_report_seq=>10
+,p_report_alias=>'777185'
+,p_status=>'PUBLIC'
+,p_is_default=>'Y'
+,p_report_columns=>'PATH_TO_FOLDER:DATA_POINT_DT:DATA_POINT_FROM:OBJ_DESCR:SOURCE:STATUS:FIRST_REFRESH_TIME:LAST_REFRESH_TIME:SQL_EXEC_START:CPU_TIME:ELAPSED_TIME:AVG_IO_TIME:USER_IO_WAIT_TIME:DISK_READS:BUFFER_GETS:DIRECT_WRITES:FETCHES:SQL_PLAN_HASH_VALUE:INSTANCE_NUM'
+||'BER:MODULE:ACTION:CLIENT_IDENTIFIER:PROGRAM:PROCESS_NAME:ERROR_MESSAGE:OBJ_OWNER:OBJ_ID:OBJ_PRNT:RN'
 );
 wwv_flow_api.create_page_button(
  p_id=>wwv_flow_api.id(76375020454543743)
@@ -25779,7 +27212,7 @@ wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(76372966152543722)
 ,p_name=>'P1412_SQL_ID'
 ,p_item_sequence=>10
-,p_item_plug_id=>wwv_flow_api.id(76371513036543708)
+,p_item_plug_id=>wwv_flow_api.id(76491627110688702)
 ,p_display_as=>'NATIVE_HIDDEN'
 ,p_attribute_01=>'Y'
 );
@@ -25787,7 +27220,7 @@ wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(76373535120543728)
 ,p_name=>'P1412_SQL_ID_TO_REMOVE'
 ,p_item_sequence=>10
-,p_item_plug_id=>wwv_flow_api.id(76371513036543708)
+,p_item_plug_id=>wwv_flow_api.id(76491627110688702)
 ,p_display_as=>'NATIVE_HIDDEN'
 ,p_attribute_01=>'N'
 );
@@ -25817,7 +27250,7 @@ wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(76491860635688704)
 ,p_name=>'P1412_DATABASE'
 ,p_item_sequence=>10
-,p_item_plug_id=>wwv_flow_api.id(76371513036543708)
+,p_item_plug_id=>wwv_flow_api.id(76491627110688702)
 ,p_display_as=>'NATIVE_HIDDEN'
 ,p_attribute_01=>'Y'
 );
@@ -28890,7 +30323,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(67059821906044473)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200416173405'
+,p_last_upd_yyyymmddhh24miss=>'20200607094253'
 );
 wwv_flow_api.create_report_region(
  p_id=>wwv_flow_api.id(66749019180142932)
@@ -29027,7 +30460,7 @@ wwv_flow_api.create_report_columns(
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(133064191289461295)
-,p_plug_name=>'Monitor Parameters for "&P5000_MONITOR_NAME."'
+,p_plug_name=>'Monitor Parameters'
 ,p_region_template_options=>'#DEFAULT#:t-Region--scrollBody'
 ,p_plug_template=>wwv_flow_api.id(58960191682993672)
 ,p_plug_display_sequence=>10
@@ -29149,6 +30582,36 @@ wwv_flow_api.create_page_button(
 ,p_button_redirect_url=>'f?p=&APP_ID.:5001:&SESSION.::&DEBUG.:RP:P5001_ALERT_ID,P5001_MODE,P5001_DBG_ID:,CREATE,&P5000_OBJ_ID.'
 ,p_security_scheme=>wwv_flow_api.id(64510632529107389)
 );
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(77333328609820712)
+,p_button_sequence=>70
+,p_button_plug_id=>wwv_flow_api.id(133064191289461295)
+,p_button_name=>'PreviousObj'
+,p_button_action=>'REDIRECT_PAGE'
+,p_button_template_options=>'#DEFAULT#:t-Button--small:t-Button--gapLeft'
+,p_button_template_id=>wwv_flow_api.id(59012147360993949)
+,p_button_image_alt=>'Previous Object in folder (&APP_NUM_BEFORE.)'
+,p_button_position=>'RIGHT_OF_TITLE'
+,p_button_redirect_url=>'f?p=&APP_ID.:5000:&SESSION.::&DEBUG.:RP:APP_OBJ_ID,APP_PREV_PAGE:&APP_PREV_OBJ.,5000'
+,p_button_condition=>'APP_PREV_OBJ'
+,p_button_condition_type=>'ITEM_IS_NOT_NULL'
+,p_icon_css_classes=>'fa-angle-double-left'
+);
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(77333687939823114)
+,p_button_sequence=>80
+,p_button_plug_id=>wwv_flow_api.id(133064191289461295)
+,p_button_name=>'NextObj'
+,p_button_action=>'REDIRECT_PAGE'
+,p_button_template_options=>'#DEFAULT#:t-Button--small:t-Button--gapLeft'
+,p_button_template_id=>wwv_flow_api.id(59012147360993949)
+,p_button_image_alt=>'Next Object in folder (&APP_NUM_AFTER.)'
+,p_button_position=>'RIGHT_OF_TITLE'
+,p_button_redirect_url=>'f?p=&APP_ID.:5000:&SESSION.::&DEBUG.:RP:APP_OBJ_ID,APP_PREV_PAGE:&APP_NEXT_OBJ.,5000'
+,p_button_condition=>'APP_NEXT_OBJ'
+,p_button_condition_type=>'ITEM_IS_NOT_NULL'
+,p_icon_css_classes=>'fa-angle-double-right'
+);
 wwv_flow_api.create_page_branch(
  p_id=>wwv_flow_api.id(66845310122138303)
 ,p_branch_name=>'EditSchedule'
@@ -29172,8 +30635,15 @@ wwv_flow_api.create_page_item(
 ,p_name=>'P5000_MONITOR_NAME'
 ,p_item_sequence=>10
 ,p_item_plug_id=>wwv_flow_api.id(133064191289461295)
-,p_display_as=>'NATIVE_HIDDEN'
-,p_attribute_01=>'Y'
+,p_prompt=>'New'
+,p_display_as=>'NATIVE_TEXT_FIELD'
+,p_cSize=>30
+,p_field_template=>wwv_flow_api.id(59011729453993944)
+,p_item_template_options=>'#DEFAULT#'
+,p_attribute_01=>'N'
+,p_attribute_02=>'N'
+,p_attribute_04=>'TEXT'
+,p_attribute_05=>'BOTH'
 );
 wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(66747359537142915)
@@ -29279,6 +30749,22 @@ wwv_flow_api.create_page_item(
 ,p_attribute_01=>'NONE'
 ,p_attribute_02=>'N'
 );
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(77155267865300421)
+,p_name=>'P5000_MONITOR_DESCR'
+,p_item_sequence=>10
+,p_item_plug_id=>wwv_flow_api.id(133064191289461295)
+,p_prompt=>'Description'
+,p_display_as=>'NATIVE_TEXTAREA'
+,p_cSize=>30
+,p_cHeight=>2
+,p_field_template=>wwv_flow_api.id(59011729453993944)
+,p_item_template_options=>'#DEFAULT#'
+,p_attribute_01=>'Y'
+,p_attribute_02=>'N'
+,p_attribute_03=>'N'
+,p_attribute_04=>'BOTH'
+);
 wwv_flow_api.create_page_process(
  p_id=>wwv_flow_api.id(66842852053138285)
 ,p_process_sequence=>1
@@ -29305,6 +30791,7 @@ wwv_flow_api.create_page_process(
 ,p_process_name=>'InitData'
 ,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'begin',
+'    :APP_CURR_OBJ_OT := 500;',
 '    :P5000_OBJ_ID := :APP_OBJ_ID;',
 '    SELECT',
 '      dblink,',
@@ -29325,7 +30812,7 @@ wwv_flow_api.create_page_process(
 '    ',
 '    --select count(1) into :P5000_ALERTS_EXIST from opas_ot_db_monitor_alerts_cfg where metric_id = :P5000_OBJ_ID;',
 '    ',
-'  select o.obj_name into :P5000_MONITOR_NAME',
+'  select o.obj_name, o.obj_descr into :P5000_MONITOR_NAME, :P5000_MONITOR_DESCR',
 '    from opas_objects o ',
 '   where o.obj_id = :P5000_OBJ_ID;    ',
 'end;'))
@@ -29358,6 +30845,9 @@ wwv_flow_api.create_page_process(
 '    P_OBJ_ID => :P5000_OBJ_ID,',
 '    P_DBLINK => :P5000_DBLINK,',
 '    p_scheme_list=> :P5000_SCHEME_LIST) ;  ',
+'  coreobj_api.edit_descr(p_obj_id => :P5000_OBJ_ID,',
+'                         p_obj_name => :P5000_MONITOR_NAME,',
+'                         p_obj_descr => :P5000_MONITOR_DESCR);   ',
 'end;',
 ''))
 ,p_error_display_location=>'INLINE_IN_NOTIFICATION'
@@ -30307,7 +31797,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(67059821906044473)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200528155025'
+,p_last_upd_yyyymmddhh24miss=>'20200605161113'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(66994330458316335)
@@ -30587,8 +32077,6 @@ wwv_flow_api.create_page_plug(
 ,p_plug_source_type=>'NATIVE_JET_CHART'
 ,p_plug_query_num_rows=>15
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
-,p_plug_display_condition_type=>'PLSQL_EXPRESSION'
-,p_plug_display_when_condition=>':P5003_START_DT is not null and :P5003_END_DT is not null'
 );
 wwv_flow_api.create_jet_chart(
  p_id=>wwv_flow_api.id(67152277093285131)
@@ -30625,8 +32113,8 @@ wwv_flow_api.create_jet_chart_series(
 ,p_name=>'Objects'
 ,p_data_source_type=>'SQL'
 ,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'select /*+ gather_plan_statistics NO_STAR_TRANSFORMATION qb_name(OPAS60_DBG_DELTA_CHART) */ tim, val - lag(val)over(order by tim) val, nm from',
-'(select /*+ use_hash(s) use_hash(dp) */ dp.snapped tim, sum(s.size_bytes) val, ''Size, Bytes'' nm',
+'/*select /+ gather_plan_statistics NO_STAR_TRANSFORMATION qb_name(OPAS60_DBG_DELTA_CHART) / tim, val - lag(val)over(order by tim) val, nm from',
+'(select /+ use_hash(s) use_hash(dp) / dp.snapped tim, sum(s.size_bytes) val, ''Size, Bytes'' nm',
 '  from v$opas_dbg_selected_objects o,',
 '       opas_ot_dbg_seg_sizes       s,',
 '       opas_ot_dbg_datapoint       dp',
@@ -30641,7 +32129,12 @@ wwv_flow_api.create_jet_chart_series(
 '   --and dp.snapped >= o.start_date and dp.snapped < o.end_date',
 ' group by dp.snapped)',
 ' order by tim',
-''))
+'*/',
+'select /*+ qb_name(OPAS60_DBG_DELTA_CHART) gather_plan_statistics_ */ tim, val - lag(val)over(order by tim) val, nm from (',
+'select snapped tim, sum(size_bytes) val, ''Size, Bytes'' nm',
+'  from V$OPAS_DBG_SELECTED_OBJECTS_V3',
+'group by snapped)',
+'order by tim; '))
 ,p_series_name_column_name=>'NM'
 ,p_items_value_column_name=>'VAL'
 ,p_items_label_column_name=>'TIM'
@@ -30829,8 +32322,8 @@ wwv_flow_api.create_page_plug(
 '  and o.seg_delta < 0  '))
 ,p_plug_source_type=>'NATIVE_IR'
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
-,p_plug_display_condition_type=>'ITEM_IS_NOT_NULL'
-,p_plug_display_when_condition=>'P5003_TOP_N'
+,p_plug_display_condition_type=>'PLSQL_EXPRESSION'
+,p_plug_display_when_condition=>':P5003_START_DT is not null and :P5003_END_DT is not null and :P5003_TOP_N is not null'
 ,p_prn_content_disposition=>'ATTACHMENT'
 ,p_prn_document_header=>'APEX'
 ,p_prn_units=>'INCHES'
@@ -32516,7 +34009,7 @@ wwv_flow_api.create_jet_chart_series(
 ,p_name=>'Objects'
 ,p_data_source_type=>'SQL'
 ,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'select /*+ gather_plan_statistics use_hash(s) use_hash(dp) NO_STAR_TRANSFORMATION qb_name(OPAS60_DBG_MAIN_CHART) */ dp.snapped tim, sum(s.size_bytes) val, ''Size, Bytes'' nm',
+'/*select /+ gather_plan_statistics use_hash(s) full(s) use_hash(dp) NO_STAR_TRANSFORMATION qb_name(OPAS60_DBG_MAIN_CHART) / dp.snapped tim, sum(s.size_bytes) val, ''Size, Bytes'' nm',
 '  from v$opas_dbg_selected_objects o,',
 '       opas_ot_dbg_seg_sizes       s,',
 '       opas_ot_dbg_datapoint       dp',
@@ -32530,7 +34023,12 @@ wwv_flow_api.create_jet_chart_series(
 '   and dp.dbg_id = :P5003_DBG_ID',
 '   --and dp.snapped >= o.start_date and dp.snapped < o.end_date',
 ' group by dp.snapped',
-' order by dp.snapped;'))
+' order by dp.snapped*/',
+'select /*+ qb_name(OPAS60_DBG_MAIN_CHART) gather_plan_statistics_ */',
+'       snapped tim, sum(size_bytes) val, ''Size, Bytes'' nm',
+'  from V$OPAS_DBG_SELECTED_OBJECTS_V3',
+'group by snapped',
+'order by snapped; '))
 ,p_series_name_column_name=>'NM'
 ,p_items_value_column_name=>'VAL'
 ,p_items_label_column_name=>'TIM'
@@ -32773,6 +34271,9 @@ wwv_flow_api.create_worksheet(
 ,p_owner=>'OPAS60DADM'
 ,p_internal_uid=>67210907371086621
 );
+end;
+/
+begin
 wwv_flow_api.create_worksheet_column(
  p_id=>wwv_flow_api.id(67211066057086622)
 ,p_db_column_name=>'PARENT_TABLE'
@@ -32781,9 +34282,6 @@ wwv_flow_api.create_worksheet_column(
 ,p_column_label=>'Parent Table'
 ,p_column_type=>'STRING'
 );
-end;
-/
-begin
 wwv_flow_api.create_worksheet_column(
  p_id=>wwv_flow_api.id(67211184303086623)
 ,p_db_column_name=>'SUB_OBJECT'
@@ -33516,9 +35014,23 @@ wwv_flow_api.create_page_process(
 ,p_process_type=>'NATIVE_PLSQL'
 ,p_process_name=>'InitObjects'
 ,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'declare',
+'  l_cnt number;',
+'  l_dp opas_ot_dbg_datapoint.dbgdp_id%type;',
 'begin',
 '  -- Call the procedure',
+'  if nvl(:p5003_dbg_id,0) <> :APP_OBJ_ID then --first time on the page',
+'    select max(dbgdp_id) into :p5003_end_dt from opas_ot_dbg_datapoint where dbg_id = :APP_OBJ_ID;',
+'    select min(dbgdp_id) into :p5003_start_dt from opas_ot_dbg_datapoint where dbg_id = :APP_OBJ_ID and snapped>(sysdate-8);',
+'  else',
+'    select count(1) into l_cnt from opas_ot_dbg_datapoint where dbg_id = :APP_OBJ_ID and dbgdp_id = :p5003_start_dt;',
+'    if l_cnt = 0 then :p5003_start_dt:=null; end if;',
+'    select count(1) into l_cnt from opas_ot_dbg_datapoint where dbg_id = :APP_OBJ_ID and dbgdp_id = :p5003_end_dt;',
+'    if l_cnt = 0 then :p5003_end_dt:=null; end if;   ',
+'  end if;',
+'  ',
 '  :p5003_dbg_id := :APP_OBJ_ID;',
+'  ',
 '  coreobj_db_growth_rpt.setup_object_filter(p_dbg_id => :p5003_dbg_id,',
 '                                            p_table_name_like => :p5003_table_name_like,',
 '                                            p_inverse => :p5003_inverse,',
@@ -33529,7 +35041,9 @@ wwv_flow_api.create_page_process(
 '                                            p_segment_type => :p5003_segment_type,',
 '                                            p_object_name => :p5003_object_name,',
 '                                            p_subobject_name => :p5003_subobject_name,',
-'                                            p_tablespace_name => :p5003_tablespace_name);',
+'                                            p_tablespace_name => :p5003_tablespace_name,',
+'                                            p_start_snap => :p5003_start_dt,',
+'                                            p_end_snap => :p5003_end_dt);',
 'end;',
 ''))
 ,p_error_display_location=>'INLINE_IN_NOTIFICATION'
@@ -33955,11 +35469,11 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(66300724402351173)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200426174512'
+,p_last_upd_yyyymmddhh24miss=>'20200607094106'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(66233525431323233)
-,p_plug_name=>'Monitor Parameters for "&P6000_METRIC_NAME."'
+,p_plug_name=>'Monitor Parameters'
 ,p_region_template_options=>'#DEFAULT#:t-Region--scrollBody'
 ,p_plug_template=>wwv_flow_api.id(58960191682993672)
 ,p_plug_display_sequence=>10
@@ -34162,6 +35676,36 @@ wwv_flow_api.create_page_button(
 ,p_button_condition=>':P6000_ALERTS_EXIST = 0'
 ,p_button_condition_type=>'SQL_EXPRESSION'
 );
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(77328950370637136)
+,p_button_sequence=>60
+,p_button_plug_id=>wwv_flow_api.id(66233525431323233)
+,p_button_name=>'PreviousObj'
+,p_button_action=>'REDIRECT_PAGE'
+,p_button_template_options=>'#DEFAULT#:t-Button--small:t-Button--gapLeft'
+,p_button_template_id=>wwv_flow_api.id(59012147360993949)
+,p_button_image_alt=>'Previous Object in folder (&APP_NUM_BEFORE.)'
+,p_button_position=>'RIGHT_OF_TITLE'
+,p_button_redirect_url=>'f?p=&APP_ID.:6000:&SESSION.::&DEBUG.:RP:APP_OBJ_ID,APP_PREV_PAGE:&APP_PREV_OBJ.,6000'
+,p_button_condition=>'APP_PREV_OBJ'
+,p_button_condition_type=>'ITEM_IS_NOT_NULL'
+,p_icon_css_classes=>'fa-angle-double-left'
+);
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(77329278633639408)
+,p_button_sequence=>70
+,p_button_plug_id=>wwv_flow_api.id(66233525431323233)
+,p_button_name=>'NextObj'
+,p_button_action=>'REDIRECT_PAGE'
+,p_button_template_options=>'#DEFAULT#:t-Button--small:t-Button--gapLeft'
+,p_button_template_id=>wwv_flow_api.id(59012147360993949)
+,p_button_image_alt=>'Next Object in folder (&APP_NUM_AFTER.)'
+,p_button_position=>'RIGHT_OF_TITLE'
+,p_button_redirect_url=>'f?p=&APP_ID.:6000:&SESSION.::&DEBUG.:RP:APP_OBJ_ID,APP_PREV_PAGE:&APP_NEXT_OBJ.,6000'
+,p_button_condition=>'APP_NEXT_OBJ'
+,p_button_condition_type=>'ITEM_IS_NOT_NULL'
+,p_icon_css_classes=>'fa-angle-double-right'
+);
 wwv_flow_api.create_page_branch(
  p_id=>wwv_flow_api.id(66235298234323250)
 ,p_branch_name=>'EditSchedule'
@@ -34341,8 +35885,31 @@ wwv_flow_api.create_page_item(
 ,p_name=>'P6000_METRIC_NAME'
 ,p_item_sequence=>7
 ,p_item_plug_id=>wwv_flow_api.id(66233525431323233)
-,p_display_as=>'NATIVE_HIDDEN'
+,p_prompt=>'Name'
+,p_display_as=>'NATIVE_TEXT_FIELD'
+,p_cSize=>30
+,p_field_template=>wwv_flow_api.id(59011729453993944)
+,p_item_template_options=>'#DEFAULT#'
+,p_attribute_01=>'N'
+,p_attribute_02=>'N'
+,p_attribute_04=>'TEXT'
+,p_attribute_05=>'BOTH'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(77155186915300420)
+,p_name=>'P6000_METRIC_DESCR'
+,p_item_sequence=>10
+,p_item_plug_id=>wwv_flow_api.id(66233525431323233)
+,p_prompt=>'Description'
+,p_display_as=>'NATIVE_TEXTAREA'
+,p_cSize=>30
+,p_cHeight=>2
+,p_field_template=>wwv_flow_api.id(59011729453993944)
+,p_item_template_options=>'#DEFAULT#'
 ,p_attribute_01=>'Y'
+,p_attribute_02=>'N'
+,p_attribute_03=>'N'
+,p_attribute_04=>'BOTH'
 );
 wwv_flow_api.create_page_process(
  p_id=>wwv_flow_api.id(66234658772323244)
@@ -34370,6 +35937,7 @@ wwv_flow_api.create_page_process(
 ,p_process_name=>'InitData'
 ,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'begin',
+'    :APP_CURR_OBJ_OT := 600;',
 '    :P6000_OBJ_ID := :APP_OBJ_ID;',
 '    SELECT',
 '      dblink,',
@@ -34396,10 +35964,11 @@ wwv_flow_api.create_page_process(
 '    ',
 '    select count(1) into :P6000_ALERTS_EXIST from opas_ot_db_monitor_alerts_cfg where metric_id = :P6000_OBJ_ID;',
 '    ',
-'  select o.obj_name into :P6000_METRIC_NAME',
+'  select o.obj_name, o.obj_descr into :P6000_METRIC_NAME, :P6000_METRIC_DESCR',
 '    from OPAS_OT_DB_MONITOR m, opas_objects o ',
 '   where m.metric_id = :P6000_OBJ_ID ',
 '     and m.metric_id = o.obj_id;    ',
+'        ',
 'end;'))
 ,p_error_display_location=>'INLINE_IN_NOTIFICATION'
 );
@@ -34433,6 +36002,10 @@ wwv_flow_api.create_page_process(
 '    P_CALC_CODE => :P6000_CODE,',
 '    P_CONVERT_CODE => :P6000_CONVERT,',
 '    P_MEASURE => :P6000_MEASURE) ;  ',
+'    ',
+'  coreobj_api.edit_descr(p_obj_id => :P6000_OBJ_ID,',
+'                         p_obj_name => :P6000_METRIC_NAME,',
+'                         p_obj_descr => :P6000_METRIC_DESCR);    ',
 'end;',
 ''))
 ,p_error_display_location=>'INLINE_IN_NOTIFICATION'
@@ -34637,7 +36210,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(66300724402351173)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200331114455'
+,p_last_upd_yyyymmddhh24miss=>'20200606201733'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(66369818926263502)
@@ -34688,7 +36261,7 @@ wwv_flow_api.create_jet_chart(
 ,p_show_value=>true
 ,p_show_label=>true
 ,p_legend_rendered=>'on'
-,p_legend_position=>'auto'
+,p_legend_position=>'top'
 ,p_overview_rendered=>'off'
 ,p_time_axis_type=>'enabled'
 );
@@ -35105,7 +36678,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(66300724402351173)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200523181929'
+,p_last_upd_yyyymmddhh24miss=>'20200610163621'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(66993385479316325)
@@ -35555,6 +37128,14 @@ wwv_flow_api.create_page_item(
 ,p_attribute_04=>'TEXT'
 ,p_attribute_05=>'BOTH'
 );
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(77572391518769529)
+,p_name=>'P6003_GRAPH'
+,p_item_sequence=>6
+,p_item_plug_id=>wwv_flow_api.id(66993385479316325)
+,p_display_as=>'NATIVE_HIDDEN'
+,p_attribute_01=>'Y'
+);
 wwv_flow_api.create_page_process(
  p_id=>wwv_flow_api.id(67209068632086602)
 ,p_process_sequence=>10
@@ -35575,10 +37156,4654 @@ wwv_flow_api.create_page_process(
 ,p_process_name=>'InitCharts'
 ,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'begin',
+'  if :P6003_GRAPH is not null then',
+'    select to_char(START_DT,:APP_GRID_DT_FMT_TZ), to_char(END_DT,:APP_GRID_DT_FMT_TZ),',
+'           (select listagg(''M''||metric_id,'':'') within group (order by metric_id)',
+'              from opas_ot_db_dashboard_graphs',
+'             where apex_user = v(''APP_USER'') and graph_num =:P6003_GRAPH)',
+'      into :P6003_START_DT, :P6003_END_DT, :P6003_METRIC           ',
+'      from opas_ot_db_dashboard',
+'     where apex_user = v(''APP_USER'');    ',
+'    :P6003_GRAPH := null;',
+'  end if;',
 '  coreobj_db_monitor.prepare_charts_data(p_chart_list => :P6003_METRIC,',
 '                                         p_dt_fmt     => :APP_GRID_DT_FMT_TZ,',
 '                                         p_start_dt   => :P6003_START_DT,',
 '                                         p_end_dt     => :P6003_END_DT);',
+'end;'))
+,p_error_display_location=>'INLINE_IN_NOTIFICATION'
+);
+end;
+/
+prompt --application/pages/page_06004
+begin
+wwv_flow_api.create_page(
+ p_id=>6004
+,p_user_interface_id=>wwv_flow_api.id(59034179868994205)
+,p_name=>'Dashboard Configuration'
+,p_step_title=>'Dashboard Configuration'
+,p_step_sub_title=>'Dashboard Configuration'
+,p_step_sub_title_type=>'TEXT_WITH_SUBSTITUTIONS'
+,p_autocomplete_on_off=>'OFF'
+,p_group_id=>wwv_flow_api.id(66300724402351173)
+,p_page_template_options=>'#DEFAULT#'
+,p_required_role=>wwv_flow_api.id(64510375970101025)
+,p_last_updated_by=>'OPAS60DADM'
+,p_last_upd_yyyymmddhh24miss=>'20200610130748'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(144330244814638014)
+,p_plug_name=>'Parameters'
+,p_region_template_options=>'#DEFAULT#:t-Region--scrollBody'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>15
+,p_include_in_reg_disp_sel_yn=>'Y'
+,p_plug_display_point=>'BODY'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(144419497647575172)
+,p_plug_name=>'Breadcrumb'
+,p_region_template_options=>'#DEFAULT#:t-BreadcrumbRegion--useBreadcrumbTitle'
+,p_component_template_options=>'#DEFAULT#'
+,p_plug_template=>wwv_flow_api.id(58969580676993713)
+,p_plug_display_sequence=>10
+,p_plug_display_point=>'REGION_POSITION_01'
+,p_menu_id=>wwv_flow_api.id(58913514827993374)
+,p_plug_source_type=>'NATIVE_BREADCRUMB'
+,p_menu_template_id=>wwv_flow_api.id(59013031676993965)
+);
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(77337868538321865)
+,p_button_sequence=>10
+,p_button_plug_id=>wwv_flow_api.id(144330244814638014)
+,p_button_name=>'Save'
+,p_button_action=>'SUBMIT'
+,p_button_template_options=>'#DEFAULT#:t-Button--large:t-Button--gapLeft'
+,p_button_template_id=>wwv_flow_api.id(59012285338993961)
+,p_button_image_alt=>'Save'
+,p_button_position=>'BELOW_BOX'
+);
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(77157743857300446)
+,p_button_sequence=>20
+,p_button_plug_id=>wwv_flow_api.id(144330244814638014)
+,p_button_name=>'SaveClose'
+,p_button_action=>'SUBMIT'
+,p_button_template_options=>'#DEFAULT#:t-Button--large:t-Button--gapLeft'
+,p_button_template_id=>wwv_flow_api.id(59012285338993961)
+,p_button_image_alt=>'Save and close'
+,p_button_position=>'BELOW_BOX'
+);
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(77455790339419220)
+,p_button_sequence=>30
+,p_button_plug_id=>wwv_flow_api.id(144330244814638014)
+,p_button_name=>'Close'
+,p_button_action=>'REDIRECT_PAGE'
+,p_button_template_options=>'#DEFAULT#:t-Button--large:t-Button--gapLeft'
+,p_button_template_id=>wwv_flow_api.id(59012285338993961)
+,p_button_image_alt=>'Close'
+,p_button_position=>'BELOW_BOX'
+,p_button_redirect_url=>'f?p=&APP_ID.:6005:&SESSION.::&DEBUG.:RP::'
+);
+wwv_flow_api.create_page_branch(
+ p_id=>wwv_flow_api.id(77455617517419219)
+,p_branch_action=>'f?p=&APP_ID.:6005:&SESSION.::&DEBUG.:RP::&success_msg=#SUCCESS_MSG#'
+,p_branch_point=>'AFTER_PROCESSING'
+,p_branch_type=>'REDIRECT_URL'
+,p_branch_when_button_id=>wwv_flow_api.id(77157743857300446)
+,p_branch_sequence=>10
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(77157209693300441)
+,p_name=>'P6004_GRAPH_NUM'
+,p_item_sequence=>40
+,p_item_plug_id=>wwv_flow_api.id(144330244814638014)
+,p_item_default=>'1'
+,p_prompt=>'Graph Num'
+,p_display_as=>'NATIVE_SELECT_LIST'
+,p_lov=>'STATIC:Graph #1;1,Graph #2;2,Graph #3;3,Graph #4;4,Graph #5;5,Graph #6;6,Graph #7;7,Graph #8;8,Graph #9;9,Graph #10;10,'
+,p_cHeight=>1
+,p_field_template=>wwv_flow_api.id(59011729453993944)
+,p_item_template_options=>'#DEFAULT#'
+,p_lov_display_extra=>'NO'
+,p_attribute_01=>'SUBMIT'
+,p_attribute_03=>'Y'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(77157348948300442)
+,p_name=>'P6004_REFRESH_INT'
+,p_item_sequence=>20
+,p_item_plug_id=>wwv_flow_api.id(144330244814638014)
+,p_prompt=>'Refresh Interval, seconds'
+,p_display_as=>'NATIVE_TEXT_FIELD'
+,p_cSize=>30
+,p_begin_on_new_line=>'N'
+,p_field_template=>wwv_flow_api.id(59011729453993944)
+,p_item_template_options=>'#DEFAULT#'
+,p_attribute_01=>'N'
+,p_attribute_02=>'N'
+,p_attribute_04=>'TEXT'
+,p_attribute_05=>'BOTH'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(77157418222300443)
+,p_name=>'P6004_DATA_INT'
+,p_item_sequence=>10
+,p_item_plug_id=>wwv_flow_api.id(144330244814638014)
+,p_prompt=>'Data Interval (DD HH:MI:SS)'
+,p_display_as=>'NATIVE_TEXT_FIELD'
+,p_cSize=>30
+,p_field_template=>wwv_flow_api.id(59011729453993944)
+,p_item_template_options=>'#DEFAULT#'
+,p_attribute_01=>'N'
+,p_attribute_02=>'N'
+,p_attribute_04=>'TEXT'
+,p_attribute_05=>'BOTH'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(77157687859300445)
+,p_name=>'P6004_LAST_MODIFIED'
+,p_item_sequence=>30
+,p_item_plug_id=>wwv_flow_api.id(144330244814638014)
+,p_prompt=>'Last Modified'
+,p_display_as=>'NATIVE_TEXT_FIELD'
+,p_cSize=>30
+,p_begin_on_new_line=>'N'
+,p_field_template=>wwv_flow_api.id(59011729453993944)
+,p_item_template_options=>'#DEFAULT#'
+,p_attribute_01=>'N'
+,p_attribute_02=>'N'
+,p_attribute_04=>'TEXT'
+,p_attribute_05=>'BOTH'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(77338204715321874)
+,p_name=>'P6004_METRIC'
+,p_item_sequence=>50
+,p_item_plug_id=>wwv_flow_api.id(144330244814638014)
+,p_prompt=>'Metric'
+,p_display_as=>'NATIVE_SHUTTLE'
+,p_lov=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select t.dblink || '' - '' || obj_name d, ''M''||t.metric_id r from OPAS_OT_DB_MONITOR t, v$opas_objects o',
+'where t.metric_id=o.obj_id',
+'order by 1'))
+,p_cHeight=>5
+,p_field_template=>wwv_flow_api.id(59011729453993944)
+,p_item_template_options=>'#DEFAULT#'
+,p_lov_display_extra=>'YES'
+,p_attribute_01=>'ALL'
+);
+wwv_flow_api.create_page_process(
+ p_id=>wwv_flow_api.id(77348086826322008)
+,p_process_sequence=>10
+,p_process_point=>'AFTER_HEADER'
+,p_process_type=>'NATIVE_PLSQL'
+,p_process_name=>'InitPageStack'
+,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'begin ',
+'  :APP_PAGE_STACK:=null;',
+'end;'))
+,p_error_display_location=>'INLINE_IN_NOTIFICATION'
+);
+wwv_flow_api.create_page_process(
+ p_id=>wwv_flow_api.id(77157567545300444)
+,p_process_sequence=>10
+,p_process_point=>'AFTER_SUBMIT'
+,p_process_type=>'NATIVE_PLSQL'
+,p_process_name=>'Save'
+,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'begin',
+'  -- Call the procedure',
+'  coreobj_db_monitor.save_dachboard_conf(p_graph_num => :p6004_graph_num,',
+'                                         p_chart_list => :P6004_METRIC,',
+'                                         p_data_interv => TO_DSINTERVAL(:P6004_DATA_INT),',
+'                                         p_refresh_int => :P6004_REFRESH_INT);',
+'end;'))
+,p_error_display_location=>'INLINE_IN_NOTIFICATION'
+,p_process_when_button_id=>wwv_flow_api.id(77337868538321865)
+);
+wwv_flow_api.create_page_process(
+ p_id=>wwv_flow_api.id(77409936207915111)
+,p_process_sequence=>20
+,p_process_point=>'AFTER_SUBMIT'
+,p_process_type=>'NATIVE_PLSQL'
+,p_process_name=>'Save_1'
+,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'begin',
+'  -- Call the procedure',
+'  coreobj_db_monitor.save_dachboard_conf(p_graph_num => :p6004_graph_num,',
+'                                         p_chart_list => :P6004_METRIC,',
+'                                         p_data_interv => TO_DSINTERVAL(:P6004_DATA_INT),',
+'                                         p_refresh_int => :P6004_REFRESH_INT);',
+'end;'))
+,p_error_display_location=>'INLINE_IN_NOTIFICATION'
+,p_process_when_button_id=>wwv_flow_api.id(77157743857300446)
+);
+wwv_flow_api.create_page_process(
+ p_id=>wwv_flow_api.id(77347616064321999)
+,p_process_sequence=>10
+,p_process_point=>'BEFORE_HEADER'
+,p_process_type=>'NATIVE_PLSQL'
+,p_process_name=>'InitData'
+,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'begin',
+'  select to_char(last_modified,''&APP_GRID_DT_FMT_L1.''), refresh_int, data_interv,',
+'         (select listagg(''M''||metric_id,'':'') within group (order by metric_id)',
+'            from opas_ot_db_dashboard_graphs',
+'           where apex_user = v(''APP_USER'') and graph_num =:P6004_GRAPH_NUM)',
+'    into :P6004_LAST_MODIFIED, :P6004_REFRESH_INT, :P6004_DATA_INT, :P6004_METRIC           ',
+'    from opas_ot_db_dashboard',
+'   where apex_user = v(''APP_USER'');',
+'exception',
+'  when no_data_found then',
+'    :P6004_LAST_MODIFIED:=null;',
+'    :P6004_REFRESH_INT:=null;',
+'    :P6004_DATA_INT:=null;',
+'    :P6004_METRIC:=null;',
+'end;'))
+,p_error_display_location=>'INLINE_IN_NOTIFICATION'
+);
+end;
+/
+prompt --application/pages/page_06005
+begin
+wwv_flow_api.create_page(
+ p_id=>6005
+,p_user_interface_id=>wwv_flow_api.id(59034179868994205)
+,p_name=>'Dashboard'
+,p_step_title=>'Dashboard'
+,p_step_sub_title=>'Dashboard'
+,p_step_sub_title_type=>'TEXT_WITH_SUBSTITUTIONS'
+,p_autocomplete_on_off=>'OFF'
+,p_group_id=>wwv_flow_api.id(66300724402351173)
+,p_html_page_header=>'<meta http-equiv="refresh" content="&P6005_PAGE_REFRESH.">'
+,p_page_template_options=>'#DEFAULT#'
+,p_required_role=>wwv_flow_api.id(64510375970101025)
+,p_last_updated_by=>'OPAS60DADM'
+,p_last_upd_yyyymmddhh24miss=>'20200610164416'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(221679033552969250)
+,p_plug_name=>'Data from &P6005_START_DT. to &P6005_END_DT.'
+,p_region_template_options=>'#DEFAULT#:t-Region--scrollBody'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>15
+,p_include_in_reg_disp_sel_yn=>'Y'
+,p_plug_display_point=>'BODY'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(77157886110300447)
+,p_plug_name=>'Graph #2'
+,p_parent_plug_id=>wwv_flow_api.id(221679033552969250)
+,p_region_template_options=>'#DEFAULT#:t-Region--removeHeader:t-Region--scrollBody'
+,p_escape_on_http_output=>'Y'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>40
+,p_plug_new_grid_row=>false
+,p_plug_display_point=>'BODY'
+,p_plug_source_type=>'NATIVE_JET_CHART'
+,p_plug_query_num_rows=>15
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_plug_display_condition_type=>'EXISTS'
+,p_plug_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.graph_num = 2',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart(
+ p_id=>wwv_flow_api.id(77157912220300448)
+,p_region_id=>wwv_flow_api.id(77157886110300447)
+,p_chart_type=>'line'
+,p_height=>'300'
+,p_animation_on_display=>'none'
+,p_animation_on_data_change=>'none'
+,p_orientation=>'vertical'
+,p_data_cursor=>'auto'
+,p_data_cursor_behavior=>'auto'
+,p_hide_and_show_behavior=>'none'
+,p_hover_behavior=>'none'
+,p_stack=>'off'
+,p_connect_nulls=>'N'
+,p_sorting=>'label-asc'
+,p_fill_multi_series_gaps=>true
+,p_zoom_and_scroll=>'delayed'
+,p_initial_zooming=>'none'
+,p_tooltip_rendered=>'Y'
+,p_show_series_name=>true
+,p_show_group_name=>true
+,p_show_value=>true
+,p_show_label=>true
+,p_legend_rendered=>'on'
+,p_legend_position=>'top'
+,p_overview_rendered=>'off'
+,p_time_axis_type=>'mixedFrequency'
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77409642111915108)
+,p_chart_id=>wwv_flow_api.id(77157912220300448)
+,p_seq=>10
+,p_name=>'Metric1'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 2',
+'   and g.chart_id = 1',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_link_target=>'f?p=&APP_ID.:6003:&SESSION.::&DEBUG.:RP:P6003_GRAPH:2'
+,p_link_target_type=>'REDIRECT_PAGE'
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 1 ',
+'   and l.graph_num = 2',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77409054335915102)
+,p_chart_id=>wwv_flow_api.id(77157912220300448)
+,p_seq=>20
+,p_name=>'Metric2'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 2',
+'   and g.chart_id = 2',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 2 ',
+'   and l.graph_num = 2',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77409154111915103)
+,p_chart_id=>wwv_flow_api.id(77157912220300448)
+,p_seq=>30
+,p_name=>'Metric3'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 2',
+'   and g.chart_id = 3',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 3 ',
+'   and l.graph_num = 2',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77409282047915104)
+,p_chart_id=>wwv_flow_api.id(77157912220300448)
+,p_seq=>70
+,p_name=>'Metric4'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 2',
+'   and g.chart_id = 4',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 4 ',
+'   and l.graph_num = 2',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77409307824915105)
+,p_chart_id=>wwv_flow_api.id(77157912220300448)
+,p_seq=>80
+,p_name=>'Metric5'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 2',
+'   and g.chart_id = 5',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 5 ',
+'   and l.graph_num = 2',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77409480084915106)
+,p_chart_id=>wwv_flow_api.id(77157912220300448)
+,p_seq=>90
+,p_name=>'Metric6'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 2',
+'   and g.chart_id = 6',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 6 ',
+'   and l.graph_num = 2',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77409516390915107)
+,p_chart_id=>wwv_flow_api.id(77157912220300448)
+,p_seq=>100
+,p_name=>'Metric7'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 2',
+'   and g.chart_id = 7',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 7 ',
+'   and l.graph_num = 2',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77158061319300449)
+,p_chart_id=>wwv_flow_api.id(77157912220300448)
+,p_seq=>110
+,p_name=>'Metric8'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 2',
+'   and g.chart_id = 8',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 8 ',
+'   and l.graph_num = 2',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77158119664300450)
+,p_chart_id=>wwv_flow_api.id(77157912220300448)
+,p_seq=>120
+,p_name=>'Metric9'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 2',
+'   and g.chart_id = 9',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 9 ',
+'   and l.graph_num = 2',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77408926007915101)
+,p_chart_id=>wwv_flow_api.id(77157912220300448)
+,p_seq=>130
+,p_name=>'Metric10'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 2',
+'   and g.chart_id = 10',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 10 ',
+'   and l.graph_num = 2',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_axis(
+ p_id=>wwv_flow_api.id(77409742577915109)
+,p_chart_id=>wwv_flow_api.id(77157912220300448)
+,p_axis=>'x'
+,p_is_rendered=>'on'
+,p_format_scaling=>'auto'
+,p_scaling=>'linear'
+,p_baseline_scaling=>'zero'
+,p_major_tick_rendered=>'on'
+,p_minor_tick_rendered=>'off'
+,p_tick_label_rendered=>'on'
+,p_tick_label_rotation=>'auto'
+,p_tick_label_position=>'outside'
+);
+wwv_flow_api.create_jet_chart_axis(
+ p_id=>wwv_flow_api.id(77409843079915110)
+,p_chart_id=>wwv_flow_api.id(77157912220300448)
+,p_axis=>'y'
+,p_is_rendered=>'on'
+,p_format_scaling=>'auto'
+,p_scaling=>'linear'
+,p_baseline_scaling=>'min'
+,p_position=>'auto'
+,p_major_tick_rendered=>'on'
+,p_minor_tick_rendered=>'off'
+,p_tick_label_rendered=>'on'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(77410122339915113)
+,p_plug_name=>'Graph #3'
+,p_parent_plug_id=>wwv_flow_api.id(221679033552969250)
+,p_region_template_options=>'#DEFAULT#:t-Region--removeHeader:t-Region--scrollBody'
+,p_escape_on_http_output=>'Y'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>50
+,p_plug_display_point=>'BODY'
+,p_plug_source_type=>'NATIVE_JET_CHART'
+,p_plug_query_num_rows=>15
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_plug_display_condition_type=>'EXISTS'
+,p_plug_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.graph_num = 3',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart(
+ p_id=>wwv_flow_api.id(77410273050915114)
+,p_region_id=>wwv_flow_api.id(77410122339915113)
+,p_chart_type=>'line'
+,p_height=>'300'
+,p_animation_on_display=>'none'
+,p_animation_on_data_change=>'none'
+,p_orientation=>'vertical'
+,p_data_cursor=>'auto'
+,p_data_cursor_behavior=>'auto'
+,p_hide_and_show_behavior=>'none'
+,p_hover_behavior=>'none'
+,p_stack=>'off'
+,p_connect_nulls=>'N'
+,p_sorting=>'label-asc'
+,p_fill_multi_series_gaps=>true
+,p_zoom_and_scroll=>'delayed'
+,p_initial_zooming=>'none'
+,p_tooltip_rendered=>'Y'
+,p_show_series_name=>true
+,p_show_group_name=>true
+,p_show_value=>true
+,p_show_label=>true
+,p_legend_rendered=>'on'
+,p_legend_position=>'top'
+,p_overview_rendered=>'off'
+,p_time_axis_type=>'mixedFrequency'
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77411253363915124)
+,p_chart_id=>wwv_flow_api.id(77410273050915114)
+,p_seq=>10
+,p_name=>'Metric1'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 3',
+'   and g.chart_id = 1',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_link_target=>'f?p=&APP_ID.:6003:&SESSION.::&DEBUG.:RP:P6003_GRAPH:3'
+,p_link_target_type=>'REDIRECT_PAGE'
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 1 ',
+'   and l.graph_num = 3',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77410683255915118)
+,p_chart_id=>wwv_flow_api.id(77410273050915114)
+,p_seq=>20
+,p_name=>'Metric2'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 3',
+'   and g.chart_id = 2',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 2 ',
+'   and l.graph_num = 3',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77410792176915119)
+,p_chart_id=>wwv_flow_api.id(77410273050915114)
+,p_seq=>60
+,p_name=>'Metric3'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 3',
+'   and g.chart_id = 3',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 3 ',
+'   and l.graph_num = 3',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77410834194915120)
+,p_chart_id=>wwv_flow_api.id(77410273050915114)
+,p_seq=>70
+,p_name=>'Metric4'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 3',
+'   and g.chart_id = 4',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 4 ',
+'   and l.graph_num = 3',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77410996400915121)
+,p_chart_id=>wwv_flow_api.id(77410273050915114)
+,p_seq=>80
+,p_name=>'Metric5'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 3',
+'   and g.chart_id = 5',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 5 ',
+'   and l.graph_num = 3',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77411049241915122)
+,p_chart_id=>wwv_flow_api.id(77410273050915114)
+,p_seq=>90
+,p_name=>'Metric6'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 3',
+'   and g.chart_id = 6',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 6 ',
+'   and l.graph_num = 3',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77411163754915123)
+,p_chart_id=>wwv_flow_api.id(77410273050915114)
+,p_seq=>100
+,p_name=>'Metric7'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 3',
+'   and g.chart_id = 7',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 7 ',
+'   and l.graph_num = 3',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77410387319915115)
+,p_chart_id=>wwv_flow_api.id(77410273050915114)
+,p_seq=>120
+,p_name=>'Metric8'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 3',
+'   and g.chart_id = 8',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 8 ',
+'   and l.graph_num = 3',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77410479092915116)
+,p_chart_id=>wwv_flow_api.id(77410273050915114)
+,p_seq=>130
+,p_name=>'Metric9'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 3',
+'   and g.chart_id = 9',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 9 ',
+'   and l.graph_num = 3',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77410504769915117)
+,p_chart_id=>wwv_flow_api.id(77410273050915114)
+,p_seq=>140
+,p_name=>'Metric10'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 1',
+'   and g.chart_id = 10',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 10 ',
+'   and l.graph_num = 1',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_axis(
+ p_id=>wwv_flow_api.id(77411333844915125)
+,p_chart_id=>wwv_flow_api.id(77410273050915114)
+,p_axis=>'x'
+,p_is_rendered=>'on'
+,p_format_scaling=>'auto'
+,p_scaling=>'linear'
+,p_baseline_scaling=>'zero'
+,p_major_tick_rendered=>'on'
+,p_minor_tick_rendered=>'off'
+,p_tick_label_rendered=>'on'
+,p_tick_label_rotation=>'auto'
+,p_tick_label_position=>'outside'
+);
+wwv_flow_api.create_jet_chart_axis(
+ p_id=>wwv_flow_api.id(77411481064915126)
+,p_chart_id=>wwv_flow_api.id(77410273050915114)
+,p_axis=>'y'
+,p_is_rendered=>'on'
+,p_format_scaling=>'auto'
+,p_scaling=>'linear'
+,p_baseline_scaling=>'min'
+,p_position=>'auto'
+,p_major_tick_rendered=>'on'
+,p_minor_tick_rendered=>'off'
+,p_tick_label_rendered=>'on'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(77411514901915127)
+,p_plug_name=>'Graph #4'
+,p_parent_plug_id=>wwv_flow_api.id(221679033552969250)
+,p_region_template_options=>'#DEFAULT#:t-Region--removeHeader:t-Region--scrollBody'
+,p_escape_on_http_output=>'Y'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>60
+,p_plug_new_grid_row=>false
+,p_plug_display_point=>'BODY'
+,p_plug_source_type=>'NATIVE_JET_CHART'
+,p_plug_query_num_rows=>15
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_plug_display_condition_type=>'EXISTS'
+,p_plug_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.graph_num = 4',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart(
+ p_id=>wwv_flow_api.id(77411694768915128)
+,p_region_id=>wwv_flow_api.id(77411514901915127)
+,p_chart_type=>'line'
+,p_height=>'300'
+,p_animation_on_display=>'none'
+,p_animation_on_data_change=>'none'
+,p_orientation=>'vertical'
+,p_data_cursor=>'auto'
+,p_data_cursor_behavior=>'auto'
+,p_hide_and_show_behavior=>'none'
+,p_hover_behavior=>'none'
+,p_stack=>'off'
+,p_connect_nulls=>'N'
+,p_sorting=>'label-asc'
+,p_fill_multi_series_gaps=>true
+,p_zoom_and_scroll=>'delayed'
+,p_initial_zooming=>'none'
+,p_tooltip_rendered=>'Y'
+,p_show_series_name=>true
+,p_show_group_name=>true
+,p_show_value=>true
+,p_show_label=>true
+,p_legend_rendered=>'on'
+,p_legend_position=>'top'
+,p_overview_rendered=>'off'
+,p_time_axis_type=>'mixedFrequency'
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77412684518915138)
+,p_chart_id=>wwv_flow_api.id(77411694768915128)
+,p_seq=>10
+,p_name=>'Metric1'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 4',
+'   and g.chart_id = 1',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_link_target=>'f?p=&APP_ID.:6003:&SESSION.::&DEBUG.:RP:P6003_GRAPH:4'
+,p_link_target_type=>'REDIRECT_PAGE'
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 1 ',
+'   and l.graph_num = 4',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77412056938915132)
+,p_chart_id=>wwv_flow_api.id(77411694768915128)
+,p_seq=>20
+,p_name=>'Metric2'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 4',
+'   and g.chart_id = 2',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 2 ',
+'   and l.graph_num = 4',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+end;
+/
+begin
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77412193650915133)
+,p_chart_id=>wwv_flow_api.id(77411694768915128)
+,p_seq=>30
+,p_name=>'Metric3'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 4',
+'   and g.chart_id = 3',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 3 ',
+'   and l.graph_num = 4',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77412261769915134)
+,p_chart_id=>wwv_flow_api.id(77411694768915128)
+,p_seq=>40
+,p_name=>'Metric4'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 4',
+'   and g.chart_id = 4',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 4 ',
+'   and l.graph_num = 4',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77412336689915135)
+,p_chart_id=>wwv_flow_api.id(77411694768915128)
+,p_seq=>50
+,p_name=>'Metric5'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 4',
+'   and g.chart_id = 5',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 5 ',
+'   and l.graph_num = 4',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77412429673915136)
+,p_chart_id=>wwv_flow_api.id(77411694768915128)
+,p_seq=>60
+,p_name=>'Metric6'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 4',
+'   and g.chart_id = 6',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 6 ',
+'   and l.graph_num = 4',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77412573714915137)
+,p_chart_id=>wwv_flow_api.id(77411694768915128)
+,p_seq=>70
+,p_name=>'Metric7'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 4',
+'   and g.chart_id = 7',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 7 ',
+'   and l.graph_num = 4',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77411757347915129)
+,p_chart_id=>wwv_flow_api.id(77411694768915128)
+,p_seq=>80
+,p_name=>'Metric8'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 4',
+'   and g.chart_id = 8',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 8 ',
+'   and l.graph_num = 4',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77411822408915130)
+,p_chart_id=>wwv_flow_api.id(77411694768915128)
+,p_seq=>90
+,p_name=>'Metric9'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 4',
+'   and g.chart_id = 9',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 9 ',
+'   and l.graph_num = 4',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77411978961915131)
+,p_chart_id=>wwv_flow_api.id(77411694768915128)
+,p_seq=>100
+,p_name=>'Metric10'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 4',
+'   and g.chart_id = 10',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 10 ',
+'   and l.graph_num = 4',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_axis(
+ p_id=>wwv_flow_api.id(77412770481915139)
+,p_chart_id=>wwv_flow_api.id(77411694768915128)
+,p_axis=>'x'
+,p_is_rendered=>'on'
+,p_format_scaling=>'auto'
+,p_scaling=>'linear'
+,p_baseline_scaling=>'zero'
+,p_major_tick_rendered=>'on'
+,p_minor_tick_rendered=>'off'
+,p_tick_label_rendered=>'on'
+,p_tick_label_rotation=>'auto'
+,p_tick_label_position=>'outside'
+);
+wwv_flow_api.create_jet_chart_axis(
+ p_id=>wwv_flow_api.id(77412804880915140)
+,p_chart_id=>wwv_flow_api.id(77411694768915128)
+,p_axis=>'y'
+,p_is_rendered=>'on'
+,p_format_scaling=>'auto'
+,p_scaling=>'linear'
+,p_baseline_scaling=>'min'
+,p_position=>'auto'
+,p_major_tick_rendered=>'on'
+,p_minor_tick_rendered=>'off'
+,p_tick_label_rendered=>'on'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(77412987834915141)
+,p_plug_name=>'Graph #6'
+,p_parent_plug_id=>wwv_flow_api.id(221679033552969250)
+,p_region_template_options=>'#DEFAULT#:t-Region--removeHeader:t-Region--scrollBody'
+,p_escape_on_http_output=>'Y'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>90
+,p_plug_new_grid_row=>false
+,p_plug_display_point=>'BODY'
+,p_plug_source_type=>'NATIVE_JET_CHART'
+,p_plug_query_num_rows=>15
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_plug_display_condition_type=>'EXISTS'
+,p_plug_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.graph_num = 6',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart(
+ p_id=>wwv_flow_api.id(77413047016915142)
+,p_region_id=>wwv_flow_api.id(77412987834915141)
+,p_chart_type=>'line'
+,p_height=>'300'
+,p_animation_on_display=>'none'
+,p_animation_on_data_change=>'none'
+,p_orientation=>'vertical'
+,p_data_cursor=>'auto'
+,p_data_cursor_behavior=>'auto'
+,p_hide_and_show_behavior=>'none'
+,p_hover_behavior=>'none'
+,p_stack=>'off'
+,p_connect_nulls=>'N'
+,p_sorting=>'label-asc'
+,p_fill_multi_series_gaps=>true
+,p_zoom_and_scroll=>'delayed'
+,p_initial_zooming=>'none'
+,p_tooltip_rendered=>'Y'
+,p_show_series_name=>true
+,p_show_group_name=>true
+,p_show_value=>true
+,p_show_label=>true
+,p_legend_rendered=>'on'
+,p_legend_position=>'top'
+,p_overview_rendered=>'off'
+,p_time_axis_type=>'mixedFrequency'
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77453906691419202)
+,p_chart_id=>wwv_flow_api.id(77413047016915142)
+,p_seq=>10
+,p_name=>'Metric1'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 6',
+'   and g.chart_id = 1',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_link_target=>'f?p=&APP_ID.:6003:&SESSION.::&DEBUG.:RP:P6003_GRAPH:6'
+,p_link_target_type=>'REDIRECT_PAGE'
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 1 ',
+'   and l.graph_num = 6',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77413436195915146)
+,p_chart_id=>wwv_flow_api.id(77413047016915142)
+,p_seq=>50
+,p_name=>'Metric2'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 6',
+'   and g.chart_id = 2',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 2 ',
+'   and l.graph_num = 6',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77413514444915147)
+,p_chart_id=>wwv_flow_api.id(77413047016915142)
+,p_seq=>60
+,p_name=>'Metric3'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 6',
+'   and g.chart_id = 3',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 3 ',
+'   and l.graph_num = 6',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77413665121915148)
+,p_chart_id=>wwv_flow_api.id(77413047016915142)
+,p_seq=>70
+,p_name=>'Metric4'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 6',
+'   and g.chart_id = 4',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 4 ',
+'   and l.graph_num = 6',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77413759668915149)
+,p_chart_id=>wwv_flow_api.id(77413047016915142)
+,p_seq=>80
+,p_name=>'Metric5'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 6',
+'   and g.chart_id = 5',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 5 ',
+'   and l.graph_num = 6',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77413847608915150)
+,p_chart_id=>wwv_flow_api.id(77413047016915142)
+,p_seq=>90
+,p_name=>'Metric6'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 6',
+'   and g.chart_id = 6',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 6 ',
+'   and l.graph_num = 6',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77453816680419201)
+,p_chart_id=>wwv_flow_api.id(77413047016915142)
+,p_seq=>100
+,p_name=>'Metric7'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 6',
+'   and g.chart_id = 7',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 7 ',
+'   and l.graph_num = 6',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77413114349915143)
+,p_chart_id=>wwv_flow_api.id(77413047016915142)
+,p_seq=>110
+,p_name=>'Metric8'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 6',
+'   and g.chart_id = 8',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 8 ',
+'   and l.graph_num = 6',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77413292145915144)
+,p_chart_id=>wwv_flow_api.id(77413047016915142)
+,p_seq=>120
+,p_name=>'Metric9'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 6',
+'   and g.chart_id = 9',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 9 ',
+'   and l.graph_num = 6',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77413332953915145)
+,p_chart_id=>wwv_flow_api.id(77413047016915142)
+,p_seq=>130
+,p_name=>'Metric10'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 6',
+'   and g.chart_id = 10',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 10 ',
+'   and l.graph_num = 6',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_axis(
+ p_id=>wwv_flow_api.id(77454175499419204)
+,p_chart_id=>wwv_flow_api.id(77413047016915142)
+,p_axis=>'y'
+,p_is_rendered=>'on'
+,p_format_scaling=>'auto'
+,p_scaling=>'linear'
+,p_baseline_scaling=>'min'
+,p_position=>'auto'
+,p_major_tick_rendered=>'on'
+,p_minor_tick_rendered=>'off'
+,p_tick_label_rendered=>'on'
+);
+wwv_flow_api.create_jet_chart_axis(
+ p_id=>wwv_flow_api.id(77454057906419203)
+,p_chart_id=>wwv_flow_api.id(77413047016915142)
+,p_axis=>'x'
+,p_is_rendered=>'on'
+,p_format_scaling=>'auto'
+,p_scaling=>'linear'
+,p_baseline_scaling=>'zero'
+,p_major_tick_rendered=>'on'
+,p_minor_tick_rendered=>'off'
+,p_tick_label_rendered=>'on'
+,p_tick_label_rotation=>'auto'
+,p_tick_label_position=>'outside'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(77454245517419205)
+,p_plug_name=>'Graph #5'
+,p_parent_plug_id=>wwv_flow_api.id(221679033552969250)
+,p_region_template_options=>'#DEFAULT#:t-Region--removeHeader:t-Region--scrollBody'
+,p_escape_on_http_output=>'Y'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>70
+,p_plug_display_point=>'BODY'
+,p_plug_source_type=>'NATIVE_JET_CHART'
+,p_plug_query_num_rows=>15
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_plug_display_condition_type=>'EXISTS'
+,p_plug_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.graph_num = 5',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart(
+ p_id=>wwv_flow_api.id(77454351073419206)
+,p_region_id=>wwv_flow_api.id(77454245517419205)
+,p_chart_type=>'line'
+,p_height=>'300'
+,p_animation_on_display=>'none'
+,p_animation_on_data_change=>'none'
+,p_orientation=>'vertical'
+,p_data_cursor=>'auto'
+,p_data_cursor_behavior=>'auto'
+,p_hide_and_show_behavior=>'none'
+,p_hover_behavior=>'none'
+,p_stack=>'off'
+,p_connect_nulls=>'N'
+,p_sorting=>'label-asc'
+,p_fill_multi_series_gaps=>true
+,p_zoom_and_scroll=>'delayed'
+,p_initial_zooming=>'none'
+,p_tooltip_rendered=>'Y'
+,p_show_series_name=>true
+,p_show_group_name=>true
+,p_show_value=>true
+,p_show_label=>true
+,p_legend_rendered=>'on'
+,p_legend_position=>'top'
+,p_overview_rendered=>'off'
+,p_time_axis_type=>'mixedFrequency'
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77455362081419216)
+,p_chart_id=>wwv_flow_api.id(77454351073419206)
+,p_seq=>10
+,p_name=>'Metric1'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 5',
+'   and g.chart_id = 1',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_link_target=>'f?p=&APP_ID.:6003:&SESSION.::&DEBUG.:RP:P6003_GRAPH:5'
+,p_link_target_type=>'REDIRECT_PAGE'
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 1 ',
+'   and l.graph_num = 5',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77454752934419210)
+,p_chart_id=>wwv_flow_api.id(77454351073419206)
+,p_seq=>50
+,p_name=>'Metric2'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 5',
+'   and g.chart_id = 2',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 2 ',
+'   and l.graph_num = 5',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77454878389419211)
+,p_chart_id=>wwv_flow_api.id(77454351073419206)
+,p_seq=>60
+,p_name=>'Metric3'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 5',
+'   and g.chart_id = 3',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 3 ',
+'   and l.graph_num = 5',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77454944984419212)
+,p_chart_id=>wwv_flow_api.id(77454351073419206)
+,p_seq=>70
+,p_name=>'Metric4'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 5',
+'   and g.chart_id = 4',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 4 ',
+'   and l.graph_num = 5',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77455033119419213)
+,p_chart_id=>wwv_flow_api.id(77454351073419206)
+,p_seq=>80
+,p_name=>'Metric5'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 5',
+'   and g.chart_id = 5',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 5 ',
+'   and l.graph_num = 5',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77455138911419214)
+,p_chart_id=>wwv_flow_api.id(77454351073419206)
+,p_seq=>90
+,p_name=>'Metric6'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 5',
+'   and g.chart_id = 6',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 6 ',
+'   and l.graph_num = 5',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+end;
+/
+begin
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77455247201419215)
+,p_chart_id=>wwv_flow_api.id(77454351073419206)
+,p_seq=>100
+,p_name=>'Metric7'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 5',
+'   and g.chart_id = 7',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 7 ',
+'   and l.graph_num = 5',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77454422778419207)
+,p_chart_id=>wwv_flow_api.id(77454351073419206)
+,p_seq=>110
+,p_name=>'Metric8'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 5',
+'   and g.chart_id = 8',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 8 ',
+'   and l.graph_num = 5',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77454555992419208)
+,p_chart_id=>wwv_flow_api.id(77454351073419206)
+,p_seq=>120
+,p_name=>'Metric9'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 5',
+'   and g.chart_id = 9',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 9 ',
+'   and l.graph_num = 5',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77454637602419209)
+,p_chart_id=>wwv_flow_api.id(77454351073419206)
+,p_seq=>130
+,p_name=>'Metric10'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 5',
+'   and g.chart_id = 10',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 10 ',
+'   and l.graph_num = 5',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_axis(
+ p_id=>wwv_flow_api.id(77455422354419217)
+,p_chart_id=>wwv_flow_api.id(77454351073419206)
+,p_axis=>'x'
+,p_is_rendered=>'on'
+,p_format_scaling=>'auto'
+,p_scaling=>'linear'
+,p_baseline_scaling=>'zero'
+,p_major_tick_rendered=>'on'
+,p_minor_tick_rendered=>'off'
+,p_tick_label_rendered=>'on'
+,p_tick_label_rotation=>'auto'
+,p_tick_label_position=>'outside'
+);
+wwv_flow_api.create_jet_chart_axis(
+ p_id=>wwv_flow_api.id(77455524148419218)
+,p_chart_id=>wwv_flow_api.id(77454351073419206)
+,p_axis=>'y'
+,p_is_rendered=>'on'
+,p_format_scaling=>'auto'
+,p_scaling=>'linear'
+,p_baseline_scaling=>'min'
+,p_position=>'auto'
+,p_major_tick_rendered=>'on'
+,p_minor_tick_rendered=>'off'
+,p_tick_label_rendered=>'on'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(77455873642419221)
+,p_plug_name=>'Graph #7'
+,p_parent_plug_id=>wwv_flow_api.id(221679033552969250)
+,p_region_template_options=>'#DEFAULT#:t-Region--removeHeader:t-Region--scrollBody'
+,p_escape_on_http_output=>'Y'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>100
+,p_plug_display_point=>'BODY'
+,p_plug_source_type=>'NATIVE_JET_CHART'
+,p_plug_query_num_rows=>15
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_plug_display_condition_type=>'EXISTS'
+,p_plug_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.graph_num = 7',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart(
+ p_id=>wwv_flow_api.id(77455999950419222)
+,p_region_id=>wwv_flow_api.id(77455873642419221)
+,p_chart_type=>'line'
+,p_height=>'300'
+,p_animation_on_display=>'none'
+,p_animation_on_data_change=>'none'
+,p_orientation=>'vertical'
+,p_data_cursor=>'auto'
+,p_data_cursor_behavior=>'auto'
+,p_hide_and_show_behavior=>'none'
+,p_hover_behavior=>'none'
+,p_stack=>'off'
+,p_connect_nulls=>'N'
+,p_sorting=>'label-asc'
+,p_fill_multi_series_gaps=>true
+,p_zoom_and_scroll=>'delayed'
+,p_initial_zooming=>'none'
+,p_tooltip_rendered=>'Y'
+,p_show_series_name=>true
+,p_show_group_name=>true
+,p_show_value=>true
+,p_show_label=>true
+,p_legend_rendered=>'on'
+,p_legend_position=>'top'
+,p_overview_rendered=>'off'
+,p_time_axis_type=>'mixedFrequency'
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77456955602419232)
+,p_chart_id=>wwv_flow_api.id(77455999950419222)
+,p_seq=>10
+,p_name=>'Metric1'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 7',
+'   and g.chart_id = 1',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_link_target=>'f?p=&APP_ID.:6003:&SESSION.::&DEBUG.:RP:P6003_GRAPH:7'
+,p_link_target_type=>'REDIRECT_PAGE'
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 1 ',
+'   and l.graph_num = 7',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77456378037419226)
+,p_chart_id=>wwv_flow_api.id(77455999950419222)
+,p_seq=>50
+,p_name=>'Metric2'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 7',
+'   and g.chart_id = 2',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 2 ',
+'   and l.graph_num = 7',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77456498525419227)
+,p_chart_id=>wwv_flow_api.id(77455999950419222)
+,p_seq=>60
+,p_name=>'Metric3'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 7',
+'   and g.chart_id = 3',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 3 ',
+'   and l.graph_num = 7',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77456536668419228)
+,p_chart_id=>wwv_flow_api.id(77455999950419222)
+,p_seq=>70
+,p_name=>'Metric4'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 7',
+'   and g.chart_id = 4',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 4 ',
+'   and l.graph_num = 7',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77456623017419229)
+,p_chart_id=>wwv_flow_api.id(77455999950419222)
+,p_seq=>80
+,p_name=>'Metric5'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 7',
+'   and g.chart_id = 5',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 5 ',
+'   and l.graph_num = 7',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77456761419419230)
+,p_chart_id=>wwv_flow_api.id(77455999950419222)
+,p_seq=>90
+,p_name=>'Metric6'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 7',
+'   and g.chart_id = 6',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 6 ',
+'   and l.graph_num = 7',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77456839292419231)
+,p_chart_id=>wwv_flow_api.id(77455999950419222)
+,p_seq=>100
+,p_name=>'Metric7'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 7',
+'   and g.chart_id = 7',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 7 ',
+'   and l.graph_num = 7',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77456032774419223)
+,p_chart_id=>wwv_flow_api.id(77455999950419222)
+,p_seq=>110
+,p_name=>'Metric8'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 7',
+'   and g.chart_id = 8',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 8 ',
+'   and l.graph_num = 7',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77456115318419224)
+,p_chart_id=>wwv_flow_api.id(77455999950419222)
+,p_seq=>120
+,p_name=>'Metric9'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 7',
+'   and g.chart_id = 9',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 9 ',
+'   and l.graph_num = 7',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77456233557419225)
+,p_chart_id=>wwv_flow_api.id(77455999950419222)
+,p_seq=>130
+,p_name=>'Metric10'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 7',
+'   and g.chart_id = 10',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 10 ',
+'   and l.graph_num = 7',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_axis(
+ p_id=>wwv_flow_api.id(77457051097419233)
+,p_chart_id=>wwv_flow_api.id(77455999950419222)
+,p_axis=>'x'
+,p_is_rendered=>'on'
+,p_format_scaling=>'auto'
+,p_scaling=>'linear'
+,p_baseline_scaling=>'zero'
+,p_major_tick_rendered=>'on'
+,p_minor_tick_rendered=>'off'
+,p_tick_label_rendered=>'on'
+,p_tick_label_rotation=>'auto'
+,p_tick_label_position=>'outside'
+);
+wwv_flow_api.create_jet_chart_axis(
+ p_id=>wwv_flow_api.id(77457109482419234)
+,p_chart_id=>wwv_flow_api.id(77455999950419222)
+,p_axis=>'y'
+,p_is_rendered=>'on'
+,p_format_scaling=>'auto'
+,p_scaling=>'linear'
+,p_baseline_scaling=>'min'
+,p_position=>'auto'
+,p_major_tick_rendered=>'on'
+,p_minor_tick_rendered=>'off'
+,p_tick_label_rendered=>'on'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(77457206541419235)
+,p_plug_name=>'Graph #8'
+,p_parent_plug_id=>wwv_flow_api.id(221679033552969250)
+,p_region_template_options=>'#DEFAULT#:t-Region--removeHeader:t-Region--scrollBody'
+,p_escape_on_http_output=>'Y'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>120
+,p_plug_new_grid_row=>false
+,p_plug_display_point=>'BODY'
+,p_plug_source_type=>'NATIVE_JET_CHART'
+,p_plug_query_num_rows=>15
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_plug_display_condition_type=>'EXISTS'
+,p_plug_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.graph_num = 8',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart(
+ p_id=>wwv_flow_api.id(77457365028419236)
+,p_region_id=>wwv_flow_api.id(77457206541419235)
+,p_chart_type=>'line'
+,p_height=>'300'
+,p_animation_on_display=>'none'
+,p_animation_on_data_change=>'none'
+,p_orientation=>'vertical'
+,p_data_cursor=>'auto'
+,p_data_cursor_behavior=>'auto'
+,p_hide_and_show_behavior=>'none'
+,p_hover_behavior=>'none'
+,p_stack=>'off'
+,p_connect_nulls=>'N'
+,p_sorting=>'label-asc'
+,p_fill_multi_series_gaps=>true
+,p_zoom_and_scroll=>'delayed'
+,p_initial_zooming=>'none'
+,p_tooltip_rendered=>'Y'
+,p_show_series_name=>true
+,p_show_group_name=>true
+,p_show_value=>true
+,p_show_label=>true
+,p_legend_rendered=>'on'
+,p_legend_position=>'top'
+,p_overview_rendered=>'off'
+,p_time_axis_type=>'mixedFrequency'
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77458343416419246)
+,p_chart_id=>wwv_flow_api.id(77457365028419236)
+,p_seq=>10
+,p_name=>'Metric1'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 8',
+'   and g.chart_id = 1',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_link_target=>'f?p=&APP_ID.:6003:&SESSION.::&DEBUG.:RP:P6003_GRAPH:8'
+,p_link_target_type=>'REDIRECT_PAGE'
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 1 ',
+'   and l.graph_num = 8',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77457769391419240)
+,p_chart_id=>wwv_flow_api.id(77457365028419236)
+,p_seq=>50
+,p_name=>'Metric2'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 8',
+'   and g.chart_id = 2',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 2 ',
+'   and l.graph_num = 8',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77457840820419241)
+,p_chart_id=>wwv_flow_api.id(77457365028419236)
+,p_seq=>60
+,p_name=>'Metric3'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 8',
+'   and g.chart_id = 3',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 3 ',
+'   and l.graph_num = 8',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77457964451419242)
+,p_chart_id=>wwv_flow_api.id(77457365028419236)
+,p_seq=>70
+,p_name=>'Metric4'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 8',
+'   and g.chart_id = 4',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 4 ',
+'   and l.graph_num = 8',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77458074772419243)
+,p_chart_id=>wwv_flow_api.id(77457365028419236)
+,p_seq=>80
+,p_name=>'Metric5'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 8',
+'   and g.chart_id = 5',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 5 ',
+'   and l.graph_num = 8',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77458149284419244)
+,p_chart_id=>wwv_flow_api.id(77457365028419236)
+,p_seq=>90
+,p_name=>'Metric6'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 8',
+'   and g.chart_id = 6',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 6 ',
+'   and l.graph_num = 8',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77458274827419245)
+,p_chart_id=>wwv_flow_api.id(77457365028419236)
+,p_seq=>100
+,p_name=>'Metric7'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 8',
+'   and g.chart_id = 7',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 7 ',
+'   and l.graph_num = 8',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77457495592419237)
+,p_chart_id=>wwv_flow_api.id(77457365028419236)
+,p_seq=>110
+,p_name=>'Metric8'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 8',
+'   and g.chart_id = 8',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 8 ',
+'   and l.graph_num = 8',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77457552686419238)
+,p_chart_id=>wwv_flow_api.id(77457365028419236)
+,p_seq=>120
+,p_name=>'Metric9'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 8',
+'   and g.chart_id = 9',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 9 ',
+'   and l.graph_num = 8',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77457624845419239)
+,p_chart_id=>wwv_flow_api.id(77457365028419236)
+,p_seq=>130
+,p_name=>'Metric10'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 8',
+'   and g.chart_id = 10',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 10 ',
+'   and l.graph_num = 8',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+end;
+/
+begin
+wwv_flow_api.create_jet_chart_axis(
+ p_id=>wwv_flow_api.id(77458409477419247)
+,p_chart_id=>wwv_flow_api.id(77457365028419236)
+,p_axis=>'y'
+,p_is_rendered=>'on'
+,p_format_scaling=>'auto'
+,p_scaling=>'linear'
+,p_baseline_scaling=>'min'
+,p_position=>'auto'
+,p_major_tick_rendered=>'on'
+,p_minor_tick_rendered=>'off'
+,p_tick_label_rendered=>'on'
+);
+wwv_flow_api.create_jet_chart_axis(
+ p_id=>wwv_flow_api.id(77458583626419248)
+,p_chart_id=>wwv_flow_api.id(77457365028419236)
+,p_axis=>'x'
+,p_is_rendered=>'on'
+,p_format_scaling=>'auto'
+,p_scaling=>'linear'
+,p_baseline_scaling=>'zero'
+,p_major_tick_rendered=>'on'
+,p_minor_tick_rendered=>'off'
+,p_tick_label_rendered=>'on'
+,p_tick_label_rotation=>'auto'
+,p_tick_label_position=>'outside'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(77569591280769501)
+,p_plug_name=>'Graph #9'
+,p_parent_plug_id=>wwv_flow_api.id(221679033552969250)
+,p_region_template_options=>'#DEFAULT#:t-Region--removeHeader:t-Region--scrollBody'
+,p_escape_on_http_output=>'Y'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>130
+,p_plug_display_point=>'BODY'
+,p_plug_source_type=>'NATIVE_JET_CHART'
+,p_plug_query_num_rows=>15
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_plug_display_condition_type=>'EXISTS'
+,p_plug_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.graph_num = 9',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart(
+ p_id=>wwv_flow_api.id(77569664776769502)
+,p_region_id=>wwv_flow_api.id(77569591280769501)
+,p_chart_type=>'line'
+,p_height=>'300'
+,p_animation_on_display=>'none'
+,p_animation_on_data_change=>'none'
+,p_orientation=>'vertical'
+,p_data_cursor=>'auto'
+,p_data_cursor_behavior=>'auto'
+,p_hide_and_show_behavior=>'none'
+,p_hover_behavior=>'none'
+,p_stack=>'off'
+,p_connect_nulls=>'N'
+,p_sorting=>'label-asc'
+,p_fill_multi_series_gaps=>true
+,p_zoom_and_scroll=>'delayed'
+,p_initial_zooming=>'none'
+,p_tooltip_rendered=>'Y'
+,p_show_series_name=>true
+,p_show_group_name=>true
+,p_show_value=>true
+,p_show_label=>true
+,p_legend_rendered=>'on'
+,p_legend_position=>'top'
+,p_overview_rendered=>'off'
+,p_time_axis_type=>'mixedFrequency'
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77570019094769506)
+,p_chart_id=>wwv_flow_api.id(77569664776769502)
+,p_seq=>10
+,p_name=>'Metric1'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 9',
+'   and g.chart_id = 1',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_link_target=>'f?p=&APP_ID.:6003:&SESSION.::&DEBUG.:RP:P6003_GRAPH:9'
+,p_link_target_type=>'REDIRECT_PAGE'
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 1 ',
+'   and l.graph_num = 9',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77570424823769510)
+,p_chart_id=>wwv_flow_api.id(77569664776769502)
+,p_seq=>20
+,p_name=>'Metric2'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 9',
+'   and g.chart_id = 2',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 2 ',
+'   and l.graph_num = 9',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77570532294769511)
+,p_chart_id=>wwv_flow_api.id(77569664776769502)
+,p_seq=>30
+,p_name=>'Metric3'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 9',
+'   and g.chart_id = 3',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 3 ',
+'   and l.graph_num = 9',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77570652421769512)
+,p_chart_id=>wwv_flow_api.id(77569664776769502)
+,p_seq=>40
+,p_name=>'Metric4'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 9',
+'   and g.chart_id = 4',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 4 ',
+'   and l.graph_num = 9',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77569731014769503)
+,p_chart_id=>wwv_flow_api.id(77569664776769502)
+,p_seq=>50
+,p_name=>'Metric5'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 9',
+'   and g.chart_id = 5',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 5 ',
+'   and l.graph_num = 9',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77569846277769504)
+,p_chart_id=>wwv_flow_api.id(77569664776769502)
+,p_seq=>60
+,p_name=>'Metric6'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 9',
+'   and g.chart_id = 6',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 6 ',
+'   and l.graph_num = 9',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77569953029769505)
+,p_chart_id=>wwv_flow_api.id(77569664776769502)
+,p_seq=>70
+,p_name=>'Metric7'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 9',
+'   and g.chart_id = 7',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 7 ',
+'   and l.graph_num = 9',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77570131896769507)
+,p_chart_id=>wwv_flow_api.id(77569664776769502)
+,p_seq=>80
+,p_name=>'Metric8'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 9',
+'   and g.chart_id = 8',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 8 ',
+'   and l.graph_num = 9',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77570293749769508)
+,p_chart_id=>wwv_flow_api.id(77569664776769502)
+,p_seq=>90
+,p_name=>'Metric9'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 9',
+'   and g.chart_id = 9',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 9 ',
+'   and l.graph_num = 9',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77570364974769509)
+,p_chart_id=>wwv_flow_api.id(77569664776769502)
+,p_seq=>100
+,p_name=>'Metric10'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 9',
+'   and g.chart_id = 10',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 10 ',
+'   and l.graph_num = 9',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_axis(
+ p_id=>wwv_flow_api.id(77570767108769513)
+,p_chart_id=>wwv_flow_api.id(77569664776769502)
+,p_axis=>'x'
+,p_is_rendered=>'on'
+,p_format_scaling=>'auto'
+,p_scaling=>'linear'
+,p_baseline_scaling=>'zero'
+,p_major_tick_rendered=>'on'
+,p_minor_tick_rendered=>'off'
+,p_tick_label_rendered=>'on'
+,p_tick_label_rotation=>'auto'
+,p_tick_label_position=>'outside'
+);
+wwv_flow_api.create_jet_chart_axis(
+ p_id=>wwv_flow_api.id(77570893656769514)
+,p_chart_id=>wwv_flow_api.id(77569664776769502)
+,p_axis=>'y'
+,p_is_rendered=>'on'
+,p_format_scaling=>'auto'
+,p_scaling=>'linear'
+,p_baseline_scaling=>'min'
+,p_position=>'auto'
+,p_major_tick_rendered=>'on'
+,p_minor_tick_rendered=>'off'
+,p_tick_label_rendered=>'on'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(77570954785769515)
+,p_plug_name=>'Graph #10'
+,p_parent_plug_id=>wwv_flow_api.id(221679033552969250)
+,p_region_template_options=>'#DEFAULT#:t-Region--removeHeader:t-Region--scrollBody'
+,p_escape_on_http_output=>'Y'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>140
+,p_plug_new_grid_row=>false
+,p_plug_display_point=>'BODY'
+,p_plug_source_type=>'NATIVE_JET_CHART'
+,p_plug_query_num_rows=>15
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_plug_display_condition_type=>'EXISTS'
+,p_plug_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.graph_num = 10',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart(
+ p_id=>wwv_flow_api.id(77571072328769516)
+,p_region_id=>wwv_flow_api.id(77570954785769515)
+,p_chart_type=>'line'
+,p_height=>'300'
+,p_animation_on_display=>'none'
+,p_animation_on_data_change=>'none'
+,p_orientation=>'vertical'
+,p_data_cursor=>'auto'
+,p_data_cursor_behavior=>'auto'
+,p_hide_and_show_behavior=>'none'
+,p_hover_behavior=>'none'
+,p_stack=>'off'
+,p_connect_nulls=>'N'
+,p_sorting=>'label-asc'
+,p_fill_multi_series_gaps=>true
+,p_zoom_and_scroll=>'delayed'
+,p_initial_zooming=>'none'
+,p_tooltip_rendered=>'Y'
+,p_show_series_name=>true
+,p_show_group_name=>true
+,p_show_value=>true
+,p_show_label=>true
+,p_legend_rendered=>'on'
+,p_legend_position=>'top'
+,p_overview_rendered=>'off'
+,p_time_axis_type=>'mixedFrequency'
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77571943798769525)
+,p_chart_id=>wwv_flow_api.id(77571072328769516)
+,p_seq=>10
+,p_name=>'Metric1'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 10',
+'   and g.chart_id = 1',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_link_target=>'f?p=&APP_ID.:6003:&SESSION.::&DEBUG.:RP:P6003_GRAPH:10'
+,p_link_target_type=>'REDIRECT_PAGE'
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 1 ',
+'   and l.graph_num = 10',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77571302844769519)
+,p_chart_id=>wwv_flow_api.id(77571072328769516)
+,p_seq=>40
+,p_name=>'Metric2'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 10',
+'   and g.chart_id = 2',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 2 ',
+'   and l.graph_num = 10',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77571458424769520)
+,p_chart_id=>wwv_flow_api.id(77571072328769516)
+,p_seq=>50
+,p_name=>'Metric3'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 10',
+'   and g.chart_id = 3',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 3 ',
+'   and l.graph_num = 10',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77571548534769521)
+,p_chart_id=>wwv_flow_api.id(77571072328769516)
+,p_seq=>60
+,p_name=>'Metric4'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 10',
+'   and g.chart_id = 4',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 4 ',
+'   and l.graph_num = 10',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77571600879769522)
+,p_chart_id=>wwv_flow_api.id(77571072328769516)
+,p_seq=>70
+,p_name=>'Metric5'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 10',
+'   and g.chart_id = 5',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 5 ',
+'   and l.graph_num = 10',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77571747907769523)
+,p_chart_id=>wwv_flow_api.id(77571072328769516)
+,p_seq=>80
+,p_name=>'Metric6'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 10',
+'   and g.chart_id = 6',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 6 ',
+'   and l.graph_num = 10',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77571808166769524)
+,p_chart_id=>wwv_flow_api.id(77571072328769516)
+,p_seq=>90
+,p_name=>'Metric7'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 10',
+'   and g.chart_id = 7',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 7 ',
+'   and l.graph_num = 10',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77571112752769517)
+,p_chart_id=>wwv_flow_api.id(77571072328769516)
+,p_seq=>100
+,p_name=>'Metric8'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 10',
+'   and g.chart_id = 8',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 8 ',
+'   and l.graph_num = 10',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77571212856769518)
+,p_chart_id=>wwv_flow_api.id(77571072328769516)
+,p_seq=>110
+,p_name=>'Metric9'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 10',
+'   and g.chart_id = 9',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 9 ',
+'   and l.graph_num = 10',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77572010821769526)
+,p_chart_id=>wwv_flow_api.id(77571072328769516)
+,p_seq=>120
+,p_name=>'Metric10'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 10',
+'   and g.chart_id = 10',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 10 ',
+'   and l.graph_num = 10',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_axis(
+ p_id=>wwv_flow_api.id(77572170193769527)
+,p_chart_id=>wwv_flow_api.id(77571072328769516)
+,p_axis=>'y'
+,p_is_rendered=>'on'
+,p_format_scaling=>'auto'
+,p_scaling=>'linear'
+,p_baseline_scaling=>'min'
+,p_position=>'auto'
+,p_major_tick_rendered=>'on'
+,p_minor_tick_rendered=>'off'
+,p_tick_label_rendered=>'on'
+);
+wwv_flow_api.create_jet_chart_axis(
+ p_id=>wwv_flow_api.id(77572246447769528)
+,p_chart_id=>wwv_flow_api.id(77571072328769516)
+,p_axis=>'x'
+,p_is_rendered=>'on'
+,p_format_scaling=>'auto'
+,p_scaling=>'linear'
+,p_baseline_scaling=>'zero'
+,p_major_tick_rendered=>'on'
+,p_minor_tick_rendered=>'off'
+,p_tick_label_rendered=>'on'
+,p_tick_label_rotation=>'auto'
+,p_tick_label_position=>'outside'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(288306483963007178)
+,p_plug_name=>'Graph #1'
+,p_parent_plug_id=>wwv_flow_api.id(221679033552969250)
+,p_region_template_options=>'#DEFAULT#:t-Region--hideHeader:t-Region--scrollBody'
+,p_escape_on_http_output=>'Y'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>20
+,p_plug_display_point=>'BODY'
+,p_plug_source_type=>'NATIVE_JET_CHART'
+,p_plug_query_num_rows=>15
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_plug_display_condition_type=>'EXISTS'
+,p_plug_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.graph_num = 1',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart(
+ p_id=>wwv_flow_api.id(77351964464331339)
+,p_region_id=>wwv_flow_api.id(288306483963007178)
+,p_chart_type=>'line'
+,p_height=>'300'
+,p_animation_on_display=>'none'
+,p_animation_on_data_change=>'none'
+,p_orientation=>'vertical'
+,p_data_cursor=>'auto'
+,p_data_cursor_behavior=>'auto'
+,p_hide_and_show_behavior=>'none'
+,p_hover_behavior=>'none'
+,p_stack=>'off'
+,p_connect_nulls=>'N'
+,p_sorting=>'label-asc'
+,p_fill_multi_series_gaps=>true
+,p_zoom_and_scroll=>'delayed'
+,p_initial_zooming=>'none'
+,p_tooltip_rendered=>'Y'
+,p_show_series_name=>true
+,p_show_group_name=>true
+,p_show_value=>true
+,p_show_label=>true
+,p_legend_rendered=>'on'
+,p_legend_position=>'top'
+,p_overview_rendered=>'off'
+,p_time_axis_type=>'mixedFrequency'
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77359050520331364)
+,p_chart_id=>wwv_flow_api.id(77351964464331339)
+,p_seq=>10
+,p_name=>'Metric1'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 1',
+'   and g.chart_id = 1',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_link_target=>'f?p=&APP_ID.:6003:&SESSION.::&DEBUG.:RP:P6003_GRAPH:1'
+,p_link_target_type=>'REDIRECT_PAGE'
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 1 ',
+'   and l.graph_num = 1',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77355420588331354)
+,p_chart_id=>wwv_flow_api.id(77351964464331339)
+,p_seq=>20
+,p_name=>'Metric2'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 1',
+'   and g.chart_id = 2',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 2 ',
+'   and l.graph_num = 1',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+end;
+/
+begin
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77356020344331356)
+,p_chart_id=>wwv_flow_api.id(77351964464331339)
+,p_seq=>30
+,p_name=>'Metric3'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 1',
+'   and g.chart_id = 3',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 3 ',
+'   and l.graph_num = 1',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77356610597331357)
+,p_chart_id=>wwv_flow_api.id(77351964464331339)
+,p_seq=>40
+,p_name=>'Metric4'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 1',
+'   and g.chart_id = 4',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 4 ',
+'   and l.graph_num = 1',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77357258223331359)
+,p_chart_id=>wwv_flow_api.id(77351964464331339)
+,p_seq=>50
+,p_name=>'Metric5'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 1',
+'   and g.chart_id = 5',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 5 ',
+'   and l.graph_num = 1',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77357801451331360)
+,p_chart_id=>wwv_flow_api.id(77351964464331339)
+,p_seq=>60
+,p_name=>'Metric6'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 1',
+'   and g.chart_id = 6',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 6 ',
+'   and l.graph_num = 1',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77358426431331362)
+,p_chart_id=>wwv_flow_api.id(77351964464331339)
+,p_seq=>70
+,p_name=>'Metric7'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 1',
+'   and g.chart_id = 7',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 7 ',
+'   and l.graph_num = 1',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77353626039331346)
+,p_chart_id=>wwv_flow_api.id(77351964464331339)
+,p_seq=>80
+,p_name=>'Metric8'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 1',
+'   and g.chart_id = 8',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 8 ',
+'   and l.graph_num = 1',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77354253926331348)
+,p_chart_id=>wwv_flow_api.id(77351964464331339)
+,p_seq=>90
+,p_name=>'Metric9'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 1',
+'   and g.chart_id = 9',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 9 ',
+'   and l.graph_num = 1',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(77354875996331353)
+,p_chart_id=>wwv_flow_api.id(77351964464331339)
+,p_seq=>100
+,p_name=>'Metric10'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select c.tim, round(c.val) val, g.chart_name nm',
+'  from OPAS_OT_DB_MONITOR_VALS c, ',
+'       opas_ot_db_dashboard d, ',
+'       OPAS_OT_DB_DASHBOARD_GRAPHS g',
+' where c.metric_id = g.metric_id',
+'   and g.apex_user = d.apex_user',
+'   and g.apex_user = v(''APP_USER'')',
+'   and c.tim between d.start_dt and d.end_dt',
+'   and g.graph_num = 1',
+'   and g.chart_id = 10',
+' order by tim',
+''))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+,p_display_when_cond_type=>'EXISTS'
+,p_display_when_condition=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select 1 from OPAS_OT_DB_DASHBOARD_GRAPHS l',
+' where l.chart_id = 10 ',
+'   and l.graph_num = 1',
+'   and l.apex_user = v(''APP_USER'')'))
+);
+wwv_flow_api.create_jet_chart_axis(
+ p_id=>wwv_flow_api.id(77352417789331341)
+,p_chart_id=>wwv_flow_api.id(77351964464331339)
+,p_axis=>'x'
+,p_is_rendered=>'on'
+,p_format_scaling=>'auto'
+,p_scaling=>'linear'
+,p_baseline_scaling=>'zero'
+,p_major_tick_rendered=>'on'
+,p_minor_tick_rendered=>'off'
+,p_tick_label_rendered=>'on'
+,p_tick_label_rotation=>'auto'
+,p_tick_label_position=>'outside'
+,p_zoom_order_seconds=>false
+,p_zoom_order_minutes=>false
+,p_zoom_order_hours=>false
+,p_zoom_order_days=>false
+,p_zoom_order_weeks=>false
+,p_zoom_order_months=>false
+,p_zoom_order_quarters=>false
+,p_zoom_order_years=>false
+);
+wwv_flow_api.create_jet_chart_axis(
+ p_id=>wwv_flow_api.id(77353057512331344)
+,p_chart_id=>wwv_flow_api.id(77351964464331339)
+,p_axis=>'y'
+,p_is_rendered=>'on'
+,p_format_scaling=>'auto'
+,p_scaling=>'linear'
+,p_baseline_scaling=>'min'
+,p_position=>'auto'
+,p_major_tick_rendered=>'on'
+,p_minor_tick_rendered=>'off'
+,p_tick_label_rendered=>'on'
+,p_zoom_order_seconds=>false
+,p_zoom_order_minutes=>false
+,p_zoom_order_hours=>false
+,p_zoom_order_days=>false
+,p_zoom_order_weeks=>false
+,p_zoom_order_months=>false
+,p_zoom_order_quarters=>false
+,p_zoom_order_years=>false
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(221768286385906408)
+,p_plug_name=>'Breadcrumb'
+,p_region_template_options=>'#DEFAULT#:t-BreadcrumbRegion--useBreadcrumbTitle'
+,p_component_template_options=>'#DEFAULT#'
+,p_plug_template=>wwv_flow_api.id(58969580676993713)
+,p_plug_display_sequence=>10
+,p_plug_display_point=>'REGION_POSITION_01'
+,p_menu_id=>wwv_flow_api.id(58913514827993374)
+,p_plug_source_type=>'NATIVE_BREADCRUMB'
+,p_menu_template_id=>wwv_flow_api.id(59013031676993965)
+);
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(77350135658331292)
+,p_button_sequence=>30
+,p_button_plug_id=>wwv_flow_api.id(221679033552969250)
+,p_button_name=>'Refresh'
+,p_button_action=>'SUBMIT'
+,p_button_template_options=>'#DEFAULT#:t-Button--large:t-Button--gapLeft'
+,p_button_template_id=>wwv_flow_api.id(59012285338993961)
+,p_button_image_alt=>'Refresh'
+,p_button_position=>'RIGHT_OF_TITLE'
+);
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(77157144198300440)
+,p_button_sequence=>40
+,p_button_plug_id=>wwv_flow_api.id(221679033552969250)
+,p_button_name=>'Configure'
+,p_button_action=>'REDIRECT_PAGE'
+,p_button_template_options=>'#DEFAULT#:t-Button--large:t-Button--gapLeft'
+,p_button_template_id=>wwv_flow_api.id(59012285338993961)
+,p_button_image_alt=>'Configure'
+,p_button_position=>'RIGHT_OF_TITLE'
+,p_button_redirect_url=>'f?p=&APP_ID.:6004:&SESSION.::&DEBUG.:RP::'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(77350951264331328)
+,p_name=>'P6005_START_DT'
+,p_item_sequence=>10
+,p_item_plug_id=>wwv_flow_api.id(221679033552969250)
+,p_display_as=>'NATIVE_HIDDEN'
+,p_attribute_01=>'Y'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(77351267237331331)
+,p_name=>'P6005_END_DT'
+,p_item_sequence=>20
+,p_item_plug_id=>wwv_flow_api.id(221679033552969250)
+,p_display_as=>'NATIVE_HIDDEN'
+,p_attribute_01=>'Y'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(77410046974915112)
+,p_name=>'P6005_PAGE_REFRESH'
+,p_item_sequence=>10
+,p_item_plug_id=>wwv_flow_api.id(221679033552969250)
+,p_display_as=>'NATIVE_HIDDEN'
+,p_attribute_01=>'Y'
+);
+wwv_flow_api.create_page_process(
+ p_id=>wwv_flow_api.id(77360327512331374)
+,p_process_sequence=>10
+,p_process_point=>'AFTER_HEADER'
+,p_process_type=>'NATIVE_PLSQL'
+,p_process_name=>'InitPageStack'
+,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'begin ',
+'  :APP_PAGE_STACK:=null;',
+'end;'))
+,p_error_display_location=>'INLINE_IN_NOTIFICATION'
+);
+wwv_flow_api.create_page_process(
+ p_id=>wwv_flow_api.id(77359978007331370)
+,p_process_sequence=>10
+,p_process_point=>'BEFORE_HEADER'
+,p_process_type=>'NATIVE_PLSQL'
+,p_process_name=>'InitCharts'
+,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'begin ',
+'  coreobj_db_monitor.init_dashboard_data(p_dt_fmt     => :APP_GRID_DT_FMT_TZ,',
+'                                         p_start_dt   => :P6005_START_DT,',
+'                                         p_end_dt     => :P6005_END_DT,',
+'                                         p_page_refresh => :P6005_PAGE_REFRESH);',
 'end;'))
 ,p_error_display_location=>'INLINE_IN_NOTIFICATION'
 );
@@ -35596,7 +41821,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(76886219658220205)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200525152658'
+,p_last_upd_yyyymmddhh24miss=>'20200609151202'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(76676007484342345)
@@ -35939,7 +42164,7 @@ wwv_flow_api.create_page_button(
 ,p_button_image_alt=>'Save'
 ,p_button_position=>'BELOW_BOX'
 ,p_button_alignment=>'LEFT'
-,p_button_condition=>':P7000_STATUS in (COREOBJ_SQL_CATCHER.stNew, COREOBJ_SQL_CATCHER.stInactive)'
+,p_button_condition=>'1=1 or :P7000_STATUS in (COREOBJ_SQL_CATCHER.stNew, COREOBJ_SQL_CATCHER.stInactive)'
 ,p_button_condition_type=>'PLSQL_EXPRESSION'
 ,p_security_scheme=>wwv_flow_api.id(64510632529107389)
 );
@@ -36032,6 +42257,36 @@ wwv_flow_api.create_page_button(
 ,p_button_redirect_url=>'f?p=&APP_ID.:121:&SESSION.::&DEBUG.:RP:P121_TQ_ID:&P7000_TQ_ID.'
 ,p_button_condition=>'P7000_TQ_ID'
 ,p_button_condition_type=>'ITEM_IS_NOT_NULL'
+);
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(77334418692838359)
+,p_button_sequence=>100
+,p_button_plug_id=>wwv_flow_api.id(76676007484342345)
+,p_button_name=>'PreviousObj'
+,p_button_action=>'REDIRECT_PAGE'
+,p_button_template_options=>'#DEFAULT#:t-Button--small:t-Button--gapLeft'
+,p_button_template_id=>wwv_flow_api.id(59012147360993949)
+,p_button_image_alt=>'Previous Object in folder (&APP_NUM_BEFORE.)'
+,p_button_position=>'RIGHT_OF_TITLE'
+,p_button_redirect_url=>'f?p=&APP_ID.:7000:&SESSION.::&DEBUG.:RP:APP_OBJ_ID,APP_PREV_PAGE:&APP_PREV_OBJ.,7000'
+,p_button_condition=>'APP_PREV_OBJ'
+,p_button_condition_type=>'ITEM_IS_NOT_NULL'
+,p_icon_css_classes=>'fa-angle-double-left'
+);
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(77334789725840946)
+,p_button_sequence=>110
+,p_button_plug_id=>wwv_flow_api.id(76676007484342345)
+,p_button_name=>'NextObj'
+,p_button_action=>'REDIRECT_PAGE'
+,p_button_template_options=>'#DEFAULT#:t-Button--small:t-Button--gapLeft'
+,p_button_template_id=>wwv_flow_api.id(59012147360993949)
+,p_button_image_alt=>'Next Object in folder (&APP_NUM_AFTER.)'
+,p_button_position=>'RIGHT_OF_TITLE'
+,p_button_redirect_url=>'f?p=&APP_ID.:7000:&SESSION.::&DEBUG.:RP:APP_OBJ_ID,APP_PREV_PAGE:&APP_NEXT_OBJ.,7000'
+,p_button_condition=>'APP_NEXT_OBJ'
+,p_button_condition_type=>'ITEM_IS_NOT_NULL'
+,p_icon_css_classes=>'fa-angle-double-right'
 );
 wwv_flow_api.create_page_branch(
  p_id=>wwv_flow_api.id(76902666412187202)
@@ -36157,6 +42412,8 @@ wwv_flow_api.create_page_item(
 ,p_lov=>'select * from table(COREOBJ_DBLINKS2OBJ.get_dbl_list(:P7000_PRNT_ID));'
 ,p_lov_display_null=>'YES'
 ,p_cHeight=>1
+,p_read_only_when=>'not (:P7000_STATUS in (COREOBJ_SQL_CATCHER.stNew, COREOBJ_SQL_CATCHER.stInactive))'
+,p_read_only_when_type=>'PLSQL_EXPRESSION'
 ,p_field_template=>wwv_flow_api.id(59011729453993944)
 ,p_item_template_options=>'#DEFAULT#'
 ,p_lov_display_extra=>'NO'
@@ -36276,6 +42533,7 @@ wwv_flow_api.create_page_process(
 ,p_process_name=>'InitData'
 ,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'begin',
+'  :APP_CURR_OBJ_OT := 700;',
 '  :P7000_OBJ_ID := :APP_OBJ_ID;',
 '  ',
 '  SELECT',
@@ -36472,7 +42730,7 @@ wwv_flow_api.create_page(
 ,p_step_template=>wwv_flow_api.id(58924046682993504)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200526122055'
+,p_last_upd_yyyymmddhh24miss=>'20200607094802'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(77040754572240643)
@@ -36625,6 +42883,36 @@ wwv_flow_api.create_page_button(
 ,p_button_position=>'RIGHT_OF_TITLE'
 ,p_button_redirect_url=>'f?p=&APP_ID.:1411:&SESSION.::&DEBUG.:RP:P1411_MODE,P1411_PAGE_CALLER,P1411_CALLER_ITEM,P8000_CHOOSE_ITEM:LOCALSEARCH,8000,P8000_SQL_ID2,P8000_SQL_ID2'
 ,p_icon_css_classes=>'fa-table-search'
+);
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(77335530087852423)
+,p_button_sequence=>30
+,p_button_plug_id=>wwv_flow_api.id(77040754572240643)
+,p_button_name=>'PreviousObj'
+,p_button_action=>'REDIRECT_PAGE'
+,p_button_template_options=>'#DEFAULT#:t-Button--small:t-Button--gapLeft'
+,p_button_template_id=>wwv_flow_api.id(59012147360993949)
+,p_button_image_alt=>'Previous Object in folder (&APP_NUM_BEFORE.)'
+,p_button_position=>'RIGHT_OF_TITLE'
+,p_button_redirect_url=>'f?p=&APP_ID.:8000:&SESSION.::&DEBUG.:RP:APP_OBJ_ID,APP_PREV_PAGE:&APP_PREV_OBJ.,8000'
+,p_button_condition=>'APP_PREV_OBJ'
+,p_button_condition_type=>'ITEM_IS_NOT_NULL'
+,p_icon_css_classes=>'fa-angle-double-left'
+);
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(77335859704854522)
+,p_button_sequence=>40
+,p_button_plug_id=>wwv_flow_api.id(77040754572240643)
+,p_button_name=>'NextObj'
+,p_button_action=>'REDIRECT_PAGE'
+,p_button_template_options=>'#DEFAULT#:t-Button--small:t-Button--gapLeft'
+,p_button_template_id=>wwv_flow_api.id(59012147360993949)
+,p_button_image_alt=>'Next Object in folder (&APP_NUM_AFTER.)'
+,p_button_position=>'RIGHT_OF_TITLE'
+,p_button_redirect_url=>'f?p=&APP_ID.:8000:&SESSION.::&DEBUG.:RP:APP_OBJ_ID,APP_PREV_PAGE:&APP_NEXT_OBJ.,8000'
+,p_button_condition=>'APP_NEXT_OBJ'
+,p_button_condition_type=>'ITEM_IS_NOT_NULL'
+,p_icon_css_classes=>'fa-angle-double-right'
 );
 wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(77040475225240640)
@@ -36938,6 +43226,7 @@ wwv_flow_api.create_page_process(
 ,p_process_name=>'InitData'
 ,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'begin',
+'  :APP_CURR_OBJ_OT := 800;',
 '  :P8000_OBJ_ID := :APP_OBJ_ID;',
 '',
 '  select obj_name, obj_descr, obj_prnt, obj_owner into :P8000_NAME, :P8000_DESCR, :P8000_PRNT_ID, :P8000_OWNER from v$opas_objects where obj_id = :P8000_OBJ_ID;',

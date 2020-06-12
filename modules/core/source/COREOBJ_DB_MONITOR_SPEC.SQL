@@ -34,5 +34,14 @@ PACKAGE COREOBJ_DB_MONITOR AS
                                 p_start_dt in out varchar2,
                                 p_end_dt   in out varchar2);
 
+  procedure save_dachboard_conf(p_graph_num       opas_ot_db_dashboard_graphs.graph_num%type,
+                                p_chart_list      varchar2,
+                                p_data_interv     opas_ot_db_dashboard.data_interv%type,
+                                p_refresh_int     opas_ot_db_dashboard.refresh_int%type);
+  procedure init_dashboard_data(p_dt_fmt           varchar2,
+                                p_start_dt  in out varchar2,
+                                p_end_dt    in out varchar2,
+                                p_page_refresh out number);
+
 END COREOBJ_DB_MONITOR;
 /

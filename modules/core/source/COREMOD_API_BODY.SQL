@@ -119,6 +119,16 @@ package body COREMOD_API as
     return l_res;
   end;
 
+  function get_dic_displ_val(p_dic_name varchar2, p_dic_val varchar2) return varchar2
+  is
+    l_dv OPAS_DICTIONARY.display_val%type;
+  begin
+    select display_val into l_dv from OPAS_DICTIONARY t where dic_name=p_dic_name and val=p_dic_val;
+    return l_dv;
+  exception
+    when others then return null;
+  end;
+
   procedure register_dblink(p_db_link_name varchar2,
                             p_owner varchar2,
                             p_is_public varchar2,

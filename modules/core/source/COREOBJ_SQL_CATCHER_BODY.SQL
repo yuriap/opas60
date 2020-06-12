@@ -46,6 +46,16 @@ package body COREOBJ_SQL_CATCHER is
      sql_exec_def = p_sql_exec_def
     WHERE
         obj_id = p_obj_id and status in (stNew, stInactive);
+
+    UPDATE opas_ot_sqlcatch
+    SET
+     search_condition = p_search_condition,
+     sql_num_limit = p_SQL_NUM_LIMIT,
+     sql_time_limit = p_SQL_TIME_LIMIT,
+     check_interval = p_CHECK_INTERVAL,
+     sql_exec_def = p_sql_exec_def
+    WHERE
+        obj_id = p_obj_id;
   end;
 
   procedure remove  (p_obj_id         opas_objects.obj_id%type,

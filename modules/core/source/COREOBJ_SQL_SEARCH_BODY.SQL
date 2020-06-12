@@ -4,16 +4,37 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
   gCurrentSession opas_ot_sql_searches.session_id%type;
   gSearchMode varchar2(1);
 
-  function get_shorten_sql_text_for_html_expose(p_sql_text clob, p_length number default 0) return clob deterministic
+  function get_shorten_sql_text(p_sql_id varchar2, p_length number default 0) return varchar2 deterministic
   is
     PRAGMA UDF;
+    l_res varchar2(4000);
+  begin
+    for i in (
+      select t.file_contentc
+      from OPAS_OT_SQL_DESCRIPTIONS s,
+           opas_files t
+      where s.sql_id=p_sql_id
+        and nvl(s.sql_text,s.sql_text_approx) = t.file_id(+))
+    loop
+      l_res := get_shorten_sql_text_for_html_expose(i.file_contentc, p_length, 'N');
+    end loop;
+    return l_res;
+  end;
+
+  function get_shorten_sql_text_for_html_expose(p_sql_text clob, p_length number default 0, p_replace_spec varchar2 default 'Y') return clob deterministic
+  is
+    PRAGMA UDF;
+    l_res clob;
   begin
     --dbms_lock.sleep(5);
-    return replace(replace(replace(
-      case when p_length = 0 then p_sql_text
-           when dbms_lob.getlength(p_sql_text) <= p_length then p_sql_text
-           else substr(p_sql_text,1,p_length-3)||'...' end
-      ,'  ','&nbsp;'),chr(13)||chr(10),'<br>'),chr(10),'<br>');
+    l_res :=case when p_length = 0 then p_sql_text
+                 when dbms_lob.getlength(p_sql_text) <= p_length then p_sql_text
+                 else substr(p_sql_text,1,p_length-3)||'...' end;
+    if p_replace_spec = 'Y' then
+      return replace(replace(replace(l_res,'  ','&nbsp;'),chr(13)||chr(10),'<br>'),chr(10),'<br>');
+    else
+      return l_res;
+    end if;
   end;
 
   procedure create_search_session(p_session_id out opas_ot_sql_searches.session_id%type,

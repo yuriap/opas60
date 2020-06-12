@@ -17,6 +17,7 @@ PACKAGE BODY COREMOD_REPORT_UTILS AS
   is
   begin
       if p_num=0 then return '0'; end if;
+      if p_num is null then return null; end if;
       if p_stype in ('WAIT','TIME') then
           return
               round(

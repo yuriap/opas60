@@ -145,12 +145,20 @@ package body COREOBJ_DB_GROWTH is
     l_sql       varchar2(32765);
     l_tblsp_list varchar2(1024);
     l_tblsp_sql varchar2(4000) := q'[insert into opas_ot_dbg_ts_sizes (dbgdp_id,
-                  ts_name, tot_occupied, bin_occupied, tot_free, curr_available, ext_available)
+                  ts_name, tot_occupied, bin_occupied, tot_free, curr_available, ext_available, tot_occupied_sch, bin_occupied_sch)
     select :p_dbgdp_id,
-           q3.tablespace_name, tot_occupied, bin_occupied, tot_free, curr_available, ext_available from
-          (select tablespace_name, sum(bytes) tot_occupied, sum(case when (segment_name like 'BIN%') then bytes else 0 end) bin_occupied
-             from dba_segments<DBLINK>
-            where tablespace_name in (<TSLIST>)
+           q3.tablespace_name, tot_occupied, bin_occupied, tot_free, curr_available, ext_available, tot_occupied_sch, bin_occupied_sch
+             from
+          (select tablespace_name,
+                  sum(bytes) tot_occupied,
+                  sum(case when r.object_name is not null then bytes else 0 end) bin_occupied,
+                  sum(case when s.owner in (<OWNER_LIST>) then bytes else 0 end) tot_occupied_sch,
+                  sum(case when s.owner in (<OWNER_LIST>) and r.object_name is not null then bytes else 0 end) bin_occupied_sch
+             from dba_segments<DBLINK> s, dba_recyclebin<DBLINK> r
+            where s.tablespace_name in (<TSLIST>)
+              and s.segment_name = r.object_name(+)
+              and s.tablespace_name = r.ts_name(+)
+              and s.owner = r.owner(+)
             group by tablespace_name) q1,
           (select tablespace_name, sum(bytes) tot_free
              from dba_free_space<DBLINK>
@@ -166,9 +174,9 @@ package body COREOBJ_DB_GROWTH is
     l_segment_sql varchar2(4000) := q'[insert into opas_ot_tmp_dbg_objects
             (owner,  object_id,  data_object_id,  object_name,  subobject_name,  object_type,   tablespace_name,   created, size_bytes, segment_type)
     select <OWNER_COLUMN>,o.object_id,o.data_object_id,o.object_name, o.subobject_name,o.object_type, s.tablespace_name, o.created, s.bytes, s.segment_type
-      from <VIEWPREF>_segments<DBLINK> s, <VIEWPREF>_objects<DBLINK> o
-     where s.segment_name(+)=o.object_name
-       <VIEWPREF_FILTERS> and s.owner(+)=o.owner and o.owner in (<OWNER_LIST>)
+      from <VIEWPREF>_segments<DBLINK> s, <VIEWPREF>_objects<DBLINK> o, <VIEWPREF>_recyclebin<DBLINK> r
+     where s.segment_name(+)=o.object_name and r.object_name(+)=o.object_name and r.object_name is null
+       <VIEWPREF_FILTERS> and s.owner(+)=o.owner and r.owner(+)=o.owner and o.owner in (<OWNER_LIST>)
        and decode(s.partition_name,o.subobject_name,1,0)=1
        and o.object_type not in ('VIEW','SEQUENCE','FUNCTION','TYPE','TRIGGER','PACKAGE','PACKAGE BODY','PROCEDURE','JOB','RULE','SYNONYM','DATABASE LINK','SQL TRANSLATION PROFILE',
        'TYPE BODY','CHAIN','PROGRAM','RULE SET','EVALUATION CONTEXT','MATERIALIZED VIEW')
@@ -299,7 +307,7 @@ package body COREOBJ_DB_GROWTH is
         into l_tblsp_list
         from (select unique tablespace_name from opas_ot_tmp_dbg_objects where tablespace_name is not null);
 
-      l_sql := replace(l_tblsp_sql, '<TSLIST>', l_tblsp_list);
+      l_sql := replace(replace(l_tblsp_sql, '<TSLIST>', l_tblsp_list),'<OWNER_LIST>',l_owner_list);
       execute immediate l_sql using p_dbgdp_id;
 
     exception
@@ -312,18 +320,18 @@ package body COREOBJ_DB_GROWTH is
     using opas_ot_tmp_dbg_objects s
     on (t.object_id=s.object_id and decode(t.data_object_id,s.data_object_id,1,0)=1)
     when not matched then insert
-      (t.version_dp_id, t.owner, t.object_id, t.data_object_id, t.object_name, t.subobject_name, t.object_type, t.tablespace_name, t.created, t.segment_type)
+      (t.version_dp_id, t.owner, t.object_id, t.data_object_id, t.object_name, t.subobject_name, t.object_type, t.tablespace_name, t.created, t.segment_type, dbg_id)
     values
-      (p_dbgdp_id,      s.owner, s.object_id, s.data_object_id, s.object_name, s.subobject_name, s.object_type, s.tablespace_name, s.created, s.segment_type);
+      (p_dbgdp_id,      s.owner, s.object_id, s.data_object_id, s.object_name, s.subobject_name, s.object_type, s.tablespace_name, s.created, s.segment_type, l_dp_obj);
 
     merge into opas_ot_tmp_dbg_objects t
-    using (select s.object_id, s.data_object_id, max(dbgobj_id) dp_id
+    using (select s.object_id, s.data_object_id, max(dbgobj_id) dbgobj_id
              from opas_ot_dbg_objects s, opas_ot_dbg_datapoint dp
             where s.version_dp_id = dp.dbgdp_id
               and dp.dbg_id = l_dp_obj
             group by s.object_id, s.data_object_id) s
     on ( t.object_id=s.object_id and decode(t.data_object_id,s.data_object_id,1,0)=1)
-    when matched then update set t.dbgobj_id = s.dp_id;
+    when matched then update set t.dbgobj_id = s.dbgobj_id;
 
     insert into opas_ot_dbg_seg_sizes
          (   dbgdp_id,    dbgobj_id,    size_bytes)
@@ -436,7 +444,6 @@ package body COREOBJ_DB_GROWTH is
         raise_application_error(-20000, 'COREOBJ_DB_GROWTH.take_snapshot_i('||p_obj_id||') failed. See logs for more details.');
       end if;
   end;
-
 
   function calc_alert_i(p_alert     opas_ot_dbg_monitor_al_cfg%rowtype) return number
   is

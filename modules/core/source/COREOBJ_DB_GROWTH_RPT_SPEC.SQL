@@ -32,7 +32,9 @@ package COREOBJ_DB_GROWTH_RPT is
                                 p_segment_type     varchar2,
                                 p_object_name      varchar2,
                                 p_subobject_name   varchar2,
-                                p_tablespace_name  varchar2);
+                                p_tablespace_name  varchar2,
+                                p_start_snap       number,
+                                p_end_snap         number);
 
   procedure prepare_out_of_space_data(p_dbg_id           opas_ot_dbg_monitor.dbg_id%type,
                                       p_days_to_avg      number default null,
