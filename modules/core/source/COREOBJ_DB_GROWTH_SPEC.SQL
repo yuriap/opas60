@@ -9,13 +9,17 @@ package COREOBJ_DB_GROWTH is
   alrtOUTOFSPACE              constant varchar2(30) := 'OUTOFSPACE';         -- Days to out of space
   alrtREGEXP                  constant varchar2(30) := 'REGEXP';             -- Regular Expression
 
+  procedure init_dbg;
+
   procedure add   (p_obj_id       out opas_objects.obj_id%type,
                    p_obj_prnt         opas_objects.obj_prnt%type);
   procedure remove  (p_obj_id    opas_objects.obj_id%type,
                      p_cascade   varchar2 default 'N');
   procedure edit  (p_obj_id           opas_objects.obj_id%type,
                    p_dblink           opas_ot_dbg_monitor.dblink%type,
-                   p_scheme_list      opas_ot_dbg_monitor.scheme_list%type);
+                   p_scheme_list      opas_ot_dbg_monitor.scheme_list%type,
+                   p_size_limit       opas_ot_dbg_monitor.size_limit%type default null);
+  procedure add_subpartition;
 
   procedure take_snapshot(p_obj_id       opas_objects.obj_id%type);
   procedure take_test_snapshot(p_obj_id       opas_objects.obj_id%type);

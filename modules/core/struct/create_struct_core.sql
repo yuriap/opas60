@@ -51,7 +51,7 @@ status          varchar2(32)     default 'NEW'          not null
 create or replace force view v$opas_scheduler as 
 select *
   from opas_scheduler
- where owner = decode(owner,'PUBLIC', owner, nvl(v('APP_USER'),'~^'));
+ where owner = decode(owner,'PUBLIC', owner,'INTERNAL', owner, nvl(v('APP_USER'),'~^'));
 
 create table opas_scheduler_validation (
 sch_id          number not null references opas_scheduler(sch_id) on delete cascade,

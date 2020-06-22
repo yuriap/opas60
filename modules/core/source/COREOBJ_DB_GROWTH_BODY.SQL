@@ -1,6 +1,8 @@
 CREATE OR REPLACE
 package body COREOBJ_DB_GROWTH is
 
+  gLockName varchar2(256) := 'OPASDBGPART';
+
   function get_object_status_to_display (p_obj_id          opas_objects.obj_id%type) return varchar2
   is
     l_dbgm opas_ot_dbg_monitor%rowtype;
@@ -59,10 +61,75 @@ package body COREOBJ_DB_GROWTH is
 -- coremod_tasks.log('l_status: '||l_status);
     return l_status2||l_status;
   end;
+
+  procedure add_partition(p_obj_id       opas_objects.obj_id%type)
+  is
+  begin
+    coremod_api.lock_resource(p_resource_name => gLockName,
+                              p_mode => 6,
+                              p_timeout => 600,
+                              p_release_on_commit => false);
+
+    execute immediate 'alter table opas_ot_dbg_objects add partition part_'||p_obj_id||' values('||p_obj_id||')';
+    execute immediate 'alter table opas_ot_dbg_seg_sizes add partition part_'||p_obj_id||' values('||p_obj_id||')';
+    for j in (select * from user_tab_subpartitions where table_name='OPAS_OT_DBG_SEG_SIZES' and partition_name='PART_'||p_obj_id)
+    loop
+      execute immediate 'alter table opas_ot_dbg_seg_sizes rename subpartition '||j.subpartition_name||' to ssp_'||p_obj_id||'_max';
+    end loop;
+
+    coremod_api.release_resource;
+  end;
+
+  procedure add_subpartition
+  is
+    l_split opas_ot_dbg_datapoint.dbgdp_id%type;
+    l_is_error boolean := false;
+  begin
+    coremod_api.lock_resource(p_resource_name => gLockName,
+                              p_mode => 6,
+                              p_timeout => 600,
+                              p_release_on_commit => false);
+
+    select max(dbgdp_id) into l_split from opas_ot_dbg_datapoint;
+    for i in (select dbg_id from opas_ot_dbg_monitor order by 1)
+    loop
+      begin
+        execute immediate 'alter table opas_ot_dbg_seg_sizes split subpartition ssp_'||i.dbg_id||'_max at ('||l_split||') into (subpartition ssp_'||l_split||', subpartition ssp_'||i.dbg_id||'_max)';
+      exception
+        when others then
+          l_is_error := true;
+          coremod_tasks.log('Error COREOBJ_DB_GROWTH.add_subpartition ('||i.dbg_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      end;
+    end loop;
+
+    coremod_api.release_resource;
+
+    if l_is_error then raise_application_error(-20000,'Splitting error: see logs fr more details'); end if;
+  end;
+
+  procedure init_dbg
+  is
+    l_schedule number;
+  begin
+    COREMOD_SCHEDULER.inis_scheduler (
+      P_SCH_ID     => l_schedule,
+      P_SCHEDULE   => 'freq=daily; interval=7',
+      P_START_DATE => trunc(sysdate,'dd')+7+1/24,
+      P_PLSQL_CALL => 'begin COREOBJ_DB_GROWTH.add_subpartition; end;',
+      P_OWNER      => 'INTERNAL');
+    commit;
+    coremod_scheduler.validate_config(p_sch_id => l_schedule);
+    commit;
+    coremod_scheduler.activate_config(p_sch_id => l_schedule);
+    commit;
+  end;
+
   procedure add   (p_obj_id       out opas_objects.obj_id%type,
                    p_obj_prnt         opas_objects.obj_prnt%type)
   is
   begin
+    add_partition(p_obj_id);
+
     COREOBJ_API.add (  P_OBJ_ID => p_obj_id,
       P_OBJ_PRNT  => p_obj_prnt,
       P_OBJ_OT    => COREOBJ_API.otDB_GROWTH_TRACKER,
@@ -70,20 +137,22 @@ package body COREOBJ_DB_GROWTH is
       P_OBJ_DESCR => null);
 
     insert into opas_ot_dbg_monitor
-      (dbg_id, dblink, scheme_list, schedule)
+      (dbg_id, dblink, scheme_list, schedule, size_limit)
     values
-      (p_obj_id, null, null, null);
+      (p_obj_id, null, null, null, default);
 
   end;
 
   procedure edit  (p_obj_id           opas_objects.obj_id%type,
                    p_dblink           opas_ot_dbg_monitor.dblink%type,
-                   p_scheme_list      opas_ot_dbg_monitor.scheme_list%type)
+                   p_scheme_list      opas_ot_dbg_monitor.scheme_list%type,
+                   p_size_limit       opas_ot_dbg_monitor.size_limit%type default null)
   is
   begin
     update opas_ot_dbg_monitor
        set dblink = p_dblink,
-           scheme_list = p_scheme_list
+           scheme_list = p_scheme_list,
+           size_limit = p_size_limit
      where dbg_id = p_obj_id;
   end;
 
@@ -125,10 +194,12 @@ package body COREOBJ_DB_GROWTH is
      where dbg_id = p_obj_id;
   end;
 
+
   procedure take_snapshot_i(p_obj_id       opas_objects.obj_id%type,
                             p_dbgdp_id out opas_ot_dbg_datapoint.dbgdp_id%type)
   is
-    l_dp_obj number := p_obj_id;
+    l_dp_obj    opas_ot_dbg_monitor.dbg_id%type := p_obj_id;
+    l_dbgobj_id opas_ot_dbg_objects.dbgobj_id%type;
 
     l_dbgm opas_ot_dbg_monitor%rowtype;
     l_view_prefix        varchar2(10);
@@ -231,6 +302,8 @@ package body COREOBJ_DB_GROWTH is
     end;
 
   begin
+    --l_dbgobj_id := opas_ot_sq_dbg_obj.nextval;
+
     delete from opas_ot_tmp_dbg_objects;
     delete from opas_ot_tmp_dbg_indexes;
     delete from opas_ot_tmp_dbg_lobs;
@@ -316,27 +389,36 @@ package body COREOBJ_DB_GROWTH is
 
     l_sql := null;
 
-    merge into (select * from opas_ot_dbg_objects where version_dp_id in (select dp.dbgdp_id from opas_ot_dbg_datapoint dp where dp.dbg_id = l_dp_obj)) t
+    merge into (select * from opas_ot_dbg_objects where dbg_id = l_dp_obj -- version_dp_id in (select dp.dbgdp_id from opas_ot_dbg_datapoint dp where dp.dbg_id = l_dp_obj)
+    ) t
     using opas_ot_tmp_dbg_objects s
-    on (t.object_id=s.object_id and decode(t.data_object_id,s.data_object_id,1,0)=1)
+    --on (t.object_id=s.object_id and decode(t.data_object_id,s.data_object_id,1,0)=1)
+    on (t.object_type = s.object_type and
+        t.object_name = s.object_name and
+        decode(t.subobject_name,s.subobject_name,1,0)=1)
     when not matched then insert
-      (t.version_dp_id, t.owner, t.object_id, t.data_object_id, t.object_name, t.subobject_name, t.object_type, t.tablespace_name, t.created, t.segment_type, dbg_id)
+      (dbgobj_id,   t.version_dp_id, t.owner, t.object_id, t.data_object_id, t.object_name, t.subobject_name, t.object_type, t.tablespace_name, t.created, t.segment_type, dbg_id)
     values
-      (p_dbgdp_id,      s.owner, s.object_id, s.data_object_id, s.object_name, s.subobject_name, s.object_type, s.tablespace_name, s.created, s.segment_type, l_dp_obj);
+      (opas_ot_sq_dbg_obj.nextval, p_dbgdp_id,      s.owner, s.object_id, s.data_object_id, s.object_name, s.subobject_name, s.object_type, s.tablespace_name, s.created, s.segment_type, l_dp_obj);
 
     merge into opas_ot_tmp_dbg_objects t
-    using (select s.object_id, s.data_object_id, max(dbgobj_id) dbgobj_id
-             from opas_ot_dbg_objects s, opas_ot_dbg_datapoint dp
-            where s.version_dp_id = dp.dbgdp_id
-              and dp.dbg_id = l_dp_obj
-            group by s.object_id, s.data_object_id) s
-    on ( t.object_id=s.object_id and decode(t.data_object_id,s.data_object_id,1,0)=1)
+    using (select s.object_type, s.object_name, s.subobject_name, max(dbgobj_id) dbgobj_id
+             from opas_ot_dbg_objects s--, opas_ot_dbg_datapoint dp
+            where s.dbg_id = l_dp_obj --s.version_dp_id = dp.dbgdp_id
+              --and dp.dbg_id = l_dp_obj
+            --group by s.object_id, s.data_object_id
+            group by s.object_type, s.object_name, s.subobject_name
+            ) s
+    --on ( t.object_id=s.object_id and decode(t.data_object_id,s.data_object_id,1,0)=1)
+    on (t.object_type = s.object_type and
+        t.object_name = s.object_name and
+        decode(t.subobject_name,s.subobject_name,1,0)=1)
     when matched then update set t.dbgobj_id = s.dbgobj_id;
 
     insert into opas_ot_dbg_seg_sizes
-         (   dbgdp_id,    dbgobj_id,    size_bytes)
-    select p_dbgdp_id, ts.dbgobj_id, ts.size_bytes
-      from opas_ot_tmp_dbg_objects ts where size_bytes is not null and dbgobj_id is not null;
+         (   dbgdp_id,    dbgobj_id,    size_bytes, dbg_id)
+    select p_dbgdp_id, ts.dbgobj_id, ts.size_bytes, l_dp_obj
+      from opas_ot_tmp_dbg_objects ts where size_bytes >= nvl(l_dbgm.size_limit,524288) and dbgobj_id is not null;
 
     merge into opas_ot_dbg_objects t
     using opas_ot_tmp_dbg_clusters s
@@ -531,8 +613,16 @@ select dbgdp_id, size_bytes - lag(size_bytes) over(order by snapped) res
 
     l_dbgdp_id  opas_ot_dbg_datapoint.dbgdp_id%type;
   begin
+    coremod_api.lock_resource(p_resource_name => gLockName,
+                              p_mode => 4,
+                              p_timeout => 600,
+                              p_release_on_commit => false);
+
     take_snapshot_i(p_obj_id, l_dbgdp_id);
     commit;
+
+    coremod_api.release_resource;
+
     for i in (select * from opas_ot_dbg_monitor_al_cfg where dbg_id = p_obj_id) loop
       l_metric := calc_alert_i(i);
 --coremod_tasks.log('dbg: '||p_obj_id||':'||l_metric||':'||i.alert_type);
@@ -563,6 +653,7 @@ select dbgdp_id, size_bytes - lag(size_bytes) over(order by snapped) res
   exception
     when ex_no_connection then
       coremod_tasks.log('COREOBJ_DB_GROWTH.take_snapshot('||p_obj_id||'); '||sqlerrm);
+      --take_snapshot_i(p_obj_id, l_dbgdp_id);
   end;
 
   procedure add_alert_limit(p_alert_id     opas_ot_dbg_monitor_al_cfg.alert_id%type,

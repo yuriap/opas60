@@ -27,7 +27,7 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 -- Application Export:
 --   Application:     600
 --   Name:            Oracle Performance Analytic Suite
---   Date and Time:   10:24 Friday June 12, 2020
+--   Date and Time:   10:15 Monday June 22, 2020
 --   Exported By:     OPAS60DADM
 --   Flashback:       0
 --   Export Type:     Application Export
@@ -37,10 +37,10 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 
 -- Application Statistics:
 --   Pages:                     50
---     Items:                  316
+--     Items:                  320
 --     Validations:              4
---     Processes:              193
---     Regions:                229
+--     Processes:              194
+--     Regions:                233
 --     Buttons:                166
 --     Dynamic Actions:         53
 --   Shared Components:
@@ -132,7 +132,7 @@ wwv_flow_api.create_flow(
 ,p_substitution_string_06=>'APP_GRID_DT_FMT_TZ_FULL'
 ,p_substitution_value_06=>'YYYY-MM-DD HH24:MI:SS.ff9 TZH:TZM'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200611123928'
+,p_last_upd_yyyymmddhh24miss=>'20200619173654'
 ,p_file_prefix => nvl(wwv_flow_application_install.get_static_app_file_prefix,'')
 ,p_files_version=>3
 ,p_ui_type_name => null
@@ -30323,7 +30323,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(67059821906044473)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200607094253'
+,p_last_upd_yyyymmddhh24miss=>'20200618151424'
 );
 wwv_flow_api.create_report_region(
  p_id=>wwv_flow_api.id(66749019180142932)
@@ -30765,6 +30765,21 @@ wwv_flow_api.create_page_item(
 ,p_attribute_03=>'N'
 ,p_attribute_04=>'BOTH'
 );
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(77946705798000328)
+,p_name=>'P5000_SIZE_LIMIT'
+,p_item_sequence=>50
+,p_item_plug_id=>wwv_flow_api.id(133064191289461295)
+,p_prompt=>'Size Limit, bytes'
+,p_display_as=>'NATIVE_TEXT_FIELD'
+,p_cSize=>30
+,p_field_template=>wwv_flow_api.id(59011729453993944)
+,p_item_template_options=>'#DEFAULT#'
+,p_attribute_01=>'N'
+,p_attribute_02=>'N'
+,p_attribute_04=>'TEXT'
+,p_attribute_05=>'BOTH'
+);
 wwv_flow_api.create_page_process(
  p_id=>wwv_flow_api.id(66842852053138285)
 ,p_process_sequence=>1
@@ -30796,11 +30811,13 @@ wwv_flow_api.create_page_process(
 '    SELECT',
 '      dblink,',
 '      schedule,',
-'      SCHEME_LIST',
+'      SCHEME_LIST,',
+'      size_limit',
 '    INTO',
 '      :P5000_DBLINK,',
 '      :P5000_SCHEDULE,',
-'      :P5000_SCHEME_LIST',
+'      :P5000_SCHEME_LIST,',
+'      :P5000_SIZE_LIMIT',
 '    FROM',
 '      opas_ot_dbg_monitor',
 '    where dbg_id = :P5000_OBJ_ID;',
@@ -30844,7 +30861,8 @@ wwv_flow_api.create_page_process(
 '  COREOBJ_DB_GROWTH.edit ( ',
 '    P_OBJ_ID => :P5000_OBJ_ID,',
 '    P_DBLINK => :P5000_DBLINK,',
-'    p_scheme_list=> :P5000_SCHEME_LIST) ;  ',
+'    p_scheme_list=> :P5000_SCHEME_LIST,',
+'    p_size_limit => :P5000_SIZE_LIMIT) ;  ',
 '  coreobj_api.edit_descr(p_obj_id => :P5000_OBJ_ID,',
 '                         p_obj_name => :P5000_MONITOR_NAME,',
 '                         p_obj_descr => :P5000_MONITOR_DESCR);   ',
@@ -31797,7 +31815,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(67059821906044473)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200605161113'
+,p_last_upd_yyyymmddhh24miss=>'20200619173654'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(66994330458316335)
@@ -31829,241 +31847,10 @@ wwv_flow_api.create_page_plug(
 ,p_region_template_options=>'#DEFAULT#:js-useLocalStorage:t-TabsRegion-mod--simple'
 ,p_plug_template=>wwv_flow_api.id(58966904872993703)
 ,p_plug_display_sequence=>40
-,p_include_in_reg_disp_sel_yn=>'Y'
 ,p_plug_display_point=>'BODY'
-,p_plug_source_type=>'NATIVE_DISPLAY_SELECTOR'
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
-,p_attribute_01=>'STANDARD'
-,p_attribute_02=>'Y'
-,p_attribute_03=>'Y'
-);
-wwv_flow_api.create_page_plug(
- p_id=>wwv_flow_api.id(67149430338285103)
-,p_plug_name=>'Selected Objects'
-,p_parent_plug_id=>wwv_flow_api.id(67151697618285125)
-,p_region_template_options=>'#DEFAULT#'
-,p_component_template_options=>'#DEFAULT#'
-,p_plug_template=>wwv_flow_api.id(58959020573993670)
-,p_plug_display_sequence=>80
-,p_plug_display_point=>'BODY'
-,p_query_type=>'SQL'
-,p_plug_source=>'select * from v$opas_dbg_selected_objects'
-,p_plug_source_type=>'NATIVE_IR'
-,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
-,p_prn_content_disposition=>'ATTACHMENT'
-,p_prn_document_header=>'APEX'
-,p_prn_units=>'INCHES'
-,p_prn_paper_size=>'LETTER'
-,p_prn_width=>8.5
-,p_prn_height=>11
-,p_prn_orientation=>'HORIZONTAL'
-,p_prn_page_header_font_color=>'#000000'
-,p_prn_page_header_font_family=>'Helvetica'
-,p_prn_page_header_font_weight=>'normal'
-,p_prn_page_header_font_size=>'12'
-,p_prn_page_footer_font_color=>'#000000'
-,p_prn_page_footer_font_family=>'Helvetica'
-,p_prn_page_footer_font_weight=>'normal'
-,p_prn_page_footer_font_size=>'12'
-,p_prn_header_bg_color=>'#9bafde'
-,p_prn_header_font_color=>'#000000'
-,p_prn_header_font_family=>'Helvetica'
-,p_prn_header_font_weight=>'normal'
-,p_prn_header_font_size=>'10'
-,p_prn_body_bg_color=>'#efefef'
-,p_prn_body_font_color=>'#000000'
-,p_prn_body_font_family=>'Helvetica'
-,p_prn_body_font_weight=>'normal'
-,p_prn_body_font_size=>'10'
-,p_prn_border_width=>.5
-,p_prn_page_header_alignment=>'CENTER'
-,p_prn_page_footer_alignment=>'CENTER'
-);
-wwv_flow_api.create_worksheet(
- p_id=>wwv_flow_api.id(67149546953285104)
-,p_max_row_count=>'1000000'
-,p_show_nulls_as=>'-'
-,p_pagination_type=>'ROWS_X_TO_Y'
-,p_pagination_display_pos=>'BOTTOM_RIGHT'
-,p_report_list_mode=>'TABS'
-,p_show_detail_link=>'N'
-,p_show_notify=>'Y'
-,p_download_formats=>'CSV:HTML:EMAIL:XLS:PDF:RTF'
-,p_owner=>'OPAS60DADM'
-,p_internal_uid=>67149546953285104
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67149604820285105)
-,p_db_column_name=>'DBGOBJ_ID'
-,p_display_order=>10
-,p_column_identifier=>'A'
-,p_column_label=>'Dbgobj Id'
-,p_column_type=>'NUMBER'
-,p_display_text_as=>'HIDDEN'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67149719300285106)
-,p_db_column_name=>'VERSION_DP_ID'
-,p_display_order=>20
-,p_column_identifier=>'B'
-,p_column_label=>'Version Dp Id'
-,p_column_type=>'NUMBER'
-,p_display_text_as=>'HIDDEN'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67149880244285107)
-,p_db_column_name=>'OWNER'
-,p_display_order=>30
-,p_column_identifier=>'C'
-,p_column_label=>'Owner'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67149990526285108)
-,p_db_column_name=>'OBJECT_ID'
-,p_display_order=>40
-,p_column_identifier=>'D'
-,p_column_label=>'Object Id'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67150084167285109)
-,p_db_column_name=>'DATA_OBJECT_ID'
-,p_display_order=>50
-,p_column_identifier=>'E'
-,p_column_label=>'Data Object Id'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67150105689285110)
-,p_db_column_name=>'OBJECT_NAME'
-,p_display_order=>60
-,p_column_identifier=>'F'
-,p_column_label=>'Object Name'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67150285123285111)
-,p_db_column_name=>'SUBOBJECT_NAME'
-,p_display_order=>70
-,p_column_identifier=>'G'
-,p_column_label=>'Subobject Name'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67150367171285112)
-,p_db_column_name=>'OBJECT_TYPE'
-,p_display_order=>80
-,p_column_identifier=>'H'
-,p_column_label=>'Object Type'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67150475278285113)
-,p_db_column_name=>'SEGMENT_TYPE'
-,p_display_order=>90
-,p_column_identifier=>'I'
-,p_column_label=>'Segment Type'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67150518266285114)
-,p_db_column_name=>'TABLESPACE_NAME'
-,p_display_order=>100
-,p_column_identifier=>'J'
-,p_column_label=>'Tablespace Name'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67150617295285115)
-,p_db_column_name=>'CREATED'
-,p_display_order=>110
-,p_column_identifier=>'K'
-,p_column_label=>'Created'
-,p_column_type=>'DATE'
-,p_column_alignment=>'CENTER'
-,p_format_mask=>'&APP_GRID_DT_FMT.'
-,p_tz_dependent=>'N'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67150771329285116)
-,p_db_column_name=>'PRNT_TABLE'
-,p_display_order=>120
-,p_column_identifier=>'L'
-,p_column_label=>'Prnt Table'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67150863413285117)
-,p_db_column_name=>'PRNT_TABLE_TYPE'
-,p_display_order=>130
-,p_column_identifier=>'M'
-,p_column_label=>'Prnt Table Type'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67150983226285118)
-,p_db_column_name=>'PRNT_TABLE_OWNER'
-,p_display_order=>140
-,p_column_identifier=>'N'
-,p_column_label=>'Prnt Table Owner'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67151052231285119)
-,p_db_column_name=>'PRNT_TABLE_COL'
-,p_display_order=>150
-,p_column_identifier=>'O'
-,p_column_label=>'Prnt Table Col'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67151142258285120)
-,p_db_column_name=>'OBJECT_CLASS'
-,p_display_order=>160
-,p_column_identifier=>'P'
-,p_column_label=>'Object Class'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67151257941285121)
-,p_db_column_name=>'DBGDP_ID'
-,p_display_order=>170
-,p_column_identifier=>'Q'
-,p_column_label=>'Dbgdp Id'
-,p_column_type=>'NUMBER'
-,p_display_text_as=>'HIDDEN'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67151394820285122)
-,p_db_column_name=>'DBG_ID'
-,p_display_order=>180
-,p_column_identifier=>'R'
-,p_column_label=>'Dbg Id'
-,p_column_type=>'NUMBER'
-,p_display_text_as=>'HIDDEN'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67151429993285123)
-,p_db_column_name=>'SNAPPED'
-,p_display_order=>190
-,p_column_identifier=>'S'
-,p_column_label=>'Snapped'
-,p_column_type=>'DATE'
-,p_column_alignment=>'CENTER'
-,p_format_mask=>'&APP_GRID_DT_FMT.'
-,p_tz_dependent=>'N'
-);
-wwv_flow_api.create_worksheet_rpt(
- p_id=>wwv_flow_api.id(67168998718415859)
-,p_application_user=>'APXWS_DEFAULT'
-,p_report_seq=>10
-,p_report_alias=>'671690'
-,p_status=>'PUBLIC'
-,p_is_default=>'Y'
-,p_report_columns=>'DBGOBJ_ID:VERSION_DP_ID:OWNER:OBJECT_ID:DATA_OBJECT_ID:OBJECT_NAME:SUBOBJECT_NAME:OBJECT_TYPE:SEGMENT_TYPE:TABLESPACE_NAME:CREATED:PRNT_TABLE:PRNT_TABLE_TYPE:PRNT_TABLE_OWNER:PRNT_TABLE_COL:OBJECT_CLASS:DBGDP_ID:DBG_ID:SNAPPED'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(67152169480285130)
@@ -32132,7 +31919,7 @@ wwv_flow_api.create_jet_chart_series(
 '*/',
 'select /*+ qb_name(OPAS60_DBG_DELTA_CHART) gather_plan_statistics_ */ tim, val - lag(val)over(order by tim) val, nm from (',
 'select snapped tim, sum(size_bytes) val, ''Size, Bytes'' nm',
-'  from V$OPAS_DBG_SELECTED_OBJECTS_V3',
+'  from V$OPAS_DBG_SELECTED_OBJECTS_V3P',
 'group by snapped)',
 'order by tim; '))
 ,p_series_name_column_name=>'NM'
@@ -32171,361 +31958,6 @@ wwv_flow_api.create_jet_chart_axis(
 ,p_major_tick_rendered=>'on'
 ,p_minor_tick_rendered=>'off'
 ,p_tick_label_rendered=>'on'
-);
-wwv_flow_api.create_page_plug(
- p_id=>wwv_flow_api.id(67151850572285127)
-,p_plug_name=>'Top Objects By Data Point Report'
-,p_parent_plug_id=>wwv_flow_api.id(67152169480285130)
-,p_region_template_options=>'#DEFAULT#'
-,p_plug_template=>wwv_flow_api.id(58959020573993670)
-,p_plug_display_sequence=>50
-,p_plug_display_point=>'BODY'
-,p_query_type=>'SQL'
-,p_plug_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'with object_sizes as ',
-'(select /*+ NO_STAR_TRANSFORMATION use_hash(s) gather_plan_statistics */',
-'       dp.snapped, dp.dbgdp_id',
-'      ,o.prnt_table||'' (''||o.prnt_table_type||'')'' parent_table',
-'      ,o.object_type||'': ''||o.object_name|| case when o.subobject_name is not null then ''.''||o.subobject_name end ||'' (''||o.object_class||'')'' sub_object',
-'      ,nvl(s.size_bytes,0) size_bytes',
-'from V$OPAS_DBG_SELECTED_OBJECTS o,',
-'     opas_ot_dbg_seg_sizes s,     ',
-'     opas_ot_dbg_datapoint dp',
-'where o.dbgobj_id = s.dbgobj_id(+)',
-'  and dp.dbgdp_id = s.dbgdp_id(+)',
-'  and dp.dbg_id = o.dbg_id',
-'  and dp.dbgdp_id between nvl(:P5003_START_DT,0) and :P5003_END_DT',
-'  and dp.dbg_id = :P5003_DBG_ID',
-'  --and dp.snapped >= o.start_date and dp.snapped < o.end_date',
-'),',
-'object_delta as (',
-'   select x.*,',
-'          case when seg_delta > 0 then',
-'            row_number() over (partition by snapped, parent_table order by seg_delta desc, size_bytes desc) ',
-'          else ',
-'            row_number() over (partition by snapped, parent_table order by seg_delta asc, size_bytes desc) ',
-'          end ',
-'        seg_num',
-'     from (',
-'   select snapped, dbgdp_id, parent_table, sub_object, size_bytes, ',
-'          size_bytes - lag (size_bytes,1,0) over (partition by parent_table, sub_object order by snapped) seg_delta',
-'     from object_sizes) x',
-'     where seg_delta != 0),   ',
-'parent_delta as (',
-'   select x.*,',
-'          row_number() over (partition by snapped order by parent_table_delta desc, size_bytes desc) parent_num',
-'    from (select snapped, dbgdp_id, parent_table, size_bytes, ',
-'                 size_bytes - lag (size_bytes,1,0) over (partition by parent_table order by snapped) parent_table_delta          ',
-'            from (select snapped, dbgdp_id, parent_table, sum(size_bytes) size_bytes',
-'                    from object_sizes',
-'                   group by  snapped, dbgdp_id, parent_table)',
-'         ) x where parent_table_delta != 0), ',
-'parent_delta_negative as (',
-'   select x.*,',
-'          row_number() over (partition by snapped order by parent_table_delta asc, size_bytes desc) parent_num',
-'    from (select snapped, dbgdp_id, parent_table, sum(size_bytes) size_bytes, sum(seg_delta) parent_table_delta',
-'                    from object_delta',
-'                   where seg_delta < 0',
-'                   group by snapped, dbgdp_id, parent_table',
-'         ) x),  ',
-'object_sizes_total as (',
-'   select  snapped, dbgdp_id, sum(size_bytes) size_bytes',
-'     from object_sizes',
-'    group by  snapped, dbgdp_id),',
-'object_sizes_deltas as (',
-'   select  snapped, dbgdp_id, size_bytes, size_bytes - lag(size_bytes,1,0) over (order by snapped) object_sizes_delta',
-'     from object_sizes_total),    ',
-'tot_sizes as (select dp.snapped, dp.dbgdp_id, ',
-'                     sum(seg_occupied) seg_occupied',
-'                from opas_ot_dbg_ts_sizes ts, ',
-'                     opas_ot_dbg_datapoint dp,',
-'                     opas_ot_dbg_report_pars pars',
-'               where ts.dbgdp_id = dp.dbgdp_id',
-'                 and dp.dbg_id = pars.dbgso_dbg_id',
-'                 and dp.dbgdp_id between nvl(:P5003_START_DT,0) and :P5003_END_DT',
-'                 and pars.apex_sess = V(''SESSION'')',
-'               group by dp.snapped, dp.dbgdp_id),',
-'tot_deltas as (',
-'  select snapped, dbgdp_id, seg_occupied, seg_occupied - lag(seg_occupied,1,0) over (order by snapped) tot_delta',
-'    from tot_sizes',
-')',
-'select /*+ NO_STAR_TRANSFORMATION qb_name(OPAS60_DBG_TOPOBJ_REPORT) */',
-'       to_char(o.snapped,''YYYY-MM-DD HH24:MI'') || --case when o.seg_delta > 0 then ''; Growing: '' else ''; Decreasing: '' end ||',
-'         ''; Grown: Schema delta: '' || COREMOD_REPORT_UTILS.to_hr_num(td.tot_delta)  || '' ('' || to_char(td.tot_delta,''FM999g999g999g999g999'') || '') / Filtered delta: '' || COREMOD_REPORT_UTILS.to_hr_num(od.object_sizes_delta)  || '' ('' || to_char(od.obj'
-||'ect_sizes_delta,''FM999g999g999g999g999'') || '')'' ||case when td.tot_delta<>0 then  '' ('' || round(100*(od.object_sizes_delta/td.tot_delta),2)  || ''%)'' end ||',
-'         ''; Total size: ''   || COREMOD_REPORT_UTILS.to_hr_num(td.seg_occupied) || '' ('' || to_char(td.seg_occupied,''FM999g999g999g999g999'') || '') / Filtered size: ''  || COREMOD_REPORT_UTILS.to_hr_num(od.size_bytes)     || '' ('' || to_char(od.size_bytes'
-||',''FM999g999g999g999g999'') || '')'' || case when td.seg_occupied<>0 then  '' ('' || round(100*(od.size_bytes/td.seg_occupied),2)|| ''%)'' end',
-'       snapped_at',
-'       --,o.snapped, o.dbgdp_id',
-'       ,lpad(pd.parent_num,2,''0'')||''.''||lpad(o.seg_num,2,''0'')||''.''|| o.parent_table parent_table, o.sub_object',
-'       ,COREMOD_REPORT_UTILS.to_hr_num(o.size_bytes)                  "Seg size"',
-'       ,to_char(o.size_bytes,''FM999g999g999g999g999'')                 "Seg size, B"',
-'       ,round(100*(o.size_bytes/decode(td.seg_occupied,0,null,td.seg_occupied)),2)                      "Seg % tot"',
-'       ,COREMOD_REPORT_UTILS.to_hr_num(o.seg_delta)                   "Seg delta"  ',
-'       ,to_char(o.seg_delta,''FM999g999g999g999g999'')                  "Seg delta, B" ',
-'       ,round(100*(o.seg_delta/decode(od.object_sizes_delta,0,null,od.object_sizes_delta)),2)           "Seg delta % flt delta"',
-'       ,round(100*(o.seg_delta/decode(td.tot_delta,0,null,td.tot_delta)),2)                             "Seg delta % tot delta"',
-'       ,COREMOD_REPORT_UTILS.to_hr_num(pd.size_bytes)                 "Whole tab"',
-'       ,to_char(pd.size_bytes,''FM999g999g999g999g999'')                "Whole tab, B"',
-'       ,COREMOD_REPORT_UTILS.to_hr_num(pd.parent_table_delta)         "Whole tab delta"',
-'       ,to_char(pd.parent_table_delta,''FM999g999g999g999g999'')        "Whole tab delta, B"',
-'       ,round(100*(pd.parent_table_delta/decode(od.object_sizes_delta,0,null,od.object_sizes_delta)),2) "Tab delta % flt delta"',
-'       ,round(100*(pd.parent_table_delta/decode(td.tot_delta,0,null,td.tot_delta)),2)                   "Tab delta % tot delta"',
-'       ,round(100*(pd.size_bytes/decode(od.size_bytes,0,null,od.size_bytes)),2)                         "Tab % flt"',
-'       ,round(100*(pd.size_bytes/decode(td.seg_occupied,0,null,td.seg_occupied)),2)                     "Tab % tot"',
-'from object_delta o,',
-'     tot_deltas td,',
-'     object_sizes_deltas od,',
-'     parent_delta pd',
-'where o.dbgdp_id = td.dbgdp_id',
-'  and o.dbgdp_id = od.dbgdp_id',
-'  and o.dbgdp_id = pd.dbgdp_id and o.parent_table = pd.parent_table',
-'  and pd.parent_num<= decode(:P5003_TOP_N,0,pd.parent_num,:P5003_TOP_N)',
-'  and o.dbgdp_id > nvl(:P5003_START_DT,0)',
-'  and o.dbgdp_id between nvl(:P5003_START_DT,0) and :P5003_END_DT  ',
-'  and o.seg_delta > 0',
-'  union all',
-'select /*+ NO_STAR_TRANSFORMATION qb_name(OPAS60_DBG_TOPOBJ_REPORT) */',
-'       to_char(o.snapped,''YYYY-MM-DD HH24:MI'') || --case when o.seg_delta > 0 then ''; Growing: '' else ''; Decreasing: '' end ||',
-'         ''; Decreased: Schema delta: '' || COREMOD_REPORT_UTILS.to_hr_num(td.tot_delta)  || '' ('' || to_char(td.tot_delta,''FM999g999g999g999g999'') || '') / Filtered delta: '' || COREMOD_REPORT_UTILS.to_hr_num(od.object_sizes_delta)  || '' ('' || to_char(od'
-||'.object_sizes_delta,''FM999g999g999g999g999'') || '')'' ||case when td.tot_delta<>0 then  '' ('' || round(100*(od.object_sizes_delta/td.tot_delta),2)  || ''%)'' end ||',
-'         ''; Total size: ''   || COREMOD_REPORT_UTILS.to_hr_num(td.seg_occupied) || '' ('' || to_char(td.seg_occupied,''FM999g999g999g999g999'') || '') / Filtered size: ''  || COREMOD_REPORT_UTILS.to_hr_num(od.size_bytes)     || '' ('' || to_char(od.size_bytes'
-||',''FM999g999g999g999g999'') || '')'' || case when td.seg_occupied<>0 then  '' ('' || round(100*(od.size_bytes/td.seg_occupied),2)|| ''%)'' end',
-'       snapped_at',
-'       --,o.snapped, o.dbgdp_id',
-'       ,lpad(pd.parent_num,2,''0'')||''.''||lpad(o.seg_num,2,''0'')||''.''|| o.parent_table parent_table, o.sub_object',
-'       ,COREMOD_REPORT_UTILS.to_hr_num(o.size_bytes)                  "Seg size"',
-'       ,to_char(o.size_bytes,''FM999g999g999g999g999'')                 "Seg size, B"',
-'       ,round(100*(o.size_bytes/decode(td.seg_occupied,0,null,td.seg_occupied)),2)                      "Seg % tot"',
-'       ,COREMOD_REPORT_UTILS.to_hr_num(o.seg_delta)                   "Seg delta"  ',
-'       ,to_char(o.seg_delta,''FM999g999g999g999g999'')                  "Seg delta, B" ',
-'       ,round(100*(o.seg_delta/decode(od.object_sizes_delta,0,null,od.object_sizes_delta)),2)           "Seg delta % flt delta"',
-'       ,round(100*(o.seg_delta/decode(td.tot_delta,0,null,td.tot_delta)),2)                             "Seg delta % tot delta"',
-'       ,COREMOD_REPORT_UTILS.to_hr_num(pd.size_bytes)                 "Whole tab"',
-'       ,to_char(pd.size_bytes,''FM999g999g999g999g999'')                "Whole tab, B"',
-'       ,COREMOD_REPORT_UTILS.to_hr_num(pd.parent_table_delta)         "Whole tab delta"',
-'       ,to_char(pd.parent_table_delta,''FM999g999g999g999g999'')        "Whole tab delta, B"',
-'       ,round(100*(pd.parent_table_delta/decode(od.object_sizes_delta,0,null,od.object_sizes_delta)),2) "Tab delta % flt delta"',
-'       ,round(100*(pd.parent_table_delta/decode(td.tot_delta,0,null,td.tot_delta)),2)                   "Tab delta % tot delta"',
-'       ,round(100*(pd.size_bytes/decode(od.size_bytes,0,null,od.size_bytes)),2)                         "Tab % flt"',
-'       ,round(100*(pd.size_bytes/decode(td.seg_occupied,0,null,td.seg_occupied)),2)                     "Tab % tot"',
-'from object_delta o,',
-'     tot_deltas td,',
-'     object_sizes_deltas od,',
-'     parent_delta_negative pd',
-'where o.dbgdp_id = td.dbgdp_id',
-'  and o.dbgdp_id = od.dbgdp_id',
-'  and o.dbgdp_id = pd.dbgdp_id and o.parent_table = pd.parent_table',
-'  and pd.parent_num<= decode(:P5003_TOP_N,0,pd.parent_num,:P5003_TOP_N)',
-'  and o.dbgdp_id > nvl(:P5003_START_DT,0)',
-'  and o.dbgdp_id between nvl(:P5003_START_DT,0) and :P5003_END_DT  ',
-'  and o.seg_delta < 0  '))
-,p_plug_source_type=>'NATIVE_IR'
-,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
-,p_plug_display_condition_type=>'PLSQL_EXPRESSION'
-,p_plug_display_when_condition=>':P5003_START_DT is not null and :P5003_END_DT is not null and :P5003_TOP_N is not null'
-,p_prn_content_disposition=>'ATTACHMENT'
-,p_prn_document_header=>'APEX'
-,p_prn_units=>'INCHES'
-,p_prn_paper_size=>'LETTER'
-,p_prn_width=>8.5
-,p_prn_height=>11
-,p_prn_orientation=>'HORIZONTAL'
-,p_prn_page_header_font_color=>'#000000'
-,p_prn_page_header_font_family=>'Helvetica'
-,p_prn_page_header_font_weight=>'normal'
-,p_prn_page_header_font_size=>'12'
-,p_prn_page_footer_font_color=>'#000000'
-,p_prn_page_footer_font_family=>'Helvetica'
-,p_prn_page_footer_font_weight=>'normal'
-,p_prn_page_footer_font_size=>'12'
-,p_prn_header_bg_color=>'#9bafde'
-,p_prn_header_font_color=>'#000000'
-,p_prn_header_font_family=>'Helvetica'
-,p_prn_header_font_weight=>'normal'
-,p_prn_header_font_size=>'10'
-,p_prn_body_bg_color=>'#efefef'
-,p_prn_body_font_color=>'#000000'
-,p_prn_body_font_family=>'Helvetica'
-,p_prn_body_font_weight=>'normal'
-,p_prn_body_font_size=>'10'
-,p_prn_border_width=>.5
-,p_prn_page_header_alignment=>'CENTER'
-,p_prn_page_footer_alignment=>'CENTER'
-);
-wwv_flow_api.create_worksheet(
- p_id=>wwv_flow_api.id(67209197476086603)
-,p_max_row_count=>'1000000'
-,p_show_nulls_as=>'-'
-,p_pagination_type=>'ROWS_X_TO_Y'
-,p_pagination_display_pos=>'BOTTOM_RIGHT'
-,p_report_list_mode=>'TABS'
-,p_show_detail_link=>'N'
-,p_show_notify=>'Y'
-,p_download_formats=>'CSV:HTML:EMAIL:XLS:PDF:RTF'
-,p_owner=>'OPAS60DADM'
-,p_internal_uid=>67209197476086603
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67209319435086605)
-,p_db_column_name=>'PARENT_TABLE'
-,p_display_order=>20
-,p_column_identifier=>'A'
-,p_column_label=>'Parent Table'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67209400853086606)
-,p_db_column_name=>'SUB_OBJECT'
-,p_display_order=>30
-,p_column_identifier=>'B'
-,p_column_label=>'Sub Object'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67209510087086607)
-,p_db_column_name=>'Seg size'
-,p_display_order=>40
-,p_column_identifier=>'C'
-,p_column_label=>'Seg Size'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67209641049086608)
-,p_db_column_name=>'Seg % tot'
-,p_display_order=>50
-,p_column_identifier=>'D'
-,p_column_label=>'Seg % Tot'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67209700484086609)
-,p_db_column_name=>'Seg delta'
-,p_display_order=>60
-,p_column_identifier=>'E'
-,p_column_label=>'Seg Delta'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67209876653086610)
-,p_db_column_name=>'Seg delta % flt delta'
-,p_display_order=>70
-,p_column_identifier=>'F'
-,p_column_label=>'Seg Delta % Flt Delta'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67209984356086611)
-,p_db_column_name=>'Seg delta % tot delta'
-,p_display_order=>80
-,p_column_identifier=>'G'
-,p_column_label=>'Seg Delta % Tot Delta'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67210082080086612)
-,p_db_column_name=>'Whole tab'
-,p_display_order=>90
-,p_column_identifier=>'H'
-,p_column_label=>'Whole Tab'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67210196882086613)
-,p_db_column_name=>'Whole tab delta'
-,p_display_order=>100
-,p_column_identifier=>'I'
-,p_column_label=>'Whole Tab Delta'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67210220992086614)
-,p_db_column_name=>'Tab delta % flt delta'
-,p_display_order=>110
-,p_column_identifier=>'J'
-,p_column_label=>'Tab Delta % Flt Delta'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67210331094086615)
-,p_db_column_name=>'Tab delta % tot delta'
-,p_display_order=>120
-,p_column_identifier=>'K'
-,p_column_label=>'Tab Delta % Tot Delta'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67210417543086616)
-,p_db_column_name=>'Tab % flt'
-,p_display_order=>130
-,p_column_identifier=>'L'
-,p_column_label=>'Tab % Flt'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67210504254086617)
-,p_db_column_name=>'Tab % tot'
-,p_display_order=>140
-,p_column_identifier=>'M'
-,p_column_label=>'Tab % Tot'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67210682223086618)
-,p_db_column_name=>'SNAPPED_AT'
-,p_display_order=>150
-,p_column_identifier=>'N'
-,p_column_label=>'Snapped At'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67279780155803303)
-,p_db_column_name=>'Seg size, B'
-,p_display_order=>160
-,p_column_identifier=>'O'
-,p_column_label=>'Seg Size, B'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67279804834803304)
-,p_db_column_name=>'Seg delta, B'
-,p_display_order=>170
-,p_column_identifier=>'P'
-,p_column_label=>'Seg Delta, B'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67279993167803305)
-,p_db_column_name=>'Whole tab, B'
-,p_display_order=>180
-,p_column_identifier=>'Q'
-,p_column_label=>'Whole Tab, B'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67280066909803306)
-,p_db_column_name=>'Whole tab delta, B'
-,p_display_order=>190
-,p_column_identifier=>'R'
-,p_column_label=>'Whole Tab Delta, B'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_rpt(
- p_id=>wwv_flow_api.id(67244365035499083)
-,p_application_user=>'APXWS_DEFAULT'
-,p_report_seq=>10
-,p_report_alias=>'672444'
-,p_status=>'PUBLIC'
-,p_is_default=>'Y'
-,p_report_columns=>'PARENT_TABLE:SUB_OBJECT:Seg size:Seg % tot:Seg delta:Seg delta % flt delta:Seg delta % tot delta:Whole tab:Whole tab delta:Tab delta % flt delta:Tab delta % tot delta:Tab % flt:Tab % tot:SNAPPED_AT:Seg size, B:Seg delta, B:Whole tab, B:Whole tab delt'
-||'a, B'
 );
 wwv_flow_api.create_report_region(
  p_id=>wwv_flow_api.id(67152604602285135)
@@ -32637,9 +32069,6 @@ wwv_flow_api.create_jet_chart(
 ,p_overview_rendered=>'off'
 ,p_time_axis_type=>'enabled'
 );
-end;
-/
-begin
 wwv_flow_api.create_jet_chart_series(
  p_id=>wwv_flow_api.id(76894819928331344)
 ,p_chart_id=>wwv_flow_api.id(76894724161331343)
@@ -32741,330 +32170,6 @@ wwv_flow_api.create_jet_chart_axis(
 ,p_major_tick_rendered=>'on'
 ,p_minor_tick_rendered=>'off'
 ,p_tick_label_rendered=>'on'
-);
-wwv_flow_api.create_page_plug(
- p_id=>wwv_flow_api.id(67280295389803308)
-,p_plug_name=>'Total space'
-,p_parent_plug_id=>wwv_flow_api.id(76894604052331342)
-,p_region_template_options=>'#DEFAULT#'
-,p_component_template_options=>'#DEFAULT#'
-,p_plug_template=>wwv_flow_api.id(58959020573993670)
-,p_plug_display_sequence=>60
-,p_plug_display_point=>'BODY'
-,p_query_type=>'SQL'
-,p_plug_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'select',
-'  dbgdp_id,to_char(snapped,''YYYY-MM-DD HH24:MI'') snapped,',
-'  tot_occupied "Total Occupied, Bytes",                        COREMOD_REPORT_UTILS.to_hr_num(tot_occupied) "Total Occupied",',
-'  delta_tot_occupied "Delta Total Occupied, Bytes",            COREMOD_REPORT_UTILS.to_hr_num(delta_tot_occupied) "Delta Total Occupied",',
-'  bin_occupied "Recycle Bin, Bytes",                           COREMOD_REPORT_UTILS.to_hr_num(bin_occupied) "Recycle Bin",',
-'  delta_bin_occupied "Delta Recycle Bin, Bytes",               COREMOD_REPORT_UTILS.to_hr_num(delta_bin_occupied) "Delta Recycle Bin",',
-'  seg_occupied "Segments, Bytes",                              COREMOD_REPORT_UTILS.to_hr_num(seg_occupied) "Segments",',
-'  delta_seg_occupied "Delta Segments, Bytes",                  COREMOD_REPORT_UTILS.to_hr_num(delta_seg_occupied) "Delta Segments",',
-'  tot_free "Free, Bytes",                                      COREMOD_REPORT_UTILS.to_hr_num(tot_free) "Free",',
-'  delta_tot_free "Delta Free, Bytes",                          COREMOD_REPORT_UTILS.to_hr_num(delta_tot_free) "Delta Free",',
-'  curr_available "Currently Available, Bytes",                 COREMOD_REPORT_UTILS.to_hr_num(curr_available) "Currently Available",',
-'  delta_curr_available "Delta Currently Available, Bytes",     COREMOD_REPORT_UTILS.to_hr_num(delta_curr_available) "Delta Currently Available",',
-'  ext_available "Available with Extension, Bytes",             COREMOD_REPORT_UTILS.to_hr_num(ext_available) "Available with Extension",',
-'  delta_ext_available "Delta Available with Extension, Bytes", COREMOD_REPORT_UTILS.to_hr_num(delta_ext_available) "Delta Available with Extension"',
-'from (',
-'select',
-'  x.*,',
-'  tot_occupied - lag (tot_occupied,1,0)over(order by snapped) delta_tot_occupied,',
-'  bin_occupied - lag (bin_occupied,1,0)over(order by snapped) delta_bin_occupied,',
-'  seg_occupied - lag (seg_occupied,1,0)over(order by snapped) delta_seg_occupied,',
-'  tot_free - lag (tot_free,1,0)over(order by snapped) delta_tot_free,',
-'  curr_available - lag (curr_available,1,0)over(order by snapped) delta_curr_available,',
-'  ext_available - lag (ext_available,1,0)over(order by snapped) delta_ext_available',
-'from (',
-'select dp.dbgdp_id,',
-'       dp.snapped,',
-'       sum(tot_occupied) tot_occupied,',
-'       sum(bin_occupied) bin_occupied,',
-'       sum(seg_occupied) seg_occupied,',
-'       sum(tot_free) tot_free,',
-'       sum(curr_available) curr_available,',
-'       sum(ext_available) ext_available',
-'  from OPAS_OT_DBG_TS_SIZES t, opas_ot_dbg_datapoint dp',
-'  where t.dbgdp_id = dp.dbgdp_id',
-'    and dp.dbgdp_id between nvl(:P5003_START_DT,0) and :P5003_END_DT',
-'    and dp.dbg_id = :P5003_DBG_ID',
-' group by dp.dbgdp_id, dp.snapped) x) x1'))
-,p_plug_source_type=>'NATIVE_IR'
-,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
-,p_prn_content_disposition=>'ATTACHMENT'
-,p_prn_document_header=>'APEX'
-,p_prn_units=>'INCHES'
-,p_prn_paper_size=>'LETTER'
-,p_prn_width=>8.5
-,p_prn_height=>11
-,p_prn_orientation=>'HORIZONTAL'
-,p_prn_page_header_font_color=>'#000000'
-,p_prn_page_header_font_family=>'Helvetica'
-,p_prn_page_header_font_weight=>'normal'
-,p_prn_page_header_font_size=>'12'
-,p_prn_page_footer_font_color=>'#000000'
-,p_prn_page_footer_font_family=>'Helvetica'
-,p_prn_page_footer_font_weight=>'normal'
-,p_prn_page_footer_font_size=>'12'
-,p_prn_header_bg_color=>'#9bafde'
-,p_prn_header_font_color=>'#000000'
-,p_prn_header_font_family=>'Helvetica'
-,p_prn_header_font_weight=>'normal'
-,p_prn_header_font_size=>'10'
-,p_prn_body_bg_color=>'#efefef'
-,p_prn_body_font_color=>'#000000'
-,p_prn_body_font_family=>'Helvetica'
-,p_prn_body_font_weight=>'normal'
-,p_prn_body_font_size=>'10'
-,p_prn_border_width=>.5
-,p_prn_page_header_alignment=>'CENTER'
-,p_prn_page_footer_alignment=>'CENTER'
-);
-wwv_flow_api.create_worksheet(
- p_id=>wwv_flow_api.id(67280365736803309)
-,p_max_row_count=>'1000000'
-,p_show_nulls_as=>'-'
-,p_pagination_type=>'ROWS_X_TO_Y'
-,p_pagination_display_pos=>'BOTTOM_RIGHT'
-,p_report_list_mode=>'TABS'
-,p_show_detail_link=>'N'
-,p_show_notify=>'Y'
-,p_download_formats=>'CSV:HTML:EMAIL:XLS:PDF:RTF'
-,p_owner=>'OPAS60DADM'
-,p_internal_uid=>67280365736803309
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67280492541803310)
-,p_db_column_name=>'DBGDP_ID'
-,p_display_order=>10
-,p_column_identifier=>'A'
-,p_column_label=>'Dbgdp Id'
-,p_column_type=>'NUMBER'
-,p_display_text_as=>'HIDDEN'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67280518809803311)
-,p_db_column_name=>'SNAPPED'
-,p_display_order=>20
-,p_column_identifier=>'B'
-,p_column_label=>'Snapped'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67280649700803312)
-,p_db_column_name=>'Total Occupied, Bytes'
-,p_display_order=>30
-,p_column_identifier=>'C'
-,p_column_label=>'Total Occupied, Bytes'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67280792916803313)
-,p_db_column_name=>'Total Occupied'
-,p_display_order=>40
-,p_column_identifier=>'D'
-,p_column_label=>'Total Occupied'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67280885872803314)
-,p_db_column_name=>'Delta Total Occupied, Bytes'
-,p_display_order=>50
-,p_column_identifier=>'E'
-,p_column_label=>'Delta Total Occupied, Bytes'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67280991619803315)
-,p_db_column_name=>'Delta Total Occupied'
-,p_display_order=>60
-,p_column_identifier=>'F'
-,p_column_label=>'Delta Total Occupied'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67281098091803316)
-,p_db_column_name=>'Recycle Bin, Bytes'
-,p_display_order=>70
-,p_column_identifier=>'G'
-,p_column_label=>'Recycle Bin, Bytes'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67281148757803317)
-,p_db_column_name=>'Recycle Bin'
-,p_display_order=>80
-,p_column_identifier=>'H'
-,p_column_label=>'Recycle Bin'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67281272730803318)
-,p_db_column_name=>'Delta Recycle Bin, Bytes'
-,p_display_order=>90
-,p_column_identifier=>'I'
-,p_column_label=>'Delta Recycle Bin, Bytes'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67281384645803319)
-,p_db_column_name=>'Delta Recycle Bin'
-,p_display_order=>100
-,p_column_identifier=>'J'
-,p_column_label=>'Delta Recycle Bin'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67281449050803320)
-,p_db_column_name=>'Segments, Bytes'
-,p_display_order=>110
-,p_column_identifier=>'K'
-,p_column_label=>'Segments, Bytes'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67281565607803321)
-,p_db_column_name=>'Segments'
-,p_display_order=>120
-,p_column_identifier=>'L'
-,p_column_label=>'Segments'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67281613657803322)
-,p_db_column_name=>'Delta Segments, Bytes'
-,p_display_order=>130
-,p_column_identifier=>'M'
-,p_column_label=>'Delta Segments, Bytes'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67281722211803323)
-,p_db_column_name=>'Delta Segments'
-,p_display_order=>140
-,p_column_identifier=>'N'
-,p_column_label=>'Delta Segments'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67281869508803324)
-,p_db_column_name=>'Free, Bytes'
-,p_display_order=>150
-,p_column_identifier=>'O'
-,p_column_label=>'Free, Bytes'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67281996222803325)
-,p_db_column_name=>'Free'
-,p_display_order=>160
-,p_column_identifier=>'P'
-,p_column_label=>'Free'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67282091120803326)
-,p_db_column_name=>'Delta Free, Bytes'
-,p_display_order=>170
-,p_column_identifier=>'Q'
-,p_column_label=>'Delta Free, Bytes'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67282171620803327)
-,p_db_column_name=>'Delta Free'
-,p_display_order=>180
-,p_column_identifier=>'R'
-,p_column_label=>'Delta Free'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67282253500803328)
-,p_db_column_name=>'Currently Available, Bytes'
-,p_display_order=>190
-,p_column_identifier=>'S'
-,p_column_label=>'Currently Available, Bytes'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67282308039803329)
-,p_db_column_name=>'Currently Available'
-,p_display_order=>200
-,p_column_identifier=>'T'
-,p_column_label=>'Currently Available'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67282402845803330)
-,p_db_column_name=>'Delta Currently Available, Bytes'
-,p_display_order=>210
-,p_column_identifier=>'U'
-,p_column_label=>'Delta Currently Available, Bytes'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67282533050803331)
-,p_db_column_name=>'Delta Currently Available'
-,p_display_order=>220
-,p_column_identifier=>'V'
-,p_column_label=>'Delta Currently Available'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67282683576803332)
-,p_db_column_name=>'Available with Extension, Bytes'
-,p_display_order=>230
-,p_column_identifier=>'W'
-,p_column_label=>'Available With Extension, Bytes'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67282714415803333)
-,p_db_column_name=>'Available with Extension'
-,p_display_order=>240
-,p_column_identifier=>'X'
-,p_column_label=>'Available With Extension'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67282893289803334)
-,p_db_column_name=>'Delta Available with Extension, Bytes'
-,p_display_order=>250
-,p_column_identifier=>'Y'
-,p_column_label=>'Delta Available With Extension, Bytes'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67282932209803335)
-,p_db_column_name=>'Delta Available with Extension'
-,p_display_order=>260
-,p_column_identifier=>'Z'
-,p_column_label=>'Delta Available With Extension'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_rpt(
- p_id=>wwv_flow_api.id(67319104967197062)
-,p_application_user=>'APXWS_DEFAULT'
-,p_report_seq=>10
-,p_report_alias=>'673192'
-,p_status=>'PUBLIC'
-,p_is_default=>'Y'
-,p_report_columns=>'DBGDP_ID:SNAPPED:Total Occupied, Bytes:Total Occupied:Delta Total Occupied, Bytes:Delta Total Occupied:Recycle Bin, Bytes:Recycle Bin:Delta Recycle Bin, Bytes:Delta Recycle Bin:Segments, Bytes:Segments:Delta Segments, Bytes:Delta Segments:Free, Bytes'
-||':Free:Delta Free, Bytes:Delta Free:Currently Available, Bytes:Currently Available:Delta Currently Available, Bytes:Delta Currently Available:Available with Extension, Bytes:Available with Extension:Delta Available with Extension, Bytes:Delta Availabl'
-||'e with Extension'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(76895390630331349)
@@ -33517,9 +32622,6 @@ wwv_flow_api.create_jet_chart_series(
 '    and dp.dbg_id = :P5003_DBG_ID))',
 'select 1 from tsnames where rn=4'))
 );
-end;
-/
-begin
 wwv_flow_api.create_jet_chart_series(
  p_id=>wwv_flow_api.id(77037792642240613)
 ,p_chart_id=>wwv_flow_api.id(76895401727331350)
@@ -33602,6 +32704,9 @@ wwv_flow_api.create_jet_chart_series(
 '    and dp.dbg_id = :P5003_DBG_ID))',
 'select 1 from tsnames where rn=4'))
 );
+end;
+/
+begin
 wwv_flow_api.create_jet_chart_axis(
  p_id=>wwv_flow_api.id(77036885402240604)
 ,p_chart_id=>wwv_flow_api.id(76895401727331350)
@@ -33630,13 +32735,1416 @@ wwv_flow_api.create_jet_chart_axis(
 ,p_tick_label_rendered=>'on'
 );
 wwv_flow_api.create_page_plug(
- p_id=>wwv_flow_api.id(67321366493213115)
-,p_plug_name=>'Totals by tablespaces'
-,p_parent_plug_id=>wwv_flow_api.id(76895390630331349)
+ p_id=>wwv_flow_api.id(200725698136405518)
+,p_plug_name=>'Object sizes'
+,p_parent_plug_id=>wwv_flow_api.id(67151697618285125)
+,p_region_template_options=>'#DEFAULT#:t-Region--removeHeader:t-Region--scrollBody'
+,p_escape_on_http_output=>'Y'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>20
+,p_plug_display_point=>'BODY'
+,p_plug_source_type=>'NATIVE_JET_CHART'
+,p_plug_query_num_rows=>15
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+);
+wwv_flow_api.create_jet_chart(
+ p_id=>wwv_flow_api.id(67191138043627341)
+,p_region_id=>wwv_flow_api.id(200725698136405518)
+,p_chart_type=>'line'
+,p_height=>'350'
+,p_animation_on_display=>'none'
+,p_animation_on_data_change=>'none'
+,p_orientation=>'vertical'
+,p_data_cursor=>'auto'
+,p_data_cursor_behavior=>'auto'
+,p_hide_and_show_behavior=>'none'
+,p_hover_behavior=>'none'
+,p_stack=>'off'
+,p_connect_nulls=>'Y'
+,p_sorting=>'label-asc'
+,p_fill_multi_series_gaps=>true
+,p_zoom_and_scroll=>'delayed'
+,p_initial_zooming=>'none'
+,p_tooltip_rendered=>'Y'
+,p_show_series_name=>true
+,p_show_group_name=>true
+,p_show_value=>true
+,p_show_label=>true
+,p_legend_rendered=>'on'
+,p_legend_position=>'top'
+,p_overview_rendered=>'off'
+,p_time_axis_type=>'enabled'
+);
+wwv_flow_api.create_jet_chart_series(
+ p_id=>wwv_flow_api.id(67192821875627361)
+,p_chart_id=>wwv_flow_api.id(67191138043627341)
+,p_seq=>10
+,p_name=>'Objects'
+,p_data_source_type=>'SQL'
+,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'/*select /+ gather_plan_statistics use_hash(s) full(s) use_hash(dp) NO_STAR_TRANSFORMATION qb_name(OPAS60_DBG_MAIN_CHART) / dp.snapped tim, sum(s.size_bytes) val, ''Size, Bytes'' nm',
+'  from v$opas_dbg_selected_objects o,',
+'       opas_ot_dbg_seg_sizes       s,',
+'       opas_ot_dbg_datapoint       dp',
+' where o.dbgobj_id = s.dbgobj_id',
+'   and o.dbg_id = dp.dbg_id ',
+'   and s.dbgdp_id = dp.dbgdp_id',
+'   and (dp.dbgdp_id >= nvl(:P5003_START_DT,0))',
+'   and (dp.dbgdp_id <= :P5003_END_DT)',
+'   and (s.dbgdp_id >= nvl(:P5003_START_DT,0))',
+'   and (s.dbgdp_id <= :P5003_END_DT)   ',
+'   and dp.dbg_id = :P5003_DBG_ID',
+'   --and dp.snapped >= o.start_date and dp.snapped < o.end_date',
+' group by dp.snapped',
+' order by dp.snapped*/',
+'select /*+ qb_name(OPAS60_DBG_MAIN_CHART) gather_plan_statistics_ */',
+'       snapped tim, sum(size_bytes) val, ''Size, Bytes'' nm',
+'  from V$OPAS_DBG_SELECTED_OBJECTS_V3P',
+'group by snapped',
+'order by snapped; '))
+,p_series_name_column_name=>'NM'
+,p_items_value_column_name=>'VAL'
+,p_items_label_column_name=>'TIM'
+,p_line_style=>'solid'
+,p_line_type=>'auto'
+,p_marker_rendered=>'auto'
+,p_marker_shape=>'auto'
+,p_assigned_to_y2=>'off'
+,p_items_label_rendered=>false
+);
+wwv_flow_api.create_jet_chart_axis(
+ p_id=>wwv_flow_api.id(67191645538627349)
+,p_chart_id=>wwv_flow_api.id(67191138043627341)
+,p_axis=>'x'
+,p_is_rendered=>'on'
+,p_format_scaling=>'auto'
+,p_scaling=>'linear'
+,p_baseline_scaling=>'zero'
+,p_major_tick_rendered=>'on'
+,p_minor_tick_rendered=>'off'
+,p_tick_label_rendered=>'on'
+,p_tick_label_rotation=>'auto'
+,p_tick_label_position=>'outside'
+,p_zoom_order_seconds=>false
+,p_zoom_order_minutes=>false
+,p_zoom_order_hours=>false
+,p_zoom_order_days=>false
+,p_zoom_order_weeks=>false
+,p_zoom_order_months=>false
+,p_zoom_order_quarters=>false
+,p_zoom_order_years=>false
+);
+wwv_flow_api.create_jet_chart_axis(
+ p_id=>wwv_flow_api.id(67192205924627355)
+,p_chart_id=>wwv_flow_api.id(67191138043627341)
+,p_axis=>'y'
+,p_is_rendered=>'on'
+,p_format_scaling=>'auto'
+,p_scaling=>'linear'
+,p_baseline_scaling=>'min'
+,p_position=>'auto'
+,p_major_tick_rendered=>'on'
+,p_minor_tick_rendered=>'off'
+,p_tick_label_rendered=>'on'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(77704801649359435)
+,p_plug_name=>'&P5003_CAPTION.'
+,p_region_template_options=>'#DEFAULT#:t-Region--scrollBody'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>65
+,p_plug_display_point=>'BODY'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(77704938321359436)
+,p_plug_name=>'Tabs Top Objects'
+,p_parent_plug_id=>wwv_flow_api.id(77704801649359435)
+,p_region_template_options=>'#DEFAULT#:t-TabsRegion-mod--simple'
+,p_plug_template=>wwv_flow_api.id(58966904872993703)
+,p_plug_display_sequence=>50
+,p_plug_display_point=>'BODY'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(67149430338285103)
+,p_plug_name=>'Selected Objects'
+,p_parent_plug_id=>wwv_flow_api.id(77704938321359436)
 ,p_region_template_options=>'#DEFAULT#'
 ,p_component_template_options=>'#DEFAULT#'
 ,p_plug_template=>wwv_flow_api.id(58959020573993670)
-,p_plug_display_sequence=>70
+,p_plug_display_sequence=>145
+,p_plug_display_point=>'BODY'
+,p_query_type=>'SQL'
+,p_plug_source=>'select * from v$opas_dbg_selected_objects'
+,p_plug_source_type=>'NATIVE_IR'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_prn_content_disposition=>'ATTACHMENT'
+,p_prn_document_header=>'APEX'
+,p_prn_units=>'INCHES'
+,p_prn_paper_size=>'LETTER'
+,p_prn_width=>8.5
+,p_prn_height=>11
+,p_prn_orientation=>'HORIZONTAL'
+,p_prn_page_header_font_color=>'#000000'
+,p_prn_page_header_font_family=>'Helvetica'
+,p_prn_page_header_font_weight=>'normal'
+,p_prn_page_header_font_size=>'12'
+,p_prn_page_footer_font_color=>'#000000'
+,p_prn_page_footer_font_family=>'Helvetica'
+,p_prn_page_footer_font_weight=>'normal'
+,p_prn_page_footer_font_size=>'12'
+,p_prn_header_bg_color=>'#9bafde'
+,p_prn_header_font_color=>'#000000'
+,p_prn_header_font_family=>'Helvetica'
+,p_prn_header_font_weight=>'normal'
+,p_prn_header_font_size=>'10'
+,p_prn_body_bg_color=>'#efefef'
+,p_prn_body_font_color=>'#000000'
+,p_prn_body_font_family=>'Helvetica'
+,p_prn_body_font_weight=>'normal'
+,p_prn_body_font_size=>'10'
+,p_prn_border_width=>.5
+,p_prn_page_header_alignment=>'CENTER'
+,p_prn_page_footer_alignment=>'CENTER'
+);
+wwv_flow_api.create_worksheet(
+ p_id=>wwv_flow_api.id(67149546953285104)
+,p_max_row_count=>'1000000'
+,p_show_nulls_as=>'-'
+,p_pagination_type=>'ROWS_X_TO_Y'
+,p_pagination_display_pos=>'BOTTOM_RIGHT'
+,p_report_list_mode=>'TABS'
+,p_show_detail_link=>'N'
+,p_show_notify=>'Y'
+,p_download_formats=>'CSV:HTML:EMAIL:XLS:PDF:RTF'
+,p_owner=>'OPAS60DADM'
+,p_internal_uid=>67149546953285104
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67149604820285105)
+,p_db_column_name=>'DBGOBJ_ID'
+,p_display_order=>10
+,p_column_identifier=>'A'
+,p_column_label=>'Dbgobj Id'
+,p_column_type=>'NUMBER'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67149719300285106)
+,p_db_column_name=>'VERSION_DP_ID'
+,p_display_order=>20
+,p_column_identifier=>'B'
+,p_column_label=>'Version Dp Id'
+,p_column_type=>'NUMBER'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67149880244285107)
+,p_db_column_name=>'OWNER'
+,p_display_order=>30
+,p_column_identifier=>'C'
+,p_column_label=>'Owner'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67149990526285108)
+,p_db_column_name=>'OBJECT_ID'
+,p_display_order=>40
+,p_column_identifier=>'D'
+,p_column_label=>'Object Id'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67150084167285109)
+,p_db_column_name=>'DATA_OBJECT_ID'
+,p_display_order=>50
+,p_column_identifier=>'E'
+,p_column_label=>'Data Object Id'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67150105689285110)
+,p_db_column_name=>'OBJECT_NAME'
+,p_display_order=>60
+,p_column_identifier=>'F'
+,p_column_label=>'Object Name'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67150285123285111)
+,p_db_column_name=>'SUBOBJECT_NAME'
+,p_display_order=>70
+,p_column_identifier=>'G'
+,p_column_label=>'Subobject Name'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67150367171285112)
+,p_db_column_name=>'OBJECT_TYPE'
+,p_display_order=>80
+,p_column_identifier=>'H'
+,p_column_label=>'Object Type'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67150475278285113)
+,p_db_column_name=>'SEGMENT_TYPE'
+,p_display_order=>90
+,p_column_identifier=>'I'
+,p_column_label=>'Segment Type'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67150518266285114)
+,p_db_column_name=>'TABLESPACE_NAME'
+,p_display_order=>100
+,p_column_identifier=>'J'
+,p_column_label=>'Tablespace Name'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67150617295285115)
+,p_db_column_name=>'CREATED'
+,p_display_order=>110
+,p_column_identifier=>'K'
+,p_column_label=>'Created'
+,p_column_type=>'DATE'
+,p_column_alignment=>'CENTER'
+,p_format_mask=>'&APP_GRID_DT_FMT.'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67150771329285116)
+,p_db_column_name=>'PRNT_TABLE'
+,p_display_order=>120
+,p_column_identifier=>'L'
+,p_column_label=>'Prnt Table'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67150863413285117)
+,p_db_column_name=>'PRNT_TABLE_TYPE'
+,p_display_order=>130
+,p_column_identifier=>'M'
+,p_column_label=>'Prnt Table Type'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67150983226285118)
+,p_db_column_name=>'PRNT_TABLE_OWNER'
+,p_display_order=>140
+,p_column_identifier=>'N'
+,p_column_label=>'Prnt Table Owner'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67151052231285119)
+,p_db_column_name=>'PRNT_TABLE_COL'
+,p_display_order=>150
+,p_column_identifier=>'O'
+,p_column_label=>'Prnt Table Col'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67151142258285120)
+,p_db_column_name=>'OBJECT_CLASS'
+,p_display_order=>160
+,p_column_identifier=>'P'
+,p_column_label=>'Object Class'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67151257941285121)
+,p_db_column_name=>'DBGDP_ID'
+,p_display_order=>170
+,p_column_identifier=>'Q'
+,p_column_label=>'Dbgdp Id'
+,p_column_type=>'NUMBER'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67151394820285122)
+,p_db_column_name=>'DBG_ID'
+,p_display_order=>180
+,p_column_identifier=>'R'
+,p_column_label=>'Dbg Id'
+,p_column_type=>'NUMBER'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67151429993285123)
+,p_db_column_name=>'SNAPPED'
+,p_display_order=>190
+,p_column_identifier=>'S'
+,p_column_label=>'Snapped'
+,p_column_type=>'DATE'
+,p_column_alignment=>'CENTER'
+,p_format_mask=>'&APP_GRID_DT_FMT.'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_rpt(
+ p_id=>wwv_flow_api.id(67168998718415859)
+,p_application_user=>'APXWS_DEFAULT'
+,p_report_seq=>10
+,p_report_alias=>'671690'
+,p_status=>'PUBLIC'
+,p_is_default=>'Y'
+,p_report_columns=>'DBGOBJ_ID:VERSION_DP_ID:OWNER:OBJECT_ID:DATA_OBJECT_ID:OBJECT_NAME:SUBOBJECT_NAME:OBJECT_TYPE:SEGMENT_TYPE:TABLESPACE_NAME:CREATED:PRNT_TABLE:PRNT_TABLE_TYPE:PRNT_TABLE_OWNER:PRNT_TABLE_COL:OBJECT_CLASS:DBGDP_ID:DBG_ID:SNAPPED'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(67151850572285127)
+,p_plug_name=>'Top Objects By Data Point Report'
+,p_parent_plug_id=>wwv_flow_api.id(77704938321359436)
+,p_region_template_options=>'#DEFAULT#'
+,p_plug_template=>wwv_flow_api.id(58959020573993670)
+,p_plug_display_sequence=>105
+,p_plug_display_point=>'BODY'
+,p_query_type=>'SQL'
+,p_plug_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'with object_sizes as ',
+'(select /*+ NO_STAR_TRANSFORMATION use_hash(s) gather_plan_statistics */',
+'       dp.snapped, dp.dbgdp_id',
+'      ,o.prnt_table||'' (''||o.prnt_table_type||'')'' parent_table',
+'      ,o.object_type||'': ''||o.object_name|| case when o.subobject_name is not null then ''.''||o.subobject_name end ||'' (''||o.object_class||'')'' sub_object',
+'      ,nvl(s.size_bytes,0) size_bytes',
+'from V$OPAS_DBG_SELECTED_OBJECTS o,',
+'     opas_ot_dbg_seg_sizes s,     ',
+'     opas_ot_dbg_datapoint dp',
+'where o.dbgobj_id = s.dbgobj_id(+)',
+'  and dp.dbgdp_id = s.dbgdp_id(+)',
+'  and dp.dbg_id = o.dbg_id',
+'  and dp.dbgdp_id between nvl(:P5003_START_DT,0) and :P5003_END_DT',
+'  and dp.dbg_id = :P5003_DBG_ID',
+'  --and dp.snapped >= o.start_date and dp.snapped < o.end_date',
+'),',
+'object_delta as (',
+'   select x.*,',
+'          case when seg_delta > 0 then',
+'            row_number() over (partition by snapped, parent_table order by seg_delta desc, size_bytes desc) ',
+'          else ',
+'            row_number() over (partition by snapped, parent_table order by seg_delta asc, size_bytes desc) ',
+'          end ',
+'        seg_num',
+'     from (',
+'   select snapped, dbgdp_id, parent_table, sub_object, size_bytes, ',
+'          size_bytes - lag (size_bytes,1,0) over (partition by parent_table, sub_object order by snapped) seg_delta',
+'     from object_sizes) x',
+'     where seg_delta != 0),   ',
+'parent_delta as (',
+'   select x.*,',
+'          row_number() over (partition by snapped order by parent_table_delta desc, size_bytes desc) parent_num',
+'    from (select snapped, dbgdp_id, parent_table, size_bytes, ',
+'                 size_bytes - lag (size_bytes,1,0) over (partition by parent_table order by snapped) parent_table_delta          ',
+'            from (select snapped, dbgdp_id, parent_table, sum(size_bytes) size_bytes',
+'                    from object_sizes',
+'                   group by  snapped, dbgdp_id, parent_table)',
+'         ) x where parent_table_delta != 0), ',
+'parent_delta_negative as (',
+'   select x.*,',
+'          row_number() over (partition by snapped order by parent_table_delta asc, size_bytes desc) parent_num',
+'    from (select snapped, dbgdp_id, parent_table, sum(size_bytes) size_bytes, sum(seg_delta) parent_table_delta',
+'                    from object_delta',
+'                   where seg_delta < 0',
+'                   group by snapped, dbgdp_id, parent_table',
+'         ) x),  ',
+'object_sizes_total as (',
+'   select  snapped, dbgdp_id, sum(size_bytes) size_bytes',
+'     from object_sizes',
+'    group by  snapped, dbgdp_id),',
+'object_sizes_deltas as (',
+'   select  snapped, dbgdp_id, size_bytes, size_bytes - lag(size_bytes,1,0) over (order by snapped) object_sizes_delta',
+'     from object_sizes_total),    ',
+'tot_sizes as (select dp.snapped, dp.dbgdp_id, ',
+'                     sum(seg_occupied) seg_occupied',
+'                from opas_ot_dbg_ts_sizes ts, ',
+'                     opas_ot_dbg_datapoint dp,',
+'                     opas_ot_dbg_report_pars pars',
+'               where ts.dbgdp_id = dp.dbgdp_id',
+'                 and dp.dbg_id = pars.dbgso_dbg_id',
+'                 and dp.dbgdp_id between nvl(:P5003_START_DT,0) and :P5003_END_DT',
+'                 and pars.apex_sess = V(''SESSION'')',
+'               group by dp.snapped, dp.dbgdp_id),',
+'tot_deltas as (',
+'  select snapped, dbgdp_id, seg_occupied, seg_occupied - lag(seg_occupied,1,0) over (order by snapped) tot_delta',
+'    from tot_sizes',
+')',
+'select /*+ NO_STAR_TRANSFORMATION qb_name(OPAS60_DBG_TOPOBJ_REPORT) */',
+'       to_char(o.snapped,''YYYY-MM-DD HH24:MI'') || --case when o.seg_delta > 0 then ''; Growing: '' else ''; Decreasing: '' end ||',
+'         ''; Grown: Schema delta: '' || COREMOD_REPORT_UTILS.to_hr_num(td.tot_delta)  || '' ('' || to_char(td.tot_delta,''FM999g999g999g999g999'') || '') / Filtered delta: '' || COREMOD_REPORT_UTILS.to_hr_num(od.object_sizes_delta)  || '' ('' || to_char(od.obj'
+||'ect_sizes_delta,''FM999g999g999g999g999'') || '')'' ||case when td.tot_delta<>0 then  '' ('' || round(100*(od.object_sizes_delta/td.tot_delta),2)  || ''%)'' end ||',
+'         ''; Total size: ''   || COREMOD_REPORT_UTILS.to_hr_num(td.seg_occupied) || '' ('' || to_char(td.seg_occupied,''FM999g999g999g999g999'') || '') / Filtered size: ''  || COREMOD_REPORT_UTILS.to_hr_num(od.size_bytes)     || '' ('' || to_char(od.size_bytes'
+||',''FM999g999g999g999g999'') || '')'' || case when td.seg_occupied<>0 then  '' ('' || round(100*(od.size_bytes/td.seg_occupied),2)|| ''%)'' end',
+'       snapped_at',
+'       --,o.snapped, o.dbgdp_id',
+'       ,lpad(pd.parent_num,2,''0'')||''.''||lpad(o.seg_num,2,''0'')||''.''|| o.parent_table parent_table, o.sub_object',
+'       ,COREMOD_REPORT_UTILS.to_hr_num(o.size_bytes)                  "Seg size"',
+'       ,to_char(o.size_bytes,''FM999g999g999g999g999'')                 "Seg size, B"',
+'       ,round(100*(o.size_bytes/decode(td.seg_occupied,0,null,td.seg_occupied)),2)                      "Seg % tot"',
+'       ,COREMOD_REPORT_UTILS.to_hr_num(o.seg_delta)                   "Seg delta"  ',
+'       ,to_char(o.seg_delta,''FM999g999g999g999g999'')                  "Seg delta, B" ',
+'       ,round(100*(o.seg_delta/decode(od.object_sizes_delta,0,null,od.object_sizes_delta)),2)           "Seg delta % flt delta"',
+'       ,round(100*(o.seg_delta/decode(td.tot_delta,0,null,td.tot_delta)),2)                             "Seg delta % tot delta"',
+'       ,COREMOD_REPORT_UTILS.to_hr_num(pd.size_bytes)                 "Whole tab"',
+'       ,to_char(pd.size_bytes,''FM999g999g999g999g999'')                "Whole tab, B"',
+'       ,COREMOD_REPORT_UTILS.to_hr_num(pd.parent_table_delta)         "Whole tab delta"',
+'       ,to_char(pd.parent_table_delta,''FM999g999g999g999g999'')        "Whole tab delta, B"',
+'       ,round(100*(pd.parent_table_delta/decode(od.object_sizes_delta,0,null,od.object_sizes_delta)),2) "Tab delta % flt delta"',
+'       ,round(100*(pd.parent_table_delta/decode(td.tot_delta,0,null,td.tot_delta)),2)                   "Tab delta % tot delta"',
+'       ,round(100*(pd.size_bytes/decode(od.size_bytes,0,null,od.size_bytes)),2)                         "Tab % flt"',
+'       ,round(100*(pd.size_bytes/decode(td.seg_occupied,0,null,td.seg_occupied)),2)                     "Tab % tot"',
+'from object_delta o,',
+'     tot_deltas td,',
+'     object_sizes_deltas od,',
+'     parent_delta pd',
+'where o.dbgdp_id = td.dbgdp_id',
+'  and o.dbgdp_id = od.dbgdp_id',
+'  and o.dbgdp_id = pd.dbgdp_id and o.parent_table = pd.parent_table',
+'  and pd.parent_num<= decode(:P5003_TOP_N,0,pd.parent_num,:P5003_TOP_N)',
+'  and o.dbgdp_id > nvl(:P5003_START_DT,0)',
+'  and o.dbgdp_id between nvl(:P5003_START_DT,0) and :P5003_END_DT  ',
+'  and o.seg_delta > 0',
+'  union all',
+'select /*+ NO_STAR_TRANSFORMATION qb_name(OPAS60_DBG_TOPOBJ_REPORT) */',
+'       to_char(o.snapped,''YYYY-MM-DD HH24:MI'') || --case when o.seg_delta > 0 then ''; Growing: '' else ''; Decreasing: '' end ||',
+'         ''; Decreased: Schema delta: '' || COREMOD_REPORT_UTILS.to_hr_num(td.tot_delta)  || '' ('' || to_char(td.tot_delta,''FM999g999g999g999g999'') || '') / Filtered delta: '' || COREMOD_REPORT_UTILS.to_hr_num(od.object_sizes_delta)  || '' ('' || to_char(od'
+||'.object_sizes_delta,''FM999g999g999g999g999'') || '')'' ||case when td.tot_delta<>0 then  '' ('' || round(100*(od.object_sizes_delta/td.tot_delta),2)  || ''%)'' end ||',
+'         ''; Total size: ''   || COREMOD_REPORT_UTILS.to_hr_num(td.seg_occupied) || '' ('' || to_char(td.seg_occupied,''FM999g999g999g999g999'') || '') / Filtered size: ''  || COREMOD_REPORT_UTILS.to_hr_num(od.size_bytes)     || '' ('' || to_char(od.size_bytes'
+||',''FM999g999g999g999g999'') || '')'' || case when td.seg_occupied<>0 then  '' ('' || round(100*(od.size_bytes/td.seg_occupied),2)|| ''%)'' end',
+'       snapped_at',
+'       --,o.snapped, o.dbgdp_id',
+'       ,lpad(pd.parent_num,2,''0'')||''.''||lpad(o.seg_num,2,''0'')||''.''|| o.parent_table parent_table, o.sub_object',
+'       ,COREMOD_REPORT_UTILS.to_hr_num(o.size_bytes)                  "Seg size"',
+'       ,to_char(o.size_bytes,''FM999g999g999g999g999'')                 "Seg size, B"',
+'       ,round(100*(o.size_bytes/decode(td.seg_occupied,0,null,td.seg_occupied)),2)                      "Seg % tot"',
+'       ,COREMOD_REPORT_UTILS.to_hr_num(o.seg_delta)                   "Seg delta"  ',
+'       ,to_char(o.seg_delta,''FM999g999g999g999g999'')                  "Seg delta, B" ',
+'       ,round(100*(o.seg_delta/decode(od.object_sizes_delta,0,null,od.object_sizes_delta)),2)           "Seg delta % flt delta"',
+'       ,round(100*(o.seg_delta/decode(td.tot_delta,0,null,td.tot_delta)),2)                             "Seg delta % tot delta"',
+'       ,COREMOD_REPORT_UTILS.to_hr_num(pd.size_bytes)                 "Whole tab"',
+'       ,to_char(pd.size_bytes,''FM999g999g999g999g999'')                "Whole tab, B"',
+'       ,COREMOD_REPORT_UTILS.to_hr_num(pd.parent_table_delta)         "Whole tab delta"',
+'       ,to_char(pd.parent_table_delta,''FM999g999g999g999g999'')        "Whole tab delta, B"',
+'       ,round(100*(pd.parent_table_delta/decode(od.object_sizes_delta,0,null,od.object_sizes_delta)),2) "Tab delta % flt delta"',
+'       ,round(100*(pd.parent_table_delta/decode(td.tot_delta,0,null,td.tot_delta)),2)                   "Tab delta % tot delta"',
+'       ,round(100*(pd.size_bytes/decode(od.size_bytes,0,null,od.size_bytes)),2)                         "Tab % flt"',
+'       ,round(100*(pd.size_bytes/decode(td.seg_occupied,0,null,td.seg_occupied)),2)                     "Tab % tot"',
+'from object_delta o,',
+'     tot_deltas td,',
+'     object_sizes_deltas od,',
+'     parent_delta_negative pd',
+'where o.dbgdp_id = td.dbgdp_id',
+'  and o.dbgdp_id = od.dbgdp_id',
+'  and o.dbgdp_id = pd.dbgdp_id and o.parent_table = pd.parent_table',
+'  and pd.parent_num<= decode(:P5003_TOP_N,0,pd.parent_num,:P5003_TOP_N)',
+'  and o.dbgdp_id > nvl(:P5003_START_DT,0)',
+'  and o.dbgdp_id between nvl(:P5003_START_DT,0) and :P5003_END_DT  ',
+'  and o.seg_delta < 0  '))
+,p_plug_source_type=>'NATIVE_IR'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_plug_display_condition_type=>'PLSQL_EXPRESSION'
+,p_plug_display_when_condition=>':P5003_START_DT is not null and :P5003_END_DT is not null and :P5003_TOP_N is not null and 1=2'
+,p_prn_content_disposition=>'ATTACHMENT'
+,p_prn_document_header=>'APEX'
+,p_prn_units=>'INCHES'
+,p_prn_paper_size=>'LETTER'
+,p_prn_width=>8.5
+,p_prn_height=>11
+,p_prn_orientation=>'HORIZONTAL'
+,p_prn_page_header_font_color=>'#000000'
+,p_prn_page_header_font_family=>'Helvetica'
+,p_prn_page_header_font_weight=>'normal'
+,p_prn_page_header_font_size=>'12'
+,p_prn_page_footer_font_color=>'#000000'
+,p_prn_page_footer_font_family=>'Helvetica'
+,p_prn_page_footer_font_weight=>'normal'
+,p_prn_page_footer_font_size=>'12'
+,p_prn_header_bg_color=>'#9bafde'
+,p_prn_header_font_color=>'#000000'
+,p_prn_header_font_family=>'Helvetica'
+,p_prn_header_font_weight=>'normal'
+,p_prn_header_font_size=>'10'
+,p_prn_body_bg_color=>'#efefef'
+,p_prn_body_font_color=>'#000000'
+,p_prn_body_font_family=>'Helvetica'
+,p_prn_body_font_weight=>'normal'
+,p_prn_body_font_size=>'10'
+,p_prn_border_width=>.5
+,p_prn_page_header_alignment=>'CENTER'
+,p_prn_page_footer_alignment=>'CENTER'
+);
+wwv_flow_api.create_worksheet(
+ p_id=>wwv_flow_api.id(67209197476086603)
+,p_max_row_count=>'1000000'
+,p_show_nulls_as=>'-'
+,p_pagination_type=>'ROWS_X_TO_Y'
+,p_pagination_display_pos=>'BOTTOM_RIGHT'
+,p_report_list_mode=>'TABS'
+,p_show_detail_link=>'N'
+,p_show_notify=>'Y'
+,p_download_formats=>'CSV:HTML:EMAIL:XLS:PDF:RTF'
+,p_owner=>'OPAS60DADM'
+,p_internal_uid=>67209197476086603
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67209319435086605)
+,p_db_column_name=>'PARENT_TABLE'
+,p_display_order=>20
+,p_column_identifier=>'A'
+,p_column_label=>'Parent Table'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67209400853086606)
+,p_db_column_name=>'SUB_OBJECT'
+,p_display_order=>30
+,p_column_identifier=>'B'
+,p_column_label=>'Sub Object'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67209510087086607)
+,p_db_column_name=>'Seg size'
+,p_display_order=>40
+,p_column_identifier=>'C'
+,p_column_label=>'Seg Size'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67209641049086608)
+,p_db_column_name=>'Seg % tot'
+,p_display_order=>50
+,p_column_identifier=>'D'
+,p_column_label=>'Seg % Tot'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67209700484086609)
+,p_db_column_name=>'Seg delta'
+,p_display_order=>60
+,p_column_identifier=>'E'
+,p_column_label=>'Seg Delta'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67209876653086610)
+,p_db_column_name=>'Seg delta % flt delta'
+,p_display_order=>70
+,p_column_identifier=>'F'
+,p_column_label=>'Seg Delta % Flt Delta'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67209984356086611)
+,p_db_column_name=>'Seg delta % tot delta'
+,p_display_order=>80
+,p_column_identifier=>'G'
+,p_column_label=>'Seg Delta % Tot Delta'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67210082080086612)
+,p_db_column_name=>'Whole tab'
+,p_display_order=>90
+,p_column_identifier=>'H'
+,p_column_label=>'Whole Tab'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67210196882086613)
+,p_db_column_name=>'Whole tab delta'
+,p_display_order=>100
+,p_column_identifier=>'I'
+,p_column_label=>'Whole Tab Delta'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67210220992086614)
+,p_db_column_name=>'Tab delta % flt delta'
+,p_display_order=>110
+,p_column_identifier=>'J'
+,p_column_label=>'Tab Delta % Flt Delta'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67210331094086615)
+,p_db_column_name=>'Tab delta % tot delta'
+,p_display_order=>120
+,p_column_identifier=>'K'
+,p_column_label=>'Tab Delta % Tot Delta'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67210417543086616)
+,p_db_column_name=>'Tab % flt'
+,p_display_order=>130
+,p_column_identifier=>'L'
+,p_column_label=>'Tab % Flt'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67210504254086617)
+,p_db_column_name=>'Tab % tot'
+,p_display_order=>140
+,p_column_identifier=>'M'
+,p_column_label=>'Tab % Tot'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67210682223086618)
+,p_db_column_name=>'SNAPPED_AT'
+,p_display_order=>150
+,p_column_identifier=>'N'
+,p_column_label=>'Snapped At'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67279780155803303)
+,p_db_column_name=>'Seg size, B'
+,p_display_order=>160
+,p_column_identifier=>'O'
+,p_column_label=>'Seg Size, B'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67279804834803304)
+,p_db_column_name=>'Seg delta, B'
+,p_display_order=>170
+,p_column_identifier=>'P'
+,p_column_label=>'Seg Delta, B'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67279993167803305)
+,p_db_column_name=>'Whole tab, B'
+,p_display_order=>180
+,p_column_identifier=>'Q'
+,p_column_label=>'Whole Tab, B'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67280066909803306)
+,p_db_column_name=>'Whole tab delta, B'
+,p_display_order=>190
+,p_column_identifier=>'R'
+,p_column_label=>'Whole Tab Delta, B'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_rpt(
+ p_id=>wwv_flow_api.id(67244365035499083)
+,p_application_user=>'APXWS_DEFAULT'
+,p_report_seq=>10
+,p_report_alias=>'672444'
+,p_status=>'PUBLIC'
+,p_is_default=>'Y'
+,p_report_columns=>'PARENT_TABLE:SUB_OBJECT:Seg size:Seg % tot:Seg delta:Seg delta % flt delta:Seg delta % tot delta:Whole tab:Whole tab delta:Tab delta % flt delta:Tab delta % tot delta:Tab % flt:Tab % tot:SNAPPED_AT:Seg size, B:Seg delta, B:Whole tab, B:Whole tab delt'
+||'a, B'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(67210821551086620)
+,p_plug_name=>'Top Growing Objects Report Old'
+,p_parent_plug_id=>wwv_flow_api.id(77704938321359436)
+,p_region_template_options=>'#DEFAULT#'
+,p_component_template_options=>'#DEFAULT#'
+,p_plug_template=>wwv_flow_api.id(58959020573993670)
+,p_plug_display_sequence=>40
+,p_plug_display_point=>'BODY'
+,p_query_type=>'SQL'
+,p_plug_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'with object_sizes as ',
+'(select /*+ NO_STAR_TRANSFORMATION use_hash(s) gather_plan_statistics */',
+'       dp.snapped, dp.dbgdp_id',
+'      ,o.prnt_table||'' (''||o.prnt_table_type||'')'' parent_table',
+'      ,o.object_type||'': ''||o.object_name|| case when o.subobject_name is not null then ''.''||o.subobject_name end ||'' (''||o.object_class||'')'' sub_object',
+'      ,nvl(s.size_bytes,0) size_bytes',
+'from V$OPAS_DBG_SELECTED_OBJECTS o,',
+'     opas_ot_dbg_seg_sizes s,     ',
+'     opas_ot_dbg_datapoint dp',
+'where o.dbgobj_id = s.dbgobj_id(+)',
+'  and dp.dbgdp_id = s.dbgdp_id(+)',
+'  and dp.dbg_id = o.dbg_id',
+'  and dp.dbgdp_id in (:P5003_START_DT, :P5003_END_DT)',
+'  and dp.dbg_id = :P5003_DBG_ID',
+'  --and dp.snapped >= o.start_date and dp.snapped < o.end_date',
+'),',
+'object_delta as (',
+'   select x.*,',
+'          case when seg_delta > 0 then',
+'            row_number() over (partition by snapped, parent_table order by seg_delta desc, size_bytes desc) ',
+'          else ',
+'            row_number() over (partition by snapped, parent_table order by seg_delta asc, size_bytes desc) ',
+'          end ',
+'        seg_num',
+'     from (',
+'   select snapped, dbgdp_id, parent_table, sub_object, size_bytes, ',
+'          size_bytes - lag (size_bytes,1,0) over (partition by parent_table, sub_object order by snapped) seg_delta',
+'     from object_sizes) x',
+'     where seg_delta != 0),   ',
+'parent_delta as (',
+'   select x.*,',
+'          row_number() over (partition by snapped order by parent_table_delta desc, size_bytes desc) parent_num',
+'    from (select snapped, dbgdp_id, parent_table, size_bytes, ',
+'                 size_bytes - lag (size_bytes,1,0) over (partition by parent_table order by snapped) parent_table_delta          ',
+'            from (select snapped, dbgdp_id, parent_table, sum(size_bytes) size_bytes',
+'                    from object_sizes',
+'                   group by  snapped, dbgdp_id, parent_table)',
+'         ) x where parent_table_delta != 0), ',
+'parent_delta_negative as (',
+'   select x.*,',
+'          row_number() over (partition by snapped order by parent_table_delta asc, size_bytes desc) parent_num',
+'    from (select snapped, dbgdp_id, parent_table, sum(size_bytes) size_bytes, sum(seg_delta) parent_table_delta',
+'                    from object_delta',
+'                   where seg_delta < 0',
+'                   group by snapped, dbgdp_id, parent_table',
+'         ) x),    ',
+'object_sizes_total as (',
+'   select  snapped, dbgdp_id, sum(size_bytes) size_bytes',
+'     from object_sizes',
+'    group by  snapped, dbgdp_id),',
+'object_sizes_deltas as (',
+'   select  snapped, dbgdp_id, size_bytes, size_bytes - lag(size_bytes,1,0) over (order by snapped) object_sizes_delta',
+'     from object_sizes_total),    ',
+'tot_sizes as (select dp.snapped, dp.dbgdp_id, ',
+'                     sum(seg_occupied) seg_occupied',
+'                from opas_ot_dbg_ts_sizes ts, ',
+'                     opas_ot_dbg_datapoint dp,',
+'                     opas_ot_dbg_report_pars pars',
+'               where ts.dbgdp_id = dp.dbgdp_id',
+'                 and dp.dbg_id = pars.dbgso_dbg_id',
+'                 and dp.dbgdp_id in (:P5003_START_DT, :P5003_END_DT)',
+'                 and pars.apex_sess = V(''SESSION'')',
+'               group by dp.snapped, dp.dbgdp_id),',
+'tot_deltas as (',
+'  select snapped, dbgdp_id, seg_occupied, seg_occupied - lag(seg_occupied,1,0) over (order by snapped) tot_delta',
+'    from tot_sizes',
+')',
+'select /*+ NO_STAR_TRANSFORMATION qb_name(OPAS60_DBG_MAIN_REPORT) */',
+'       to_char(o.snapped,''YYYY-MM-DD HH24:MI'') || --case when o.seg_delta > 0 then ''; Growing: '' else ''; Decreasing: '' end ||',
+'         ''; Grown: Schema delta: '' || COREMOD_REPORT_UTILS.to_hr_num(td.tot_delta)  || '' ('' || to_char(td.tot_delta,''FM999g999g999g999g999'') || '') / Filtered delta: '' || COREMOD_REPORT_UTILS.to_hr_num(od.object_sizes_delta)  || '' ('' || to_char(od.obj'
+||'ect_sizes_delta,''FM999g999g999g999g999'') || '')'' ||case when td.tot_delta<>0 then  '' ('' || round(100*(od.object_sizes_delta/td.tot_delta),2)  || ''%)'' end ||',
+'         ''; Total size: ''   || COREMOD_REPORT_UTILS.to_hr_num(td.seg_occupied) || '' ('' || to_char(td.seg_occupied,''FM999g999g999g999g999'') || '') / Filtered size: ''  || COREMOD_REPORT_UTILS.to_hr_num(od.size_bytes)     || '' ('' || to_char(od.size_bytes'
+||',''FM999g999g999g999g999'') || '')'' || case when td.seg_occupied<>0 then  '' ('' || round(100*(od.size_bytes/td.seg_occupied),2)|| ''%)'' end',
+'       snapped_at',
+'       --,o.snapped, o.dbgdp_id',
+'       ,lpad(pd.parent_num,2,''0'')||''.''||lpad(o.seg_num,2,''0'')||''.''|| o.parent_table parent_table, o.sub_object',
+'       ,COREMOD_REPORT_UTILS.to_hr_num(o.size_bytes)                  "Seg size"',
+'       ,to_char(o.size_bytes,''FM999g999g999g999g999'')                 "Seg size, B"',
+'       ,round(100*(o.size_bytes/decode(td.seg_occupied,0,null,td.seg_occupied)),2)                      "Seg % tot"',
+'       ,COREMOD_REPORT_UTILS.to_hr_num(o.seg_delta)                   "Seg delta"  ',
+'       ,to_char(o.seg_delta,''FM999g999g999g999g999'')                  "Seg delta, B" ',
+'       ,round(100*(o.seg_delta/decode(od.object_sizes_delta,0,null,od.object_sizes_delta)),2)           "Seg delta % flt delta"',
+'       ,round(100*(o.seg_delta/decode(td.tot_delta,0,null,td.tot_delta)),2)                             "Seg delta % tot delta"',
+'       ,COREMOD_REPORT_UTILS.to_hr_num(pd.size_bytes)                 "Whole tab"',
+'       ,to_char(pd.size_bytes,''FM999g999g999g999g999'')                "Whole tab, B"',
+'       ,COREMOD_REPORT_UTILS.to_hr_num(pd.parent_table_delta)         "Whole tab delta"',
+'       ,to_char(pd.parent_table_delta,''FM999g999g999g999g999'')        "Whole tab delta, B"',
+'       ,round(100*(pd.parent_table_delta/decode(od.object_sizes_delta,0,null,od.object_sizes_delta)),2) "Tab delta % flt delta"',
+'       ,round(100*(pd.parent_table_delta/decode(td.tot_delta,0,null,td.tot_delta)),2)                   "Tab delta % tot delta"',
+'       ,round(100*(pd.size_bytes/decode(od.size_bytes,0,null,od.size_bytes)),2)                         "Tab % flt"',
+'       ,round(100*(pd.size_bytes/decode(td.seg_occupied,0,null,td.seg_occupied)),2)                     "Tab % tot"',
+'from object_delta o,',
+'     tot_deltas td,',
+'     object_sizes_deltas od,',
+'     parent_delta pd',
+'where o.dbgdp_id = td.dbgdp_id',
+'  and o.dbgdp_id = od.dbgdp_id',
+'  and o.dbgdp_id = pd.dbgdp_id and o.parent_table = pd.parent_table',
+'  and pd.parent_num<= decode(:P5003_TOP_N,0,pd.parent_num,:P5003_TOP_N)',
+'  and o.dbgdp_id > nvl(:P5003_START_DT,0)',
+'  and o.dbgdp_id between nvl(:P5003_START_DT,0) and :P5003_END_DT',
+'--  and o.dbgdp_id in (:P5003_START_DT, :P5003_END_DT)',
+'  and o.seg_delta > 0',
+'  union all',
+'select /*+ NO_STAR_TRANSFORMATION qb_name(OPAS60_DBG_MAIN_REPORT) */',
+'       to_char(o.snapped,''YYYY-MM-DD HH24:MI'') || --case when o.seg_delta > 0 then ''; Growing: '' else ''; Decreasing: '' end ||',
+'         ''; Decreased: Schema delta: '' || COREMOD_REPORT_UTILS.to_hr_num(td.tot_delta)  || '' ('' || to_char(td.tot_delta,''FM999g999g999g999g999'') || '') / Filtered delta: '' || COREMOD_REPORT_UTILS.to_hr_num(od.object_sizes_delta)  || '' ('' || to_char(od'
+||'.object_sizes_delta,''FM999g999g999g999g999'') || '')'' ||case when td.tot_delta<>0 then  '' ('' || round(100*(od.object_sizes_delta/td.tot_delta),2)  || ''%)'' end ||',
+'         ''; Total size: ''   || COREMOD_REPORT_UTILS.to_hr_num(td.seg_occupied) || '' ('' || to_char(td.seg_occupied,''FM999g999g999g999g999'') || '') / Filtered size: ''  || COREMOD_REPORT_UTILS.to_hr_num(od.size_bytes)     || '' ('' || to_char(od.size_bytes'
+||',''FM999g999g999g999g999'') || '')'' || case when td.seg_occupied<>0 then  '' ('' || round(100*(od.size_bytes/td.seg_occupied),2)|| ''%)'' end',
+'       snapped_at',
+'       --,o.snapped, o.dbgdp_id',
+'       ,lpad(pd.parent_num,2,''0'')||''.''||lpad(o.seg_num,2,''0'')||''.''|| o.parent_table parent_table, o.sub_object',
+'       ,COREMOD_REPORT_UTILS.to_hr_num(o.size_bytes)                  "Seg size"',
+'       ,to_char(o.size_bytes,''FM999g999g999g999g999'')                 "Seg size, B"',
+'       ,round(100*(o.size_bytes/decode(td.seg_occupied,0,null,td.seg_occupied)),2)                      "Seg % tot"',
+'       ,COREMOD_REPORT_UTILS.to_hr_num(o.seg_delta)                   "Seg delta"  ',
+'       ,to_char(o.seg_delta,''FM999g999g999g999g999'')                  "Seg delta, B" ',
+'       ,round(100*(o.seg_delta/decode(od.object_sizes_delta,0,null,od.object_sizes_delta)),2)           "Seg delta % flt delta"',
+'       ,round(100*(o.seg_delta/decode(td.tot_delta,0,null,td.tot_delta)),2)                             "Seg delta % tot delta"',
+'       ,COREMOD_REPORT_UTILS.to_hr_num(pd.size_bytes)                 "Whole tab"',
+'       ,to_char(pd.size_bytes,''FM999g999g999g999g999'')                "Whole tab, B"',
+'       ,COREMOD_REPORT_UTILS.to_hr_num(pd.parent_table_delta)         "Whole tab delta"',
+'       ,to_char(pd.parent_table_delta,''FM999g999g999g999g999'')        "Whole tab delta, B"',
+'       ,round(100*(pd.parent_table_delta/decode(od.object_sizes_delta,0,null,od.object_sizes_delta)),2) "Tab delta % flt delta"',
+'       ,round(100*(pd.parent_table_delta/decode(td.tot_delta,0,null,td.tot_delta)),2)                   "Tab delta % tot delta"',
+'       ,round(100*(pd.size_bytes/decode(od.size_bytes,0,null,od.size_bytes)),2)                         "Tab % flt"',
+'       ,round(100*(pd.size_bytes/decode(td.seg_occupied,0,null,td.seg_occupied)),2)                     "Tab % tot"',
+'from object_delta o,',
+'     tot_deltas td,',
+'     object_sizes_deltas od,',
+'     parent_delta_negative pd',
+'where o.dbgdp_id = td.dbgdp_id',
+'  and o.dbgdp_id = od.dbgdp_id',
+'  and o.dbgdp_id = pd.dbgdp_id and o.parent_table = pd.parent_table',
+'  and pd.parent_num<= decode(:P5003_TOP_N,0,pd.parent_num,:P5003_TOP_N)',
+'  and o.dbgdp_id > nvl(:P5003_START_DT,0)',
+'  and o.dbgdp_id between nvl(:P5003_START_DT,0) and :P5003_END_DT',
+'--  and o.dbgdp_id in (:P5003_START_DT, :P5003_END_DT)',
+'  and o.seg_delta < 0'))
+,p_plug_source_type=>'NATIVE_IR'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_plug_display_condition_type=>'NEVER'
+,p_prn_content_disposition=>'ATTACHMENT'
+,p_prn_document_header=>'APEX'
+,p_prn_units=>'INCHES'
+,p_prn_paper_size=>'LETTER'
+,p_prn_width=>8.5
+,p_prn_height=>11
+,p_prn_orientation=>'HORIZONTAL'
+,p_prn_page_header_font_color=>'#000000'
+,p_prn_page_header_font_family=>'Helvetica'
+,p_prn_page_header_font_weight=>'normal'
+,p_prn_page_header_font_size=>'12'
+,p_prn_page_footer_font_color=>'#000000'
+,p_prn_page_footer_font_family=>'Helvetica'
+,p_prn_page_footer_font_weight=>'normal'
+,p_prn_page_footer_font_size=>'12'
+,p_prn_header_bg_color=>'#9bafde'
+,p_prn_header_font_color=>'#000000'
+,p_prn_header_font_family=>'Helvetica'
+,p_prn_header_font_weight=>'normal'
+,p_prn_header_font_size=>'10'
+,p_prn_body_bg_color=>'#efefef'
+,p_prn_body_font_color=>'#000000'
+,p_prn_body_font_family=>'Helvetica'
+,p_prn_body_font_weight=>'normal'
+,p_prn_body_font_size=>'10'
+,p_prn_border_width=>.5
+,p_prn_page_header_alignment=>'CENTER'
+,p_prn_page_footer_alignment=>'CENTER'
+);
+end;
+/
+begin
+wwv_flow_api.create_worksheet(
+ p_id=>wwv_flow_api.id(67210907371086621)
+,p_max_row_count=>'1000000'
+,p_show_nulls_as=>'-'
+,p_pagination_type=>'ROWS_X_TO_Y'
+,p_pagination_display_pos=>'BOTTOM_RIGHT'
+,p_report_list_mode=>'TABS'
+,p_show_detail_link=>'N'
+,p_show_notify=>'Y'
+,p_download_formats=>'CSV:HTML:EMAIL:XLS:PDF:RTF'
+,p_owner=>'OPAS60DADM'
+,p_internal_uid=>67210907371086621
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67211066057086622)
+,p_db_column_name=>'PARENT_TABLE'
+,p_display_order=>10
+,p_column_identifier=>'A'
+,p_column_label=>'Parent Table'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67211184303086623)
+,p_db_column_name=>'SUB_OBJECT'
+,p_display_order=>20
+,p_column_identifier=>'B'
+,p_column_label=>'Sub Object'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67211298833086624)
+,p_db_column_name=>'Seg size'
+,p_display_order=>30
+,p_column_identifier=>'C'
+,p_column_label=>'Seg Size'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67211396061086625)
+,p_db_column_name=>'Seg % tot'
+,p_display_order=>40
+,p_column_identifier=>'D'
+,p_column_label=>'Seg % Tot'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67211462103086626)
+,p_db_column_name=>'Seg delta'
+,p_display_order=>50
+,p_column_identifier=>'E'
+,p_column_label=>'Seg Delta'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67211569735086627)
+,p_db_column_name=>'Seg delta % flt delta'
+,p_display_order=>60
+,p_column_identifier=>'F'
+,p_column_label=>'Seg Delta % Flt Delta'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67211698833086628)
+,p_db_column_name=>'Seg delta % tot delta'
+,p_display_order=>70
+,p_column_identifier=>'G'
+,p_column_label=>'Seg Delta % Tot Delta'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67211717732086629)
+,p_db_column_name=>'Whole tab'
+,p_display_order=>80
+,p_column_identifier=>'H'
+,p_column_label=>'Whole Tab'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67211892688086630)
+,p_db_column_name=>'Whole tab delta'
+,p_display_order=>90
+,p_column_identifier=>'I'
+,p_column_label=>'Whole Tab Delta'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67211929913086631)
+,p_db_column_name=>'Tab delta % flt delta'
+,p_display_order=>100
+,p_column_identifier=>'J'
+,p_column_label=>'Tab Delta % Flt Delta'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67212029226086632)
+,p_db_column_name=>'Tab delta % tot delta'
+,p_display_order=>110
+,p_column_identifier=>'K'
+,p_column_label=>'Tab Delta % Tot Delta'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67212129549086633)
+,p_db_column_name=>'Tab % flt'
+,p_display_order=>120
+,p_column_identifier=>'L'
+,p_column_label=>'Tab % Flt'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67212274712086634)
+,p_db_column_name=>'Tab % tot'
+,p_display_order=>130
+,p_column_identifier=>'M'
+,p_column_label=>'Tab % Tot'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67212310266086635)
+,p_db_column_name=>'SNAPPED_AT'
+,p_display_order=>140
+,p_column_identifier=>'N'
+,p_column_label=>'Snapped At'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67213796474086649)
+,p_db_column_name=>'Seg size, B'
+,p_display_order=>150
+,p_column_identifier=>'O'
+,p_column_label=>'Seg Size, B'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67213824725086650)
+,p_db_column_name=>'Seg delta, B'
+,p_display_order=>160
+,p_column_identifier=>'P'
+,p_column_label=>'Seg Delta, B'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67279524088803301)
+,p_db_column_name=>'Whole tab, B'
+,p_display_order=>170
+,p_column_identifier=>'Q'
+,p_column_label=>'Whole Tab, B'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67279603299803302)
+,p_db_column_name=>'Whole tab delta, B'
+,p_display_order=>180
+,p_column_identifier=>'R'
+,p_column_label=>'Whole Tab Delta, B'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_rpt(
+ p_id=>wwv_flow_api.id(67257794808160465)
+,p_application_user=>'APXWS_DEFAULT'
+,p_report_seq=>10
+,p_report_alias=>'672578'
+,p_status=>'PUBLIC'
+,p_is_default=>'Y'
+,p_report_columns=>'PARENT_TABLE:SUB_OBJECT:Seg size:Seg % tot:Seg delta:Seg delta % flt delta:Seg delta % tot delta:Whole tab:Whole tab delta:Tab delta % flt delta:Tab delta % tot delta:Tab % flt:Tab % tot:SNAPPED_AT:Seg size, B:Seg delta, B:Whole tab, B:Whole tab delt'
+||'a, B'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(67280295389803308)
+,p_plug_name=>'Total space'
+,p_parent_plug_id=>wwv_flow_api.id(77704938321359436)
+,p_region_template_options=>'#DEFAULT#'
+,p_component_template_options=>'#DEFAULT#'
+,p_plug_template=>wwv_flow_api.id(58959020573993670)
+,p_plug_display_sequence=>115
+,p_plug_display_point=>'BODY'
+,p_query_type=>'SQL'
+,p_plug_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select',
+'  dbgdp_id,to_char(snapped,''YYYY-MM-DD HH24:MI'') snapped,',
+'  tot_occupied "Total Occupied, Bytes",                        COREMOD_REPORT_UTILS.to_hr_num(tot_occupied) "Total Occupied",',
+'  delta_tot_occupied "Delta Total Occupied, Bytes",            COREMOD_REPORT_UTILS.to_hr_num(delta_tot_occupied) "Delta Total Occupied",',
+'  bin_occupied "Recycle Bin, Bytes",                           COREMOD_REPORT_UTILS.to_hr_num(bin_occupied) "Recycle Bin",',
+'  delta_bin_occupied "Delta Recycle Bin, Bytes",               COREMOD_REPORT_UTILS.to_hr_num(delta_bin_occupied) "Delta Recycle Bin",',
+'  seg_occupied "Segments, Bytes",                              COREMOD_REPORT_UTILS.to_hr_num(seg_occupied) "Segments",',
+'  delta_seg_occupied "Delta Segments, Bytes",                  COREMOD_REPORT_UTILS.to_hr_num(delta_seg_occupied) "Delta Segments",',
+'  tot_free "Free, Bytes",                                      COREMOD_REPORT_UTILS.to_hr_num(tot_free) "Free",',
+'  delta_tot_free "Delta Free, Bytes",                          COREMOD_REPORT_UTILS.to_hr_num(delta_tot_free) "Delta Free",',
+'  curr_available "Currently Available, Bytes",                 COREMOD_REPORT_UTILS.to_hr_num(curr_available) "Currently Available",',
+'  delta_curr_available "Delta Currently Available, Bytes",     COREMOD_REPORT_UTILS.to_hr_num(delta_curr_available) "Delta Currently Available",',
+'  ext_available "Available with Extension, Bytes",             COREMOD_REPORT_UTILS.to_hr_num(ext_available) "Available with Extension",',
+'  delta_ext_available "Delta Available with Extension, Bytes", COREMOD_REPORT_UTILS.to_hr_num(delta_ext_available) "Delta Available with Extension"',
+'from (',
+'select',
+'  x.*,',
+'  tot_occupied - lag (tot_occupied,1,0)over(order by snapped) delta_tot_occupied,',
+'  bin_occupied - lag (bin_occupied,1,0)over(order by snapped) delta_bin_occupied,',
+'  seg_occupied - lag (seg_occupied,1,0)over(order by snapped) delta_seg_occupied,',
+'  tot_free - lag (tot_free,1,0)over(order by snapped) delta_tot_free,',
+'  curr_available - lag (curr_available,1,0)over(order by snapped) delta_curr_available,',
+'  ext_available - lag (ext_available,1,0)over(order by snapped) delta_ext_available',
+'from (',
+'select dp.dbgdp_id,',
+'       dp.snapped,',
+'       sum(tot_occupied) tot_occupied,',
+'       sum(bin_occupied) bin_occupied,',
+'       sum(seg_occupied) seg_occupied,',
+'       sum(tot_free) tot_free,',
+'       sum(curr_available) curr_available,',
+'       sum(ext_available) ext_available',
+'  from OPAS_OT_DBG_TS_SIZES t, opas_ot_dbg_datapoint dp',
+'  where t.dbgdp_id = dp.dbgdp_id',
+'    and dp.dbgdp_id between nvl(:P5003_START_DT,0) and :P5003_END_DT',
+'    and dp.dbg_id = :P5003_DBG_ID',
+' group by dp.dbgdp_id, dp.snapped) x) x1'))
+,p_plug_source_type=>'NATIVE_IR'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_prn_content_disposition=>'ATTACHMENT'
+,p_prn_document_header=>'APEX'
+,p_prn_units=>'INCHES'
+,p_prn_paper_size=>'LETTER'
+,p_prn_width=>8.5
+,p_prn_height=>11
+,p_prn_orientation=>'HORIZONTAL'
+,p_prn_page_header_font_color=>'#000000'
+,p_prn_page_header_font_family=>'Helvetica'
+,p_prn_page_header_font_weight=>'normal'
+,p_prn_page_header_font_size=>'12'
+,p_prn_page_footer_font_color=>'#000000'
+,p_prn_page_footer_font_family=>'Helvetica'
+,p_prn_page_footer_font_weight=>'normal'
+,p_prn_page_footer_font_size=>'12'
+,p_prn_header_bg_color=>'#9bafde'
+,p_prn_header_font_color=>'#000000'
+,p_prn_header_font_family=>'Helvetica'
+,p_prn_header_font_weight=>'normal'
+,p_prn_header_font_size=>'10'
+,p_prn_body_bg_color=>'#efefef'
+,p_prn_body_font_color=>'#000000'
+,p_prn_body_font_family=>'Helvetica'
+,p_prn_body_font_weight=>'normal'
+,p_prn_body_font_size=>'10'
+,p_prn_border_width=>.5
+,p_prn_page_header_alignment=>'CENTER'
+,p_prn_page_footer_alignment=>'CENTER'
+);
+wwv_flow_api.create_worksheet(
+ p_id=>wwv_flow_api.id(67280365736803309)
+,p_max_row_count=>'1000000'
+,p_show_nulls_as=>'-'
+,p_pagination_type=>'ROWS_X_TO_Y'
+,p_pagination_display_pos=>'BOTTOM_RIGHT'
+,p_report_list_mode=>'TABS'
+,p_show_detail_link=>'N'
+,p_show_notify=>'Y'
+,p_download_formats=>'CSV:HTML:EMAIL:XLS:PDF:RTF'
+,p_owner=>'OPAS60DADM'
+,p_internal_uid=>67280365736803309
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67280492541803310)
+,p_db_column_name=>'DBGDP_ID'
+,p_display_order=>10
+,p_column_identifier=>'A'
+,p_column_label=>'Dbgdp Id'
+,p_column_type=>'NUMBER'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67280518809803311)
+,p_db_column_name=>'SNAPPED'
+,p_display_order=>20
+,p_column_identifier=>'B'
+,p_column_label=>'Snapped'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67280649700803312)
+,p_db_column_name=>'Total Occupied, Bytes'
+,p_display_order=>30
+,p_column_identifier=>'C'
+,p_column_label=>'Total Occupied, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67280792916803313)
+,p_db_column_name=>'Total Occupied'
+,p_display_order=>40
+,p_column_identifier=>'D'
+,p_column_label=>'Total Occupied'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67280885872803314)
+,p_db_column_name=>'Delta Total Occupied, Bytes'
+,p_display_order=>50
+,p_column_identifier=>'E'
+,p_column_label=>'Delta Total Occupied, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67280991619803315)
+,p_db_column_name=>'Delta Total Occupied'
+,p_display_order=>60
+,p_column_identifier=>'F'
+,p_column_label=>'Delta Total Occupied'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67281098091803316)
+,p_db_column_name=>'Recycle Bin, Bytes'
+,p_display_order=>70
+,p_column_identifier=>'G'
+,p_column_label=>'Recycle Bin, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67281148757803317)
+,p_db_column_name=>'Recycle Bin'
+,p_display_order=>80
+,p_column_identifier=>'H'
+,p_column_label=>'Recycle Bin'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67281272730803318)
+,p_db_column_name=>'Delta Recycle Bin, Bytes'
+,p_display_order=>90
+,p_column_identifier=>'I'
+,p_column_label=>'Delta Recycle Bin, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67281384645803319)
+,p_db_column_name=>'Delta Recycle Bin'
+,p_display_order=>100
+,p_column_identifier=>'J'
+,p_column_label=>'Delta Recycle Bin'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67281449050803320)
+,p_db_column_name=>'Segments, Bytes'
+,p_display_order=>110
+,p_column_identifier=>'K'
+,p_column_label=>'Segments, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67281565607803321)
+,p_db_column_name=>'Segments'
+,p_display_order=>120
+,p_column_identifier=>'L'
+,p_column_label=>'Segments'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67281613657803322)
+,p_db_column_name=>'Delta Segments, Bytes'
+,p_display_order=>130
+,p_column_identifier=>'M'
+,p_column_label=>'Delta Segments, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67281722211803323)
+,p_db_column_name=>'Delta Segments'
+,p_display_order=>140
+,p_column_identifier=>'N'
+,p_column_label=>'Delta Segments'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67281869508803324)
+,p_db_column_name=>'Free, Bytes'
+,p_display_order=>150
+,p_column_identifier=>'O'
+,p_column_label=>'Free, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67281996222803325)
+,p_db_column_name=>'Free'
+,p_display_order=>160
+,p_column_identifier=>'P'
+,p_column_label=>'Free'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67282091120803326)
+,p_db_column_name=>'Delta Free, Bytes'
+,p_display_order=>170
+,p_column_identifier=>'Q'
+,p_column_label=>'Delta Free, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67282171620803327)
+,p_db_column_name=>'Delta Free'
+,p_display_order=>180
+,p_column_identifier=>'R'
+,p_column_label=>'Delta Free'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67282253500803328)
+,p_db_column_name=>'Currently Available, Bytes'
+,p_display_order=>190
+,p_column_identifier=>'S'
+,p_column_label=>'Currently Available, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67282308039803329)
+,p_db_column_name=>'Currently Available'
+,p_display_order=>200
+,p_column_identifier=>'T'
+,p_column_label=>'Currently Available'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67282402845803330)
+,p_db_column_name=>'Delta Currently Available, Bytes'
+,p_display_order=>210
+,p_column_identifier=>'U'
+,p_column_label=>'Delta Currently Available, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67282533050803331)
+,p_db_column_name=>'Delta Currently Available'
+,p_display_order=>220
+,p_column_identifier=>'V'
+,p_column_label=>'Delta Currently Available'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67282683576803332)
+,p_db_column_name=>'Available with Extension, Bytes'
+,p_display_order=>230
+,p_column_identifier=>'W'
+,p_column_label=>'Available With Extension, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67282714415803333)
+,p_db_column_name=>'Available with Extension'
+,p_display_order=>240
+,p_column_identifier=>'X'
+,p_column_label=>'Available With Extension'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67282893289803334)
+,p_db_column_name=>'Delta Available with Extension, Bytes'
+,p_display_order=>250
+,p_column_identifier=>'Y'
+,p_column_label=>'Delta Available With Extension, Bytes'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(67282932209803335)
+,p_db_column_name=>'Delta Available with Extension'
+,p_display_order=>260
+,p_column_identifier=>'Z'
+,p_column_label=>'Delta Available With Extension'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_rpt(
+ p_id=>wwv_flow_api.id(67319104967197062)
+,p_application_user=>'APXWS_DEFAULT'
+,p_report_seq=>10
+,p_report_alias=>'673192'
+,p_status=>'PUBLIC'
+,p_is_default=>'Y'
+,p_report_columns=>'DBGDP_ID:SNAPPED:Total Occupied, Bytes:Total Occupied:Delta Total Occupied, Bytes:Delta Total Occupied:Recycle Bin, Bytes:Recycle Bin:Delta Recycle Bin, Bytes:Delta Recycle Bin:Segments, Bytes:Segments:Delta Segments, Bytes:Delta Segments:Free, Bytes'
+||':Free:Delta Free, Bytes:Delta Free:Currently Available, Bytes:Currently Available:Delta Currently Available, Bytes:Delta Currently Available:Available with Extension, Bytes:Available with Extension:Delta Available with Extension, Bytes:Delta Availabl'
+||'e with Extension'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(67321366493213115)
+,p_plug_name=>'Totals by tablespaces'
+,p_parent_plug_id=>wwv_flow_api.id(77704938321359436)
+,p_region_template_options=>'#DEFAULT#'
+,p_component_template_options=>'#DEFAULT#'
+,p_plug_template=>wwv_flow_api.id(58959020573993670)
+,p_plug_display_sequence=>125
 ,p_plug_display_point=>'BODY'
 ,p_query_type=>'SQL'
 ,p_plug_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
@@ -33962,487 +34470,13 @@ wwv_flow_api.create_worksheet_rpt(
 ||'ta Available with Extension'
 );
 wwv_flow_api.create_page_plug(
- p_id=>wwv_flow_api.id(200725698136405518)
-,p_plug_name=>'Object sizes'
-,p_parent_plug_id=>wwv_flow_api.id(67151697618285125)
-,p_region_template_options=>'#DEFAULT#:t-Region--removeHeader:t-Region--scrollBody'
-,p_escape_on_http_output=>'Y'
-,p_plug_template=>wwv_flow_api.id(58960191682993672)
-,p_plug_display_sequence=>20
-,p_plug_display_point=>'BODY'
-,p_plug_source_type=>'NATIVE_JET_CHART'
-,p_plug_query_num_rows=>15
-,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
-);
-wwv_flow_api.create_jet_chart(
- p_id=>wwv_flow_api.id(67191138043627341)
-,p_region_id=>wwv_flow_api.id(200725698136405518)
-,p_chart_type=>'line'
-,p_height=>'350'
-,p_animation_on_display=>'none'
-,p_animation_on_data_change=>'none'
-,p_orientation=>'vertical'
-,p_data_cursor=>'auto'
-,p_data_cursor_behavior=>'auto'
-,p_hide_and_show_behavior=>'none'
-,p_hover_behavior=>'none'
-,p_stack=>'off'
-,p_connect_nulls=>'Y'
-,p_sorting=>'label-asc'
-,p_fill_multi_series_gaps=>true
-,p_zoom_and_scroll=>'delayed'
-,p_initial_zooming=>'none'
-,p_tooltip_rendered=>'Y'
-,p_show_series_name=>true
-,p_show_group_name=>true
-,p_show_value=>true
-,p_show_label=>true
-,p_legend_rendered=>'on'
-,p_legend_position=>'top'
-,p_overview_rendered=>'off'
-,p_time_axis_type=>'enabled'
-);
-wwv_flow_api.create_jet_chart_series(
- p_id=>wwv_flow_api.id(67192821875627361)
-,p_chart_id=>wwv_flow_api.id(67191138043627341)
-,p_seq=>10
-,p_name=>'Objects'
-,p_data_source_type=>'SQL'
-,p_data_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'/*select /+ gather_plan_statistics use_hash(s) full(s) use_hash(dp) NO_STAR_TRANSFORMATION qb_name(OPAS60_DBG_MAIN_CHART) / dp.snapped tim, sum(s.size_bytes) val, ''Size, Bytes'' nm',
-'  from v$opas_dbg_selected_objects o,',
-'       opas_ot_dbg_seg_sizes       s,',
-'       opas_ot_dbg_datapoint       dp',
-' where o.dbgobj_id = s.dbgobj_id',
-'   and o.dbg_id = dp.dbg_id ',
-'   and s.dbgdp_id = dp.dbgdp_id',
-'   and (dp.dbgdp_id >= nvl(:P5003_START_DT,0))',
-'   and (dp.dbgdp_id <= :P5003_END_DT)',
-'   and (s.dbgdp_id >= nvl(:P5003_START_DT,0))',
-'   and (s.dbgdp_id <= :P5003_END_DT)   ',
-'   and dp.dbg_id = :P5003_DBG_ID',
-'   --and dp.snapped >= o.start_date and dp.snapped < o.end_date',
-' group by dp.snapped',
-' order by dp.snapped*/',
-'select /*+ qb_name(OPAS60_DBG_MAIN_CHART) gather_plan_statistics_ */',
-'       snapped tim, sum(size_bytes) val, ''Size, Bytes'' nm',
-'  from V$OPAS_DBG_SELECTED_OBJECTS_V3',
-'group by snapped',
-'order by snapped; '))
-,p_series_name_column_name=>'NM'
-,p_items_value_column_name=>'VAL'
-,p_items_label_column_name=>'TIM'
-,p_line_style=>'solid'
-,p_line_type=>'auto'
-,p_marker_rendered=>'auto'
-,p_marker_shape=>'auto'
-,p_assigned_to_y2=>'off'
-,p_items_label_rendered=>false
-);
-wwv_flow_api.create_jet_chart_axis(
- p_id=>wwv_flow_api.id(67191645538627349)
-,p_chart_id=>wwv_flow_api.id(67191138043627341)
-,p_axis=>'x'
-,p_is_rendered=>'on'
-,p_format_scaling=>'auto'
-,p_scaling=>'linear'
-,p_baseline_scaling=>'zero'
-,p_major_tick_rendered=>'on'
-,p_minor_tick_rendered=>'off'
-,p_tick_label_rendered=>'on'
-,p_tick_label_rotation=>'auto'
-,p_tick_label_position=>'outside'
-,p_zoom_order_seconds=>false
-,p_zoom_order_minutes=>false
-,p_zoom_order_hours=>false
-,p_zoom_order_days=>false
-,p_zoom_order_weeks=>false
-,p_zoom_order_months=>false
-,p_zoom_order_quarters=>false
-,p_zoom_order_years=>false
-);
-wwv_flow_api.create_jet_chart_axis(
- p_id=>wwv_flow_api.id(67192205924627355)
-,p_chart_id=>wwv_flow_api.id(67191138043627341)
-,p_axis=>'y'
-,p_is_rendered=>'on'
-,p_format_scaling=>'auto'
-,p_scaling=>'linear'
-,p_baseline_scaling=>'min'
-,p_position=>'auto'
-,p_major_tick_rendered=>'on'
-,p_minor_tick_rendered=>'off'
-,p_tick_label_rendered=>'on'
-);
-wwv_flow_api.create_page_plug(
- p_id=>wwv_flow_api.id(67210821551086620)
-,p_plug_name=>'Top Growing Objects Report'
-,p_parent_plug_id=>wwv_flow_api.id(200725698136405518)
-,p_region_template_options=>'#DEFAULT#'
-,p_component_template_options=>'#DEFAULT#'
-,p_plug_template=>wwv_flow_api.id(58959020573993670)
-,p_plug_display_sequence=>60
-,p_plug_display_point=>'BODY'
-,p_query_type=>'SQL'
-,p_plug_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'with object_sizes as ',
-'(select /*+ NO_STAR_TRANSFORMATION use_hash(s) gather_plan_statistics */',
-'       dp.snapped, dp.dbgdp_id',
-'      ,o.prnt_table||'' (''||o.prnt_table_type||'')'' parent_table',
-'      ,o.object_type||'': ''||o.object_name|| case when o.subobject_name is not null then ''.''||o.subobject_name end ||'' (''||o.object_class||'')'' sub_object',
-'      ,nvl(s.size_bytes,0) size_bytes',
-'from V$OPAS_DBG_SELECTED_OBJECTS o,',
-'     opas_ot_dbg_seg_sizes s,     ',
-'     opas_ot_dbg_datapoint dp',
-'where o.dbgobj_id = s.dbgobj_id(+)',
-'  and dp.dbgdp_id = s.dbgdp_id(+)',
-'  and dp.dbg_id = o.dbg_id',
-'  and dp.dbgdp_id in (:P5003_START_DT, :P5003_END_DT)',
-'  and dp.dbg_id = :P5003_DBG_ID',
-'  --and dp.snapped >= o.start_date and dp.snapped < o.end_date',
-'),',
-'object_delta as (',
-'   select x.*,',
-'          case when seg_delta > 0 then',
-'            row_number() over (partition by snapped, parent_table order by seg_delta desc, size_bytes desc) ',
-'          else ',
-'            row_number() over (partition by snapped, parent_table order by seg_delta asc, size_bytes desc) ',
-'          end ',
-'        seg_num',
-'     from (',
-'   select snapped, dbgdp_id, parent_table, sub_object, size_bytes, ',
-'          size_bytes - lag (size_bytes,1,0) over (partition by parent_table, sub_object order by snapped) seg_delta',
-'     from object_sizes) x',
-'     where seg_delta != 0),   ',
-'parent_delta as (',
-'   select x.*,',
-'          row_number() over (partition by snapped order by parent_table_delta desc, size_bytes desc) parent_num',
-'    from (select snapped, dbgdp_id, parent_table, size_bytes, ',
-'                 size_bytes - lag (size_bytes,1,0) over (partition by parent_table order by snapped) parent_table_delta          ',
-'            from (select snapped, dbgdp_id, parent_table, sum(size_bytes) size_bytes',
-'                    from object_sizes',
-'                   group by  snapped, dbgdp_id, parent_table)',
-'         ) x where parent_table_delta != 0), ',
-'parent_delta_negative as (',
-'   select x.*,',
-'          row_number() over (partition by snapped order by parent_table_delta asc, size_bytes desc) parent_num',
-'    from (select snapped, dbgdp_id, parent_table, sum(size_bytes) size_bytes, sum(seg_delta) parent_table_delta',
-'                    from object_delta',
-'                   where seg_delta < 0',
-'                   group by snapped, dbgdp_id, parent_table',
-'         ) x),    ',
-'object_sizes_total as (',
-'   select  snapped, dbgdp_id, sum(size_bytes) size_bytes',
-'     from object_sizes',
-'    group by  snapped, dbgdp_id),',
-'object_sizes_deltas as (',
-'   select  snapped, dbgdp_id, size_bytes, size_bytes - lag(size_bytes,1,0) over (order by snapped) object_sizes_delta',
-'     from object_sizes_total),    ',
-'tot_sizes as (select dp.snapped, dp.dbgdp_id, ',
-'                     sum(seg_occupied) seg_occupied',
-'                from opas_ot_dbg_ts_sizes ts, ',
-'                     opas_ot_dbg_datapoint dp,',
-'                     opas_ot_dbg_report_pars pars',
-'               where ts.dbgdp_id = dp.dbgdp_id',
-'                 and dp.dbg_id = pars.dbgso_dbg_id',
-'                 and dp.dbgdp_id in (:P5003_START_DT, :P5003_END_DT)',
-'                 and pars.apex_sess = V(''SESSION'')',
-'               group by dp.snapped, dp.dbgdp_id),',
-'tot_deltas as (',
-'  select snapped, dbgdp_id, seg_occupied, seg_occupied - lag(seg_occupied,1,0) over (order by snapped) tot_delta',
-'    from tot_sizes',
-')',
-'select /*+ NO_STAR_TRANSFORMATION qb_name(OPAS60_DBG_MAIN_REPORT) */',
-'       to_char(o.snapped,''YYYY-MM-DD HH24:MI'') || --case when o.seg_delta > 0 then ''; Growing: '' else ''; Decreasing: '' end ||',
-'         ''; Grown: Schema delta: '' || COREMOD_REPORT_UTILS.to_hr_num(td.tot_delta)  || '' ('' || to_char(td.tot_delta,''FM999g999g999g999g999'') || '') / Filtered delta: '' || COREMOD_REPORT_UTILS.to_hr_num(od.object_sizes_delta)  || '' ('' || to_char(od.obj'
-||'ect_sizes_delta,''FM999g999g999g999g999'') || '')'' ||case when td.tot_delta<>0 then  '' ('' || round(100*(od.object_sizes_delta/td.tot_delta),2)  || ''%)'' end ||',
-'         ''; Total size: ''   || COREMOD_REPORT_UTILS.to_hr_num(td.seg_occupied) || '' ('' || to_char(td.seg_occupied,''FM999g999g999g999g999'') || '') / Filtered size: ''  || COREMOD_REPORT_UTILS.to_hr_num(od.size_bytes)     || '' ('' || to_char(od.size_bytes'
-||',''FM999g999g999g999g999'') || '')'' || case when td.seg_occupied<>0 then  '' ('' || round(100*(od.size_bytes/td.seg_occupied),2)|| ''%)'' end',
-'       snapped_at',
-'       --,o.snapped, o.dbgdp_id',
-'       ,lpad(pd.parent_num,2,''0'')||''.''||lpad(o.seg_num,2,''0'')||''.''|| o.parent_table parent_table, o.sub_object',
-'       ,COREMOD_REPORT_UTILS.to_hr_num(o.size_bytes)                  "Seg size"',
-'       ,to_char(o.size_bytes,''FM999g999g999g999g999'')                 "Seg size, B"',
-'       ,round(100*(o.size_bytes/decode(td.seg_occupied,0,null,td.seg_occupied)),2)                      "Seg % tot"',
-'       ,COREMOD_REPORT_UTILS.to_hr_num(o.seg_delta)                   "Seg delta"  ',
-'       ,to_char(o.seg_delta,''FM999g999g999g999g999'')                  "Seg delta, B" ',
-'       ,round(100*(o.seg_delta/decode(od.object_sizes_delta,0,null,od.object_sizes_delta)),2)           "Seg delta % flt delta"',
-'       ,round(100*(o.seg_delta/decode(td.tot_delta,0,null,td.tot_delta)),2)                             "Seg delta % tot delta"',
-'       ,COREMOD_REPORT_UTILS.to_hr_num(pd.size_bytes)                 "Whole tab"',
-'       ,to_char(pd.size_bytes,''FM999g999g999g999g999'')                "Whole tab, B"',
-'       ,COREMOD_REPORT_UTILS.to_hr_num(pd.parent_table_delta)         "Whole tab delta"',
-'       ,to_char(pd.parent_table_delta,''FM999g999g999g999g999'')        "Whole tab delta, B"',
-'       ,round(100*(pd.parent_table_delta/decode(od.object_sizes_delta,0,null,od.object_sizes_delta)),2) "Tab delta % flt delta"',
-'       ,round(100*(pd.parent_table_delta/decode(td.tot_delta,0,null,td.tot_delta)),2)                   "Tab delta % tot delta"',
-'       ,round(100*(pd.size_bytes/decode(od.size_bytes,0,null,od.size_bytes)),2)                         "Tab % flt"',
-'       ,round(100*(pd.size_bytes/decode(td.seg_occupied,0,null,td.seg_occupied)),2)                     "Tab % tot"',
-'from object_delta o,',
-'     tot_deltas td,',
-'     object_sizes_deltas od,',
-'     parent_delta pd',
-'where o.dbgdp_id = td.dbgdp_id',
-'  and o.dbgdp_id = od.dbgdp_id',
-'  and o.dbgdp_id = pd.dbgdp_id and o.parent_table = pd.parent_table',
-'  and pd.parent_num<= decode(:P5003_TOP_N,0,pd.parent_num,:P5003_TOP_N)',
-'  and o.dbgdp_id > nvl(:P5003_START_DT,0)',
-'  and o.dbgdp_id between nvl(:P5003_START_DT,0) and :P5003_END_DT',
-'--  and o.dbgdp_id in (:P5003_START_DT, :P5003_END_DT)',
-'  and o.seg_delta > 0',
-'  union all',
-'select /*+ NO_STAR_TRANSFORMATION qb_name(OPAS60_DBG_MAIN_REPORT) */',
-'       to_char(o.snapped,''YYYY-MM-DD HH24:MI'') || --case when o.seg_delta > 0 then ''; Growing: '' else ''; Decreasing: '' end ||',
-'         ''; Decreased: Schema delta: '' || COREMOD_REPORT_UTILS.to_hr_num(td.tot_delta)  || '' ('' || to_char(td.tot_delta,''FM999g999g999g999g999'') || '') / Filtered delta: '' || COREMOD_REPORT_UTILS.to_hr_num(od.object_sizes_delta)  || '' ('' || to_char(od'
-||'.object_sizes_delta,''FM999g999g999g999g999'') || '')'' ||case when td.tot_delta<>0 then  '' ('' || round(100*(od.object_sizes_delta/td.tot_delta),2)  || ''%)'' end ||',
-'         ''; Total size: ''   || COREMOD_REPORT_UTILS.to_hr_num(td.seg_occupied) || '' ('' || to_char(td.seg_occupied,''FM999g999g999g999g999'') || '') / Filtered size: ''  || COREMOD_REPORT_UTILS.to_hr_num(od.size_bytes)     || '' ('' || to_char(od.size_bytes'
-||',''FM999g999g999g999g999'') || '')'' || case when td.seg_occupied<>0 then  '' ('' || round(100*(od.size_bytes/td.seg_occupied),2)|| ''%)'' end',
-'       snapped_at',
-'       --,o.snapped, o.dbgdp_id',
-'       ,lpad(pd.parent_num,2,''0'')||''.''||lpad(o.seg_num,2,''0'')||''.''|| o.parent_table parent_table, o.sub_object',
-'       ,COREMOD_REPORT_UTILS.to_hr_num(o.size_bytes)                  "Seg size"',
-'       ,to_char(o.size_bytes,''FM999g999g999g999g999'')                 "Seg size, B"',
-'       ,round(100*(o.size_bytes/decode(td.seg_occupied,0,null,td.seg_occupied)),2)                      "Seg % tot"',
-'       ,COREMOD_REPORT_UTILS.to_hr_num(o.seg_delta)                   "Seg delta"  ',
-'       ,to_char(o.seg_delta,''FM999g999g999g999g999'')                  "Seg delta, B" ',
-'       ,round(100*(o.seg_delta/decode(od.object_sizes_delta,0,null,od.object_sizes_delta)),2)           "Seg delta % flt delta"',
-'       ,round(100*(o.seg_delta/decode(td.tot_delta,0,null,td.tot_delta)),2)                             "Seg delta % tot delta"',
-'       ,COREMOD_REPORT_UTILS.to_hr_num(pd.size_bytes)                 "Whole tab"',
-'       ,to_char(pd.size_bytes,''FM999g999g999g999g999'')                "Whole tab, B"',
-'       ,COREMOD_REPORT_UTILS.to_hr_num(pd.parent_table_delta)         "Whole tab delta"',
-'       ,to_char(pd.parent_table_delta,''FM999g999g999g999g999'')        "Whole tab delta, B"',
-'       ,round(100*(pd.parent_table_delta/decode(od.object_sizes_delta,0,null,od.object_sizes_delta)),2) "Tab delta % flt delta"',
-'       ,round(100*(pd.parent_table_delta/decode(td.tot_delta,0,null,td.tot_delta)),2)                   "Tab delta % tot delta"',
-'       ,round(100*(pd.size_bytes/decode(od.size_bytes,0,null,od.size_bytes)),2)                         "Tab % flt"',
-'       ,round(100*(pd.size_bytes/decode(td.seg_occupied,0,null,td.seg_occupied)),2)                     "Tab % tot"',
-'from object_delta o,',
-'     tot_deltas td,',
-'     object_sizes_deltas od,',
-'     parent_delta_negative pd',
-'where o.dbgdp_id = td.dbgdp_id',
-'  and o.dbgdp_id = od.dbgdp_id',
-'  and o.dbgdp_id = pd.dbgdp_id and o.parent_table = pd.parent_table',
-'  and pd.parent_num<= decode(:P5003_TOP_N,0,pd.parent_num,:P5003_TOP_N)',
-'  and o.dbgdp_id > nvl(:P5003_START_DT,0)',
-'  and o.dbgdp_id between nvl(:P5003_START_DT,0) and :P5003_END_DT',
-'--  and o.dbgdp_id in (:P5003_START_DT, :P5003_END_DT)',
-'  and o.seg_delta < 0'))
-,p_plug_source_type=>'NATIVE_IR'
-,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
-,p_plug_display_condition_type=>'ITEM_IS_NOT_NULL'
-,p_plug_display_when_condition=>'P5003_TOP_N'
-,p_prn_content_disposition=>'ATTACHMENT'
-,p_prn_document_header=>'APEX'
-,p_prn_units=>'INCHES'
-,p_prn_paper_size=>'LETTER'
-,p_prn_width=>8.5
-,p_prn_height=>11
-,p_prn_orientation=>'HORIZONTAL'
-,p_prn_page_header_font_color=>'#000000'
-,p_prn_page_header_font_family=>'Helvetica'
-,p_prn_page_header_font_weight=>'normal'
-,p_prn_page_header_font_size=>'12'
-,p_prn_page_footer_font_color=>'#000000'
-,p_prn_page_footer_font_family=>'Helvetica'
-,p_prn_page_footer_font_weight=>'normal'
-,p_prn_page_footer_font_size=>'12'
-,p_prn_header_bg_color=>'#9bafde'
-,p_prn_header_font_color=>'#000000'
-,p_prn_header_font_family=>'Helvetica'
-,p_prn_header_font_weight=>'normal'
-,p_prn_header_font_size=>'10'
-,p_prn_body_bg_color=>'#efefef'
-,p_prn_body_font_color=>'#000000'
-,p_prn_body_font_family=>'Helvetica'
-,p_prn_body_font_weight=>'normal'
-,p_prn_body_font_size=>'10'
-,p_prn_border_width=>.5
-,p_prn_page_header_alignment=>'CENTER'
-,p_prn_page_footer_alignment=>'CENTER'
-);
-wwv_flow_api.create_worksheet(
- p_id=>wwv_flow_api.id(67210907371086621)
-,p_max_row_count=>'1000000'
-,p_show_nulls_as=>'-'
-,p_pagination_type=>'ROWS_X_TO_Y'
-,p_pagination_display_pos=>'BOTTOM_RIGHT'
-,p_report_list_mode=>'TABS'
-,p_show_detail_link=>'N'
-,p_show_notify=>'Y'
-,p_download_formats=>'CSV:HTML:EMAIL:XLS:PDF:RTF'
-,p_owner=>'OPAS60DADM'
-,p_internal_uid=>67210907371086621
-);
-end;
-/
-begin
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67211066057086622)
-,p_db_column_name=>'PARENT_TABLE'
-,p_display_order=>10
-,p_column_identifier=>'A'
-,p_column_label=>'Parent Table'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67211184303086623)
-,p_db_column_name=>'SUB_OBJECT'
-,p_display_order=>20
-,p_column_identifier=>'B'
-,p_column_label=>'Sub Object'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67211298833086624)
-,p_db_column_name=>'Seg size'
-,p_display_order=>30
-,p_column_identifier=>'C'
-,p_column_label=>'Seg Size'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67211396061086625)
-,p_db_column_name=>'Seg % tot'
-,p_display_order=>40
-,p_column_identifier=>'D'
-,p_column_label=>'Seg % Tot'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67211462103086626)
-,p_db_column_name=>'Seg delta'
-,p_display_order=>50
-,p_column_identifier=>'E'
-,p_column_label=>'Seg Delta'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67211569735086627)
-,p_db_column_name=>'Seg delta % flt delta'
-,p_display_order=>60
-,p_column_identifier=>'F'
-,p_column_label=>'Seg Delta % Flt Delta'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67211698833086628)
-,p_db_column_name=>'Seg delta % tot delta'
-,p_display_order=>70
-,p_column_identifier=>'G'
-,p_column_label=>'Seg Delta % Tot Delta'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67211717732086629)
-,p_db_column_name=>'Whole tab'
-,p_display_order=>80
-,p_column_identifier=>'H'
-,p_column_label=>'Whole Tab'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67211892688086630)
-,p_db_column_name=>'Whole tab delta'
-,p_display_order=>90
-,p_column_identifier=>'I'
-,p_column_label=>'Whole Tab Delta'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67211929913086631)
-,p_db_column_name=>'Tab delta % flt delta'
-,p_display_order=>100
-,p_column_identifier=>'J'
-,p_column_label=>'Tab Delta % Flt Delta'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67212029226086632)
-,p_db_column_name=>'Tab delta % tot delta'
-,p_display_order=>110
-,p_column_identifier=>'K'
-,p_column_label=>'Tab Delta % Tot Delta'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67212129549086633)
-,p_db_column_name=>'Tab % flt'
-,p_display_order=>120
-,p_column_identifier=>'L'
-,p_column_label=>'Tab % Flt'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67212274712086634)
-,p_db_column_name=>'Tab % tot'
-,p_display_order=>130
-,p_column_identifier=>'M'
-,p_column_label=>'Tab % Tot'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67212310266086635)
-,p_db_column_name=>'SNAPPED_AT'
-,p_display_order=>140
-,p_column_identifier=>'N'
-,p_column_label=>'Snapped At'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67213796474086649)
-,p_db_column_name=>'Seg size, B'
-,p_display_order=>150
-,p_column_identifier=>'O'
-,p_column_label=>'Seg Size, B'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67213824725086650)
-,p_db_column_name=>'Seg delta, B'
-,p_display_order=>160
-,p_column_identifier=>'P'
-,p_column_label=>'Seg Delta, B'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67279524088803301)
-,p_db_column_name=>'Whole tab, B'
-,p_display_order=>170
-,p_column_identifier=>'Q'
-,p_column_label=>'Whole Tab, B'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(67279603299803302)
-,p_db_column_name=>'Whole tab delta, B'
-,p_display_order=>180
-,p_column_identifier=>'R'
-,p_column_label=>'Whole Tab Delta, B'
-,p_column_type=>'STRING'
-);
-wwv_flow_api.create_worksheet_rpt(
- p_id=>wwv_flow_api.id(67257794808160465)
-,p_application_user=>'APXWS_DEFAULT'
-,p_report_seq=>10
-,p_report_alias=>'672578'
-,p_status=>'PUBLIC'
-,p_is_default=>'Y'
-,p_report_columns=>'PARENT_TABLE:SUB_OBJECT:Seg size:Seg % tot:Seg delta:Seg delta % flt delta:Seg delta % tot delta:Whole tab:Whole tab delta:Tab delta % flt delta:Tab delta % tot delta:Tab % flt:Tab % tot:SNAPPED_AT:Seg size, B:Seg delta, B:Whole tab, B:Whole tab delt'
-||'a, B'
-);
-wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(76164666373013803)
 ,p_plug_name=>'Top Decreasing Objects Report'
-,p_parent_plug_id=>wwv_flow_api.id(200725698136405518)
+,p_parent_plug_id=>wwv_flow_api.id(77704938321359436)
 ,p_region_template_options=>'#DEFAULT#'
 ,p_component_template_options=>'#DEFAULT#'
 ,p_plug_template=>wwv_flow_api.id(58959020573993670)
-,p_plug_display_sequence=>70
+,p_plug_display_sequence=>135
 ,p_plug_display_point=>'BODY'
 ,p_query_type=>'SQL'
 ,p_plug_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
@@ -34567,6 +34601,9 @@ wwv_flow_api.create_page_plug(
 ,p_prn_page_header_alignment=>'CENTER'
 ,p_prn_page_footer_alignment=>'CENTER'
 );
+end;
+/
+begin
 wwv_flow_api.create_worksheet(
  p_id=>wwv_flow_api.id(76164715538013804)
 ,p_max_row_count=>'1000000'
@@ -34731,6 +34768,448 @@ wwv_flow_api.create_worksheet_column(
 ,p_column_identifier=>'R'
 ,p_column_label=>'Whole Tab Delta, B'
 ,p_column_type=>'STRING'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(77905272149883446)
+,p_plug_name=>'Top Grown'
+,p_parent_plug_id=>wwv_flow_api.id(77704938321359436)
+,p_region_template_options=>'#DEFAULT#'
+,p_component_template_options=>'#DEFAULT#'
+,p_plug_template=>wwv_flow_api.id(58959020573993670)
+,p_plug_display_sequence=>85
+,p_plug_display_point=>'BODY'
+,p_query_type=>'SQL'
+,p_plug_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select /*+ qb_name(OPAS60_DBG_TOPOBG1) gather_plan_statistics */',
+'  parent_table, --rn1||''.''||rn2||'': ''||',
+'  sub_object, ',
+'  to_char(seg_delta,''FM999g999g999g999g999'') "Seg Delta Numeric",    ',
+'  seg_delta_h "Seg Delta",',
+'  round(100*(seg_delta/decode(:P5003_FILTERED_DELTA,0,null,:P5003_FILTERED_DELTA)),2) "Seg % Flt Dlt",',
+'  round(100*(seg_delta/decode(:P5003_TOT_OCCUPIED_SCH_DELTA,0,null,:P5003_TOT_OCCUPIED_SCH_DELTA)),2) "Seg % Tot Dlt",',
+'  to_char(seg_total,''FM999g999g999g999g999'') "Seg Tot Numeric",    ',
+'  seg_total_h "Seg Tot",',
+'  to_char(parent_delta,''FM999g999g999g999g999'') "Prnt Delta Numeric", ',
+'  parent_delta_h "Prnt Delta",',
+'  round(100*(parent_delta/decode(:P5003_FILTERED_DELTA,0,null,:P5003_FILTERED_DELTA)),2) "Prnt Dlt % Flt Dlt",',
+'  round(100*(parent_delta/decode(:P5003_TOT_OCCUPIED_SCH_DELTA,0,null,:P5003_TOT_OCCUPIED_SCH_DELTA)),2) "Prnt Dlt % Tot Dlt",  ',
+'  to_char(parent_total,''FM999g999g999g999g999'') "Prnt Tot Numeric",',
+'  parent_total_h "Prnt Tot",',
+'  tot_seg_delta "All Segs Tot Numeric", ',
+'  tot_seg_delta_h "All Segs Tot"',
+'from v$opas_dbg_sel_objects_det_delta',
+'where parent_delta <> 0 --and seg_delta > 0',
+'and rn1<=:P5003_TOP_N',
+'order by parent_delta desc, parent_table, seg_delta desc',
+''))
+,p_plug_source_type=>'NATIVE_IR'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_plug_display_condition_type=>'ITEM_IS_NOT_NULL'
+,p_plug_display_when_condition=>'P5003_TOP_N'
+,p_prn_content_disposition=>'ATTACHMENT'
+,p_prn_document_header=>'APEX'
+,p_prn_units=>'INCHES'
+,p_prn_paper_size=>'LETTER'
+,p_prn_width=>8.5
+,p_prn_height=>11
+,p_prn_orientation=>'HORIZONTAL'
+,p_prn_page_header_font_color=>'#000000'
+,p_prn_page_header_font_family=>'Helvetica'
+,p_prn_page_header_font_weight=>'normal'
+,p_prn_page_header_font_size=>'12'
+,p_prn_page_footer_font_color=>'#000000'
+,p_prn_page_footer_font_family=>'Helvetica'
+,p_prn_page_footer_font_weight=>'normal'
+,p_prn_page_footer_font_size=>'12'
+,p_prn_header_bg_color=>'#9bafde'
+,p_prn_header_font_color=>'#000000'
+,p_prn_header_font_family=>'Helvetica'
+,p_prn_header_font_weight=>'normal'
+,p_prn_header_font_size=>'10'
+,p_prn_body_bg_color=>'#efefef'
+,p_prn_body_font_color=>'#000000'
+,p_prn_body_font_family=>'Helvetica'
+,p_prn_body_font_weight=>'normal'
+,p_prn_body_font_size=>'10'
+,p_prn_border_width=>.5
+,p_prn_page_header_alignment=>'CENTER'
+,p_prn_page_footer_alignment=>'CENTER'
+);
+wwv_flow_api.create_worksheet(
+ p_id=>wwv_flow_api.id(77905396391883447)
+,p_max_row_count=>'1000000'
+,p_show_nulls_as=>'-'
+,p_pagination_type=>'ROWS_X_TO_Y'
+,p_pagination_display_pos=>'BOTTOM_RIGHT'
+,p_report_list_mode=>'TABS'
+,p_show_detail_link=>'N'
+,p_show_notify=>'Y'
+,p_download_formats=>'CSV:HTML:EMAIL:XLS:PDF:RTF'
+,p_owner=>'OPAS60DADM'
+,p_internal_uid=>77905396391883447
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77905483055883448)
+,p_db_column_name=>'PARENT_TABLE'
+,p_display_order=>10
+,p_column_identifier=>'A'
+,p_column_label=>'Parent Table'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77905502039883449)
+,p_db_column_name=>'SUB_OBJECT'
+,p_display_order=>20
+,p_column_identifier=>'B'
+,p_column_label=>'Sub Object'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77944074557000301)
+,p_db_column_name=>'Seg Delta'
+,p_display_order=>30
+,p_column_identifier=>'D'
+,p_column_label=>'Seg Delta'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77905644724883450)
+,p_db_column_name=>'Seg Delta Numeric'
+,p_display_order=>40
+,p_column_identifier=>'C'
+,p_column_label=>'Seg Delta Numeric'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77944754574000308)
+,p_db_column_name=>'Seg % Flt Dlt'
+,p_display_order=>60
+,p_column_identifier=>'K'
+,p_column_label=>'Seg % Flt Dlt'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77944809949000309)
+,p_db_column_name=>'Seg % Tot Dlt'
+,p_display_order=>70
+,p_column_identifier=>'L'
+,p_column_label=>'Seg % Tot Dlt'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77944286533000303)
+,p_db_column_name=>'Seg Tot'
+,p_display_order=>80
+,p_column_identifier=>'F'
+,p_column_label=>'Seg Tot'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77944153203000302)
+,p_db_column_name=>'Seg Tot Numeric'
+,p_display_order=>90
+,p_column_identifier=>'E'
+,p_column_label=>'Seg Tot Numeric'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77944410371000305)
+,p_db_column_name=>'Prnt Delta'
+,p_display_order=>100
+,p_column_identifier=>'H'
+,p_column_label=>'Prnt Delta'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77944381837000304)
+,p_db_column_name=>'Prnt Delta Numeric'
+,p_display_order=>110
+,p_column_identifier=>'G'
+,p_column_label=>'Prnt Delta Numeric'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77944960831000310)
+,p_db_column_name=>'Prnt Dlt % Flt Dlt'
+,p_display_order=>120
+,p_column_identifier=>'M'
+,p_column_label=>'Prnt Dlt % Flt Dlt'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77945011683000311)
+,p_db_column_name=>'Prnt Dlt % Tot Dlt'
+,p_display_order=>130
+,p_column_identifier=>'N'
+,p_column_label=>'Prnt Dlt % Tot Dlt'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77944654893000307)
+,p_db_column_name=>'Prnt Tot'
+,p_display_order=>140
+,p_column_identifier=>'J'
+,p_column_label=>'Prnt Tot'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77944545440000306)
+,p_db_column_name=>'Prnt Tot Numeric'
+,p_display_order=>150
+,p_column_identifier=>'I'
+,p_column_label=>'Prnt Tot Numeric'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77946860518000329)
+,p_db_column_name=>'All Segs Tot Numeric'
+,p_display_order=>160
+,p_column_identifier=>'O'
+,p_column_label=>'All Segs Tot Numeric'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77946919257000330)
+,p_db_column_name=>'All Segs Tot'
+,p_display_order=>170
+,p_column_identifier=>'P'
+,p_column_label=>'All Segs Tot'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_rpt(
+ p_id=>wwv_flow_api.id(77959818518008993)
+,p_application_user=>'APXWS_DEFAULT'
+,p_report_seq=>10
+,p_report_alias=>'779599'
+,p_status=>'PUBLIC'
+,p_is_default=>'Y'
+,p_report_columns=>'PARENT_TABLE:SUB_OBJECT:Seg Delta:Seg Delta Numeric:Seg % Flt Dlt:Seg % Tot Dlt:Seg Tot:Seg Tot Numeric:Prnt Delta Numeric:Prnt Delta:Prnt Dlt % Flt Dlt:Prnt Dlt % Tot Dlt:Prnt Tot:Prnt Tot Numeric Numeric:All Segs Tot'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(77945127254000312)
+,p_plug_name=>'Top Decreased'
+,p_parent_plug_id=>wwv_flow_api.id(77704938321359436)
+,p_region_template_options=>'#DEFAULT#'
+,p_component_template_options=>'#DEFAULT#'
+,p_plug_template=>wwv_flow_api.id(58959020573993670)
+,p_plug_display_sequence=>95
+,p_plug_display_point=>'BODY'
+,p_query_type=>'SQL'
+,p_plug_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select',
+'  parent_table, --rn1||''.''||rn2||'': ''||',
+'  sub_object, ',
+'  to_char(seg_delta,''FM999g999g999g999g999'') "Seg Delta Numeric",    ',
+'  seg_delta_h "Seg Delta",',
+'  round(100*(seg_delta/decode(:P5003_FILTERED_DELTA,0,null,:P5003_FILTERED_DELTA)),2) "Seg % Flt Dlt",',
+'  round(100*(seg_delta/decode(:P5003_TOT_OCCUPIED_SCH_DELTA,0,null,:P5003_TOT_OCCUPIED_SCH_DELTA)),2) "Seg % Tot Dlt",',
+'  to_char(seg_total,''FM999g999g999g999g999'') "Seg Tot Numeric",    ',
+'  seg_total_h "Seg Tot",',
+'  to_char(parent_delta,''FM999g999g999g999g999'') "Prnt Delta Numeric", ',
+'  parent_delta_h "Prnt Delta",',
+'  round(100*(parent_delta/decode(:P5003_FILTERED_DELTA,0,null,:P5003_FILTERED_DELTA)),2) "Prnt Dlt % Flt Dlt",',
+'  round(100*(parent_delta/decode(:P5003_TOT_OCCUPIED_SCH_DELTA,0,null,:P5003_TOT_OCCUPIED_SCH_DELTA)),2) "Prnt Dlt % Tot Dlt",  ',
+'  to_char(parent_total,''FM999g999g999g999g999'') "Prnt Tot Numeric",',
+'  parent_total_h "Prnt Tot",',
+'  tot_seg_delta "All Segs Tot Numeric", ',
+'  tot_seg_delta_h "All Segs Tot"',
+'from v$opas_dbg_sel_objects_det_delta_n',
+'where --seg_delta < 0',
+'rn1<=:P5003_TOP_N',
+'order by seg_delta',
+''))
+,p_plug_source_type=>'NATIVE_IR'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_plug_display_condition_type=>'ITEM_IS_NOT_NULL'
+,p_plug_display_when_condition=>'P5003_TOP_N'
+,p_prn_content_disposition=>'ATTACHMENT'
+,p_prn_document_header=>'APEX'
+,p_prn_units=>'INCHES'
+,p_prn_paper_size=>'LETTER'
+,p_prn_width=>8.5
+,p_prn_height=>11
+,p_prn_orientation=>'HORIZONTAL'
+,p_prn_page_header_font_color=>'#000000'
+,p_prn_page_header_font_family=>'Helvetica'
+,p_prn_page_header_font_weight=>'normal'
+,p_prn_page_header_font_size=>'12'
+,p_prn_page_footer_font_color=>'#000000'
+,p_prn_page_footer_font_family=>'Helvetica'
+,p_prn_page_footer_font_weight=>'normal'
+,p_prn_page_footer_font_size=>'12'
+,p_prn_header_bg_color=>'#9bafde'
+,p_prn_header_font_color=>'#000000'
+,p_prn_header_font_family=>'Helvetica'
+,p_prn_header_font_weight=>'normal'
+,p_prn_header_font_size=>'10'
+,p_prn_body_bg_color=>'#efefef'
+,p_prn_body_font_color=>'#000000'
+,p_prn_body_font_family=>'Helvetica'
+,p_prn_body_font_weight=>'normal'
+,p_prn_body_font_size=>'10'
+,p_prn_border_width=>.5
+,p_prn_page_header_alignment=>'CENTER'
+,p_prn_page_footer_alignment=>'CENTER'
+);
+wwv_flow_api.create_worksheet(
+ p_id=>wwv_flow_api.id(77945271921000313)
+,p_max_row_count=>'1000000'
+,p_show_nulls_as=>'-'
+,p_pagination_type=>'ROWS_X_TO_Y'
+,p_pagination_display_pos=>'BOTTOM_RIGHT'
+,p_report_list_mode=>'TABS'
+,p_show_detail_link=>'N'
+,p_show_notify=>'Y'
+,p_download_formats=>'CSV:HTML:EMAIL:XLS:PDF:RTF'
+,p_owner=>'OPAS60DADM'
+,p_internal_uid=>77945271921000313
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77945355734000314)
+,p_db_column_name=>'PARENT_TABLE'
+,p_display_order=>10
+,p_column_identifier=>'A'
+,p_column_label=>'Parent Table'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77945443045000315)
+,p_db_column_name=>'SUB_OBJECT'
+,p_display_order=>20
+,p_column_identifier=>'B'
+,p_column_label=>'Sub Object'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77945658605000317)
+,p_db_column_name=>'Seg Delta'
+,p_display_order=>30
+,p_column_identifier=>'D'
+,p_column_label=>'Seg Delta'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77945540015000316)
+,p_db_column_name=>'Seg Delta Numeric'
+,p_display_order=>40
+,p_column_identifier=>'C'
+,p_column_label=>'Seg Delta Numeric'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77946345473000324)
+,p_db_column_name=>'Seg % Flt Dlt'
+,p_display_order=>50
+,p_column_identifier=>'K'
+,p_column_label=>'Seg % Flt Dlt'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77946419282000325)
+,p_db_column_name=>'Seg % Tot Dlt'
+,p_display_order=>60
+,p_column_identifier=>'L'
+,p_column_label=>'Seg % Tot Dlt'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77945827442000319)
+,p_db_column_name=>'Seg Tot'
+,p_display_order=>70
+,p_column_identifier=>'F'
+,p_column_label=>'Seg Tot'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77945766414000318)
+,p_db_column_name=>'Seg Tot Numeric'
+,p_display_order=>80
+,p_column_identifier=>'E'
+,p_column_label=>'Seg Tot Numeric'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77946042252000321)
+,p_db_column_name=>'Prnt Delta'
+,p_display_order=>90
+,p_column_identifier=>'H'
+,p_column_label=>'Prnt Delta'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77946567616000326)
+,p_db_column_name=>'Prnt Dlt % Flt Dlt'
+,p_display_order=>100
+,p_column_identifier=>'M'
+,p_column_label=>'Prnt Dlt % Flt Dlt'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77946608395000327)
+,p_db_column_name=>'Prnt Dlt % Tot Dlt'
+,p_display_order=>110
+,p_column_identifier=>'N'
+,p_column_label=>'Prnt Dlt % Tot Dlt'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77945966215000320)
+,p_db_column_name=>'Prnt Delta Numeric'
+,p_display_order=>120
+,p_column_identifier=>'G'
+,p_column_label=>'Prnt Delta Numeric'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77946275163000323)
+,p_db_column_name=>'Prnt Tot'
+,p_display_order=>130
+,p_column_identifier=>'J'
+,p_column_label=>'Prnt Tot'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77946130123000322)
+,p_db_column_name=>'Prnt Tot Numeric'
+,p_display_order=>140
+,p_column_identifier=>'I'
+,p_column_label=>'Prnt Tot Numeric'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77947081957000331)
+,p_db_column_name=>'All Segs Tot Numeric'
+,p_display_order=>150
+,p_column_identifier=>'O'
+,p_column_label=>'All Segs Tot Numeric'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(77947156343000332)
+,p_db_column_name=>'All Segs Tot'
+,p_display_order=>160
+,p_column_identifier=>'P'
+,p_column_label=>'All Segs Tot'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_rpt(
+ p_id=>wwv_flow_api.id(77967557110048700)
+,p_application_user=>'APXWS_DEFAULT'
+,p_report_seq=>10
+,p_report_alias=>'779676'
+,p_status=>'PUBLIC'
+,p_is_default=>'Y'
+,p_report_columns=>'PARENT_TABLE:SUB_OBJECT:Seg Delta:Seg Delta Numeric:Seg % Flt Dlt:Seg % Tot Dlt:Seg Tot:Seg Tot Numeric:Prnt Delta:Prnt Dlt % Flt Dlt:Prnt Dlt % Tot Dlt:Prnt Delta Numeric:Prnt Tot:Prnt Tot Numeric Numeric:All Segs Tot'
 );
 wwv_flow_api.create_page_button(
  p_id=>wwv_flow_api.id(67151560053285124)
@@ -34978,6 +35457,30 @@ wwv_flow_api.create_page_item(
 ,p_attribute_04=>'TEXT'
 ,p_attribute_05=>'BOTH'
 );
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(77705154526359438)
+,p_name=>'P5003_CAPTION'
+,p_item_sequence=>10
+,p_item_plug_id=>wwv_flow_api.id(77704801649359435)
+,p_display_as=>'NATIVE_HIDDEN'
+,p_attribute_01=>'Y'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(77901817120883412)
+,p_name=>'P5003_TOT_OCCUPIED_SCH_DELTA'
+,p_item_sequence=>10
+,p_item_plug_id=>wwv_flow_api.id(77704801649359435)
+,p_display_as=>'NATIVE_HIDDEN'
+,p_attribute_01=>'Y'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(77901901822883413)
+,p_name=>'P5003_FILTERED_DELTA'
+,p_item_sequence=>10
+,p_item_plug_id=>wwv_flow_api.id(77704801649359435)
+,p_display_as=>'NATIVE_HIDDEN'
+,p_attribute_01=>'Y'
+);
 wwv_flow_api.create_page_process(
  p_id=>wwv_flow_api.id(67145175310277246)
 ,p_process_sequence=>20
@@ -34990,6 +35493,33 @@ wwv_flow_api.create_page_process(
 '    :APP_PAGE_STACK := :APP_PAGE_STACK ||'':''||:APP_PREV_PAGE;',
 '    :APP_PREV_PAGE := null;',
 '  end if;',
+'end;'))
+,p_error_display_location=>'INLINE_IN_NOTIFICATION'
+);
+wwv_flow_api.create_page_process(
+ p_id=>wwv_flow_api.id(77705256316359439)
+,p_process_sequence=>30
+,p_process_point=>'AFTER_HEADER'
+,p_process_type=>'NATIVE_PLSQL'
+,p_process_name=>'CalcReports'
+,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'begin',
+'  begin',
+'    select /*+ no_merge(d) no_merge(t)  qb_name(OPAS60_DBG_SUMM1) gather_plan_statistics */',
+'         ''Schema delta: ''   || tot_occupied_sch_delta_h  || '' ('' || to_char(tot_occupied_sch_delta,''FM999g999g999g999g999'') ||',
+'            '') / Filtered delta: ''  || filtered_delta_h  || '' ('' || to_char(filtered_delta,''FM999g999g999g999g999'') || '')'' ||',
+'              case when tot_occupied_sch_delta<>0 then  '' ('' || round(100*(filtered_delta/tot_occupied_sch_delta),2)  || ''%)'' end ||',
+'         ''; Total Schema: '' || tot_occupied_sch_h        || '' ('' || to_char(tot_occupied_sch,''FM999g999g999g999g999'') ||',
+'           '') / Filtered Schema: ''  || filtered_total_h  || '' ('' || to_char(filtered_total,''FM999g999g999g999g999'') || '')'' || ',
+'              case when tot_occupied_sch<>0 then        '' ('' || round(100*(filtered_total/tot_occupied_sch),2)|| ''%)'' end ||',
+'         ''; Total in TSs: '' || tot_occupied_h            || '' ('' || to_char(tot_occupied,''FM999g999g999g999g999'') || '')'',',
+'         tot_occupied_sch_delta,filtered_delta',
+'    into :P5003_CAPTION, :P5003_tot_occupied_sch_delta, :P5003_filtered_delta',
+'    from v$opas_dbg_selected_objects_delta d,',
+'         v$opas_dbg_total_delta t;',
+'  exception',
+'    when no_data_found then :P5003_CAPTION:=''No Data Found'';',
+'  end;',
 'end;'))
 ,p_error_display_location=>'INLINE_IN_NOTIFICATION'
 );

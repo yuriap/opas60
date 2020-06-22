@@ -4,6 +4,11 @@ Version 6.2 PROD
 Release notes:
 ==============
 
+Version 6.4.0 2020-Jun-22
+-------------------------
+Database Growth Monitor
+ - reorganized data storage to use partitioned tables
+ 
 Version 6.3.0 2020-May-14
 -------------------------
 SQL Cacther

@@ -6,7 +6,7 @@ PACKAGE BODY COREMOD_SCHEDULER AS
     l_scheduler V$OPAS_SCHEDULER%rowtype;
     l_res boolean := false;
   begin
-    select * into l_scheduler from V$OPAS_SCHEDULER where sch_id=p_sch_id;
+    select * into l_scheduler from OPAS_SCHEDULER where sch_id=p_sch_id;
     return getstatus(p_action, l_scheduler.status) is not null;
   exception
     when no_data_found then return false;
@@ -66,7 +66,7 @@ PACKAGE BODY COREMOD_SCHEDULER AS
                             p_start_date  OPAS_SCHEDULER.start_date%type) AS
   BEGIN
     if check_action(P_SCH_ID => p_sch_id, P_ACTION => scaSave) then
-      update V$OPAS_SCHEDULER t set
+      update OPAS_SCHEDULER t set
          t.start_date=p_start_date,
          t.schedule=p_schedule,
          t.last_changed = systimestamp,
@@ -86,7 +86,7 @@ PACKAGE BODY COREMOD_SCHEDULER AS
     l_params  OPAS_SCHEDULER%rowtype;
   begin
     if check_action(P_SCH_ID => p_sch_id, P_ACTION => scaSuspend) then
-      select * into l_params from V$OPAS_SCHEDULER where sch_id=p_sch_id;
+      select * into l_params from OPAS_SCHEDULER where sch_id=p_sch_id;
       for i in (select job_name from user_scheduler_running_jobs where job_name=l_params.job_name) loop
         begin
           DBMS_SCHEDULER.stop_job(l_params.job_name);
@@ -124,7 +124,7 @@ PACKAGE BODY COREMOD_SCHEDULER AS
     l_cnt     number := 0;
   begin
     if check_action(P_SCH_ID => p_sch_id, P_ACTION => scaActivate) then
-      select * into l_params from V$OPAS_SCHEDULER where sch_id=p_sch_id;
+      select * into l_params from OPAS_SCHEDULER where sch_id=p_sch_id;
       if l_params.last_validated > l_params.last_changed then
         delete from opas_scheduler_validation where sch_id=p_sch_id;
 
@@ -160,7 +160,7 @@ PACKAGE BODY COREMOD_SCHEDULER AS
   END activate_config;
 
   procedure validate_config(p_sch_id OPAS_SCHEDULER.SCH_ID%type) AS
-    l_params    V$OPAS_SCHEDULER%rowtype;
+    l_params    OPAS_SCHEDULER%rowtype;
     l_msg       opas_scheduler_validation.message%type;
     l_next_date TIMESTAMP WITH TIME ZONE;
     l_users     DBMS_UTILITY.uncl_array;
@@ -169,7 +169,7 @@ PACKAGE BODY COREMOD_SCHEDULER AS
     l_chk       boolean := false;
   begin
     if check_action(P_SCH_ID => p_sch_id, P_ACTION => scaValidate) then
-      select * into l_params from V$OPAS_SCHEDULER where sch_id=p_sch_id;
+      select * into l_params from OPAS_SCHEDULER where sch_id=p_sch_id;
 
       update OPAS_SCHEDULER set last_validated = null where sch_id=p_sch_id;
       delete from opas_scheduler_validation where sch_id=p_sch_id;
@@ -202,7 +202,7 @@ PACKAGE BODY COREMOD_SCHEDULER AS
   procedure cleanup_config (p_sch_id OPAS_SCHEDULER.SCH_ID%type) AS
   BEGIN
     if check_action(P_SCH_ID => p_sch_id, P_ACTION => scaCleanup) then
-      for l_params in (select * from V$OPAS_SCHEDULER where sch_id=p_sch_id and status in (scsNew,scsValidated,scsSuspended)) loop
+      for l_params in (select * from OPAS_SCHEDULER where sch_id=p_sch_id and status in (scsNew,scsValidated,scsSuspended)) loop
         if l_params.job_name is not null then
           for i in (select job_name from user_scheduler_running_jobs where job_name=l_params.job_name) loop
             begin
