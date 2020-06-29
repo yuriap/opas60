@@ -1,10 +1,10 @@
 CREATE OR REPLACE
 PACKAGE BODY COREOBJ_DB_MONITOR AS
 
-  procedure calc_alerts(p_metric_id   OPAS_OT_DB_MONITOR_VALS.METRIC_ID%type,
-                        p_metric_tim  OPAS_OT_DB_MONITOR_VALS.TIM%type, --varchar2, -- TZ is getting lost somehow
-                        p_metruc_val  OPAS_OT_DB_MONITOR_VALS.VAL%type,
-                        p_measur_id   OPAS_OT_DB_MONITOR_VALS.measur_id%type)
+  procedure calc_alerts(p_metric_id   opas_ot_db_monitor_vals_t.METRIC_ID%type,
+                        p_metric_tim  opas_ot_db_monitor_vals_t.tim_tz%type, --varchar2, -- TZ is getting lost somehow
+                        p_metruc_val  opas_ot_db_monitor_vals_t.VAL%type,
+                        p_measur_id   opas_ot_db_monitor_vals_t.measur_id%type)
   is
     L_ALERT_ID number;
     l_obj      opas_objects%rowtype;
@@ -35,13 +35,13 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
     end loop;
   end;
 
-  procedure save_simple_datapoint(p_metric_id   OPAS_OT_DB_MONITOR_VALS.METRIC_ID%type,
-                                  p_metric_tim  OPAS_OT_DB_MONITOR_VALS.TIM%type,
-                                  p_metruc_val  OPAS_OT_DB_MONITOR_VALS.VAL%type)
+  procedure save_simple_datapoint(p_metric_id   opas_ot_db_monitor_vals_t.METRIC_ID%type,
+                                  p_metric_tim  opas_ot_db_monitor_vals_t.tim_tz%type,
+                                  p_metruc_val  opas_ot_db_monitor_vals_t.VAL%type)
   is
-    l_measur_id opas_ot_db_monitor_vals.measur_id%type;
+    l_measur_id opas_ot_db_monitor_vals_t.measur_id%type;
   begin
-    INSERT INTO opas_ot_db_monitor_vals ( metric_id, tim, val )
+    INSERT INTO opas_ot_db_monitor_vals_t ( metric_id, tim_tz, val)
          VALUES ( p_metric_id, p_metric_tim, p_metruc_val) returning measur_id into l_measur_id;
     commit;
     calc_alerts(p_metric_id, p_metric_tim, p_metruc_val, l_measur_id);
@@ -53,8 +53,8 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
 --declare l_inp INTERVAL DAY TO SECOND :=to_dsinterval(:inp); begin :outp := extract(day from l_inp)*24*60*60 + extract(hour from l_inp)*60*60 + extract(minute from l_inp)*60 + extract(second from l_inp); end;
 
   procedure execute_simple_metric_i(p_metric_id OPAS_OT_DB_MONITOR.METRIC_ID%type,
-                                    p_ts  out OPAS_OT_DB_MONITOR_VALS.TIM%type, --varchar2, -- TZ is getting lost somehow
-                                    p_val out OPAS_OT_DB_MONITOR_VALS.VAL%type) AS
+                                    p_ts  out opas_ot_db_monitor_vals_t.tim_tz%type, --varchar2, -- TZ is getting lost somehow
+                                    p_val out opas_ot_db_monitor_vals_t.VAL%type) AS
 
 --    l_sql varchar2(16000) := rtrim('select rdb_status.get_replication_lag().status from dual;',';');
 --    l_exp varchar2(16000) := 'declare l_inp INTERVAL DAY TO SECOND :=to_dsinterval(:inp); begin :outp := extract(day from l_inp)*24*60*60 + extract(hour from l_inp)*60*60 + extract(minute from l_inp)*60 + extract(second from l_inp); end;';
@@ -109,7 +109,7 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
 
   procedure execute_simple_metric(p_metric_id OPAS_OT_DB_MONITOR.METRIC_ID%type)
   AS
-    l_ts  OPAS_OT_DB_MONITOR_VALS.TIM%type;
+    l_ts  opas_ot_db_monitor_vals_t.tim_tz%type;
     l_val number;
     ex_no_connection exception;
     pragma exception_init(ex_no_connection,-12154); --ORA-12154

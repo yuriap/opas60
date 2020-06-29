@@ -78,6 +78,10 @@ package body COREOBJ_DB_GROWTH is
     end loop;
 
     coremod_api.release_resource;
+  exception
+    when others then
+      coremod_api.release_resource;
+      raise;
   end;
 
   procedure add_subpartition
@@ -104,7 +108,11 @@ package body COREOBJ_DB_GROWTH is
 
     coremod_api.release_resource;
 
-    if l_is_error then raise_application_error(-20000,'Splitting error: see logs fr more details'); end if;
+    if l_is_error then raise_application_error(-20000,'Splitting error: see logs for more details'); end if;
+  exception
+    when others then
+      coremod_api.release_resource;
+      raise;
   end;
 
   procedure init_dbg
@@ -128,8 +136,6 @@ package body COREOBJ_DB_GROWTH is
                    p_obj_prnt         opas_objects.obj_prnt%type)
   is
   begin
-    add_partition(p_obj_id);
-
     COREOBJ_API.add (  P_OBJ_ID => p_obj_id,
       P_OBJ_PRNT  => p_obj_prnt,
       P_OBJ_OT    => COREOBJ_API.otDB_GROWTH_TRACKER,
@@ -141,6 +147,7 @@ package body COREOBJ_DB_GROWTH is
     values
       (p_obj_id, null, null, null, default);
 
+    add_partition(p_obj_id);
   end;
 
   procedure edit  (p_obj_id           opas_objects.obj_id%type,

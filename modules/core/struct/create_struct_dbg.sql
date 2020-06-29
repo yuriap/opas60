@@ -1,6 +1,6 @@
 create table opas_ot_dbg_monitor (
 dbg_id          number                                           primary key,
-dblink          varchar2(128)                                    references opas_db_links (db_link_name) on delete cascade,
+dblink          varchar2(128)                                    references opas_db_links (db_link_name),
 scheme_list     varchar2(4000),
 schedule        number                                           references opas_scheduler (sch_id) on delete set null
 size_limit      number default 524288
@@ -104,6 +104,50 @@ ROW STORE COMPRESS ADVANCED;
 create index idx_opas_ot_dbg_segsdp               on opas_ot_dbg_seg_sizes(dbgdp_id);
 create index idx_opas_ot_dbg_segsobj              on opas_ot_dbg_seg_sizes(dbgobj_id);
 --create index idx_opas_ot_dbg_segsf                on opas_ot_dbg_seg_sizes(dbgdp_id, dbgobj_id, size_bytes) compress;
+
+-- start partitioned --
+--starting state
+create table opas_ot_dbg_objects (
+dbgobj_id        number                                           primary key,
+version_dp_id    number                                           references opas_ot_dbg_datapoint (dbgdp_id) on delete cascade,
+dbg_id           number                                           references opas_ot_dbg_monitor (dbg_id) on delete cascade,
+owner            varchar2(128),
+object_id        number,
+data_object_id   number,
+object_name      varchar2(128),
+subobject_name   varchar2(128),
+object_type      varchar2(128),
+segment_type     varchar2(128),
+tablespace_name  varchar2(128),
+created          date,
+object_class     varchar2(512),
+prnt_table       varchar2(512),
+prnt_table_type  varchar2(512),
+prnt_table_owner varchar2(512),
+prnt_table_col   varchar2(512))
+PARTITION BY LIST (dbg_id)
+(
+   PARTITION part_start values (1)
+)
+ROW STORE COMPRESS ADVANCED;
+--indexes ???
+----------------------
+CREATE TABLE opas_ot_dbg_seg_sizes (
+dbg_id           number not null references opas_ot_dbg_monitor (dbg_id) on delete cascade,
+dbgdp_id         number not null references opas_ot_dbg_datapoint(dbgdp_id) on delete cascade,
+dbgobj_id        number not null references opas_ot_dbg_objects_p(dbgobj_id) on delete cascade,
+size_bytes       number
+)
+PARTITION BY LIST (dbg_id)
+SUBPARTITION BY range (dbgdp_id)
+(
+   PARTITION part_start values (1)
+      (
+         SUBPARTITION sp_start_max values LESS THAN (maxvalue)
+      )
+) ROW STORE COMPRESS ADVANCED;
+--indexes ???
+-- end partitioned --
 
 create global temporary table opas_ot_tmp_dbg_objects (
 owner            varchar2(128),
@@ -430,49 +474,7 @@ select /*+ leading(p o dp s) use_hash(o) use_hash(s) use_hash(dp) swap_join_inpu
             )
            )
          ); 
-		 
---experimental-------------------------------------------
 
---starting state
-create table opas_ot_dbg_objects_p (
-dbgobj_id        number                                           primary key,
-version_dp_id    number                                           references opas_ot_dbg_datapoint (dbgdp_id) on delete cascade,
-dbg_id           number                                           references opas_ot_dbg_monitor (dbg_id) on delete cascade,
-owner            varchar2(128),
-object_id        number,
-data_object_id   number,
-object_name      varchar2(128),
-subobject_name   varchar2(128),
-object_type      varchar2(128),
-segment_type     varchar2(128),
-tablespace_name  varchar2(128),
-created          date,
-object_class     varchar2(512),
-prnt_table       varchar2(512),
-prnt_table_type  varchar2(512),
-prnt_table_owner varchar2(512),
-prnt_table_col   varchar2(512))
-PARTITION BY LIST (dbg_id)
-(
-   PARTITION part_start values (1)
-)
-ROW STORE COMPRESS ADVANCED;
-
-----------------------
-CREATE TABLE opas_ot_dbg_seg_sizes_p (
-dbg_id           number not null references opas_ot_dbg_monitor (dbg_id) on delete cascade,
-dbgdp_id         number not null references opas_ot_dbg_datapoint(dbgdp_id) on delete cascade,
-dbgobj_id        number not null references opas_ot_dbg_objects_p(dbgobj_id) on delete cascade,
-size_bytes       number
-)
-PARTITION BY LIST (dbg_id)
-SUBPARTITION BY range (dbgdp_id)
-(
-   PARTITION part_start values (1)
-      (
-         SUBPARTITION sp_start_max values LESS THAN (maxvalue)
-      )
-) ROW STORE COMPRESS ADVANCED;
 
 CREATE OR REPLACE VIEW V$OPAS_DBG_SELECTED_OBJECTS_V3P AS
 select /*+ leading(dp o s) use_hash(o) use_hash(s) */
@@ -814,4 +816,3 @@ select *
 ) where seg_delta < 0 )
 ;
 
---experimental-------------------------------------------

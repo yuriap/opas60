@@ -743,7 +743,7 @@ p_query => replace(q'[select plan_hash_value, id, row_src "Row source", event, c
     p_output(p_output.count+1):=HTF.BR;
 
     COREMOD_REPORT_UTILS.print_query_result_html (
-p_query => replace(replace(replace(q'[select to_char(SQL_EXEC_START,'<defDTFullFmt>') SQL_EXEC_START, to_char(sql_exec_end,'<defDTFullFmt>') sql_exec_end, plan_hash_value, id, row_src, event, cnt, tim_pct, tim_id_pct, obj, tbs
+p_query => replace(replace(replace(q'[select to_char(sql_hour,'<defDTFullFmt>') "Hour", to_char(SQL_EXEC_START,'<defDTFullFmt>') SQL_EXEC_START, to_char(sql_exec_end,'<defDTFullFmt>') sql_exec_end, plan_hash_value, id, row_src, event, cnt, tim_pct, tim_id_pct, obj, tbs
   from OPAS_OT_SQL_VASH1 x where sql_data_point_id = <sql_data_point_id>
  order by SQL_EXEC_START, plan_hash_value, id, event]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt),
                                             p_width => gwWideSection1,--'

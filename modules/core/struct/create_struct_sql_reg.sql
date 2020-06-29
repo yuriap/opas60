@@ -756,6 +756,7 @@ create index idx_opas_sql_vashid_sqlid on opas_ot_sql_ash_ident(sql_id) compress
 create table opas_ot_sql_vash1 (
 sql_data_point_id   number,
 sql_id              varchar2(13), 
+sql_hour            date,
 sql_exec_start      date, 
 sql_exec_end        date, 
 plan_hash_value     number, 

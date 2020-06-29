@@ -1067,8 +1067,9 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     ) where rownum<=10;
     l_rows := l_rows + sql%rowcount;
 
-    INSERT INTO opas_ot_sql_vash1 ( sql_data_point_id, sql_id, sql_exec_start, sql_exec_end, plan_hash_value, id, row_src, event, cnt, tim_pct, tim_id_pct, obj, tbs)
+    INSERT INTO opas_ot_sql_vash1 ( sql_data_point_id, sql_id, sql_hour, sql_exec_start, sql_exec_end, plan_hash_value, id, row_src, event, cnt, tim_pct, tim_id_pct, obj, tbs)
     select p_data.sql_data_point_id,p_data.sql_id,
+       sql_hour,
        SQL_EXEC_START,
        to_date(to_char(max(sample_time) over(partition by SQL_EXEC_START, plan_hash_value),'YYYYMMDDHH24MISS'),'YYYYMMDDHH24MISS') sql_exec_end,
        plan_hash_value, id, row_src, event, cnt,
@@ -1076,7 +1077,8 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
        round(100 * sum(cnt) over(partition by id, SQL_EXEC_START, plan_hash_value) / sum(cnt) over(partition by SQL_EXEC_START, plan_hash_value), 2) tim_id_pct,
        obj, tbs
        from (select
-               trunc(SQL_EXEC_START,'HH') SQL_EXEC_START,
+               trunc(SQL_EXEC_START,'HH') sql_hour,
+               min(SQL_EXEC_START) SQL_EXEC_START,
                sql_plan_hash_value plan_hash_value,
                sql_plan_line_id id,
                sql_plan_operation || ' ' || sql_plan_options row_src,

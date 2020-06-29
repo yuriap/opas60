@@ -1,5 +1,5 @@
 @@create_struct_core
-@@create_struct_code_obj
+@@create_struct_core_obj
 @@create_struct_sql_reg
 @@create_struct_dbg
 @@create_struct_objects
