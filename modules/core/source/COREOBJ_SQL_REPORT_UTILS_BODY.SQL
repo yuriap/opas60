@@ -978,7 +978,7 @@ order by s.snap_id, topn]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt
     COREMOD_REPORT_UTILS.print_query_result_html (
 p_query => replace(replace(q'[select to_char(MIN_SAMPLE_TIME,'<DTFMT>') MIN_SAMPLE_TIME, to_char(MAX_SAMPLE_TIME,'<DTFMT>') MAX_SAMPLE_TIME,to_char(SQL_EXEC_START,'<DTFMT>') SQL_EXEC_START,PROGRAM,MODULE,ACTION,CLIENT_ID,SAMPLES_CNT
   from opas_ot_sql_ash_ident x where sql_data_point_id = <sql_data_point_id> and source_tab='AWR'
- order by SAMPLES_CNT desc]','<sql_data_point_id>',p_sql_data_point_id),'<DTFMT>',defDataTimeFmt),
+ order by SAMPLES_CNT desc]','<sql_data_point_id>',p_sql_data_point_id),'<DTFMT>',defDataTimeFmt), --'
                                             p_width => gwWideSection1,
                                             p_summary => 'AWR ASH Identity',
                                             --p_search varchar2 default null,
@@ -1079,29 +1079,7 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
                                             p_break_col => 'SNAP',
                                             p_output => print_awr_ashplstats_section_base.p_output); --'
   end;
-/*
-  procedure print_sql_text_web(p_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type)
-  is
-  begin
-    htp.prn('<code class="codeView">');
-    htp.prn('<ol start="1">');
 
-    for i in (SELECT line_number, payload
-                FROM V$OPAS_FILE_CONTENTBYROW
-               where file_id=(select nvl(sql_text,sql_text_approx)
-                                from OPAS_OT_SQL_DESCRIPTIONS de,
-                                     OPAS_OT_SQL_DATA da
-                               where de.sql_id = da.sql_id
-                                 and da.sql_data_point_id=p_sql_data_point_id)
-               order by line_number)
-    loop
-      htp.prn('<li id="L'||to_char(i.line_number)||'">'||apex_escape.html(i.payload) ||'</li>');
-    end loop;
-
-    htp.p('</ol>');
-    htp.p('</code>');
-  end;
-*/
   procedure print_sql_text_web(p_sql_id              opas_ot_sql_data.sql_id%type,
                                p_output          out COREMOD_REPORT_UTILS.t_output_lines)
   is
@@ -1109,20 +1087,11 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
     l_length   number;
     l_file_id   opas_files.file_id%type;
   begin
---dbms_output.put_line(p_sql_data_point_id);
---coremod_log.log('print_sql_text_web :'||p_sql_id);
+
     p_output(1):='<code class="codeView">';
     p_output(1):=p_output(1)||'<ol start="1">';
 
---    if p_sql_id is not null then
-      select nvl(sql_text,sql_text_approx) into l_file_id from OPAS_OT_SQL_DESCRIPTIONS de where sql_id=p_sql_id;
-/*    else
-      select nvl(sql_text,sql_text_approx) into l_file_id
-        from OPAS_OT_SQL_DESCRIPTIONS de,
-             OPAS_OT_SQL_DATA da
-       where de.sql_id = da.sql_id
-         and da.sql_data_point_id=p_sql_data_point_id;
-    end if;*/
+    select nvl(sql_text,sql_text_approx) into l_file_id from OPAS_OT_SQL_DESCRIPTIONS de where sql_id=p_sql_id;
 
     for i in (SELECT line_number, payload
                 FROM V$OPAS_FILE_CONTENTBYROW
@@ -1337,7 +1306,7 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
     l_text:='SQL Data Point'||chr(10);
     l_text:=l_text||'Path/SQL_ID: '||l_str||chr(10);
     l_text:=l_text||'DP ID: '||l_sql_data_point.sql_data_point_id||chr(10);
-    l_text:=l_text||l_object.OBJ_DESCR||chr(10);
+    l_text:=l_text||'Description: '||l_object.OBJ_DESCR||chr(10);
 
 
     COREMOD_REPORT_UTILS.convert_to_html_table (
@@ -1487,8 +1456,8 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
     l_text                clob;
   begin
 
-    COREMOD_LOG.Start_SQL_GATHER_STAT('COREOBJ_SQL_REPORT_UTILS.PRINT_REPORT_HTML.GATHER_SQL_STAT');
-    COREMOD_LOG.Start_SQL_TRACE('COREOBJ_SQL_REPORT_UTILS.PRINT_REPORT_HTML.SQL_TRACE');
+    COREMOD_LOG.Start_SQL_GATHER_STAT('COREOBJ_SQL_REPORT_UTILS.PREPARE_REPORT_4DOWNLOAD.GATHER_SQL_STAT');
+    COREMOD_LOG.Start_SQL_TRACE('COREOBJ_SQL_REPORT_UTILS.PREPARE_REPORT_4DOWNLOAD.SQL_TRACE');
 
     select d.*
       into l_sql_data_point
@@ -1510,8 +1479,8 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
 
     coremod_file_utils.clob2blob_prep(p_file_id => l_file_id);
 
-    COREMOD_LOG.Stop_SQL_TRACE('COREOBJ_SQL_REPORT_UTILS.PRINT_REPORT_HTML.SQL_TRACE');
-    COREMOD_LOG.Stop_SQL_GATHER_STAT('COREOBJ_SQL_REPORT_UTILS.PRINT_REPORT_HTML.GATHER_SQL_STAT');
+    COREMOD_LOG.Stop_SQL_TRACE('COREOBJ_SQL_REPORT_UTILS.PREPARE_REPORT_4DOWNLOAD.SQL_TRACE');
+    COREMOD_LOG.Stop_SQL_GATHER_STAT('COREOBJ_SQL_REPORT_UTILS.PREPARE_REPORT_4DOWNLOAD.GATHER_SQL_STAT');
 
     return l_file_id;
   end;

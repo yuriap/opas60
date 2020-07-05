@@ -17,10 +17,13 @@ package COREOBJ_SQL_COMP_REPORT is
   pSQLID#2                    constant varchar2(30) := 'SQLID2';
   pMAX_WIDTH                  constant varchar2(30) := 'MAX_WIDTH';
 
-  pPLANTP#1                   constant varchar2(30) := 'PLANTP1';
-  pPLANTP#2                   constant varchar2(30) := 'PLANTP2';
+  pPLANDP#1                   constant varchar2(30) := 'PLANDP1';
+  pPLANDP#2                   constant varchar2(30) := 'PLANDP2';
+
   pPLANID#1                   constant varchar2(30) := 'PLANID1';
   pPLANID#2                   constant varchar2(30) := 'PLANID2';
+
+  pPLANTP#1                   constant varchar2(30) := 'PLANTP1';
   pMAINPLANSECTION            constant varchar2(30) := 'MAINPLANSECTION';
 
   pSTATTP                     constant varchar2(30) := 'STATTP';
@@ -38,24 +41,22 @@ package COREOBJ_SQL_COMP_REPORT is
   pPLNHASH#1                  constant varchar2(30) := 'PLNHASH#1';
   pPLNHASH#2                  constant varchar2(30) := 'PLNHASH#2';
 
-  pDP_ID#1                   constant varchar2(30) := 'DP_ID#1';
-  pDP_ID#2                   constant varchar2(30) := 'DP_ID#2';
   pCHLD#1                    constant varchar2(30) := 'CHLD#1';
   pCHLD#2                    constant varchar2(30) := 'CHLD#2';
+  pV$INST#1                  constant varchar2(30) := 'V$INST#1';
+  pV$INST#2                  constant varchar2(30) := 'V$INST#2';
 
   --plan types
-  ptAWR                       constant varchar2(30) := 'AWR';
-  ptEP                        constant varchar2(30) := 'EP';
-  ptMAIN                      constant varchar2(30) := 'MAIN';
+  ptAWR                       constant varchar2(30) := 'AWR';  --AWR
+  ptEP                        constant varchar2(30) := 'EP';   --Explain plan
+  ptMAIN                      constant varchar2(30) := 'MAIN'; --V$
+  ptHST                       constant varchar2(30) := 'HST';  --SQL Mon HST
 
   --STAT types
   stAWR                       constant varchar2(30) := 'AWR';
   stV$SQL                     constant varchar2(30) := 'V$SQL';
 
   TYPE r_sqlstat_base_crsr IS RECORD (
-    --sql_id               VARCHAR2(13),
-    --plan_hash_value      NUMBER,
-    --dbid                 NUMBER,
     executions_delta     NUMBER,
     ela_poe              NUMBER,
     lio_poe              NUMBER,
@@ -104,18 +105,9 @@ package COREOBJ_SQL_COMP_REPORT is
   procedure remove  (p_obj_id         opas_objects.obj_id%type,
                      p_cascade        varchar2 default 'N');
 
+  procedure set_initial_pars(p_obj_id         opas_objects.obj_id%type);
+
   function get_object_status_to_display (p_obj_id          opas_objects.obj_id%type) return varchar2;
-
-/*  procedure compare(p_txt1      COREMOD_REPORT_UTILS.t_output_lines,
-                    p_txt2      COREMOD_REPORT_UTILS.t_output_lines,
-                    p_flags     pls_integer,
-                    p_output    out COREMOD_REPORT_UTILS.t_output_lines,
-                    p_max_width out number);*/
-
-/*  procedure compare_sql_stats(p_stats1    in out t_sqlstat_base_crsr,
-                              p_stats2    in out t_sqlstat_base_crsr,
-                              p_max_width number,
-                              p_output    out COREMOD_REPORT_UTILS.t_output_lines);*/
 
   procedure create_comprep_section(p_obj_id           opas_objects.obj_id%type,
                                    p_section varchar2,
@@ -123,6 +115,12 @@ package COREOBJ_SQL_COMP_REPORT is
 
   procedure print_comprep_section_web(p_obj_id           opas_objects.obj_id%type,
                                       p_section varchar2);
+
+  function print_report_html(p_obj_id  opas_objects.obj_id%type,
+                             p_section_list varchar2 default null) return TABLEOFSTRINGS pipelined;
+
+  function prepare_report_4download(p_obj_id  opas_objects.obj_id%type,
+                                    p_section_list varchar2) return opas_files.file_id%type;
 
 end COREOBJ_SQL_COMP_REPORT;
 /

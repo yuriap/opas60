@@ -281,6 +281,7 @@ PACKAGE BODY COREOBJ_API AS
     else
       raise_application_error(-20000,'Parameters OBJ_ID mismatch current:specified '||gCurrentParamsObject||':'||p_obj_id);
     end if;
+--coremod_log.log('add_jparam:'||p_pname||':'||p_value);
   end;
 
   procedure store_jparams(p_obj_id           opas_objects.obj_id%type)
@@ -291,7 +292,8 @@ PACKAGE BODY COREOBJ_API AS
     APEX_JSON.initialize_clob_output;
     APEX_JSON.open_object;
     APEX_JSON.open_array('params');
-
+--coremod_log.log('store_jparams.p_obj_id:'||p_obj_id);
+--coremod_log.log('gParams.count:'||gParams.count);
     l_indx := gParams.first;
     loop
       if gParams(l_indx) is not null then
@@ -300,6 +302,7 @@ PACKAGE BODY COREOBJ_API AS
         APEX_JSON.write('param_value', gParams(l_indx));
         APEX_JSON.close_object;
       end if;
+--coremod_log.log('gParams('||l_indx||')='||gParams(l_indx));
       l_indx := gParams.next(l_indx);
       exit when l_indx is null;
     end loop;
@@ -313,7 +316,7 @@ PACKAGE BODY COREOBJ_API AS
     when matched then update set jsparams = APEX_JSON.get_clob_output
     when not matched then insert (t.obj_id, t.par_name, t.jsparams)
       values (s.obj_id, s.par_name, s.jsparams);
-
+--coremod_log.log('Stored rows:'||sql%rowcount);
     APEX_JSON.free_output;
     --commit;
   end;
@@ -335,6 +338,8 @@ PACKAGE BODY COREOBJ_API AS
     FOR i IN 1 .. l_count LOOP
       gParams(APEX_JSON.get_varchar2(p_path => 'params[%d].param_name', p0 => i)) := APEX_JSON.get_varchar2(p_path => 'params[%d].param_value', p0 => i);
     END LOOP;
+--coremod_log.log('extract_jparams.p_obj_id:'||p_obj_id);
+--coremod_log.log('gParams.count:'||gParams.count);
   exception
       when no_data_found then null;
   end;
@@ -349,6 +354,7 @@ PACKAGE BODY COREOBJ_API AS
     else
       p_value := null;
     end if;
+--coremod_log.log('get_jparam:'||p_pname||':'||p_value);
   end;
 
 begin

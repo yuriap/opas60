@@ -4,6 +4,11 @@ Version 6.2 PROD
 Release notes:
 ==============
 
+Version 6.5.0 2020-Jul-05
+-------------------------
+SQL Comparison Report
+ - new tool allows comparing any SQLs by text, plans, statistics
+ 
 Version 6.4.0 2020-Jun-22
 -------------------------
 Database Growth Monitor
