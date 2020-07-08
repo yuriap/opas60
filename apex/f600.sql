@@ -28,7 +28,7 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 -- Application Export:
 --   Application:     600
 --   Name:            Oracle Performance Analytic Suite
---   Date and Time:   18:42 Sunday July 5, 2020
+--   Date and Time:   20:05 Wednesday July 8, 2020
 --   Exported By:     OPAS60DADM
 --   Flashback:       0
 --   Export Type:     Application Export
@@ -36,9 +36,9 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 --       Items:                  344
 --       Validations:              4
 --       Processes:              201
---       Regions:                234
+--       Regions:                241
 --       Buttons:                177
---       Dynamic Actions:         56
+--       Dynamic Actions:         60
 --     Shared Components:
 --       Logic:
 --         Items:                 11
@@ -131,7 +131,7 @@ wwv_flow_api.create_flow(
 ,p_substitution_string_06=>'APP_GRID_DT_FMT_TZ_FULL'
 ,p_substitution_value_06=>'YYYY-MM-DD HH24:MI:SS.ff9 TZH:TZM'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200705180201'
+,p_last_upd_yyyymmddhh24miss=>'20200708200350'
 ,p_file_prefix => nvl(wwv_flow_application_install.get_static_app_file_prefix,'')
 ,p_files_version=>3
 ,p_ui_type_name => null
@@ -44148,17 +44148,16 @@ wwv_flow_api.create_page(
 ,p_step_template=>wwv_flow_api.id(58924046682993504)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200705174444'
+,p_last_upd_yyyymmddhh24miss=>'20200708200350'
 );
 wwv_flow_api.create_page_plug(
- p_id=>wwv_flow_api.id(2841477823737016)
-,p_plug_name=>'V$SQL Statistics Comparison'
-,p_region_template_options=>'#DEFAULT#:t-Region--removeHeader:t-Region--scrollBody'
+ p_id=>wwv_flow_api.id(3125913210647009)
+,p_plug_name=>'V$SQL'
+,p_region_template_options=>'#DEFAULT#:t-Region--noPadding:t-Region--removeHeader:t-Region--scrollBody'
 ,p_plug_template=>wwv_flow_api.id(58960191682993672)
-,p_plug_display_sequence=>90
+,p_plug_display_sequence=>80
 ,p_include_in_reg_disp_sel_yn=>'Y'
 ,p_plug_display_point=>'BODY'
-,p_plug_source=>'<div id="p8000_sqlvsql"></div>'
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
 ,p_plug_display_condition_type=>'PLSQL_EXPRESSION'
 ,p_plug_display_when_condition=>'instr(:P8000_SECTIONS,''VSQLSTAT'')>0'
@@ -44166,17 +44165,107 @@ wwv_flow_api.create_page_plug(
 ,p_attribute_02=>'HTML'
 );
 wwv_flow_api.create_page_plug(
- p_id=>wwv_flow_api.id(3125413528647004)
-,p_plug_name=>'AWR Statistics Comparison'
+ p_id=>wwv_flow_api.id(2841477823737016)
+,p_plug_name=>'V$SQL Statistics Comparison'
+,p_parent_plug_id=>wwv_flow_api.id(3125913210647009)
 ,p_region_template_options=>'#DEFAULT#:t-Region--removeHeader:t-Region--scrollBody'
 ,p_plug_template=>wwv_flow_api.id(58960191682993672)
-,p_plug_display_sequence=>100
+,p_plug_display_sequence=>30
+,p_plug_display_point=>'BODY'
+,p_plug_source=>'<div id="p8000_sqlvsql"></div>'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(3126015816647010)
+,p_plug_name=>'V$SQL statistics #2'
+,p_parent_plug_id=>wwv_flow_api.id(3125913210647009)
+,p_region_template_options=>'#DEFAULT#:t-Region--removeHeader:t-Region--scrollBody'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>20
+,p_plug_new_grid_row=>false
+,p_plug_display_point=>'BODY'
+,p_plug_source=>'<div id="p8000_vsql2"></div>'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(68634524262705306)
+,p_plug_name=>'V$SQL statistics #1'
+,p_parent_plug_id=>wwv_flow_api.id(3125913210647009)
+,p_region_template_options=>'#DEFAULT#:t-Region--removeHeader:t-Region--scrollBody'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>10
+,p_plug_display_point=>'BODY'
+,p_plug_source=>'<div id="p8000_vsql1"></div>'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(3126897684647018)
+,p_plug_name=>'AWR Data'
+,p_region_template_options=>'#DEFAULT#:t-Region--noPadding:t-Region--removeHeader:t-Region--scrollBody'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>130
 ,p_include_in_reg_disp_sel_yn=>'Y'
 ,p_plug_display_point=>'BODY'
-,p_plug_source=>'<div id="p8000_sqlawr"></div>'
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
 ,p_plug_display_condition_type=>'PLSQL_EXPRESSION'
 ,p_plug_display_when_condition=>'instr(:P8000_SECTIONS,''AWRSTAT'')>0'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(3125413528647004)
+,p_plug_name=>'AWR Statistics Comparison'
+,p_parent_plug_id=>wwv_flow_api.id(3126897684647018)
+,p_region_template_options=>'#DEFAULT#:t-Region--removeHeader:t-Region--scrollBody'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>150
+,p_plug_display_point=>'BODY'
+,p_plug_source=>'<div id="p8000_sqlawr"></div>'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(3126953857647019)
+,p_plug_name=>'Original AWR Data'
+,p_parent_plug_id=>wwv_flow_api.id(3126897684647018)
+,p_region_template_options=>'#DEFAULT#:js-useLocalStorage:t-TabsRegion-mod--simple'
+,p_plug_template=>wwv_flow_api.id(58966904872993703)
+,p_plug_display_sequence=>140
+,p_plug_display_point=>'BODY'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(3126500684647015)
+,p_plug_name=>'AWR SQL statistics #2'
+,p_parent_plug_id=>wwv_flow_api.id(3126953857647019)
+,p_region_template_options=>'#DEFAULT#:t-Region--removeHeader:t-Region--scrollBody'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>120
+,p_plug_display_point=>'BODY'
+,p_plug_source=>'<div id="p8000_awr_sqlstat2"></div>'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(69130145640224754)
+,p_plug_name=>'AWR SQL statistics #1'
+,p_parent_plug_id=>wwv_flow_api.id(3126953857647019)
+,p_region_template_options=>'#DEFAULT#:t-Region--removeHeader:t-Region--scrollBody'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>110
+,p_plug_display_point=>'BODY'
+,p_plug_source=>'<div id="p8000_awr_sqlstat1"></div>'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
 ,p_attribute_01=>'N'
 ,p_attribute_02=>'HTML'
 );
@@ -44262,7 +44351,7 @@ wwv_flow_api.create_page_plug(
 ,p_plug_name=>'SQL Execution Plans Comparison'
 ,p_region_template_options=>'#DEFAULT#:t-Region--removeHeader:t-Region--scrollBody'
 ,p_plug_template=>wwv_flow_api.id(58960191682993672)
-,p_plug_display_sequence=>80
+,p_plug_display_sequence=>90
 ,p_include_in_reg_disp_sel_yn=>'Y'
 ,p_plug_display_point=>'BODY'
 ,p_plug_source=>'<div id="p8000_sqlplans"></div>'
@@ -44665,8 +44754,8 @@ wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(2841282525737014)
 ,p_name=>'P8000_VSQL_REC1'
 ,p_item_sequence=>70
-,p_item_plug_id=>wwv_flow_api.id(2841477823737016)
-,p_prompt=>'V$SQL Record'
+,p_item_plug_id=>wwv_flow_api.id(68634524262705306)
+,p_prompt=>'V$SQL Record #1'
 ,p_display_as=>'NATIVE_POPUP_LOV'
 ,p_lov=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'SELECT',
@@ -44691,8 +44780,8 @@ wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(2841384790737015)
 ,p_name=>'P8000_VSQL_REC2'
 ,p_item_sequence=>80
-,p_item_plug_id=>wwv_flow_api.id(2841477823737016)
-,p_prompt=>'V$SQL Record'
+,p_item_plug_id=>wwv_flow_api.id(3126015816647010)
+,p_prompt=>'V$SQL Record #2'
 ,p_display_as=>'NATIVE_POPUP_LOV'
 ,p_lov=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'SELECT',
@@ -44758,7 +44847,7 @@ wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(2844827812737150)
 ,p_name=>'P8000_AWRSTAT1_1'
 ,p_item_sequence=>90
-,p_item_plug_id=>wwv_flow_api.id(3125413528647004)
+,p_item_plug_id=>wwv_flow_api.id(3126897684647018)
 ,p_prompt=>'AWR Statistics Start #1'
 ,p_display_as=>'NATIVE_POPUP_LOV'
 ,p_lov=>wwv_flow_string.join(wwv_flow_t_varchar2(
@@ -44788,7 +44877,7 @@ wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(3125105968647001)
 ,p_name=>'P8000_AWRSTAT2_1'
 ,p_item_sequence=>110
-,p_item_plug_id=>wwv_flow_api.id(3125413528647004)
+,p_item_plug_id=>wwv_flow_api.id(3126897684647018)
 ,p_prompt=>'AWR Statistics Start #2'
 ,p_display_as=>'NATIVE_POPUP_LOV'
 ,p_lov=>wwv_flow_string.join(wwv_flow_t_varchar2(
@@ -44815,11 +44904,14 @@ wwv_flow_api.create_page_item(
 ,p_attribute_04=>'N'
 ,p_attribute_05=>'N'
 );
+end;
+/
+begin
 wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(3125275760647002)
 ,p_name=>'P8000_AWRSTAT1_2'
 ,p_item_sequence=>120
-,p_item_plug_id=>wwv_flow_api.id(3125413528647004)
+,p_item_plug_id=>wwv_flow_api.id(3126897684647018)
 ,p_prompt=>'AWR Statistics End #1'
 ,p_display_as=>'NATIVE_POPUP_LOV'
 ,p_lov=>wwv_flow_string.join(wwv_flow_t_varchar2(
@@ -44851,7 +44943,7 @@ wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(3125398400647003)
 ,p_name=>'P8000_AWRSTAT2_2'
 ,p_item_sequence=>130
-,p_item_plug_id=>wwv_flow_api.id(3125413528647004)
+,p_item_plug_id=>wwv_flow_api.id(3126897684647018)
 ,p_prompt=>'AWR Statistics End #2'
 ,p_display_as=>'NATIVE_POPUP_LOV'
 ,p_lov=>wwv_flow_string.join(wwv_flow_t_varchar2(
@@ -44880,9 +44972,6 @@ wwv_flow_api.create_page_item(
 ,p_attribute_04=>'N'
 ,p_attribute_05=>'N'
 );
-end;
-/
-begin
 wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(77040475225240640)
 ,p_name=>'P8000_MODE'
@@ -45232,6 +45321,116 @@ wwv_flow_api.create_page_da_action(
 ,p_attribute_04=>'0'
 ,p_attribute_05=>'REPLACE'
 );
+wwv_flow_api.create_page_da_event(
+ p_id=>wwv_flow_api.id(3125720415647007)
+,p_name=>'RenderV$SQL1'
+,p_event_sequence=>60
+,p_triggering_element_type=>'REGION'
+,p_triggering_region_id=>wwv_flow_api.id(68634524262705306)
+,p_bind_type=>'bind'
+,p_bind_event_type=>'apexafterrefresh'
+);
+wwv_flow_api.create_page_da_action(
+ p_id=>wwv_flow_api.id(3125894239647008)
+,p_event_id=>wwv_flow_api.id(3125720415647007)
+,p_event_result=>'TRUE'
+,p_action_sequence=>10
+,p_execute_on_page_init=>'Y'
+,p_action=>'PLUGIN_MULEDEV.SERVER_REGION_REFRESH'
+,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'begin',
+'  COREOBJ_SQL_COMP_REPORT.setsectnum(1);',
+'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sql_data_point_id=> :P8000_DP1, ',
+'                                              p_section_name => COREOBJ_SQL_REPORT_UTILS.repsVSQL,',
+'                                              p_sql_id => :P8000_SQL_ID1);',
+'end;'))
+,p_attribute_02=>'p8000_vsql1'
+,p_attribute_04=>'0'
+,p_attribute_05=>'REPLACE'
+);
+wwv_flow_api.create_page_da_event(
+ p_id=>wwv_flow_api.id(3126155464647011)
+,p_name=>'RenderV$SQL2'
+,p_event_sequence=>70
+,p_triggering_element_type=>'REGION'
+,p_triggering_region_id=>wwv_flow_api.id(3126015816647010)
+,p_bind_type=>'bind'
+,p_bind_event_type=>'apexafterrefresh'
+);
+wwv_flow_api.create_page_da_action(
+ p_id=>wwv_flow_api.id(3126285753647012)
+,p_event_id=>wwv_flow_api.id(3126155464647011)
+,p_event_result=>'TRUE'
+,p_action_sequence=>10
+,p_execute_on_page_init=>'Y'
+,p_action=>'PLUGIN_MULEDEV.SERVER_REGION_REFRESH'
+,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'begin',
+'  COREOBJ_SQL_COMP_REPORT.setsectnum(2);',
+'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sql_data_point_id=> :P8000_DP2, ',
+'                                              p_section_name => COREOBJ_SQL_REPORT_UTILS.repsVSQL,',
+'                                              p_sql_id => :P8000_SQL_ID2);',
+'end;'))
+,p_attribute_02=>'p8000_vsql2'
+,p_attribute_04=>'0'
+,p_attribute_05=>'REPLACE'
+);
+wwv_flow_api.create_page_da_event(
+ p_id=>wwv_flow_api.id(3126390821647013)
+,p_name=>'RenderAWRStat#1'
+,p_event_sequence=>80
+,p_triggering_element_type=>'REGION'
+,p_triggering_region_id=>wwv_flow_api.id(69130145640224754)
+,p_bind_type=>'bind'
+,p_bind_event_type=>'apexafterrefresh'
+);
+wwv_flow_api.create_page_da_action(
+ p_id=>wwv_flow_api.id(3126447775647014)
+,p_event_id=>wwv_flow_api.id(3126390821647013)
+,p_event_result=>'TRUE'
+,p_action_sequence=>10
+,p_execute_on_page_init=>'Y'
+,p_action=>'PLUGIN_MULEDEV.SERVER_REGION_REFRESH'
+,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'begin',
+'  COREOBJ_SQL_COMP_REPORT.setsectnum(1);',
+'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sql_data_point_id=> :P8000_DP1, ',
+'                                              p_section_name => COREOBJ_SQL_REPORT_UTILS.repsAWR_SQLSTAT,',
+'                                              p_sql_id => :P8000_SQL_ID1);',
+'end;',
+''))
+,p_attribute_02=>'p8000_awr_sqlstat1'
+,p_attribute_04=>'0'
+,p_attribute_05=>'REPLACE'
+);
+wwv_flow_api.create_page_da_event(
+ p_id=>wwv_flow_api.id(3126614038647016)
+,p_name=>'RenderAWRStat2'
+,p_event_sequence=>90
+,p_triggering_element_type=>'REGION'
+,p_triggering_region_id=>wwv_flow_api.id(3126500684647015)
+,p_bind_type=>'bind'
+,p_bind_event_type=>'apexafterrefresh'
+);
+wwv_flow_api.create_page_da_action(
+ p_id=>wwv_flow_api.id(3126799830647017)
+,p_event_id=>wwv_flow_api.id(3126614038647016)
+,p_event_result=>'TRUE'
+,p_action_sequence=>10
+,p_execute_on_page_init=>'Y'
+,p_action=>'PLUGIN_MULEDEV.SERVER_REGION_REFRESH'
+,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'begin',
+'  COREOBJ_SQL_COMP_REPORT.setsectnum(2);',
+'  COREOBJ_SQL_REPORT_UTILS.print_section_html(p_sql_data_point_id=> :P8000_DP2, ',
+'                                              p_section_name => COREOBJ_SQL_REPORT_UTILS.repsAWR_SQLSTAT,',
+'                                              p_sql_id => :P8000_SQL_ID2);',
+'end;',
+''))
+,p_attribute_02=>'p8000_awr_sqlstat2'
+,p_attribute_04=>'0'
+,p_attribute_05=>'REPLACE'
+);
 wwv_flow_api.create_page_process(
  p_id=>wwv_flow_api.id(77122835070632393)
 ,p_process_sequence=>10
@@ -45315,7 +45514,7 @@ wwv_flow_api.create_page_process(
 '                           p_pname => COREOBJ_SQL_COMP_REPORT.pCHLD#1,',
 '                           p_value => i.child_number);',
 '    coreobj_api.add_jparam(p_obj_id => :P8000_OBJ_ID,',
-'                           p_pname => COREOBJ_SQL_COMP_REPORT.pPLNHASH#1,',
+'                           p_pname => COREOBJ_SQL_COMP_REPORT.pV$PLNHASH#1,',
 '                           p_value => i.plan_hash_value);	',
 '    coreobj_api.add_jparam(p_obj_id => :P8000_OBJ_ID,',
 '                           p_pname => COREOBJ_SQL_COMP_REPORT.pV$INST#1,',
@@ -45328,7 +45527,7 @@ wwv_flow_api.create_page_process(
 '                           p_pname => COREOBJ_SQL_COMP_REPORT.pCHLD#2,',
 '                           p_value => i.child_number);',
 '    coreobj_api.add_jparam(p_obj_id => :P8000_OBJ_ID,',
-'                           p_pname => COREOBJ_SQL_COMP_REPORT.pPLNHASH#2,',
+'                           p_pname => COREOBJ_SQL_COMP_REPORT.pV$PLNHASH#2,',
 '                           p_value => i.plan_hash_value);	',
 '    coreobj_api.add_jparam(p_obj_id => :P8000_OBJ_ID,',
 '                           p_pname => COREOBJ_SQL_COMP_REPORT.pV$INST#2,',
@@ -45425,6 +45624,8 @@ wwv_flow_api.create_page_process(
 '  l_inst_id number;',
 '  l_dbid number;',
 '  l_snap number;',
+'  l_inc1 number;',
+'  l_inc2 number;',
 'begin',
 '  :APP_CURR_OBJ_OT := 800;',
 '  ',
@@ -45438,18 +45639,20 @@ wwv_flow_api.create_page_process(
 '  :APP_FOLDER_ID := :P8000_PRNT_ID;',
 '',
 '  begin',
-'    select o.obj_id, o.obj_prnt into :P8000_DP1_OBJ, :P8000_DP1_PRNT',
-'      from opas_ot_sql_data_point_ref r, opas_objects o',
+'    select o.obj_id, o.obj_prnt, d.incarnation# into :P8000_DP1_OBJ, :P8000_DP1_PRNT, l_inc1',
+'      from opas_ot_sql_data_point_ref r, opas_objects o, opas_ot_sql_data d',
 '     where r.sql_data_point_id = :P8000_DP1',
-'       and r.obj_id = o.obj_id;',
+'       and r.obj_id = o.obj_id',
+'       and r.sql_data_point_id = d.sql_data_point_id;',
 '  exception',
 '    when no_data_found then :P8000_DP1_OBJ := null; :P8000_DP1_PRNT := null;',
 '  end;',
 '  begin',
-'    select o.obj_id, o.obj_prnt into :P8000_DP2_OBJ, :P8000_DP2_PRNT',
-'      from opas_ot_sql_data_point_ref r, opas_objects o',
+'    select o.obj_id, o.obj_prnt, d.incarnation# into :P8000_DP2_OBJ, :P8000_DP2_PRNT, l_inc2',
+'      from opas_ot_sql_data_point_ref r, opas_objects o, opas_ot_sql_data d',
 '     where r.sql_data_point_id = :P8000_DP2',
-'       and r.obj_id = o.obj_id;',
+'       and r.obj_id = o.obj_id',
+'       and r.sql_data_point_id = d.sql_data_point_id;',
 '  exception',
 '    when no_data_found then :P8000_DP2_OBJ := null; :P8000_DP2_PRNT := null;',
 '  end;  ',
@@ -45493,7 +45696,7 @@ wwv_flow_api.create_page_process(
 '                         p_pname => COREOBJ_SQL_COMP_REPORT.pCHLD#1,',
 '                         p_value => l_child_number);',
 '  coreobj_api.get_jparam(p_obj_id => :P8000_OBJ_ID,',
-'                         p_pname => COREOBJ_SQL_COMP_REPORT.pPLNHASH#1,',
+'                         p_pname => COREOBJ_SQL_COMP_REPORT.pV$PLNHASH#1,',
 '                         p_value => l_plan_hash_value);	',
 '  coreobj_api.get_jparam(p_obj_id => :P8000_OBJ_ID,',
 '                         p_pname => COREOBJ_SQL_COMP_REPORT.pV$INST#1,',
@@ -45507,14 +45710,14 @@ wwv_flow_api.create_page_process(
 '                         p_pname => COREOBJ_SQL_COMP_REPORT.pCHLD#2,',
 '                         p_value => l_child_number);',
 '  coreobj_api.get_jparam(p_obj_id => :P8000_OBJ_ID,',
-'                         p_pname => COREOBJ_SQL_COMP_REPORT.pPLNHASH#2,',
+'                         p_pname => COREOBJ_SQL_COMP_REPORT.pV$PLNHASH#2,',
 '                         p_value => l_plan_hash_value);	',
 '  coreobj_api.get_jparam(p_obj_id => :P8000_OBJ_ID,',
 '                         p_pname => COREOBJ_SQL_COMP_REPORT.pV$INST#2,',
 '                         p_value => l_inst_id);',
 '  begin',
 '    SELECT rowid into :P8000_VSQL_REC2 from opas_ot_sql_vsql where inst_id = l_inst_id and plan_hash_value = l_plan_hash_value and child_number = l_child_number and sql_data_point_id = :P8000_DP2;',
-'  exception when others then :P8000_VSQL_REC1 := null;',
+'  exception when others then :P8000_VSQL_REC2 := null;',
 '  end;  ',
 '  ',
 '  coreobj_api.get_jparam(p_obj_id => :P8000_OBJ_ID,',
@@ -45530,7 +45733,9 @@ wwv_flow_api.create_page_process(
 '                         p_pname => COREOBJ_SQL_COMP_REPORT.pPLNHASH#1,',
 '                         p_value => l_plan_hash_value);                           ',
 '  begin',
-'    SELECT rowid into :P8000_AWRSTAT1_1 from opas_ot_sql_awr_sqlstat s where  s.snap_id = l_snap and  s.dbid = l_dbid and  s.instance_number = l_inst_id and s.plan_hash_value = l_plan_hash_value and s.sql_id = :P8000_SQL_ID1;',
+'    SELECT rowid into :P8000_AWRSTAT1_1 from opas_ot_sql_awr_sqlstat s ',
+'     where s.snap_id = l_snap and  s.dbid = l_dbid and  s.instance_number = l_inst_id and s.plan_hash_value = l_plan_hash_value and s.sql_id = :P8000_SQL_ID1',
+'       and s.incarnation# = l_inc1;',
 '  exception when others then :P8000_AWRSTAT1_1 := null;',
 '  end;',
 '  ',
@@ -45538,7 +45743,9 @@ wwv_flow_api.create_page_process(
 '                         p_pname => COREOBJ_SQL_COMP_REPORT.pSNAPE#1,',
 '                         p_value => l_snap); ',
 '  begin                  ',
-'    SELECT rowid into :P8000_AWRSTAT1_2 from opas_ot_sql_awr_sqlstat s where  s.snap_id = l_snap and  s.dbid = l_dbid and  s.instance_number = l_inst_id and s.plan_hash_value = l_plan_hash_value and s.sql_id = :P8000_SQL_ID1;',
+'    SELECT rowid into :P8000_AWRSTAT1_2 from opas_ot_sql_awr_sqlstat s ',
+'     where s.snap_id = l_snap and  s.dbid = l_dbid and  s.instance_number = l_inst_id and s.plan_hash_value = l_plan_hash_value and s.sql_id = :P8000_SQL_ID1',
+'       and s.incarnation# = l_inc1;',
 '  exception when others then :P8000_AWRSTAT1_2 := null;',
 '  end;',
 '',
@@ -45556,7 +45763,9 @@ wwv_flow_api.create_page_process(
 '                         p_pname => COREOBJ_SQL_COMP_REPORT.pPLNHASH#2,',
 '                         p_value => l_plan_hash_value);                           ',
 '  begin',
-'    SELECT rowid into :P8000_AWRSTAT2_1 from opas_ot_sql_awr_sqlstat s where  s.snap_id = l_snap and  s.dbid = l_dbid and  s.instance_number = l_inst_id and s.plan_hash_value = l_plan_hash_value and s.sql_id = :P8000_SQL_ID2;',
+'    SELECT rowid into :P8000_AWRSTAT2_1 from opas_ot_sql_awr_sqlstat s ',
+'     where s.snap_id = l_snap and  s.dbid = l_dbid and  s.instance_number = l_inst_id and s.plan_hash_value = l_plan_hash_value and s.sql_id = :P8000_SQL_ID2',
+'       and s.incarnation# = l_inc2;',
 '  exception when others then :P8000_AWRSTAT2_1 := null;',
 '  end;',
 '  ',
@@ -45564,7 +45773,9 @@ wwv_flow_api.create_page_process(
 '                         p_pname => COREOBJ_SQL_COMP_REPORT.pSNAPE#2,',
 '                         p_value => l_snap); ',
 '  begin                  ',
-'    SELECT rowid into :P8000_AWRSTAT2_2 from opas_ot_sql_awr_sqlstat s where  s.snap_id = l_snap and  s.dbid = l_dbid and  s.instance_number = l_inst_id and s.plan_hash_value = l_plan_hash_value and s.sql_id = :P8000_SQL_ID2;',
+'    SELECT rowid into :P8000_AWRSTAT2_2 from opas_ot_sql_awr_sqlstat s ',
+'     where s.snap_id = l_snap and  s.dbid = l_dbid and  s.instance_number = l_inst_id and s.plan_hash_value = l_plan_hash_value and s.sql_id = :P8000_SQL_ID2',
+'       and s.incarnation# = l_inc2;',
 '  exception when others then :P8000_AWRSTAT2_2 := null;',
 '  end;',
 '  ',

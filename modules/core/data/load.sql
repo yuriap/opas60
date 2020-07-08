@@ -105,8 +105,8 @@ INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sp
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','DBGALERT',  'REGEXP'                     ,'Regular Expression'   ,'bytes',null,null,50);
 --
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLCOMPSECT','CSQLTEXT'                  ,'SQL Texts'            ,'ccsqltxt',       null,null,10);
-INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLCOMPSECT','EXECPLAN'                  ,'Execution Plans'      ,'ccexpln',        null,null,20);
-INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLCOMPSECT','VSQLSTAT'                  ,'V$SQL statistics'     ,'ccvsqlst',       null,null,30);
+INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLCOMPSECT','EXECPLAN'                  ,'Execution Plans'      ,'ccexpln',        null,null,30);
+INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLCOMPSECT','VSQLSTAT'                  ,'V$SQL statistics'     ,'ccvsqlst',       null,null,20);
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLCOMPSECT','AWRSTAT'                   ,'AWR statistics'       ,'ccawrst',        null,null,40);
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLCOMPSECT','ASHWAIT'                   ,'ASH Wait Profiles'    ,'ccashwt',        null,null,50);
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLCOMPSECT','ASHPLANSTAT'               ,'ASH Plan STats'       ,'ccashplst',      null,null,50);

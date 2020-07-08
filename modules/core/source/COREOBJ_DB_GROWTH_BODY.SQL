@@ -98,7 +98,7 @@ package body COREOBJ_DB_GROWTH is
     for i in (select dbg_id from opas_ot_dbg_monitor order by 1)
     loop
       begin
-        execute immediate 'alter table opas_ot_dbg_seg_sizes split subpartition ssp_'||i.dbg_id||'_max at ('||l_split||') into (subpartition ssp_'||l_split||', subpartition ssp_'||i.dbg_id||'_max)';
+        execute immediate 'alter table opas_ot_dbg_seg_sizes split subpartition ssp_'||i.dbg_id||'_max at ('||l_split||') into (subpartition ssp_'||i.dbg_id||'_'||l_split||', subpartition ssp_'||i.dbg_id||'_max)';
       exception
         when others then
           l_is_error := true;

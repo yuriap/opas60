@@ -15,6 +15,34 @@ package body COREOBJ_SQL_COMP_REPORT is
                                                              'Hint Report');
   --g_params COREMOD_REPORT_UTILS.t_params;
 
+  g_SectNum number;
+
+  function ifiamcalledfromcompreport return boolean
+  is
+    l_result number;
+  begin
+    select count(1) into l_result from opas_objects where obj_id = v('APP_OBJ_ID') and obj_ot = COREOBJ_API.otSQL_COMPARISON;
+    if l_result>0 then
+      coreobj_api.extract_jparams(p_obj_id => v('APP_OBJ_ID'));
+      return true;
+    else
+      return false;
+    end if;
+  end;
+
+  function getparamforcaller_n(p_name varchar2) return number
+  is
+    l_result number;
+  begin
+    coreobj_api.get_jparam(p_obj_id => v('APP_OBJ_ID'),
+                           p_pname => p_name,
+                           p_value => l_result);
+    return l_result;
+  end;
+
+  procedure setsectnum(p_num number) is begin g_SectNum := p_num; end;
+  function getsectnum return number is begin return g_SectNum; end;
+
   procedure add   (p_obj_id       out opas_objects.obj_id%type,
                    p_obj_prnt         opas_objects.obj_prnt%type,
                    p_modname          opas_files.modname%type default COREMOD_API.gMODNAME,
@@ -93,7 +121,7 @@ package body COREOBJ_SQL_COMP_REPORT is
                                p_pname => COREOBJ_SQL_COMP_REPORT.pCHLD#1,
                                p_value => i.child_number);
         coreobj_api.add_jparam(p_obj_id => p_obj_id,
-                               p_pname => COREOBJ_SQL_COMP_REPORT.pPLNHASH#1,
+                               p_pname => COREOBJ_SQL_COMP_REPORT.pV$PLNHASH#1,
                                p_value => i.plan_hash_value);
         coreobj_api.add_jparam(p_obj_id => p_obj_id,
                                p_pname => COREOBJ_SQL_COMP_REPORT.pV$INST#1,
@@ -120,7 +148,7 @@ package body COREOBJ_SQL_COMP_REPORT is
                                p_pname => COREOBJ_SQL_COMP_REPORT.pCHLD#2,
                                p_value => i.child_number);
         coreobj_api.add_jparam(p_obj_id => p_obj_id,
-                               p_pname => COREOBJ_SQL_COMP_REPORT.pPLNHASH#2,
+                               p_pname => COREOBJ_SQL_COMP_REPORT.pV$PLNHASH#2,
                                p_value => i.plan_hash_value);
         coreobj_api.add_jparam(p_obj_id => p_obj_id,
                                p_pname => COREOBJ_SQL_COMP_REPORT.pV$INST#2,

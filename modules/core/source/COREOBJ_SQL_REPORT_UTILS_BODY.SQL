@@ -156,12 +156,38 @@ PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
     l_db_link_display_name varchar2(1000);
     l_output    COREMOD_REPORT_UTILS.t_output_lines;
 
+    l_inst number;
+    l_chld number;
+    l_plhsh number;
+
     procedure p(msg varchar2) is begin l_output(l_row_index) := msg; l_row_index := l_row_index+1; end;
   begin
     --p(' ');
     select nvl(display_name,dblink) into l_db_link_display_name from v$opas_db_links l, opas_ot_sql_data sd where l.db_link_name(+) = sd.dblink and sd.sql_data_point_id = p_sql_data_point_id;
     p('Source DB: '||l_db_link_display_name);
-    for i in (select * from OPAS_OT_SQL_VSQL where sql_data_point_id=p_sql_data_point_id order by inst_id, child_number) loop
+    if coreobj_sql_comp_report.ifiamcalledfromcompreport then
+      if coreobj_sql_comp_report.getsectnum = 1 then
+        l_inst := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pV$INST#1);
+      elsif coreobj_sql_comp_report.getsectnum = 2 then
+        l_inst := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pV$INST#2);
+      end if;
+      if coreobj_sql_comp_report.getsectnum = 1 then
+        l_chld := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pCHLD#1);
+      elsif coreobj_sql_comp_report.getsectnum = 2 then
+        l_chld := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pCHLD#2);
+      end if;
+      if coreobj_sql_comp_report.getsectnum = 1 then
+        l_plhsh := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pV$PLNHASH#1);
+      elsif coreobj_sql_comp_report.getsectnum = 2 then
+        l_plhsh := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pV$PLNHASH#2);
+      end if;
+    end if;
+    for i in (select * from OPAS_OT_SQL_VSQL
+               where sql_data_point_id=p_sql_data_point_id
+                 and inst_id=nvl(l_inst,inst_id)
+                 and child_number=nvl(l_chld,child_number)
+                 and plan_hash_value=nvl(l_plhsh,plan_hash_value)
+               order by inst_id, child_number) loop
       --p(' ');
       p('=====================================================================================================');
       p('SQL_ID='||i.sql_id||'; CHILD_NUMBER='||i.child_number||'; PLAN HASH: '||i.PLAN_HASH_VALUE||'; Opt Env Hash: '||i.OPTIMIZER_ENV_HASH_VALUE||';'||' INST_ID: '||i.inst_id);
@@ -763,9 +789,13 @@ p_query => replace(replace(replace(q'[select to_char(sql_hour,'<defDTFullFmt>') 
 
   procedure print_awr_sqlstat_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
                                            p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
-  begin
-    COREMOD_REPORT_UTILS.print_query_result_html (
-p_query => replace(replace(replace(q'[with data1 as (
+    l_dbid number;
+    l_snaps number;
+    l_snape number;
+    l_inst number;
+    l_plhsh number;
+
+    l_sql varchar2(32765) := q'[with data1 as (
 select
         s.snap_id snap,to_char(sn.end_interval_time,'<defDTFullFmt>') end_interval_time
       , s.instance_number inst_id
@@ -798,7 +828,8 @@ where s.sql_id = dp.sql_id
   and dp.INCARNATION# = s.INCARNATION#
   and dp.dblink=sn.dblink
   and dp.dblink=s.dblink
-  and dp.SQL_DATA_POINT_ID = <sql_data_point_id>)
+  and dp.SQL_DATA_POINT_ID = <sql_data_point_id>
+  <SNAPS> <DBID> <INST> <PLHSH>)
 SELECT
   snap, end_interval_time, inst_id, plan_hash, exec_delta, ela_poe, lio_poe, cpu_poe, iowait_poe, ccwait_poe, apwait_poe, clwait_poe, pio_poe, rows_poe, ela_delta_sec, cpu_delta_sec,
   iowait_delta_sec, disk_reads_delta, buffer_gets_delta, rows_processed_delta, lio_per_row, io_per_row, awg_io_tim,
@@ -811,7 +842,47 @@ SELECT
   sum(iowait_delta_sec), sum(disk_reads_delta), sum(buffer_gets_delta), sum(rows_processed_delta), round(avg(lio_per_row),3), round(avg(io_per_row),3), round(avg(awg_io_tim),4),
   1 noprn_lastrow
 FROM data1
-order by snap nulls last, inst_id]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt),
+order by snap nulls last, inst_id]'; --'
+  begin
+    if coreobj_sql_comp_report.ifiamcalledfromcompreport then
+      if coreobj_sql_comp_report.getsectnum = 1 then
+        l_dbid := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pDBID#1);
+      elsif coreobj_sql_comp_report.getsectnum = 2 then
+        l_dbid := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pDBID#2);
+      end if;
+
+      if coreobj_sql_comp_report.getsectnum = 1 then
+        l_snaps := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pSNAPS#1);
+      elsif coreobj_sql_comp_report.getsectnum = 2 then
+        l_snaps := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pSNAPS#2);
+      end if;
+      if coreobj_sql_comp_report.getsectnum = 1 then
+        l_snape := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pSNAPE#1);
+      elsif coreobj_sql_comp_report.getsectnum = 2 then
+        l_snape := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pSNAPE#2);
+      end if;
+
+      if coreobj_sql_comp_report.getsectnum = 1 then
+        l_inst := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pINST#1);
+      elsif coreobj_sql_comp_report.getsectnum = 2 then
+        l_inst := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pINST#2);
+      end if;
+
+      if coreobj_sql_comp_report.getsectnum = 1 then
+        l_plhsh := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pPLNHASH#1);
+      elsif coreobj_sql_comp_report.getsectnum = 2 then
+        l_plhsh := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pPLNHASH#2);
+      end if;
+
+    end if;
+
+    l_sql := replace(l_sql,'<DBID>',case when l_dbid is not null then ' and s.DBID='||l_dbid else null end);
+    l_sql := replace(l_sql,'<SNAPS>',case when l_snaps is not null and l_snape is not null then ' and s.snap_id between '||l_snaps||' and '||l_snape else null end);
+    l_sql := replace(l_sql,'<INST>',case when l_inst is not null then ' and s.instance_number='||l_inst else null end);
+    l_sql := replace(l_sql,'<PLHSH>',case when l_plhsh is not null then ' and s.plan_hash_value='||l_plhsh else null end);
+
+    COREMOD_REPORT_UTILS.print_query_result_html (
+              p_query => replace(replace(replace(l_sql,'<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt),
                                             p_width => gwWideSection1,--'
                                             p_summary => 'AWR SQL statistics',
                                             p_search => 'PLAN_HASH',

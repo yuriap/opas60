@@ -45,6 +45,8 @@ package COREOBJ_SQL_COMP_REPORT is
   pCHLD#2                    constant varchar2(30) := 'CHLD#2';
   pV$INST#1                  constant varchar2(30) := 'V$INST#1';
   pV$INST#2                  constant varchar2(30) := 'V$INST#2';
+  pV$PLNHASH#1               constant varchar2(30) := 'V$PLNHASH#1';
+  pV$PLNHASH#2               constant varchar2(30) := 'V$PLNHASH#2';
 
   --plan types
   ptAWR                       constant varchar2(30) := 'AWR';  --AWR
@@ -121,6 +123,11 @@ package COREOBJ_SQL_COMP_REPORT is
 
   function prepare_report_4download(p_obj_id  opas_objects.obj_id%type,
                                     p_section_list varchar2) return opas_files.file_id%type;
+
+  function ifiamcalledfromcompreport return boolean;
+  function getparamforcaller_n(p_name varchar2) return number;
+  procedure setsectnum(p_num number);
+  function getsectnum return number;
 
 end COREOBJ_SQL_COMP_REPORT;
 /

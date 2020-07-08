@@ -1,5 +1,5 @@
 Oracle Performance Analytic Suite and Performance Data Management System
-Version 6.2 PROD
+Version 6.5 PROD
 
 Release notes:
 ==============
