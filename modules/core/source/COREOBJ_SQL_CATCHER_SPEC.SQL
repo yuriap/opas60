@@ -20,7 +20,7 @@ package COREOBJ_SQL_CATCHER is
   def_check_interval   constant number := 30;
   def_execs            constant number := 1;
 
-    procedure add   (p_obj_id       out opas_objects.obj_id%type,
+  procedure add     (p_obj_id       out opas_objects.obj_id%type,
                      p_obj_prnt         opas_objects.obj_prnt%type,
                      p_modname          opas_files.modname%type default COREMOD_API.gMODNAME,
                      p_owner            opas_files.owner%type default 'PUBLIC',

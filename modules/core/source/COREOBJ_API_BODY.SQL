@@ -330,7 +330,7 @@ PACKAGE BODY COREOBJ_API AS
     gCurrentParamsObject := p_obj_id;
     gParams.delete;
 
-    select jsparams into l_json_text from opas_object_pars where obj_id = p_obj_id;
+    select jsparams into l_json_text from opas_object_pars where obj_id = p_obj_id and par_name=jsParamName;
 
     APEX_JSON.parse(l_json_text);
     l_count := APEX_JSON.get_count(p_path => 'params');

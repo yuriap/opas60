@@ -571,7 +571,8 @@ alter table opas_ot_sql_sqlmon_data ROW STORE COMPRESS ADVANCED;
 create index idx_opas_sql_mon_rep_d_mon on opas_ot_sql_sqlmon_data(sqlmon_id) compress;
 
 CREATE GLOBAL TEMPORARY TABLE OPAS_OT_TMP_GV$SQL_MONITOR 
-   (INST_ID NUMBER, 
+   (sqlmon_id number,
+    INST_ID NUMBER, 
 	KEY NUMBER, 
 	REPORT_ID NUMBER, 
 	STATUS VARCHAR2(19 BYTE), 

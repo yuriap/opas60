@@ -34,7 +34,8 @@ PACKAGE COREOBJ_SQL_UTILS AS
     SNAP_END             OPAS_DB_LINK_AWRSNAPS.SNAP_ID%type,
     BEGIN_INTERVAL_TIME  OPAS_DB_LINK_AWRSNAPS.BEGIN_INTERVAL_TIME%type,
     END_INTERVAL_TIME    OPAS_DB_LINK_AWRSNAPS.END_INTERVAL_TIME%type,
-    INCARNATION#         OPAS_DB_LINK_AWRSNAPS.INCARNATION#%type
+    INCARNATION#         OPAS_DB_LINK_AWRSNAPS.INCARNATION#%type,
+    DATES_SPECIFIED      boolean
   );
 
   procedure discover_sql (p_sql_data_point_id         opas_ot_sql_data.sql_data_point_id%type);

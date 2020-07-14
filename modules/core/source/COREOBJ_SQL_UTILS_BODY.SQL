@@ -4,6 +4,59 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
   gAWRParams   t_awr_params_rec;
   gModuleName varchar2(100):='SQL Discover';
 
+  pDBLINK                constant varchar2(30) := 'DBLINK';
+  pDBID                  constant varchar2(30) := 'DBID';
+  pCON_ID                constant varchar2(30) := 'CON_ID';
+  pINSTANCE_LIST_C       constant varchar2(30) := 'INSTANCE_LIST_C';
+  pSNAP_START            constant varchar2(30) := 'SNAP_START';
+  pSNAP_END              constant varchar2(30) := 'SNAP_END';
+  pBEGIN_INTERVAL_TIME   constant varchar2(30) := 'BEGIN_INTERVAL_TIME';
+  pEND_INTERVAL_TIME     constant varchar2(30) := 'END_INTERVAL_TIME';
+  pINCARNATION#          constant varchar2(30) := 'INCARNATION#';
+  pDATES_SPECIFIED       constant varchar2(30) := 'DATES_SPECIFIED';
+
+  pTSFMT1                constant varchar2(30) := 'YYYYMMDDHH24MISS.FF3';
+
+  procedure read_gAWRParams(p_obj_id  opas_ot_sql_data_point_ref.obj_id%type)
+  is
+    l_ts   varchar2(100);
+    l_bool varchar2(10);
+  begin
+    coreobj_api.extract_jparams(p_obj_id => p_obj_id);
+    coreobj_api.get_jparam(p_obj_id, pDBLINK, gAWRParams.DBLINK);
+    coreobj_api.get_jparam(p_obj_id, pDBID, gAWRParams.DBID);
+    coreobj_api.get_jparam(p_obj_id, pCON_ID, gAWRParams.CON_ID);
+    coreobj_api.get_jparam(p_obj_id, pINSTANCE_LIST_C, gAWRParams.INSTANCE_LIST_C);
+    coreobj_api.get_jparam(p_obj_id, pSNAP_START, gAWRParams.SNAP_START);
+    coreobj_api.get_jparam(p_obj_id, pSNAP_END, gAWRParams.SNAP_END);
+    coreobj_api.get_jparam(p_obj_id, pBEGIN_INTERVAL_TIME, l_ts);
+    gAWRParams.BEGIN_INTERVAL_TIME := to_timestamp(l_ts,pTSFMT1);
+    coreobj_api.get_jparam(p_obj_id, pEND_INTERVAL_TIME, l_ts);
+    gAWRParams.END_INTERVAL_TIME := to_timestamp(l_ts,pTSFMT1);
+    coreobj_api.get_jparam(p_obj_id, pINCARNATION#, gAWRParams.INCARNATION#);
+    coreobj_api.get_jparam(p_obj_id, pDATES_SPECIFIED, l_bool);
+    gAWRParams.DATES_SPECIFIED := case when l_bool = 'TRUE' then true else false end;
+    --coreobj_api.store_jparams(p_obj_id => p_obj_id);
+  end;
+
+  procedure write_gAWRParams(p_obj_id  opas_ot_sql_data_point_ref.obj_id%type)
+  is
+    pragma autonomous_transaction;
+  begin
+    coreobj_api.extract_jparams(p_obj_id => p_obj_id);
+    coreobj_api.add_jparam(p_obj_id, pDBLINK, gAWRParams.DBLINK);
+    coreobj_api.add_jparam(p_obj_id, pDBID, gAWRParams.DBID);
+    coreobj_api.add_jparam(p_obj_id, pCON_ID, gAWRParams.CON_ID);
+    coreobj_api.add_jparam(p_obj_id, pINSTANCE_LIST_C, gAWRParams.INSTANCE_LIST_C);
+    coreobj_api.add_jparam(p_obj_id, pSNAP_START, gAWRParams.SNAP_START);
+    coreobj_api.add_jparam(p_obj_id, pSNAP_END, gAWRParams.SNAP_END);
+    coreobj_api.add_jparam(p_obj_id, pBEGIN_INTERVAL_TIME, to_char(gAWRParams.BEGIN_INTERVAL_TIME,pTSFMT1));
+    coreobj_api.add_jparam(p_obj_id, pEND_INTERVAL_TIME, to_char(gAWRParams.END_INTERVAL_TIME,pTSFMT1));
+    coreobj_api.add_jparam(p_obj_id, pINCARNATION#, gAWRParams.INCARNATION#);
+    coreobj_api.add_jparam(p_obj_id, pDATES_SPECIFIED, case when gAWRParams.DATES_SPECIFIED then 'TRUE' else 'FALSE' end);
+    coreobj_api.store_jparams(p_obj_id => p_obj_id);
+    commit;
+  end;
   procedure is_section_ready(p_sql_data_point_id      opas_ot_sql_data.sql_data_point_id%type,
                              p_section_name           varchar2,
                              p_status             out opas_ot_sql_data_sect.gathering_status%type,
@@ -18,7 +71,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
   end;
 
   function  is_section_no_data(p_sql_id              opas_ot_sql_data.sql_id%type,
-                                p_section_name           varchar2) return boolean
+                               p_section_name           varchar2) return boolean
   is
     l_cnt number;
   begin
@@ -75,9 +128,31 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                               p_data                  out opas_ot_sql_data%rowtype,
                               p_obj_id                out opas_ot_sql_data_point_ref.obj_id%type)
   is
+/*    l_start_dt         timestamp with time zone;
+    l_end_dt           timestamp with time zone;*/
   begin
     select * into p_data from opas_ot_sql_data where sql_data_point_id = p_sql_data_point_id;
     select obj_id into p_obj_id from opas_ot_sql_data_point_ref where sql_data_point_id = p_sql_data_point_id;
+/*
+    l_start_dt := COREOBJ_API.get_param_d(p_obj_id, pnAWRStartDT, false);
+    l_end_dt := COREOBJ_API.get_param_d(p_obj_id, pnAWREndDT, false);
+
+    if l_start_dt is not null and l_end_dt is not null then
+      gAWRParams.DATES_SPECIFIED := true;
+
+      select min(BEGIN_INTERVAL_TIME), max(END_INTERVAL_TIME) into gAWRParams.BEGIN_INTERVAL_TIME, gAWRParams.END_INTERVAL_TIME
+        from OPAS_DB_LINK_AWRSNAPS t
+       where t.DBLINK = p_data.dblink
+         and t.snap_id between p_data.awr_snap_start and p_data.awr_snap_end
+          --t.DBID = s.DBID and
+          --t.INSTANCE_NUMBER = s.INSTANCE_NUMBER and
+         and t.INCARNATION# = p_data.INCARNATION#;
+
+    else
+      gAWRParams.DATES_SPECIFIED := false;
+    end if;*/
+
+    read_gAWRParams(p_obj_id);
   end;
 
   procedure finish_processing(p_sql_data_point_id         opas_ot_sql_data.sql_data_point_id%type, p_status opas_ot_sql_data.gathering_status%type default COREOBJ_SQL.sdoREADY)
@@ -273,7 +348,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
          where nonshared_value = 'Y'
          group by inst_id,sql_id, nonshared_reason)]';
     execute immediate l_sql using p_data.sql_data_point_id, p_data.sql_id;
-    l_rows := sql%rowcount;
+    l_rows := case when sql%rowcount > 0 then 1 else 0 end;
 
     finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSHARING, p_rows_processed => l_rows);
   exception
@@ -352,21 +427,59 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
 
     l_drows := nvl( COREOBJ_API.get_param_n(p_obj_id, pnSQLMONHSTRows, true), defSQLMONHSTRows);
 
-    execute immediate l_sql using p_data.sql_id, l_drows;
+    begin
+      execute immediate l_sql using p_data.sql_id, l_drows;
+    exception
+      when others then  execute immediate l_sql using p_data.sql_id, 20;
+    end;
+
     l_sql := null;
 
-    INSERT ALL
-      WHEN op = 'I' THEN
+    update opas_ot_tmp_gv$sql_monitor set sqlmon_id = opas_ot_sq_sqlmon_id.nextval;
+
+    INSERT
       INTO opas_ot_sql_sqlmon (
         sqlmon_id, sql_id, sql_mon_report, plan_id, source, report_id, status, first_refresh_time,
         last_refresh_time, refresh_count, sql_exec_start, sql_exec_id, sid, session_serial#, con_id,
         con_name, ecid, snap_id, dbid, instance_number, con_dbid,
         dblink)
-      values (
-        opas_ot_sq_sqlmon_id.nextval, sql_id, null, null, srcV$, report_id, status, first_refresh_time,
+      select
+        sqlmon_id, sql_id, null, null, srcV$, report_id, status, first_refresh_time,
         last_refresh_time, refresh_count, sql_exec_start, sql_exec_id, sid, session_serial#, con_id,
         con_name, ecid, null, null, inst_id, null,
-        p_data.dblink)
+        p_data.dblink
+    from (
+    SELECT 'I' op, t.* FROM opas_ot_tmp_gv$sql_monitor t
+    where report_id = 0 and status = 'EXECUTING'
+    union all
+    SELECT 'I' op, t.* FROM opas_ot_tmp_gv$sql_monitor t
+    where report_id = 0 and status != 'EXECUTING'
+      and not exists (select 1 from opas_ot_sql_sqlmon i
+                       where i.report_id = 0
+                         and t.status = i.status
+                         and t.sql_exec_start = i.sql_exec_start
+                         and t.sql_id = i.sql_id
+                         and i.dblink = p_data.dblink
+                         and t.sid = i.sid
+                         and t.session_serial# = i.session_serial#)
+    union all
+    SELECT 'I' op, t.* FROM opas_ot_tmp_gv$sql_monitor t
+    where report_id <> 0
+      and report_id not in (select report_id from opas_ot_sql_sqlmon where sql_id = p_data.sql_id and dblink = p_data.dblink)
+      );
+
+    INSERT ALL
+--      WHEN op = 'I' THEN
+--      INTO opas_ot_sql_sqlmon (
+--        sqlmon_id, sql_id, sql_mon_report, plan_id, source, report_id, status, first_refresh_time,
+--        last_refresh_time, refresh_count, sql_exec_start, sql_exec_id, sid, session_serial#, con_id,
+--        con_name, ecid, snap_id, dbid, instance_number, con_dbid,
+--        dblink)
+--      values (
+--        /*opas_ot_sq_sqlmon_id.nextval*/ sqlmon_id, sql_id, null, null, srcV$, report_id, status, first_refresh_time,
+--        last_refresh_time, refresh_count, sql_exec_start, sql_exec_id, sid, session_serial#, con_id,
+--        con_name, ecid, null, null, inst_id, null,
+--        p_data.dblink)
       WHEN op = 'I' THEN
       INTO opas_ot_sql_sqlmon_data (
         sqlmon_id, user#, username, module, action, service_name, client_identifier, client_info,
@@ -381,7 +494,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
         rm_consumer_group, is_adaptive_plan, is_final_plan, in_dbop_name, in_dbop_exec_id, io_cell_uncompressed_bytes,
         io_cell_offload_eligible_bytes, io_cell_offload_returned_bytes)
       values (
-        opas_ot_sq_sqlmon_id.currval, user#, username, module, action, service_name, client_identifier, client_info,
+        /*opas_ot_sq_sqlmon_id.currval*/ sqlmon_id, user#, username, module, action, service_name, client_identifier, client_info,
         program, plsql_entry_object_id, plsql_entry_subprogram_id, plsql_object_id, plsql_subprogram_id,
         dbop_exec_id, dbop_name, process_name, sql_text, is_full_sqltext, sql_plan_hash_value, sql_full_plan_hash_value,
         exact_matching_signature, force_matching_signature, px_is_cross_instance, px_maxdop, px_maxdop_instances,
@@ -394,14 +507,14 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
         io_cell_offload_eligible_bytes, io_cell_offload_returned_bytes)
       WHEN op = 'I' THEN
       INTO opas_ot_sql_sqlmon_ref ( sql_data_point_id, sqlmon_id)
-      values( p_data.sql_data_point_id, opas_ot_sq_sqlmon_id.currval)
+      values( p_data.sql_data_point_id, /*opas_ot_sq_sqlmon_id.currval*/ sqlmon_id)
       WHEN op = 'L' and 1=2 THEN
       INTO opas_ot_sql_sqlmon_ref ( sql_data_point_id, sqlmon_id)
       values( p_data.sql_data_point_id, sqlmon_id)
-    SELECT 'I' op, t.*, null sqlmon_id FROM opas_ot_tmp_gv$sql_monitor t
+    SELECT 'I' op, t.*/*, sqlmon_id*/ FROM opas_ot_tmp_gv$sql_monitor t
     where report_id = 0 and status = 'EXECUTING'
     union all
-    SELECT 'I' op, t.*, null sqlmon_id FROM opas_ot_tmp_gv$sql_monitor t
+    SELECT 'I' op, t.*/*, sqlmon_id*/ FROM opas_ot_tmp_gv$sql_monitor t
     where report_id = 0 and status != 'EXECUTING'
       and not exists (select 1 from opas_ot_sql_sqlmon i
                        where i.report_id = 0
@@ -412,15 +525,16 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                          and t.sid = i.sid
                          and t.session_serial# = i.session_serial#)
     union all
-    SELECT 'I' op, t.*, null sqlmon_id FROM opas_ot_tmp_gv$sql_monitor t
+    SELECT 'I' op, t.*/*, sqlmon_id*/ FROM opas_ot_tmp_gv$sql_monitor t
     where report_id <> 0
       and report_id not in (select report_id from opas_ot_sql_sqlmon where sql_id = p_data.sql_id and dblink = p_data.dblink)
-    union all
-    SELECT 'L' op, t.*, p.sqlmon_id FROM opas_ot_tmp_gv$sql_monitor t, opas_ot_sql_sqlmon p
-    where t.report_id(+) <> 0 and t.report_id(+) = p.report_id and t.sql_id(+) = p.sql_id
-      and p.dblink = p_data.dblink and p.sql_id = p_data.sql_id
-      and p.source = srcV$
-      and not exists (select 1 from opas_ot_sql_sqlmon_ref i where sql_data_point_id = p_data.sql_data_point_id and i.sqlmon_id=p.sqlmon_id);
+--    union all
+--    SELECT 'L' op, t.*, p.sqlmon_id FROM opas_ot_tmp_gv$sql_monitor t, opas_ot_sql_sqlmon p
+--    where t.report_id(+) <> 0 and t.report_id(+) = p.report_id and t.sql_id(+) = p.sql_id
+--      and p.dblink = p_data.dblink and p.sql_id = p_data.sql_id
+--      and p.source = srcV$
+--      and not exists (select 1 from opas_ot_sql_sqlmon_ref i where sql_data_point_id = p_data.sql_data_point_id and i.sqlmon_id=p.sqlmon_id)
+      ;
 
     select count(1) into l_rows from opas_ot_sql_sqlmon_ref where sql_data_point_id = p_data.sql_data_point_id;
 
@@ -505,19 +619,40 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
 
     l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_SQLMON_HST */ INTO opas_ot_tmp_dba_hist_reports (<SRC_DB_COL_LICT>)
               select <SRC_DB_COL_LICT> from dba_hist_reports]' || COREMOD_API.get_dblink_for_query(p_data.dblink) ||
-              q'[ r where r.component_name = 'sqlmonitor' and r.key1 = :p_sql_id and period_start_time > (sysdate - :p_days) and rownum <= :p_rows ]'; --TODO filter istory reports
+              q'[ r where r.component_name = 'sqlmonitor' and r.key1 = :p_sql_id and rownum <= :p_rows ]' ||
+              case when gAWRParams.DATES_SPECIFIED then q'[ and period_start_time between :d1 and :d2 ]' else q'[ and period_start_time > (sysdate - :p_days)]' end;
+              --TODO filter istory reports
     l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_DBA_HIST_REPORTS'));
+
+coremod_log.log('load_sql_mon_hst','INFO');
+coremod_log.log(l_sql,'INFO');
 
     l_ddays := nvl( COREOBJ_API.get_param_n(p_obj_id, pnSQLMONHSTDays, true), defSQLMONHSTDays);
     l_drows := nvl( COREOBJ_API.get_param_n(p_obj_id, pnSQLMONHSTRows, true), defSQLMONHSTRows);
-    execute immediate l_sql using p_data.sql_id, l_ddays, l_drows;
+
+    if gAWRParams.DATES_SPECIFIED then
+      begin
+coremod_log.log(gAWRParams.BEGIN_INTERVAL_TIME,'INFO');
+coremod_log.log(gAWRParams.END_INTERVAL_TIME,'INFO');
+        execute immediate l_sql using p_data.sql_id, l_drows, gAWRParams.BEGIN_INTERVAL_TIME, gAWRParams.END_INTERVAL_TIME;
+      exception
+        when others then execute immediate l_sql using p_data.sql_id, 20, gAWRParams.BEGIN_INTERVAL_TIME, gAWRParams.END_INTERVAL_TIME;
+      end;
+    else
+      begin
+        execute immediate l_sql using p_data.sql_id, l_drows, l_ddays;
+      exception
+        when others then execute immediate l_sql using p_data.sql_id, 20, l_ddays;
+      end;
+    end if;
+
     l_sql := null;
 
     select listagg(REPORT_ID,',')within group (order by REPORT_ID) into l_obj_lst from (select REPORT_ID from opas_ot_tmp_dba_hist_reports);
     if l_obj_lst is not null then
       l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_SQLMON_XML */ INTO opas_ot_tmp_dba_hist_rep_xml (REPORT_ID, REPORT)
                 select d.REPORT_ID, d.REPORT from dba_hist_reports_details]' || COREMOD_API.get_dblink_for_query(p_data.dblink) ||
-                q'[ d where d.REPORT_ID in (<RPT_LST>)]'; --TODO filter istory reports
+                q'[ d where d.REPORT_ID in (<RPT_LST>)]'; --TODO filter history reports
       l_sql := replace(l_sql,'<RPT_LST>',l_obj_lst);
 
       execute immediate l_sql;
@@ -623,7 +758,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                   ,physical_read_bytes path 'stat[@name="read_bytes"]'
                   ) x2;
 
-    l_rows := sql%rowcount;
+    l_rows := round(sql%rowcount/3);
     --select count(1) into l_rows from opas_ot_sql_sqlmon_ref where sql_data_point_id = p_data.sql_data_point_id;
 
     insert into opas_ot_tmp_gv$sql_plan_stat_all (
@@ -813,7 +948,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
            from gv$sql_workarea]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || ' where sql_id=:p_sql_id';
 
     execute immediate l_sql using p_data.sql_data_point_id, p_data.sql_id;
-    l_rows := sql%rowcount;
+    l_rows := case when sql%rowcount > 0 then 1 else 0 end;
 
     finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsWORKAREA, p_rows_processed => l_rows);
   exception
@@ -1522,7 +1657,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                                         p_end_dt           timestamp with time zone,
                                         p_search_last_days boolean,
                                         p_sql_id           varchar2 default null,
-                                        p_params       out t_awr_params_rec)
+                                        p_params    in out t_awr_params_rec)
   is
     l_sql        varchar2(32765);
     l_sql1       varchar2(32765);
@@ -1684,9 +1819,8 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       coremod_tasks.log('Error gather_recursive_sql ('||p_data.sql_data_point_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
   end;
 
-  procedure load_awr_data(p_data   opas_ot_sql_data%rowtype,
-                          p_obj_id opas_ot_sql_data_point_ref.obj_id%type,
-                          p_lops_ind in out pls_integer)
+  procedure calc_awr_ranges(p_data    opas_ot_sql_data%rowtype,
+                            p_obj_id  opas_ot_sql_data_point_ref.obj_id%type)
   is
     l_awrdays          number;
     l_start_dt         timestamp with time zone;
@@ -1698,9 +1832,11 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
 
     if l_start_dt is not null and l_end_dt is not null then
       l_awrdays := null;
+      gAWRParams.DATES_SPECIFIED := true;
     else
       l_awrdays := nvl( COREOBJ_API.get_param_n(p_obj_id, pnAWRDataDays, true), defAWRDataDays);
       l_search_last_days := nvl( COREOBJ_API.get_param_c(p_obj_id, pnAWRSearchLastDays, true), defAWRSearchLastDays) = 'Y';
+      gAWRParams.DATES_SPECIFIED := false;
     end if;
 
     update_dblink_db_info_awrsn(p_db_link_name     => p_data.dblink,
@@ -1716,8 +1852,16 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       AWR_SNAP_END = gAWRParams.SNAP_END,
       INCARNATION#=gAWRParams.INCARNATION#
     where sql_data_point_id = p_data.sql_data_point_id;
-    commit;
 
+    commit;
+    write_gAWRParams(p_obj_id);
+  end;
+
+  procedure load_awr_data(p_data   opas_ot_sql_data%rowtype,
+                          p_obj_id opas_ot_sql_data_point_ref.obj_id%type,
+                          p_lops_ind in out pls_integer)
+  is
+  begin
     load_awr_sqlstats(p_data, gAWRParams);
     coremod_api.end_longops_section(p_sofar => 6, p_lops_ind => p_lops_ind);
     commit;
@@ -1752,6 +1896,8 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
 
     start_processing(p_sql_data_point_id, l_data, l_obj_id);
     --init_section_statuses(p_sql_data_point_id);
+
+    calc_awr_ranges(l_data, l_obj_id);
 
     L_TASKNAME := case when l_data.prnt_data_point_id is null then 'OPAS_SQL_DISCOVER2' else 'OPAS_SQL_DISCOVER2_REC' end;
 
