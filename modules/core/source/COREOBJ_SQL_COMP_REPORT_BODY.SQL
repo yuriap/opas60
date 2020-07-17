@@ -4,7 +4,7 @@ package body COREOBJ_SQL_COMP_REPORT is
   g_plan_sections_all COREMOD_REPORT_UTILS.t_arrayofstrings :=
                          COREMOD_REPORT_UTILS.t_arrayofstrings('SQL_ID',
                                                              'Plan hash value:',
-                                                             'Query Block Name / Object Alias',
+                                                             'Query Block Name', -- / Object Alias',
                                                              'Outline Data',
                                                              'Remote SQL Information',
                                                              'Peeked Binds',

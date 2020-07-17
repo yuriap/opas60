@@ -56,6 +56,9 @@ show errors
 @@COREOBJ_DB_MONITOR_SPEC.SQL
 show errors
 
+@@COREOBJ_DB_MON_HIST_SPEC.SQL
+show errors
+
 @@COREOBJ_FOLDER_SPEC.SQL
 show errors
 
@@ -138,6 +141,9 @@ show errors
 show errors
 
 @@COREOBJ_DB_MONITOR_BODY.SQL
+show errors
+
+@@COREOBJ_DB_MON_HIST_BODY.SQL
 show errors
 
 @@COREOBJ_FOLDER_BODY.SQL

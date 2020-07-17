@@ -63,3 +63,45 @@ graph_num       number,
 metric_id       number,
 chart_id        number,
 chart_name      varchar2(1000));
+
+--********************************************************************************
+
+create table opas_ot_db_mon_hist (
+dbmh_id         number                                           generated always as identity primary key,
+dbmh_name       varchar2(256),
+dbmh_buckets    varchar2(4000),
+dbmh_stat       varchar2(4000),
+dblink          varchar2(128)                                    references opas_db_links (db_link_name),
+schedule        varchar2(512),
+start_date      date,
+last_exec_ts    timestamp,
+status          varchar2(10),
+calc_type       varchar2(10) default 'REGULAR' --REGULAR, DELTA
+);
+
+create table opas_ot_db_mon_hist_sess (
+sess_id         number                                           generated always as identity primary key,
+dbmh_id         number                                 not null  references opas_ot_db_mon_hist(dbmh_id) on delete cascade,
+tim_tz          timestamp(6) WITH TIME ZONE,
+status          varchar2(1) default 'R' -- S - snapshot, R - ready
+);
+
+create table opas_ot_db_mon_hist_data (
+sess_id         number                                 not null  references opas_ot_db_mon_hist_sess(sess_id) on delete cascade,
+inst_id         number,
+range#          number,
+quantity        number)
+row store compress advanced;
+
+
+CREATE OR REPLACE VIEW OPAS_OT_DB_MON_HIST_VALS AS
+SELECT
+    s.dbmh_id,s.sess_id,
+	s.tim_tz,
+    to_timestamp(to_char(s.tim_tz at local,'yyyymmddhh24miss.ff6'),'yyyymmddhh24miss.ff6') tim_ts,
+    to_date(to_char(s.tim_tz at local,'yyyymmddhh24miss'),'yyyymmddhh24miss') tim_dt,
+    d.inst_id,d.range#,d.quantity
+FROM
+    opas_ot_db_mon_hist_sess s,
+    opas_ot_db_mon_hist_data d
+where s.sess_id = d.sess_id and s.status = 'R';
