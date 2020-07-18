@@ -28,15 +28,15 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 -- Application Export:
 --   Application:     600
 --   Name:            Oracle Performance Analytic Suite
---   Date and Time:   08:58 Friday July 17, 2020
+--   Date and Time:   16:11 Saturday July 18, 2020
 --   Exported By:     OPAS60DADM
 --   Flashback:       0
 --   Export Type:     Application Export
---     Pages:                     53
+--     Pages:                     55
 --       Items:                  356
 --       Validations:              4
 --       Processes:              206
---       Regions:                252
+--       Regions:                253
 --       Buttons:                180
 --       Dynamic Actions:         64
 --     Shared Components:
@@ -47,7 +47,7 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 --       Navigation:
 --         Lists:                  6
 --         Breadcrumbs:            1
---           Entries:             30
+--           Entries:             31
 --       Security:
 --         Authentication:         1
 --         Authorization:          3
@@ -132,7 +132,7 @@ wwv_flow_api.create_flow(
 ,p_substitution_string_06=>'APP_GRID_DT_FMT_TZ_FULL'
 ,p_substitution_value_06=>'YYYY-MM-DD HH24:MI:SS.ff9 TZH:TZM'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200717085813'
+,p_last_upd_yyyymmddhh24miss=>'20200717111404'
 ,p_file_prefix => nvl(wwv_flow_application_install.get_static_app_file_prefix,'')
 ,p_files_version=>3
 ,p_ui_type_name => null
@@ -1096,6 +1096,10 @@ wwv_flow_api.create_page_group(
 ,p_group_name=>'OPAS Common'
 );
 wwv_flow_api.create_page_group(
+ p_id=>wwv_flow_api.id(2566321371882923)
+,p_group_name=>'OT ASHA Cube'
+);
+wwv_flow_api.create_page_group(
  p_id=>wwv_flow_api.id(65036316638647847)
 ,p_group_name=>'OT Attachment'
 );
@@ -1106,6 +1110,10 @@ wwv_flow_api.create_page_group(
 wwv_flow_api.create_page_group(
  p_id=>wwv_flow_api.id(64768299484577304)
 ,p_group_name=>'OT DB Links assignment'
+);
+wwv_flow_api.create_page_group(
+ p_id=>wwv_flow_api.id(2566422702885770)
+,p_group_name=>'OT DB Monitor Histogram'
 );
 wwv_flow_api.create_page_group(
  p_id=>wwv_flow_api.id(76886219658220205)
@@ -1153,6 +1161,13 @@ wwv_flow_api.create_menu_option(
 ,p_short_name=>'Histograms'
 ,p_link=>'f?p=&APP_ID.:6006:&APP_SESSION.::&DEBUG.:::'
 ,p_page_id=>6006
+);
+wwv_flow_api.create_menu_option(
+ p_id=>wwv_flow_api.id(2567421789900483)
+,p_parent_id=>wwv_flow_api.id(62703384660167995)
+,p_short_name=>'ASHA Cube'
+,p_link=>'f?p=&APP_ID.:3001:&APP_SESSION.::&DEBUG.:::'
+,p_page_id=>3001
 );
 wwv_flow_api.create_menu_option(
  p_id=>wwv_flow_api.id(58913745031993378)
@@ -21200,7 +21215,7 @@ wwv_flow_api.create_page(
 '}'))
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200715092741'
+,p_last_upd_yyyymmddhh24miss=>'20200717111404'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(2308826450232136)
@@ -21313,7 +21328,7 @@ wwv_flow_api.create_worksheet_column(
 ,p_db_column_name=>'OBJ_CREATED'
 ,p_display_order=>40
 ,p_column_identifier=>'D'
-,p_column_label=>'Obj Created'
+,p_column_label=>'Created'
 ,p_column_type=>'DATE'
 ,p_column_alignment=>'CENTER'
 ,p_format_mask=>'&APP_GRID_DT_FMT.'
@@ -21324,7 +21339,7 @@ wwv_flow_api.create_worksheet_column(
 ,p_db_column_name=>'OBJ_EXPIRED'
 ,p_display_order=>50
 ,p_column_identifier=>'E'
-,p_column_label=>'Obj Expired'
+,p_column_label=>'Expired'
 ,p_column_type=>'DATE'
 ,p_column_alignment=>'CENTER'
 ,p_format_mask=>'&APP_GRID_DT_FMT.'
@@ -21335,7 +21350,8 @@ wwv_flow_api.create_worksheet_column(
 ,p_db_column_name=>'OBJ_NAME'
 ,p_display_order=>60
 ,p_column_identifier=>'F'
-,p_column_label=>'Obj Name'
+,p_column_label=>'Name'
+,p_column_html_expression=>'<span class="fa #OT_ICON#"> #OBJ_NAME#</span'
 ,p_column_type=>'STRING'
 );
 wwv_flow_api.create_worksheet_column(
@@ -21343,7 +21359,7 @@ wwv_flow_api.create_worksheet_column(
 ,p_db_column_name=>'OBJ_DESCR'
 ,p_display_order=>70
 ,p_column_identifier=>'G'
-,p_column_label=>'Obj Descr'
+,p_column_label=>'Description'
 ,p_column_type=>'STRING'
 );
 wwv_flow_api.create_worksheet_column(
@@ -21351,7 +21367,7 @@ wwv_flow_api.create_worksheet_column(
 ,p_db_column_name=>'OBJ_SORTORDR'
 ,p_display_order=>80
 ,p_column_identifier=>'H'
-,p_column_label=>'Obj Sortordr'
+,p_column_label=>'Sort'
 ,p_column_type=>'NUMBER'
 ,p_column_alignment=>'RIGHT'
 );
@@ -21360,7 +21376,7 @@ wwv_flow_api.create_worksheet_column(
 ,p_db_column_name=>'OBJ_OWNER'
 ,p_display_order=>90
 ,p_column_identifier=>'I'
-,p_column_label=>'Obj Owner'
+,p_column_label=>'Owner'
 ,p_column_type=>'STRING'
 );
 wwv_flow_api.create_worksheet_column(
@@ -21386,13 +21402,14 @@ wwv_flow_api.create_worksheet_column(
 ,p_column_identifier=>'L'
 ,p_column_label=>'Ot Icon'
 ,p_column_type=>'STRING'
+,p_display_text_as=>'HIDDEN'
 );
 wwv_flow_api.create_worksheet_column(
  p_id=>wwv_flow_api.id(2310298802232150)
 ,p_db_column_name=>'OT_NAME'
 ,p_display_order=>130
 ,p_column_identifier=>'M'
-,p_column_label=>'Ot Name'
+,p_column_label=>'Object Type'
 ,p_column_type=>'STRING'
 );
 wwv_flow_api.create_worksheet_column(
@@ -21400,7 +21417,7 @@ wwv_flow_api.create_worksheet_column(
 ,p_db_column_name=>'OBJ_SIZE'
 ,p_display_order=>140
 ,p_column_identifier=>'N'
-,p_column_label=>'Obj Size'
+,p_column_label=>'Size'
 ,p_column_type=>'NUMBER'
 ,p_column_alignment=>'RIGHT'
 );
@@ -31890,6 +31907,51 @@ wwv_flow_api.create_page_item(
 ,p_item_plug_id=>wwv_flow_api.id(76893643992331332)
 ,p_display_as=>'NATIVE_HIDDEN'
 ,p_attribute_01=>'Y'
+);
+end;
+/
+prompt --application/pages/page_03000
+begin
+wwv_flow_api.create_page(
+ p_id=>3000
+,p_user_interface_id=>wwv_flow_api.id(59034179868994205)
+,p_name=>'Create ASHA Cobe'
+,p_alias=>'CREATE-ASHA-COBE'
+,p_page_mode=>'MODAL'
+,p_step_title=>'Create ASHA Cobe'
+,p_autocomplete_on_off=>'OFF'
+,p_group_id=>wwv_flow_api.id(2566321371882923)
+,p_page_template_options=>'#DEFAULT#'
+,p_last_updated_by=>'OPAS60DADM'
+,p_last_upd_yyyymmddhh24miss=>'20200717110511'
+);
+end;
+/
+prompt --application/pages/page_03001
+begin
+wwv_flow_api.create_page(
+ p_id=>3001
+,p_user_interface_id=>wwv_flow_api.id(59034179868994205)
+,p_name=>'ASHA Cube'
+,p_alias=>'ASHA-CUBE'
+,p_step_title=>'ASHA Cube'
+,p_autocomplete_on_off=>'OFF'
+,p_group_id=>wwv_flow_api.id(2566321371882923)
+,p_page_template_options=>'#DEFAULT#'
+,p_last_updated_by=>'OPAS60DADM'
+,p_last_upd_yyyymmddhh24miss=>'20200717110719'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(2567187786900473)
+,p_plug_name=>'Breadcrumb'
+,p_region_template_options=>'#DEFAULT#:t-BreadcrumbRegion--useBreadcrumbTitle'
+,p_component_template_options=>'#DEFAULT#'
+,p_plug_template=>wwv_flow_api.id(58969580676993713)
+,p_plug_display_sequence=>10
+,p_plug_display_point=>'REGION_POSITION_01'
+,p_menu_id=>wwv_flow_api.id(58913514827993374)
+,p_plug_source_type=>'NATIVE_BREADCRUMB'
+,p_menu_template_id=>wwv_flow_api.id(59013031676993965)
 );
 end;
 /
@@ -43962,11 +44024,11 @@ wwv_flow_api.create_page(
 ,p_alias=>'HISTOGRAMS'
 ,p_step_title=>'Histograms'
 ,p_autocomplete_on_off=>'OFF'
-,p_group_id=>wwv_flow_api.id(66300724402351173)
+,p_group_id=>wwv_flow_api.id(2566422702885770)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_required_role=>wwv_flow_api.id(64510375970101025)
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200717085813'
+,p_last_upd_yyyymmddhh24miss=>'20200717110622'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(2402858482561424)

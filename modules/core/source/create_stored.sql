@@ -38,6 +38,9 @@ show errors
 @@COREOBJ_API_SPEC.SQL
 show errors
 
+@@COREOBJ_ASHA_CUBE_SPEC.SQL
+show errors
+
 @@COREOBJ_ATTACHMENTS_SPEC.SQL
 show errors
 
@@ -123,6 +126,9 @@ show errors
 show errors
 
 @@COREOBJ_API_BODY.SQL
+show errors
+
+@@COREOBJ_ASHA_CUBE_BODY.SQL
 show errors
 
 @@COREOBJ_ATTACHMENTS_BODY.SQL
