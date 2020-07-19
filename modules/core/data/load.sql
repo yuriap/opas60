@@ -26,7 +26,7 @@ insert into opas_groups (group_id,group_name,group_descr) values (2, 'Read-only 
 insert into opas_groups (group_id,group_name,group_descr) values (3, 'No access users','No access to any functionality');
 
 
-@@expimp_compat
+rem @@expimp_compat
 
 
 insert into OPAS_OBJECT_TYPES (OT_ID,OT_NAME,OT_DESCR,OT_ICON, OT_API_PKG) values (100,'Folder'            ,'Folder object'                            ,'fa-folder'                           ,'COREOBJ_FOLDER');

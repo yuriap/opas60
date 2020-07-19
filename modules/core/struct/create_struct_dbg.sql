@@ -2,7 +2,7 @@ create table opas_ot_dbg_monitor (
 dbg_id          number                                           primary key,
 dblink          varchar2(128)                                    references opas_db_links (db_link_name),
 scheme_list     varchar2(4000),
-schedule        number                                           references opas_scheduler (sch_id) on delete set null
+schedule        number                                           references opas_scheduler (sch_id) on delete set null,
 size_limit      number default 524288
 );
 
@@ -72,6 +72,7 @@ bin_occupied_sch number
    
 create index idx_opas_ot_dbg_tsdp                on opas_ot_dbg_ts_sizes(dbgdp_id);
 
+/*
 create table opas_ot_dbg_objects (
 dbgobj_id        number                                           generated always as identity primary key,
 version_dp_id    number                                           references opas_ot_dbg_datapoint (dbgdp_id) on delete cascade,
@@ -104,9 +105,12 @@ ROW STORE COMPRESS ADVANCED;
 create index idx_opas_ot_dbg_segsdp               on opas_ot_dbg_seg_sizes(dbgdp_id);
 create index idx_opas_ot_dbg_segsobj              on opas_ot_dbg_seg_sizes(dbgobj_id);
 --create index idx_opas_ot_dbg_segsf                on opas_ot_dbg_seg_sizes(dbgdp_id, dbgobj_id, size_bytes) compress;
-
+*/
+						
+create sequence opas_ot_sq_dbg_obj;
+																																	  
 -- start partitioned --
---starting state
+-- starting state
 create table opas_ot_dbg_objects (
 dbgobj_id        number                                           primary key,
 version_dp_id    number                                           references opas_ot_dbg_datapoint (dbgdp_id) on delete cascade,
@@ -135,7 +139,7 @@ ROW STORE COMPRESS ADVANCED;
 CREATE TABLE opas_ot_dbg_seg_sizes (
 dbg_id           number not null references opas_ot_dbg_monitor (dbg_id) on delete cascade,
 dbgdp_id         number not null references opas_ot_dbg_datapoint(dbgdp_id) on delete cascade,
-dbgobj_id        number not null references opas_ot_dbg_objects_p(dbgobj_id) on delete cascade,
+dbgobj_id        number not null references opas_ot_dbg_objects(dbgobj_id) on delete cascade,
 size_bytes       number
 )
 PARTITION BY LIST (dbg_id)
@@ -280,7 +284,7 @@ DBGSO_SUBOBJECT_NAME     varchar2(1),
 DBGSO_TABLESPACE_NAME    varchar2(1)
 );
 
-create or replace view v$opas_dbg_selected_objects as
+create or replace force view v$opas_dbg_selected_objects as
   select /*+ no_merge leading(p dp o) index(dp idx_opas_ot_dbg_dbgm)*/ 
          dp.snapped start_date,
          lead(dp.snapped, 1, systimestamp + to_dsinterval('01 00:00:00')) over(partition by o.object_name, o.subobject_name order by dp.snapped) end_date,
@@ -429,7 +433,7 @@ select x.*,
 */
 
 
-CREATE OR REPLACE VIEW V$OPAS_DBG_SELECTED_OBJECTS_V3 AS
+CREATE OR REPLACE force VIEW V$OPAS_DBG_SELECTED_OBJECTS_V3 AS
 select /*+ leading(p o dp s) use_hash(o) use_hash(s) use_hash(dp) swap_join_inputs(dp) */ 
        dp.dbgdp_id,dp.snapped,
        s.size_bytes,
@@ -476,7 +480,7 @@ select /*+ leading(p o dp s) use_hash(o) use_hash(s) use_hash(dp) swap_join_inpu
          ); 
 
 
-CREATE OR REPLACE VIEW V$OPAS_DBG_SELECTED_OBJECTS_V3P AS
+CREATE OR REPLACE force VIEW V$OPAS_DBG_SELECTED_OBJECTS_V3P AS
 select /*+ leading(dp o s) use_hash(o) use_hash(s) */
        dp.dbgdp_id,dp.snapped,
        s.size_bytes,
@@ -529,7 +533,7 @@ select /*+ leading(dp o s) use_hash(o) use_hash(s) */
    and dp.dbg_id = o.dbg_id;
 
 
-CREATE OR REPLACE VIEW V$OPAS_DBG_SELECTED_OBJECTS_V3PG1 AS
+CREATE OR REPLACE force VIEW V$OPAS_DBG_SELECTED_OBJECTS_V3PG1 AS
 select /*+ leading(dp o s) use_hash(o) use_hash(s) */
        dp.dbgdp_id,dp.snapped,
        s.size_bytes,
@@ -581,7 +585,7 @@ select /*+ leading(dp o s) use_hash(o) use_hash(s) */
    and dp.dbg_id = o.dbg_id
 ;
 
-CREATE OR REPLACE VIEW V$OPAS_DBG_SELECTED_OBJECTS_V3PG2 AS
+CREATE OR REPLACE force VIEW V$OPAS_DBG_SELECTED_OBJECTS_V3PG2 AS
 select /*+ leading(dp o s) use_hash(o) use_hash(s) */
        dp.dbgdp_id,dp.snapped,
        s.size_bytes,
@@ -633,7 +637,7 @@ select /*+ leading(dp o s) use_hash(o) use_hash(s) */
    and dp.dbg_id = o.dbg_id;
 
 
-CREATE OR REPLACE VIEW V$OPAS_DBG_SELECTED_OBJECTS_V3PG AS
+CREATE OR REPLACE force VIEW V$OPAS_DBG_SELECTED_OBJECTS_V3PG AS
 select /*+ leading(dp o s) use_hash(o) use_hash(s) */ 
        dp.dbgdp_id,dp.snapped,
        s.size_bytes,
@@ -683,7 +687,7 @@ select /*+ leading(dp o s) use_hash(o) use_hash(s) */
    and dp.dbgdp_id = s.dbgdp_id
    and dp.dbg_id = o.dbg_id;
    
-create or replace view v$opas_dbg_selected_objects_delta as
+create or replace force view v$opas_dbg_selected_objects_delta as
 select filtered_total, 
        COREMOD_REPORT_UTILS.to_hr_num(filtered_total) filtered_total_h,
        filtered_delta,
@@ -701,7 +705,7 @@ select
                  group by dbgdp_id, snapped, dbgso_start_snap, dbgso_end_snap)))
  where filtered_delta is not null;
 
-create or replace view v$opas_dbg_total_delta as
+create or replace force view v$opas_dbg_total_delta as
 select tot_occupied,
        COREMOD_REPORT_UTILS.to_hr_num(tot_occupied) tot_occupied_h,
        tot_occupied_sch,
@@ -727,7 +731,7 @@ select tot_occupied,
                  group by dbgdp_id, dbgso_start_snap, dbgso_end_snap))
  where tot_occupied_delta is not null;
 
-create or replace view v$opas_dbg_sel_objects_det_delta as
+create or replace force view v$opas_dbg_sel_objects_det_delta as
 with
   pars as (select * from opas_ot_dbg_report_pars pars where apex_sess = V('SESSION')),
   dat1 as (select /*+ materialize */ d1.* from v$opas_dbg_selected_objects_v3pg1 d1),
@@ -772,7 +776,7 @@ select *
 ;
 
 
-create or replace view v$opas_dbg_sel_objects_det_delta_n as
+create or replace force view v$opas_dbg_sel_objects_det_delta_n as
 with
   pars as (select * from opas_ot_dbg_report_pars pars where apex_sess = V('SESSION')),
   dat1 as (select /*+ materialize */ d1.* from v$opas_dbg_selected_objects_v3pg1 d1),

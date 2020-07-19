@@ -652,7 +652,9 @@ CREATE GLOBAL TEMPORARY TABLE OPAS_OT_TMP_GV$SQL_MONITOR
 	IN_DBOP_EXEC_ID NUMBER, 
 	IO_CELL_UNCOMPRESSED_BYTES NUMBER, 
 	IO_CELL_OFFLOAD_ELIGIBLE_BYTES NUMBER, 
-	IO_CELL_OFFLOAD_RETURNED_BYTES NUMBER
+	IO_CELL_OFFLOAD_RETURNED_BYTES NUMBER,
+    CURRENT_USER#    NUMBER,
+    CURRENT_USERNAME VARCHAR2(128)	
    ) ON COMMIT DELETE ROWS;
 
 
@@ -1444,7 +1446,7 @@ create table opas_ot_sqlcatch_sqls (
  status                            varchar2(10),
  execs_num_to_init                 number,
  actual_execs                      number,
- sql_text                          varchar2(4000)
+ sql_text                          varchar2(4000),
  primary key (obj_id, sql_id)
 );
 

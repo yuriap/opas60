@@ -1,4 +1,4 @@
 
 define COREMODVER="2.0.0"
-define OPASVER="6.1.0"
+define OPASVER="6.5.1"
 define DBGROWTHMODVER="2.0.0"

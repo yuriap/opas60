@@ -20,7 +20,7 @@ metric_id       number                                           references opas
 tim_tz          timestamp(6) WITH TIME ZONE,
 val             number) row store compress advanced;
 
-create index idx_opas_ot_db_monitor_vm   on opas_ot_db_monitor_vals(metric_id);
+create index idx_opas_ot_db_monitor_vm   on opas_ot_db_monitor_vals_t(metric_id);
 
 create or replace view opas_ot_db_monitor_vals as
 SELECT
