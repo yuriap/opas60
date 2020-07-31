@@ -63,9 +63,18 @@ package body COREOBJ_SQL_CATCHER is
   is
     l_ctchr opas_ot_sqlcatch%rowtype;
   begin
+    COREOBJ_API.check_remove_ability(p_obj_id);
+
     select * into l_ctchr from opas_ot_sqlcatch where obj_id = p_obj_id;
     COREMOD_TASKS.cancel_task (  P_TQ_ID => l_ctchr.TQ_ID) ;
     delete from opas_ot_sqlcatch where obj_id = p_obj_id;
+
+    for i in (select * from opas_objects o, opas_object_types ot where o.obj_ot=ot.ot_id and obj_prnt = p_obj_id) loop
+      if p_cascade = 'N' then
+        raise_application_error(-20000,'Folder is not empty');
+      end if;
+      execute immediate 'begin '||i.ot_api_pkg||q'[.remove(p_obj_id => :p_obj_id, p_cascade => :p_cascade); end; ]' using i.obj_id, p_cascade;
+    end loop;
     COREOBJ_API.remove(p_obj_id);
   end;
 

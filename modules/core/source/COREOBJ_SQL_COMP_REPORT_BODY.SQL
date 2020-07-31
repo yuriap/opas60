@@ -256,7 +256,7 @@ package body COREOBJ_SQL_COMP_REPORT is
                                p_value => L_DBID);
         coreobj_api.add_jparam(p_obj_id => p_obj_id,
                                p_pname => COREOBJ_SQL_COMP_REPORT.pSNAPS#1,
-                               p_value => L_SNAP_START);	
+                               p_value => L_SNAP_START);
         coreobj_api.add_jparam(p_obj_id => p_obj_id,
                                p_pname => COREOBJ_SQL_COMP_REPORT.pINST#1,
                                p_value => L_INST);
@@ -288,7 +288,7 @@ package body COREOBJ_SQL_COMP_REPORT is
                                p_value => L_DBID);
         coreobj_api.add_jparam(p_obj_id => p_obj_id,
                                p_pname => COREOBJ_SQL_COMP_REPORT.pSNAPS#2,
-                               p_value => L_SNAP_START);	
+                               p_value => L_SNAP_START);
         coreobj_api.add_jparam(p_obj_id => p_obj_id,
                                p_pname => COREOBJ_SQL_COMP_REPORT.pINST#2,
                                p_value => L_INST);
@@ -441,6 +441,7 @@ package body COREOBJ_SQL_COMP_REPORT is
         if l_available_sections.exists(g_plan_sections_all(j)) then
           l_plan_sections.extend;
           l_plan_sections(l_plan_sections.count):=g_plan_sections_all(j);
+--coremod_log.log('l_plan_sections(l_plan_sections.count): '||l_plan_sections(l_plan_sections.count));
         end if;
       end loop;
 
@@ -448,26 +449,47 @@ package body COREOBJ_SQL_COMP_REPORT is
         l_sec1(l_plan_sections(i)):=COREMOD_REPORT_UTILS.t_arrayofstrings();
         l_sec2(l_plan_sections(i)):=COREMOD_REPORT_UTILS.t_arrayofstrings();
       end loop;
-
-      l_cnt := 1;
-      l_curr_section:=1;
+--http://localhost:8080/apex/f?p=600:8000:10297124338276:::RP:APP_OBJ_ID,APP_PREV_PAGE:15258,10
+      --l_cnt := 1;
+      l_curr_section:=0;
 --coremod_log.log('l_plan_sections.count: '||l_plan_sections.count);
       for i in 1..p_txt1.count loop
-        if instr(p_txt1(i),l_plan_sections(l_cnt))>0 then
+/*        if instr(p_txt1(i),l_plan_sections(l_cnt))>0 then
           l_curr_section:=l_cnt;
-          if l_cnt<l_plan_sections.count then
-            l_cnt:=l_cnt+1;
+coremod_log.log('p_txt1: found sect '||l_cnt||' '||l_plan_sections(l_cnt));
+          if l_cnt<l_plan_sections.count then l_cnt:=l_cnt+1; end if;
+        end if;*/
+        for j in 1..l_plan_sections.count loop
+          if instr(p_txt1(i),l_plan_sections(j))>0 then
+            l_curr_section := j;
+--coremod_log.log('p_txt1: found sect '||l_curr_section||' '||l_plan_sections(l_curr_section));
           end if;
+        end loop;
+        if l_plan_sections.exists(l_curr_section) then
+          l_sec1(l_plan_sections(l_curr_section)).extend;
+          l_sec1(l_plan_sections(l_curr_section))(l_sec1(l_plan_sections(l_curr_section)).count):=p_txt1(i);
         end if;
-        l_sec1(l_plan_sections(l_curr_section)).extend;
-        l_sec1(l_plan_sections(l_curr_section))(l_sec1(l_plan_sections(l_curr_section)).count):=p_txt1(i);
+--coremod_log.log('l_sec1(l_plan_sections(l_curr_section))(l_sec1(l_plan_sections(l_curr_section)).count): '||l_sec1(l_plan_sections(l_curr_section))(l_sec1(l_plan_sections(l_curr_section)).count));
       end loop;
 
-      l_cnt := 1;l_curr_section:=1;
+      --l_cnt := 1;
+      l_curr_section:=0;
       for i in 1..p_txt2.count loop
-        if instr(p_txt2(i),l_plan_sections(l_cnt))>0 then l_curr_section:=l_cnt; if l_cnt<l_plan_sections.count then l_cnt:=l_cnt+1; end if; end if;
-        l_sec2(l_plan_sections(l_curr_section)).extend;
-        l_sec2(l_plan_sections(l_curr_section))(l_sec2(l_plan_sections(l_curr_section)).count):=p_txt2(i);
+/*        if instr(p_txt2(i),l_plan_sections(l_cnt))>0 then
+          l_curr_section:=l_cnt;
+coremod_log.log('p_txt2: found sect '||l_cnt||' '||l_plan_sections(l_cnt));
+          if l_cnt<l_plan_sections.count then l_cnt:=l_cnt+1; end if;
+        end if;*/
+        for j in 1..l_plan_sections.count loop
+          if instr(p_txt2(i),l_plan_sections(j))>0 then
+            l_curr_section := j;
+--coremod_log.log('p_txt2: found sect '||l_curr_section||' '||l_plan_sections(l_curr_section));
+          end if;
+        end loop;
+        if l_plan_sections.exists(l_curr_section) then
+          l_sec2(l_plan_sections(l_curr_section)).extend;
+          l_sec2(l_plan_sections(l_curr_section))(l_sec2(l_plan_sections(l_curr_section)).count):=p_txt2(i);
+        end if;
       end loop;
 
       for a in 1..l_plan_sections.count loop
@@ -743,7 +765,8 @@ package body COREOBJ_SQL_COMP_REPORT is
   end;
 
   procedure comprep_section_sqltext(p_obj_id           opas_objects.obj_id%type,
-                                    p_output    out COREMOD_REPORT_UTILS.t_output_lines)
+                                    p_output    out COREMOD_REPORT_UTILS.t_output_lines,
+                                    p_pixel_per_char number default COREMOD_REPORT_UTILS.gPixelPerChar)
   is
     --l_max_width number;
     l_output    COREMOD_REPORT_UTILS.t_output_lines;
@@ -772,7 +795,7 @@ package body COREOBJ_SQL_COMP_REPORT is
      end if;
      COREMOD_REPORT_UTILS.print_3arrays
                 (p_t_header   => 'SQL Text Comparison', -- of '||l_sql1||' and '||l_sql2||' texts',
-                 p_width      => (l_length1 + l_length2) * COREMOD_REPORT_UTILS.gPixelPerChar,
+                 p_width      => (l_length1 + l_length2) * p_pixel_per_char,
                  p_style_r1   => 'awrc1', --odd rows
                  p_style_r2   => 'awrnc1', --even rows
                  p_style_head => 'trchd',
@@ -785,7 +808,8 @@ package body COREOBJ_SQL_COMP_REPORT is
   end;
 
   procedure comprep_section_sqlplan(p_obj_id           opas_objects.obj_id%type,
-                                    p_output    out COREMOD_REPORT_UTILS.t_output_lines)
+                                    p_output    out COREMOD_REPORT_UTILS.t_output_lines,
+                                    p_pixel_per_char number default COREMOD_REPORT_UTILS.gPixelPerChar)
   is
     --l_max_width number;
     l_output    COREMOD_REPORT_UTILS.t_output_lines;
@@ -821,7 +845,7 @@ package body COREOBJ_SQL_COMP_REPORT is
 
       COREMOD_REPORT_UTILS.print_3arrays
                   (p_t_header   => 'SQL Execution Plan Comparison', -- of '||l_sql1||' and '||l_sql2,
-                   p_width      => (l_length1+l_length2 + 2) * COREMOD_REPORT_UTILS.gPixelPerChar,
+                   p_width      => (l_length1 + l_length2 + 2) * (p_pixel_per_char + 1),
                    p_style_r1   => 'awrc1', --odd rows
                    p_style_r2   => 'awrnc1', --even rows
                    p_style_head => 'trchd',
@@ -1104,12 +1128,13 @@ package body COREOBJ_SQL_COMP_REPORT is
 
   procedure create_comprep_section(p_obj_id        opas_objects.obj_id%type,
                                    p_section       varchar2,
-                                   p_output    out COREMOD_REPORT_UTILS.t_output_lines)
+                                   p_output    out COREMOD_REPORT_UTILS.t_output_lines,
+                                   p_pixel_per_char number default COREMOD_REPORT_UTILS.gPixelPerChar)
   is
   begin
     case p_section
-      when repcoCSQLTEXT then comprep_section_sqltext(p_obj_id, p_output);
-      when repcoEXECPLAN then comprep_section_sqlplan(p_obj_id, p_output);
+      when repcoCSQLTEXT then comprep_section_sqltext(p_obj_id, p_output, p_pixel_per_char);
+      when repcoEXECPLAN then comprep_section_sqlplan(p_obj_id, p_output, p_pixel_per_char);
       when repcoVSQLSTAT then comprep_section_stats (p_obj_id, stV$SQL, p_output);
       when repcoAWRSTAT  then comprep_section_stats (p_obj_id, stAWR,   p_output);
       when repcoASHWAIT  then null;           -- ASH Wait Profiles
@@ -1124,7 +1149,9 @@ package body COREOBJ_SQL_COMP_REPORT is
   is
     l_output        COREMOD_REPORT_UTILS.t_output_lines;
   begin
-    create_comprep_section(p_obj_id, p_section, l_output);
+    create_comprep_section(p_obj_id  => print_comprep_section_web.p_obj_id,
+                           p_section => print_comprep_section_web.p_section,
+                           p_output  => print_comprep_section_web.l_output);
     if l_output is not null then
       for i in 1..l_output.count loop
         htp.p(l_output(i));
@@ -1319,22 +1346,64 @@ package body COREOBJ_SQL_COMP_REPORT is
             end;
           when i.section_name = repcoVSQLSTAT then
             begin
+              pipe row ('Left V$SQL Statistics');
+              COREOBJ_SQL_COMP_REPORT.setsectnum(1);
+              COREOBJ_SQL_REPORT_UTILS.print_section_html_i(p_sql_data_point_id=> L_DP1,
+                                                            p_section_name => COREOBJ_SQL_REPORT_UTILS.repsVSQL,
+                                                            p_sql_id => L_SQL_ID1,
+                                                            p_output => l_output);
+              for i in 1..l_output.count loop
+                if length(l_output(i))>4000 then
+                  l_str := l_output(i);
+                  loop
+                    pipe row (substr(l_str,1,4000));
+
+                    l_str := substr(l_str,4000);
+                    exit when l_str is null;
+                  end loop;
+                else
+                  pipe row (l_output(i));
+                end if;
+              end loop;
+              l_output.delete;
+
+              pipe row ('Right V$SQL Statistics');
+              COREOBJ_SQL_COMP_REPORT.setsectnum(2);
+              COREOBJ_SQL_REPORT_UTILS.print_section_html_i(p_sql_data_point_id=> L_DP2,
+                                                            p_section_name => COREOBJ_SQL_REPORT_UTILS.repsVSQL,
+                                                            p_sql_id => L_SQL_ID2,
+                                                            p_output => l_output);
+              for i in 1..l_output.count loop
+                if length(l_output(i))>4000 then
+                  l_str := l_output(i);
+                  loop
+                    pipe row (substr(l_str,1,4000));
+
+                    l_str := substr(l_str,4000);
+                    exit when l_str is null;
+                  end loop;
+                else
+                  pipe row (l_output(i));
+                end if;
+              end loop;
+              l_output.delete;
+
               coreobj_api.get_jparam(p_obj_id => p_obj_id,
                                      p_pname => COREOBJ_SQL_COMP_REPORT.pCHLD#1,
                                      p_value => l_child_number);
               coreobj_api.get_jparam(p_obj_id => p_obj_id,
-                                     p_pname => COREOBJ_SQL_COMP_REPORT.pPLNHASH#1,
-                                     p_value => l_plan_hash_value);	
+                                     p_pname => COREOBJ_SQL_COMP_REPORT.pV$PLNHASH#1,
+                                     p_value => l_plan_hash_value);
               coreobj_api.get_jparam(p_obj_id => p_obj_id,
                                      p_pname => COREOBJ_SQL_COMP_REPORT.pV$INST#1,
                                      p_value => l_inst_id);
-              l_str := 'Left: INST_ID: '||l_inst_id||'; PLAN HASH: '||l_plan_hash_value||'; Child #: '||l_child_number;
+              l_str := 'Comparison: Left: INST_ID: '||l_inst_id||'; PLAN HASH: '||l_plan_hash_value||'; Child #: '||l_child_number;
               coreobj_api.get_jparam(p_obj_id => p_obj_id,
                                      p_pname => COREOBJ_SQL_COMP_REPORT.pCHLD#2,
                                      p_value => l_child_number);
               coreobj_api.get_jparam(p_obj_id => p_obj_id,
-                                     p_pname => COREOBJ_SQL_COMP_REPORT.pPLNHASH#2,
-                                     p_value => l_plan_hash_value);	
+                                     p_pname => COREOBJ_SQL_COMP_REPORT.pV$PLNHASH#2,
+                                     p_value => l_plan_hash_value);
               coreobj_api.get_jparam(p_obj_id => p_obj_id,
                                      p_pname => COREOBJ_SQL_COMP_REPORT.pV$INST#2,
                                      p_value => l_inst_id);
@@ -1343,12 +1412,53 @@ package body COREOBJ_SQL_COMP_REPORT is
             end;
           when i.section_name = repcoAWRSTAT then
             begin
+              pipe row ('Left AWR Statistics');
+              COREOBJ_SQL_COMP_REPORT.setsectnum(1);
+              COREOBJ_SQL_REPORT_UTILS.print_section_html_i(p_sql_data_point_id=> L_DP1,
+                                                            p_section_name => COREOBJ_SQL_REPORT_UTILS.repsAWR_SQLSTAT,
+                                                            p_sql_id => L_SQL_ID1,
+                                                            p_output => l_output);
+              for i in 1..l_output.count loop
+                if length(l_output(i))>4000 then
+                  l_str := l_output(i);
+                  loop
+                    pipe row (substr(l_str,1,4000));
+
+                    l_str := substr(l_str,4000);
+                    exit when l_str is null;
+                  end loop;
+                else
+                  pipe row (l_output(i));
+                end if;
+              end loop;
+              l_output.delete;
+
+              pipe row ('Right AWR Statistics');
+              COREOBJ_SQL_COMP_REPORT.setsectnum(2);
+              COREOBJ_SQL_REPORT_UTILS.print_section_html_i(p_sql_data_point_id=> L_DP2,
+                                                            p_section_name => COREOBJ_SQL_REPORT_UTILS.repsAWR_SQLSTAT,
+                                                            p_sql_id => L_SQL_ID2,
+                                                            p_output => l_output);
+              for i in 1..l_output.count loop
+                if length(l_output(i))>4000 then
+                  l_str := l_output(i);
+                  loop
+                    pipe row (substr(l_str,1,4000));
+
+                    l_str := substr(l_str,4000);
+                    exit when l_str is null;
+                  end loop;
+                else
+                  pipe row (l_output(i));
+                end if;
+              end loop;
+              l_output.delete;
               coreobj_api.get_jparam(p_obj_id => p_obj_id,
                                      p_pname => COREOBJ_SQL_COMP_REPORT.pDBID#1,
                                      p_value => l_dbid);
               coreobj_api.get_jparam(p_obj_id => p_obj_id,
                                      p_pname => COREOBJ_SQL_COMP_REPORT.pSNAPS#1,
-                                     p_value => l_snap1);	
+                                     p_value => l_snap1);
               coreobj_api.get_jparam(p_obj_id => p_obj_id,
                                      p_pname => COREOBJ_SQL_COMP_REPORT.pSNAPE#1,
                                      p_value => l_snap2);
@@ -1364,7 +1474,7 @@ package body COREOBJ_SQL_COMP_REPORT is
                                      p_value => l_dbid);
               coreobj_api.get_jparam(p_obj_id => p_obj_id,
                                      p_pname => COREOBJ_SQL_COMP_REPORT.pSNAPS#2,
-                                     p_value => l_snap1);	
+                                     p_value => l_snap1);
               coreobj_api.get_jparam(p_obj_id => p_obj_id,
                                      p_pname => COREOBJ_SQL_COMP_REPORT.pSNAPE#2,
                                      p_value => l_snap2);
@@ -1380,7 +1490,7 @@ package body COREOBJ_SQL_COMP_REPORT is
           else
             null;
         end case;
-        create_comprep_section(p_obj_id, i.section_name, l_output);
+        create_comprep_section(p_obj_id, i.section_name, l_output, p_pixel_per_char => 7);
         for i in 1..l_output.count loop
           if length(l_output(i))>4000 then
             l_str := l_output(i);
@@ -1393,7 +1503,6 @@ package body COREOBJ_SQL_COMP_REPORT is
             pipe row (l_output(i));
           end if;
         end loop;
-
         l_output.delete;
 
         pipe row (HTF.BR);
@@ -1426,7 +1535,7 @@ package body COREOBJ_SQL_COMP_REPORT is
                            p_pname => COREOBJ_SQL_COMP_REPORT.pSQLID#1,
                            p_value => L_SQL_ID1);
     coreobj_api.get_jparam(p_obj_id => p_obj_id,
-                           p_pname => COREOBJ_SQL_COMP_REPORT.pSQLID#1,
+                           p_pname => COREOBJ_SQL_COMP_REPORT.pSQLID#2,
                            p_value => L_SQL_ID2);
 
     l_file_id := COREMOD_FILE_UTILS.create_tmp_4downl(

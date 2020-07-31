@@ -493,11 +493,11 @@ q'[select plan_table_output "Plan Table Output" from table(dbms_xplan.display('O
 
   END print_sqlmon_hst_section_base;
 
-  procedure print_wa_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
-                                  p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
+  function getq_print_wa_section_base         (p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                               p_for_grid             boolean default false) return varchar2
+  is
   begin
-    COREMOD_REPORT_UTILS.print_query_result_html (
-p_query => replace(q'[select inst_id,
+    return replace(q'[select inst_id,
        child_number "CHLD#",
        policy,
        operation_id "OPER",
@@ -516,7 +516,14 @@ p_query => replace(q'[select inst_id,
        last_tempseg_size "LAST_TMP"
   from opas_ot_sql_wa
  where sql_data_point_id = <sql_data_point_id>
- order by inst_id, child_number, operation_id]','<sql_data_point_id>',p_sql_data_point_id),
+ order by inst_id, child_number, operation_id]','<sql_data_point_id>',p_sql_data_point_id);
+  end;
+
+  procedure print_wa_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                  p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
+  begin
+    COREMOD_REPORT_UTILS.print_query_result_html (
+                                            p_query => getq_print_wa_section_base(p_sql_data_point_id),
                                             p_width => gwWideSection1,
                                             p_summary => 'Workareas',--'
                                             --p_search varchar2 default null,
@@ -531,11 +538,18 @@ p_query => replace(q'[select inst_id,
                                             p_output => print_wa_section_base.p_output);
   end;
 
+  function getq_print_oe_section_base         (p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                               p_for_grid             boolean default false) return varchar2
+  is
+  begin
+    return replace(q'[select inst_id,child_number,name,isdefault,value from opas_ot_sql_opt_env where sql_data_point_id = <sql_data_point_id> order by inst_id,child_number,name]','<sql_data_point_id>',p_sql_data_point_id);
+  end;
+
   procedure print_oe_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
                                   p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
   begin
     COREMOD_REPORT_UTILS.print_query_result_html (
-p_query => replace(q'[select inst_id,child_number,name,isdefault,value from opas_ot_sql_opt_env where sql_data_point_id = <sql_data_point_id> order by inst_id,child_number,name]','<sql_data_point_id>',p_sql_data_point_id),
+                                            p_query => getq_print_oe_section_base(p_sql_data_point_id),
                                             p_width => gwWideSection1,
                                             p_summary => 'Workareas',
                                             --p_search varchar2 default null,
@@ -710,6 +724,15 @@ q'[select plan_table_output "Plan Table Output" from table(dbms_xplan.display('O
     end loop;
   end;
 
+  function getq_print_vash_section_base       (p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                               p_for_grid             boolean default false) return varchar2
+  is
+  begin
+    return replace(replace(q'[select to_char(MIN_SAMPLE_TIME,'<DTFMT>') MIN_SAMPLE_TIME, to_char(MAX_SAMPLE_TIME,'<DTFMT>') MAX_SAMPLE_TIME,to_char(SQL_EXEC_START,'<DTFMT>') SQL_EXEC_START,PROGRAM,MODULE,ACTION,CLIENT_ID,SAMPLES_CNT
+  from opas_ot_sql_ash_ident x where sql_data_point_id = <sql_data_point_id> and source_tab='V$'
+ order by SAMPLES_CNT desc]','<sql_data_point_id>',p_sql_data_point_id),'<DTFMT>',defDataTimeFmt);
+  end;
+
   procedure print_vash_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
                                     p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
   begin
@@ -719,9 +742,7 @@ q'[select plan_table_output "Plan Table Output" from table(dbms_xplan.display('O
     p_output(p_output.count+1):=HTF.BR;
 
     COREMOD_REPORT_UTILS.print_query_result_html (
-p_query => replace(replace(q'[select to_char(MIN_SAMPLE_TIME,'<DTFMT>') MIN_SAMPLE_TIME, to_char(MAX_SAMPLE_TIME,'<DTFMT>') MAX_SAMPLE_TIME,to_char(SQL_EXEC_START,'<DTFMT>') SQL_EXEC_START,PROGRAM,MODULE,ACTION,CLIENT_ID,SAMPLES_CNT
-  from opas_ot_sql_ash_ident x where sql_data_point_id = <sql_data_point_id> and source_tab='V$'
- order by SAMPLES_CNT desc]','<sql_data_point_id>',p_sql_data_point_id),'<DTFMT>',defDataTimeFmt),
+                                           p_query => getq_print_vash_section_base(p_sql_data_point_id),
                                             p_width => gwWideSection1,
                                             p_summary => 'V$ASH Identity',
                                             --p_search varchar2 default null,
@@ -787,6 +808,110 @@ p_query => replace(replace(replace(q'[select to_char(sql_hour,'<defDTFullFmt>') 
 
   end;
 
+  function getq_print_awr_sqlstat_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                               p_for_grid             boolean default false) return varchar2
+  is
+    l_dbid number;
+    l_snaps number;
+    l_snape number;
+    l_inst number;
+    l_plhsh number;
+
+    l_sql varchar2(32765) := q'[with data1 as (
+select
+        s.snap_id snap,to_char(sn.end_interval_time,'<defDTFullFmt>') end_interval_time
+      , to_char(sn.end_interval_time,'YYYY/MM/DD') end_interval_day
+      , s.instance_number inst_id
+      , s.plan_hash_value plan_hash
+      , EXECUTIONS_DELTA EXEC_DELTA
+      , (round(s.ELAPSED_TIME_DELTA/decode(s.EXECUTIONS_DELTA, null, 1,0,1, s.EXECUTIONS_DELTA)/1000)) as ela_poe
+      , (round(s.BUFFER_GETS_DELTA/decode(s.EXECUTIONS_DELTA, null, 1,0,1, s.EXECUTIONS_DELTA))) as LIO_poe
+      , (round(s.CPU_TIME_DELTA/decode(s.EXECUTIONS_DELTA, null, 1,0,1, s.EXECUTIONS_DELTA)/1000)) as CPU_poe
+      , (round(s.IOWAIT_DELTA/decode(s.EXECUTIONS_DELTA, null, 1,0,1, s.EXECUTIONS_DELTA)/1000)) as IOWAIT_poe
+      , (round(s.ccwait_delta/decode(s.EXECUTIONS_DELTA, null, 1,0,1, s.EXECUTIONS_DELTA)/1000)) as CCWAIT_poe
+      , (round(s.APWAIT_delta/decode(s.EXECUTIONS_DELTA, null, 1,0,1, s.EXECUTIONS_DELTA)/1000)) as APWAIT_poe
+      , (round(s.CLWAIT_DELTA/decode(s.EXECUTIONS_DELTA, null, 1,0,1, s.EXECUTIONS_DELTA)/1000)) as CLWAIT_poe
+      , (round(s.DISK_READS_DELTA/decode(s.EXECUTIONS_DELTA, null, 1,0,1, s.EXECUTIONS_DELTA))) as PIO_poe
+      , (round(s.ROWS_PROCESSED_DELTA/decode(s.EXECUTIONS_DELTA, null, 1,0,1, s.EXECUTIONS_DELTA))) as Rows_poe
+      , ROUND(ELAPSED_TIME_DELTA/1000000) ELA_DELTA_SEC
+      , ROUND(CPU_TIME_DELTA/1000000) CPU_DELTA_SEC
+      , ROUND(IOWAIT_DELTA/1000000) IOWAIT_DELTA_SEC
+      , DISK_READS_DELTA
+      , BUFFER_GETS_DELTA
+      , ROWS_PROCESSED_DELTA
+      , round(BUFFER_GETS_DELTA/decode(ROWS_PROCESSED_DELTA,0,null,ROWS_PROCESSED_DELTA)) LIO_PER_ROW
+      , round(DISK_READS_DELTA/decode(ROWS_PROCESSED_DELTA,0,null,ROWS_PROCESSED_DELTA),2) IO_PER_ROW
+      , round(s.IOWAIT_DELTA/decode(s.DISK_READS_DELTA, null, 1,0,1, s.DISK_READS_DELTA)/1000, 3) as awg_IO_tim
+from OPAS_OT_SQL_AWR_SQLSTAT s, OPAS_DB_LINK_AWRSNAPS sn, OPAS_OT_SQL_DATA dp
+where s.sql_id = dp.sql_id
+  and s.snap_id = sn.snap_id
+  and sn.snap_id between dp.AWR_SNAP_START and dp.AWR_SNAP_END
+  and sn.instance_number = s.instance_number
+  and dp.INCARNATION# = sn.INCARNATION#
+  and dp.INCARNATION# = s.INCARNATION#
+  and dp.dblink=sn.dblink
+  and dp.dblink=s.dblink
+  and dp.SQL_DATA_POINT_ID = <sql_data_point_id>
+  <SNAPS> <DBID> <INST> <PLHSH>)
+SELECT
+  snap, end_interval_time, end_interval_day, inst_id, plan_hash, exec_delta, ela_poe, lio_poe, cpu_poe, iowait_poe, ccwait_poe, apwait_poe, clwait_poe, pio_poe, rows_poe, ela_delta_sec, cpu_delta_sec,
+  iowait_delta_sec, disk_reads_delta, buffer_gets_delta, rows_processed_delta, lio_per_row, io_per_row, awg_io_tim
+  <COMMFORGRID>,0 noprn_lastrow
+FROM data1
+<COMMFORGRID>union all
+<COMMFORGRID>SELECT
+<COMMFORGRID>  null snap, 'Totals:' end_interval_time, null end_interval_day, null inst_id, null plan_hash, sum(exec_delta), null ela_poe, null lio_poe, null cpu_poe, null iowait_poe, null ccwait_poe, null apwait_poe, null clwait_poe,
+<COMMFORGRID>  null pio_poe, null rows_poe, sum(ela_delta_sec), sum(cpu_delta_sec),
+<COMMFORGRID>  sum(iowait_delta_sec), sum(disk_reads_delta), sum(buffer_gets_delta), sum(rows_processed_delta), round(avg(lio_per_row),3), round(avg(io_per_row),3), round(avg(awg_io_tim),4)
+<COMMFORGRID>,1 noprn_lastrow
+<COMMFORGRID>FROM data1
+order by snap nulls last, inst_id]'; --'
+  begin
+    if coreobj_sql_comp_report.ifiamcalledfromcompreport then
+      if coreobj_sql_comp_report.getsectnum = 1 then
+        l_dbid := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pDBID#1);
+      elsif coreobj_sql_comp_report.getsectnum = 2 then
+        l_dbid := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pDBID#2);
+      end if;
+
+      if coreobj_sql_comp_report.getsectnum = 1 then
+        l_snaps := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pSNAPS#1);
+      elsif coreobj_sql_comp_report.getsectnum = 2 then
+        l_snaps := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pSNAPS#2);
+      end if;
+      if coreobj_sql_comp_report.getsectnum = 1 then
+        l_snape := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pSNAPE#1);
+      elsif coreobj_sql_comp_report.getsectnum = 2 then
+        l_snape := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pSNAPE#2);
+      end if;
+
+      if coreobj_sql_comp_report.getsectnum = 1 then
+        l_inst := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pINST#1);
+      elsif coreobj_sql_comp_report.getsectnum = 2 then
+        l_inst := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pINST#2);
+      end if;
+
+      if coreobj_sql_comp_report.getsectnum = 1 then
+        l_plhsh := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pPLNHASH#1);
+      elsif coreobj_sql_comp_report.getsectnum = 2 then
+        l_plhsh := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pPLNHASH#2);
+      end if;
+
+    end if;
+
+    l_sql := replace(l_sql,'<DBID>',case when l_dbid is not null then ' and s.DBID='||l_dbid else null end);
+    l_sql := replace(l_sql,'<SNAPS>',case when l_snaps is not null and l_snape is not null then ' and s.snap_id between '||l_snaps||' and '||l_snape else null end);
+    l_sql := replace(l_sql,'<INST>',case when l_inst is not null then ' and s.instance_number='||l_inst else null end);
+    l_sql := replace(l_sql,'<PLHSH>',case when l_plhsh is not null then ' and s.plan_hash_value='||l_plhsh else null end);
+
+    if p_for_grid then
+      l_sql := replace(replace(l_sql,'<COMMFORGRID>','--'),'<UNCOMMFORGRID>','');
+    else
+      l_sql := replace(replace(l_sql,'<COMMFORGRID>',''),'<UNCOMMFORGRID>','--');
+    end if;
+    return replace(replace(replace(l_sql,'<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt);
+  end;
+
   procedure print_awr_sqlstat_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
                                            p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
     l_dbid number;
@@ -844,7 +969,7 @@ SELECT
 FROM data1
 order by snap nulls last, inst_id]'; --'
   begin
-    if coreobj_sql_comp_report.ifiamcalledfromcompreport then
+ /*   if coreobj_sql_comp_report.ifiamcalledfromcompreport then
       if coreobj_sql_comp_report.getsectnum = 1 then
         l_dbid := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pDBID#1);
       elsif coreobj_sql_comp_report.getsectnum = 2 then
@@ -880,9 +1005,9 @@ order by snap nulls last, inst_id]'; --'
     l_sql := replace(l_sql,'<SNAPS>',case when l_snaps is not null and l_snape is not null then ' and s.snap_id between '||l_snaps||' and '||l_snape else null end);
     l_sql := replace(l_sql,'<INST>',case when l_inst is not null then ' and s.instance_number='||l_inst else null end);
     l_sql := replace(l_sql,'<PLHSH>',case when l_plhsh is not null then ' and s.plan_hash_value='||l_plhsh else null end);
-
+ */
     COREMOD_REPORT_UTILS.print_query_result_html (
-              p_query => replace(replace(replace(l_sql,'<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt),
+                                            p_query => getq_print_awr_sqlstat_section_base(p_sql_data_point_id),
                                             p_width => gwWideSection1,--'
                                             p_summary => 'AWR SQL statistics',
                                             p_search => 'PLAN_HASH',
@@ -898,11 +1023,11 @@ order by snap nulls last, inst_id]'; --'
 
   end;
 
-  procedure print_awr_binds_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
-                                           p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
+  function getq_print_awr_binds_section_base  (p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                               p_for_grid             boolean default false) return varchar2
+  is
   begin
-    COREMOD_REPORT_UTILS.print_query_result_html (
-p_query => replace(replace(replace(q'[select b.snap_id snap, to_char(sn.end_interval_time,'<defDTFullFmt>') end_interval_time, name, position, datatype_string,to_char(last_captured,'<defDTFullFmt>') last_captured, value_string
+    return replace(replace(replace(q'[select b.snap_id snap, to_char(sn.end_interval_time,'<defDTFullFmt>') end_interval_time, name, position, datatype_string,to_char(last_captured,'<defDTFullFmt>') last_captured, value_string
 from OPAS_OT_SQL_AWR_SQLBIND b,
      OPAS_DB_LINK_AWRSNAPS sn,
      OPAS_OT_SQL_DATA dp
@@ -915,7 +1040,14 @@ and dp.dblink=b.dblink
 and dp.INCARNATION# = sn.INCARNATION#
 and dp.INCARNATION# = b.INCARNATION#
 and dp.SQL_DATA_POINT_ID = <sql_data_point_id>
-order by b.snap_id,position]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt),
+order by b.snap_id,position]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt);
+  end;
+
+  procedure print_awr_binds_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                           p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
+  begin
+    COREMOD_REPORT_UTILS.print_query_result_html (
+                                            p_query => getq_print_awr_binds_section_base(p_sql_data_point_id),
                                             p_width => gwWideSection1,--'
                                             p_summary => 'AWR SQL binds',
                                             --p_search varchar2 default null,
@@ -967,11 +1099,11 @@ q'[select plan_table_output "Plan Table Output" from table(dbms_xplan.display('O
     end loop;
   end;
 
-  procedure print_awr_plsqlsrc_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
-                                           p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
+  function getq_print_awr_plsqlsrc_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                               p_for_grid             boolean default false) return varchar2
+  is
   begin
-    COREMOD_REPORT_UTILS.print_query_result_html (
-p_query => replace(replace(replace(q'[select s.snap_id snap, to_char(sn.end_interval_time,'<defDTFullFmt>') end_interval_time, PLSQL_TOP "Top level PL/SQL", PLSQL_END "End point PL/SQL"
+    return replace(replace(replace(q'[select s.snap_id snap, to_char(sn.end_interval_time,'<defDTFullFmt>') end_interval_time, PLSQL_TOP "Top level PL/SQL", PLSQL_END "End point PL/SQL"
 from OPAS_OT_SQL_AWR_ASH_SUMM s,
      OPAS_DB_LINK_AWRSNAPS sn,
      OPAS_OT_SQL_DATA dp
@@ -985,7 +1117,14 @@ and dp.INCARNATION# = sn.INCARNATION#
 and dp.INCARNATION# = s.INCARNATION#
 and dp.SQL_DATA_POINT_ID = <sql_data_point_id>
 and (PLSQL_TOP is not null or PLSQL_END is not null)
-order by s.snap_id]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt),
+order by s.snap_id]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt);
+  end;
+
+  procedure print_awr_plsqlsrc_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                           p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
+  begin
+    COREMOD_REPORT_UTILS.print_query_result_html (
+                                            p_query => getq_print_awr_plsqlsrc_section_base(p_sql_data_point_id),
                                             p_width => gwWideSection1,--'
                                             p_summary => 'AWR PL/SQL source',
                                             --p_search varchar2 default null,
@@ -1000,11 +1139,11 @@ order by s.snap_id]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',def
                                             p_output => print_awr_plsqlsrc_section_base.p_output);
   end;
 
-  procedure print_awr_ashinv_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
-                                           p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
+  function getq_print_awr_ashinv_section_base (p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                               p_for_grid             boolean default false) return varchar2
+  is
   begin
-    COREMOD_REPORT_UTILS.print_query_result_html (
-p_query => replace(replace(replace(q'[select s.snap_id snap, to_char(sn.end_interval_time,'<defDTFullFmt>') end_interval_time,
+    return replace(replace(replace(q'[select s.snap_id snap, to_char(sn.end_interval_time,'<defDTFullFmt>') end_interval_time,
 topn, SESSION_ID, SESSION_SERIAL#, s.INSTANCE_NUMBER, TOP_LEVEL_SQL_ID, SQL_CHILD_NUMBER CHILD#, SQL_PLAN_HASH_VALUE PLAN_HASH, SQL_FULL_PLAN_HASH_VALUE FULL_PLAN__HASH,
 USER_ID, PROGRAM, MACHINE, MODULE, ACTION, CLIENT_ID, ECID, FORCE_MATCHING_SIGNATURE,
 SQL_EXEC_ID, to_char(SQL_EXEC_START,'<defDTFmt>') SQL_EXEC_START, SESSION_TYPE, USERNAME, to_char(MIN_SAMPLE_TIME,'<defDTFmt>') MIN_SAMPLE_TIME, to_char(MAX_SAMPLE_TIME,'<defDTFmt>') MAX_SAMPLE_TIME,
@@ -1021,7 +1160,14 @@ and dp.dblink=s.dblink
 and dp.INCARNATION# = sn.INCARNATION#
 and dp.INCARNATION# = s.INCARNATION#
 and dp.SQL_DATA_POINT_ID = <sql_data_point_id>
-order by s.snap_id, topn]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt),
+order by s.snap_id, topn]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt);
+  end;
+
+  procedure print_awr_ashinv_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                           p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
+  begin
+    COREMOD_REPORT_UTILS.print_query_result_html (
+                                            p_query => getq_print_awr_ashinv_section_base(p_sql_data_point_id),
                                             p_width => gwWideSection1,--'
                                             p_summary => 'AWR ASH Top executions',
                                             --p_search varchar2 default null,
@@ -1038,40 +1184,20 @@ order by s.snap_id, topn]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt
                                             p_output => print_awr_ashinv_section_base.p_output);
   end;
 
-  procedure print_awr_ashplstats_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
-                                              p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
+  function getq_print_awr_ashplstats_section_base1 (p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                               p_for_grid             boolean default false) return varchar2
+  is
   begin
-    --p_output(1) := '<b>Summary for each PLAN HASH</b>';
-
-    p_output(1):=HTF.header (4,cheader=>HTF.ANCHOR (curl=>'',ctext=>'AWR ASH Identitiy',cname=>'awrash_ident',cattributes=>'class="awr"'),cattributes=>'class="awr"');
-    p_output(p_output.count+1):=HTF.BR;
-
-    COREMOD_REPORT_UTILS.print_query_result_html (
-p_query => replace(replace(q'[select to_char(MIN_SAMPLE_TIME,'<DTFMT>') MIN_SAMPLE_TIME, to_char(MAX_SAMPLE_TIME,'<DTFMT>') MAX_SAMPLE_TIME,to_char(SQL_EXEC_START,'<DTFMT>') SQL_EXEC_START,PROGRAM,MODULE,ACTION,CLIENT_ID,SAMPLES_CNT
+    return replace(replace(q'[select to_char(MIN_SAMPLE_TIME,'<DTFMT>') MIN_SAMPLE_TIME, to_char(MAX_SAMPLE_TIME,'<DTFMT>') MAX_SAMPLE_TIME,to_char(SQL_EXEC_START,'<DTFMT>') SQL_EXEC_START,PROGRAM,MODULE,ACTION,CLIENT_ID,SAMPLES_CNT
   from opas_ot_sql_ash_ident x where sql_data_point_id = <sql_data_point_id> and source_tab='AWR'
- order by SAMPLES_CNT desc]','<sql_data_point_id>',p_sql_data_point_id),'<DTFMT>',defDataTimeFmt), --'
-                                            p_width => gwWideSection1,
-                                            p_summary => 'AWR ASH Identity',
-                                            --p_search varchar2 default null,
-                                            --p_replacement varchar2 default null,
-                                            p_style_tab => 'trctd',
-                                            p_style_head => 'trchd', --head
-                                            p_style_r1 => 'trcr1',   --odd rows
-                                            p_style_r2  => 'trcr2', --even rows
-                                            p_style_finrow => null, --'trctotr',
-                                            p_header => gdHeaderRepeat, --number default 0,
-                                            p_break_col => null, --'plan_hash_value',
-                                            p_output => print_awr_ashplstats_section_base.p_output);
-    p_output(p_output.count+1):=HTF.BR;
+ order by SAMPLES_CNT desc]','<sql_data_point_id>',p_sql_data_point_id),'<DTFMT>',defDataTimeFmt);
+  end;
 
-    p_output(p_output.count+1):=HTF.header (4,cheader=>HTF.ANCHOR (curl=>'',ctext=>'Summary for each PLAN HASH',cname=>'awrash_summ1',cattributes=>'class="awr"'),cattributes=>'class="awr"');
-
-    p_output(p_output.count+1):=HTF.LISTITEM(cattributes=>'class="awr"',ctext=>HTF.ANCHOR (curl=>'#awrash_summ1',ctext=>'Summary for each PLAN HASH',cattributes=>'class="awr"'));
-    p_output(p_output.count+1):=HTF.LISTITEM(cattributes=>'class="awr"',ctext=>HTF.ANCHOR (curl=>'#awrash_summ2',ctext=>'Summary for each PLAN HASH per HOUR',cattributes=>'class="awr"'));
-    p_output(p_output.count+1):=HTF.BR;
-
-    COREMOD_REPORT_UTILS.print_query_result_html (
-p_query => replace(replace(replace(q'[select
+  function getq_print_awr_ashplstats_section_base2 (p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                               p_for_grid             boolean default false) return varchar2
+  is
+  begin
+    return replace(replace(replace(q'[select
   plan_hash_value PLAN_HASH, FULL_PLAN_HASH_VALUE FULL_PLAN__HASH, PLAN_LINE_ID ID, PLAN_OPERATION ||' '|| PLAN_OPTIONS "Row source", EVENT, SAMPLES*10 "Time",
   round(100 * SAMPLES / sum(SAMPLES) over(partition by plan_hash_value), 2) "Time, %",
   round(100 * sum(SAMPLES) over(partition by PLAN_LINE_ID, plan_hash_value) / sum(SAMPLES) over(partition by plan_hash_value), 2) "Time by ID, %",
@@ -1092,29 +1218,14 @@ and dp.INCARNATION# = sn.INCARNATION#
 and dp.INCARNATION# = s.INCARNATION#
 and dp.SQL_DATA_POINT_ID = <sql_data_point_id>
 group by sql_plan_hash_value, SQL_FULL_PLAN_HASH_VALUE, SQL_PLAN_LINE_ID, SQL_PLAN_OPERATION, SQL_PLAN_OPTIONS, EVENT, obj, tbs)
-order by plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt),
-                                            p_width => gwWideSection1,
-                                            p_summary => 'AWR ASH Plan stats',
-                                            p_search => 'PLAN_HASH',
-                                            p_replacement => HTF.ANCHOR (curl=>'#awrplan_\1',ctext=>'\1',cattributes=>'class="awr"'),
-                                            p_style_tab => 'trctd',
-                                            p_style_head => 'trchd', --head
-                                            p_style_r1 => 'trcr1',   --odd rows
-                                            p_style_r2  => 'trcr2', --even rows
-                                            p_style_finrow => null, --trctotr,
-                                            p_header => gdHeaderRepeat, --number default 0,
-                                            p_break_col => 'plan_hash_value',
-                                            p_output => print_awr_ashplstats_section_base.p_output); --'
-    p_output(p_output.count+1):=HTF.BR;
+order by plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt);
+  end;
 
-    p_output(p_output.count+1):=HTF.header (4,cheader=>HTF.ANCHOR (curl=>'',ctext=>'Summary for each PLAN HASH per HOUR',cname=>'awrash_summ2',cattributes=>'class="awr"'),cattributes=>'class="awr"');
-
-    p_output(p_output.count+1):=HTF.LISTITEM(cattributes=>'class="awr"',ctext=>HTF.ANCHOR (curl=>'#awrash_summ1',ctext=>'Summary for each PLAN HASH',cattributes=>'class="awr"'));
-    p_output(p_output.count+1):=HTF.LISTITEM(cattributes=>'class="awr"',ctext=>HTF.ANCHOR (curl=>'#awrash_summ2',ctext=>'Summary for each PLAN HASH per HOUR',cattributes=>'class="awr"'));
-    p_output(p_output.count+1):=HTF.BR;
-
-    COREMOD_REPORT_UTILS.print_query_result_html (
-p_query => replace(replace(replace(q'[select snap,end_interval_time,
+  function getq_print_awr_ashplstats_section_base3 (p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                               p_for_grid             boolean default false) return varchar2
+  is
+  begin
+    return replace(replace(replace(q'[select snap,end_interval_time,
   plan_hash_value PLAN_HASH, FULL_PLAN_HASH_VALUE FULL_PLAN__HASH, PLAN_LINE_ID ID, PLAN_OPERATION ||' '|| PLAN_OPTIONS "Row source", EVENT, SAMPLES*10 "Time",
   round(100 * SAMPLES / sum(SAMPLES) over(partition by plan_hash_value), 2) "Time, %",
   round(100 * sum(SAMPLES) over(partition by PLAN_LINE_ID, plan_hash_value) / sum(SAMPLES) over(partition by plan_hash_value), 2) "Time by ID, %",
@@ -1136,7 +1247,63 @@ and dp.INCARNATION# = sn.INCARNATION#
 and dp.INCARNATION# = s.INCARNATION#
 and dp.SQL_DATA_POINT_ID = <sql_data_point_id>
 group by s.snap_id, sn.end_interval_time, sql_plan_hash_value, SQL_FULL_PLAN_HASH_VALUE, SQL_PLAN_LINE_ID, SQL_PLAN_OPERATION, SQL_PLAN_OPTIONS, EVENT, obj, tbs)
-order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt),
+order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt);
+  end;
+
+  procedure print_awr_ashplstats_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                              p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
+  begin
+    --p_output(1) := '<b>Summary for each PLAN HASH</b>';
+
+    p_output(1):=HTF.header (4,cheader=>HTF.ANCHOR (curl=>'',ctext=>'AWR ASH Identitiy',cname=>'awrash_ident',cattributes=>'class="awr"'),cattributes=>'class="awr"');
+    p_output(p_output.count+1):=HTF.BR;
+
+    COREMOD_REPORT_UTILS.print_query_result_html (
+                                            p_query => getq_print_awr_ashplstats_section_base1(p_sql_data_point_id), --'
+                                            p_width => gwWideSection1,
+                                            p_summary => 'AWR ASH Identity',
+                                            --p_search varchar2 default null,
+                                            --p_replacement varchar2 default null,
+                                            p_style_tab => 'trctd',
+                                            p_style_head => 'trchd', --head
+                                            p_style_r1 => 'trcr1',   --odd rows
+                                            p_style_r2  => 'trcr2', --even rows
+                                            p_style_finrow => null, --'trctotr',
+                                            p_header => gdHeaderRepeat, --number default 0,
+                                            p_break_col => null, --'plan_hash_value',
+                                            p_output => print_awr_ashplstats_section_base.p_output);
+    p_output(p_output.count+1):=HTF.BR;
+
+    p_output(p_output.count+1):=HTF.header (4,cheader=>HTF.ANCHOR (curl=>'',ctext=>'Summary for each PLAN HASH',cname=>'awrash_summ1',cattributes=>'class="awr"'),cattributes=>'class="awr"');
+
+    p_output(p_output.count+1):=HTF.LISTITEM(cattributes=>'class="awr"',ctext=>HTF.ANCHOR (curl=>'#awrash_summ1',ctext=>'Summary for each PLAN HASH',cattributes=>'class="awr"'));
+    p_output(p_output.count+1):=HTF.LISTITEM(cattributes=>'class="awr"',ctext=>HTF.ANCHOR (curl=>'#awrash_summ2',ctext=>'Summary for each PLAN HASH per HOUR',cattributes=>'class="awr"'));
+    p_output(p_output.count+1):=HTF.BR;
+
+    COREMOD_REPORT_UTILS.print_query_result_html (
+                                            p_query => getq_print_awr_ashplstats_section_base2(p_sql_data_point_id),
+                                            p_width => gwWideSection1,
+                                            p_summary => 'AWR ASH Plan stats',
+                                            p_search => 'PLAN_HASH',
+                                            p_replacement => HTF.ANCHOR (curl=>'#awrplan_\1',ctext=>'\1',cattributes=>'class="awr"'),
+                                            p_style_tab => 'trctd',
+                                            p_style_head => 'trchd', --head
+                                            p_style_r1 => 'trcr1',   --odd rows
+                                            p_style_r2  => 'trcr2', --even rows
+                                            p_style_finrow => null, --trctotr,
+                                            p_header => gdHeaderRepeat, --number default 0,
+                                            p_break_col => 'plan_hash_value',
+                                            p_output => print_awr_ashplstats_section_base.p_output); --'
+    p_output(p_output.count+1):=HTF.BR;
+
+    p_output(p_output.count+1):=HTF.header (4,cheader=>HTF.ANCHOR (curl=>'',ctext=>'Summary for each PLAN HASH per HOUR',cname=>'awrash_summ2',cattributes=>'class="awr"'),cattributes=>'class="awr"');
+
+    p_output(p_output.count+1):=HTF.LISTITEM(cattributes=>'class="awr"',ctext=>HTF.ANCHOR (curl=>'#awrash_summ1',ctext=>'Summary for each PLAN HASH',cattributes=>'class="awr"'));
+    p_output(p_output.count+1):=HTF.LISTITEM(cattributes=>'class="awr"',ctext=>HTF.ANCHOR (curl=>'#awrash_summ2',ctext=>'Summary for each PLAN HASH per HOUR',cattributes=>'class="awr"'));
+    p_output(p_output.count+1):=HTF.BR;
+
+    COREMOD_REPORT_UTILS.print_query_result_html (
+                                            p_query => getq_print_awr_ashplstats_section_base3(p_sql_data_point_id),
                                             p_width => gwWideSection1,--'
                                             p_summary => 'AWR ASH Plan stats per snap',
                                             p_search => 'PLAN_HASH',

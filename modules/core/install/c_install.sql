@@ -140,6 +140,10 @@ begin
 end;
 /
 
+BEGIN
+  COREOBJ_DB_GROWTH.init_dbg  ;  
+END;
+/
 
 /*
 begin

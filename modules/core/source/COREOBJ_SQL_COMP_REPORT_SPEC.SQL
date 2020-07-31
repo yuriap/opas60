@@ -113,7 +113,8 @@ package COREOBJ_SQL_COMP_REPORT is
 
   procedure create_comprep_section(p_obj_id           opas_objects.obj_id%type,
                                    p_section varchar2,
-                                   p_output    out COREMOD_REPORT_UTILS.t_output_lines);
+                                   p_output    out COREMOD_REPORT_UTILS.t_output_lines,
+                                   p_pixel_per_char number default COREMOD_REPORT_UTILS.gPixelPerChar);
 
   procedure print_comprep_section_web(p_obj_id           opas_objects.obj_id%type,
                                       p_section varchar2);

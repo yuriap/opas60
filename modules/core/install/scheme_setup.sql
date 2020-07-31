@@ -31,6 +31,8 @@ grant execute on dbms_xplan to &localscheme.;
 grant update on apex_180100.WWV_FLOW_TEMP_FILES to &localscheme.;
 --APEX 19.1 uploading files
 grant update on apex_190100.WWV_FLOW_TEMP_FILES to &localscheme.;
+--APEX 20.1 uploading files
+grant update on APEX_200100.WWV_FLOW_TEMP_FILES to &localscheme.;
 --
 grant select on gv_$active_session_history to &localscheme.;
 grant select on v_$database to &localscheme.;

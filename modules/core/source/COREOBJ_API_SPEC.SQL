@@ -79,6 +79,9 @@ PACKAGE COREOBJ_API AS
                        p_DATE_PAR        OPAS_OBJECT_PARS.DATE_PAR%type default null,
                        p_DTTZ_PAR        OPAS_OBJECT_PARS.DTTZ_PAR%type default null);
 
+  procedure clean_param (p_obj_id          OPAS_OBJECT_PARS.obj_id%type,
+                         p_par_name        OPAS_OBJECT_PARS.par_name%type);
+
   function  get_param_n (p_obj_id          OPAS_OBJECT_PARS.obj_id%type,
                          p_par_name        OPAS_OBJECT_PARS.par_name%type,
                          p_search_top      boolean default false) return number;

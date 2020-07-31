@@ -27,6 +27,7 @@ package body coreobj_db_mon_hist is
   procedure calc_histograms
   is
     l_next_date TIMESTAMP WITH TIME ZONE;
+    l_next_rem_date TIMESTAMP WITH TIME ZONE;
     l_sess_id   opas_ot_db_mon_hist_sess.sess_id%type;
     l_sess_id2  opas_ot_db_mon_hist_sess.sess_id%type;
     l_view_sql varchar2(32765);
@@ -58,10 +59,10 @@ select <SESS_ID>, d.inst_id, r.range#, count(1) cnt
  group by d.inst_id, r.range#]';
           end if;
 
-          l_next_date := coremod_utils.get_remote_ts(p_dblink => i.dblink);
+          l_next_rem_date := coremod_utils.get_remote_ts(p_dblink => i.dblink);
 
           insert into opas_ot_db_mon_hist_sess (dbmh_id, tim_tz, status)
-               values (i.dbmh_id, l_next_date, case i.calc_type when ctRegular then ssReady when ctDelta then ssSnapshot else 'N/A' end)
+               values (i.dbmh_id, l_next_rem_date, case i.calc_type when ctRegular then ssReady when ctDelta then ssSnapshot else 'N/A' end)
                returning sess_id into l_sess_id;
 
           l_view_sql:=replace(replace(replace(replace(l_view_sql,'<BUCKETS>',i.dbmh_buckets),'<STAT>',i.dbmh_stat),'<SESS_ID>',l_sess_id),'<DBLINK>',COREMOD_API.get_dblink_for_query(i.dblink));
@@ -70,25 +71,27 @@ select <SESS_ID>, d.inst_id, r.range#, count(1) cnt
           update opas_ot_db_mon_hist set last_exec_ts = systimestamp where dbmh_id = i.dbmh_id;
 
           if i.calc_type = ctDelta then
-            for j in (select unique prev_sess_id from (
-                      select FIRST_VALUE(sess_id) OVER (ORDER BY tim_tz desc ROWS UNBOUNDED PRECEDING) prev_sess_id
+            for j in (select unique prev_sess_id, prev_tim_tz from (
+                      select FIRST_VALUE(sess_id) OVER (ORDER BY tim_tz desc ROWS UNBOUNDED PRECEDING) prev_sess_id,
+                             FIRST_VALUE(tim_tz) OVER (ORDER BY tim_tz desc ROWS UNBOUNDED PRECEDING) prev_tim_tz
                         from opas_ot_db_mon_hist_sess where dbmh_id = i.dbmh_id and status = ssSnapshot and sess_id <> l_sess_id)) loop
-              insert into opas_ot_db_mon_hist_sess (dbmh_id, tim_tz, status)
-                   values (i.dbmh_id, l_next_date, ssReady)
-                   returning sess_id into l_sess_id2;
+              if (systimestamp - j.prev_tim_tz) < 3 * ( l_next_date - i.last_exec_ts ) then
+                insert into opas_ot_db_mon_hist_sess (dbmh_id, tim_tz, status)
+                     values (i.dbmh_id, l_next_rem_date, ssReady)
+                     returning sess_id into l_sess_id2;
 
-              insert into opas_ot_db_mon_hist_data
-                (sess_id, inst_id, range#, quantity)
-              select l_sess_id2, c.inst_id, c.range#,
-                     c.quantity - p.quantity
-                from opas_ot_db_mon_hist_data p,
-                     opas_ot_db_mon_hist_data c
-                where p.sess_id = j.prev_sess_id
-                  and c.sess_id = l_sess_id
-                  and p.inst_id = c.inst_id
-                  and p.range# = c.range#
-                  and c.quantity > p.quantity;
-
+                insert into opas_ot_db_mon_hist_data
+                  (sess_id, inst_id, range#, quantity)
+                select l_sess_id2, c.inst_id, c.range#,
+                       c.quantity - p.quantity
+                  from opas_ot_db_mon_hist_data p,
+                       opas_ot_db_mon_hist_data c
+                  where p.sess_id = j.prev_sess_id
+                    and c.sess_id = l_sess_id
+                    and p.inst_id = c.inst_id
+                    and p.range# = c.range#
+                    and c.quantity > p.quantity;
+              end if;
               delete from opas_ot_db_mon_hist_sess where dbmh_id = i.dbmh_id and sess_id = j.prev_sess_id;
             end loop;
           end if;

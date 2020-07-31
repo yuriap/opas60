@@ -287,8 +287,11 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
           first_discovered    = systimestamp,
           FIRST_DISCOVERED_AT = p_data.dblink
         where sql_id = p_data.sql_id;
-
-        coreobj_sql_tags.auto_tag_sql(p_sql_id => p_data.sql_id);
+        begin
+          coreobj_sql_tags.auto_tag_sql(p_sql_id => p_data.sql_id);
+        exception
+          when others then coremod_tasks.log('Warning: coreobj_sql_tags.auto_tag_sql failed for '||p_data.sql_id||' with: '||SQLERRM);
+        end;
       else
         l_rows := 0;
       end if;
@@ -429,14 +432,19 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
 
     begin
       execute immediate l_sql using p_data.sql_id, l_drows;
+--coremod_tasks.log('1: '||sql%rowcount);
     exception
       when others then  execute immediate l_sql using p_data.sql_id, 20;
+--coremod_tasks.log('2: '||sql%rowcount);
     end;
 
     l_sql := null;
 
     update opas_ot_tmp_gv$sql_monitor set sqlmon_id = opas_ot_sq_sqlmon_id.nextval;
-
+--coremod_tasks.log('3: '||sql%rowcount);
+--for i in (select * from opas_ot_tmp_gv$sql_monitor) loop
+--  coremod_tasks.log('a: '||i.report_id||':'||i.status);
+--end loop;
     INSERT
       INTO opas_ot_sql_sqlmon (
         sqlmon_id, sql_id, sql_mon_report, plan_id, source, report_id, status, first_refresh_time,
@@ -450,10 +458,10 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
         p_data.dblink
     from (
     SELECT 'I' op, t.* FROM opas_ot_tmp_gv$sql_monitor t
-    where report_id = 0 and status = 'EXECUTING'
-    union all
+    where report_id = 0 --and status in ( 'EXECUTING', 'DONE (ERROR)')
+/*    union all
     SELECT 'I' op, t.* FROM opas_ot_tmp_gv$sql_monitor t
-    where report_id = 0 and status != 'EXECUTING'
+    where report_id = 0 and status not in ( 'EXECUTING', 'DONE (ERROR)')
       and not exists (select 1 from opas_ot_sql_sqlmon i
                        where i.report_id = 0
                          and t.status = i.status
@@ -461,13 +469,13 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                          and t.sql_id = i.sql_id
                          and i.dblink = p_data.dblink
                          and t.sid = i.sid
-                         and t.session_serial# = i.session_serial#)
+                         and t.session_serial# = i.session_serial#)*/
     union all
     SELECT 'I' op, t.* FROM opas_ot_tmp_gv$sql_monitor t
     where report_id <> 0
       and report_id not in (select report_id from opas_ot_sql_sqlmon where sql_id = p_data.sql_id and dblink = p_data.dblink)
       );
-
+--coremod_tasks.log('4: '||sql%rowcount);
     INSERT ALL
 --      WHEN op = 'I' THEN
 --      INTO opas_ot_sql_sqlmon (
@@ -512,10 +520,10 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       INTO opas_ot_sql_sqlmon_ref ( sql_data_point_id, sqlmon_id)
       values( p_data.sql_data_point_id, sqlmon_id)
     SELECT 'I' op, t.*/*, sqlmon_id*/ FROM opas_ot_tmp_gv$sql_monitor t
-    where report_id = 0 and status = 'EXECUTING'
-    union all
-    SELECT 'I' op, t.*/*, sqlmon_id*/ FROM opas_ot_tmp_gv$sql_monitor t
-    where report_id = 0 and status != 'EXECUTING'
+    where report_id = 0 --and status in ( 'EXECUTING', 'DONE (ERROR)')
+/*    union all
+    SELECT 'I' op, t.* FROM opas_ot_tmp_gv$sql_monitor t
+    where report_id = 0 and status not in ( 'EXECUTING', 'DONE (ERROR)')
       and not exists (select 1 from opas_ot_sql_sqlmon i
                        where i.report_id = 0
                          and t.status = i.status
@@ -523,7 +531,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                          and t.sql_id = i.sql_id
                          and i.dblink = p_data.dblink
                          and t.sid = i.sid
-                         and t.session_serial# = i.session_serial#)
+                         and t.session_serial# = i.session_serial#)*/
     union all
     SELECT 'I' op, t.*/*, sqlmon_id*/ FROM opas_ot_tmp_gv$sql_monitor t
     where report_id <> 0
@@ -535,7 +543,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
 --      and p.source = srcV$
 --      and not exists (select 1 from opas_ot_sql_sqlmon_ref i where sql_data_point_id = p_data.sql_data_point_id and i.sqlmon_id=p.sqlmon_id)
       ;
-
+--coremod_tasks.log('5: '||sql%rowcount);
     select count(1) into l_rows from opas_ot_sql_sqlmon_ref where sql_data_point_id = p_data.sql_data_point_id;
 
     for i in (select m.* from opas_ot_sql_sqlmon_ref r, opas_ot_sql_sqlmon m where r.sqlmon_id = m.sqlmon_id and r.sql_data_point_id = p_data.sql_data_point_id and sql_mon_report is null) loop
@@ -1833,11 +1841,22 @@ coremod_log.log(gAWRParams.END_INTERVAL_TIME,'INFO');
     if l_start_dt is not null and l_end_dt is not null then
       l_awrdays := null;
       gAWRParams.DATES_SPECIFIED := true;
+      if l_end_dt <= l_start_dt then
+        coremod_tasks.log('COREOBJ_SQL_UTILS.calc_awr_ranges: Warning! End date less then start date l_start_dt;l_end_dt: '||
+          to_char(l_start_dt,'YYYY/MM/DD HH24:MI:SS TZH:TZM')||';'||to_char(l_end_dt,'YYYY/MM/DD HH24:MI:SS TZH:TZM'));
+        l_end_dt := l_start_dt + interval '1' day;
+      end if;
     else
       l_awrdays := nvl( COREOBJ_API.get_param_n(p_obj_id, pnAWRDataDays, true), defAWRDataDays);
       l_search_last_days := nvl( COREOBJ_API.get_param_c(p_obj_id, pnAWRSearchLastDays, true), defAWRSearchLastDays) = 'Y';
       gAWRParams.DATES_SPECIFIED := false;
     end if;
+
+    COREMOD_API.lock_resource
+                 (p_resource_name => 'update_dblink_db_info_awrsn',
+                  p_mode => DBMS_LOCK.X_MODE,
+                  p_timeout => 300,
+                  p_release_on_commit => true);
 
     update_dblink_db_info_awrsn(p_db_link_name     => p_data.dblink,
                                 p_days             => l_awrdays,

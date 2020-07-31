@@ -40,7 +40,10 @@ PACKAGE COREOBJ_SQL_REPORT_UTILS AS
   procedure print_section_html(p_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type,
                                p_section_name varchar2,
                                p_sql_id   opas_ot_sql_data.sql_id%type);
-
+  procedure print_section_html_i(p_sql_id              opas_ot_sql_data.sql_id%type,
+                                 p_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type,
+                                 p_section_name        varchar2,
+                                 p_output          out COREMOD_REPORT_UTILS.t_output_lines);
   procedure print_sql_text_web(p_sql_id opas_ot_sql_data.sql_id%type);
 
   --cmd utils
@@ -52,6 +55,27 @@ PACKAGE COREOBJ_SQL_REPORT_UTILS AS
 
   function prepare_report_4download(p_obj_id  opas_objects.obj_id%type,
                                     p_section_list varchar2) return opas_files.file_id%type;
+
+  function getq_print_wa_section_base         (p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                               p_for_grid             boolean default false) return varchar2;
+  function getq_print_oe_section_base         (p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                               p_for_grid             boolean default false) return varchar2;
+  function getq_print_vash_section_base       (p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                               p_for_grid             boolean default false) return varchar2;
+  function getq_print_awr_sqlstat_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                               p_for_grid             boolean default false) return varchar2;
+  function getq_print_awr_binds_section_base  (p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                               p_for_grid             boolean default false) return varchar2;
+  function getq_print_awr_plsqlsrc_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                               p_for_grid             boolean default false) return varchar2;
+  function getq_print_awr_ashinv_section_base (p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                               p_for_grid             boolean default false) return varchar2;
+  function getq_print_awr_ashplstats_section_base1 (p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                               p_for_grid             boolean default false) return varchar2;
+  function getq_print_awr_ashplstats_section_base2 (p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                               p_for_grid             boolean default false) return varchar2;
+  function getq_print_awr_ashplstats_section_base3 (p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                               p_for_grid             boolean default false) return varchar2;
 
 END COREOBJ_SQL_REPORT_UTILS;
 /

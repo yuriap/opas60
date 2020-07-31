@@ -163,6 +163,13 @@ PACKAGE BODY COREOBJ_API AS
         (src.obj_id, src.par_name, src.NUM_PAR, src.VARCHAR_PAR, src.DATE_PAR, src.DTTZ_PAR);
   end;
 
+  procedure clean_param (p_obj_id          OPAS_OBJECT_PARS.obj_id%type,
+                         p_par_name        OPAS_OBJECT_PARS.par_name%type)
+  is
+  begin
+    delete from OPAS_OBJECT_PARS where obj_id = p_obj_id and par_name = p_par_name;
+  end;
+
   procedure get_param_i (p_obj_id          OPAS_OBJECT_PARS.obj_id%type,
                          p_par_name        OPAS_OBJECT_PARS.par_name%type,
                          p_search_top      boolean default false,

@@ -78,7 +78,11 @@ package body COREMOD_LOG is
       coremod_log.log('Start_SQL_TRACE: '||coremod_api.getconf('INSTR_SQL_TRACE',COREMOD_API.gMODNAME)||'; EXPIRIENCE ID: '||nvl(g_user_expirience_id,'N/A'));
       coremod_log.log('Trace file: '||l_trc_file);
       execute immediate q'[begin DBMS_SESSION.SESSION_TRACE_ENABLE(]'||nvl(coremod_api.getconf('INSTR_SQL_TRACE_PARAMS',COREMOD_API.gMODNAME),q'[TRUE,TRUE,'FIRST_EXECUTION']')||q'[); end;]';
-      dbms_log.ksdwrt(1, '*** EXPERIENCE ID:('||g_user_expirience_id||'-'||p_name||'-START)');
+      $IF OPAS_CLOUD.gOPAS_CLOUD $THEN
+        null;
+      $ELSE
+        dbms_log.ksdwrt(1, '*** EXPERIENCE ID:('||g_user_expirience_id||'-'||p_name||'-START)');
+      $END
     end if;
   end;
 
@@ -86,7 +90,12 @@ package body COREMOD_LOG is
   is
   begin
     if nvl(coremod_api.getconf('INSTR_SQL_TRACE',COREMOD_API.gMODNAME),'~^') = p_name then
-      dbms_log.ksdwrt(1, '*** EXPERIENCE ID:('||nvl(g_user_expirience_id,'N/A')||'-'||p_name||'-END)');
+      $IF OPAS_CLOUD.gOPAS_CLOUD $THEN
+        null;
+      $ELSE
+        dbms_log.ksdwrt(1, '*** EXPERIENCE ID:('||nvl(g_user_expirience_id,'N/A')||'-'||p_name||'-END)');
+      $END
+
       DBMS_SESSION.SESSION_TRACE_DISABLE;
       coremod_log.log('Stop_SQL_TRACE: '||coremod_api.getconf('INSTR_SQL_TRACE',COREMOD_API.gMODNAME)||'; EXPIRIENCE ID: '||nvl(g_user_expirience_id,'N/A'));
     end if;

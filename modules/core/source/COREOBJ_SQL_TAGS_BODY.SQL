@@ -12,7 +12,8 @@ package body coreobj_sql_tags is
     on (t.tag_name=s.tag_name)
     when matched then update set
       t.tag_description = s.tag_description,
-      t.tag_autoexpr = s.tag_autoexpr
+      t.tag_autoexpr = s.tag_autoexpr,
+      t.tag_modified = systimestamp
     when not matched then insert (t.tag_name, t.tag_prnt, t.tag_description, t.tag_autoexpr)
     values
     (s.tag_name, s.tag_prnt, s.tag_description, s.tag_autoexpr);
@@ -120,7 +121,8 @@ package body coreobj_sql_tags is
     for i in (select * from opas_ot_sql_tags where tag_autoexpr is not null)
     loop
       open l_crsr for
-        q'[select sql_id from opas_ot_sql_descriptions s, opas_files f where s.sql_id = :sqlid and s.sql_text = f.file_id and (]'||i.tag_autoexpr||')' using p_sql_id;
+        q'[select sql_id from opas_ot_sql_descriptions s, opas_files f
+where s.sql_id = :sqlid and (s.sql_text = f.file_id or s.sql_text_approx = f.file_id) and (]'||i.tag_autoexpr||')' using p_sql_id;
       fetch l_crsr into l_sql_id;
       if l_crsr%found then
         insert into opas_ot_sql_sql2tags
@@ -142,7 +144,7 @@ package body coreobj_sql_tags is
     for i in (select * from opas_ot_sql_tags where tag_name = p_tag_name)
     loop
       open l_crsr for
-        q'[select sql_id from opas_ot_sql_descriptions s, opas_files f where s.sql_text = f.file_id and (]'||i.tag_autoexpr||')';
+        q'[select sql_id from opas_ot_sql_descriptions s, opas_files f where (s.sql_text = f.file_id or s.sql_text_approx = f.file_id) and (]'||i.tag_autoexpr||')';
       loop
         fetch l_crsr into l_sql_id;
         exit when l_crsr%notfound;
@@ -177,7 +179,7 @@ package body coreobj_sql_tags is
     for i in (select * from opas_ot_sql_tags where tag_name = p_tag_name)
     loop
       open l_crsr for
-        q'[select sql_id from opas_ot_sql_descriptions s, opas_files f where s.sql_text = f.file_id and (]'||p_expr||')';
+        q'[select sql_id from opas_ot_sql_descriptions s, opas_files f where (s.sql_text = f.file_id or s.sql_text_approx = f.file_id) and (]'||p_expr||')';
       loop
         fetch l_crsr into l_sql_id;
         exit when l_crsr%notfound;

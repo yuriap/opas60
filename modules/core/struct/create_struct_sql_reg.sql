@@ -19,7 +19,9 @@ create table opas_ot_sql_tags (
 tag_name            varchar2(128)                                    primary key,
 tag_prnt            varchar2(128)                                    references opas_ot_sql_tags(tag_name),  
 tag_description     varchar2(4000),
-tag_autoexpr        varchar2(4000)
+tag_autoexpr        varchar2(4000),
+tag_created         timestamp default systimestamp,
+tag_modified        timestamp
 );
 
 create table opas_ot_sql_sql2tags(

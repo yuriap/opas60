@@ -316,7 +316,9 @@ package body coremod_tasks as
                               start_date               => trunc(systimestamp,'mi'),
                               repeat_interval          => 'FREQ=SECONDLY; INTERVAL=10',
                               job_style                => 'LIGHTWEIGHT',
+                              $IF not OPAS_CLOUD.gOPAS_CLOUD $THEN
                               job_class                => 'JC_'||user,
+                              $END
                               enabled                  => true);
   end;
 
