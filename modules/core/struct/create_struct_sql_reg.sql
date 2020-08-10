@@ -31,6 +31,8 @@ tag_type            varchar2(1),  --M MANUAL, A AUTO
 primary key (sql_id,tag))
 organization index including tag_type overflow;
 
+create index idx_opas_ot_sql_s2t_tag  on opas_ot_sql_sql2tags(tag);
+
 create table opas_ot_sql_auto_gather_sqls (
 ags_id          number                                           generated always as identity primary key,
 dblink          varchar2(128)                                    references opas_db_links (db_link_name) on delete cascade,
@@ -803,6 +805,7 @@ alter table opas_ot_sql_vash2 add constraint fk_sql_vash2_sqlid foreign key (sql
 create index idx_opas_sql_vash2_dp    on opas_ot_sql_vash2(sql_data_point_id) compress;
 create index idx_opas_sql_vash2_sqlid on opas_ot_sql_vash2(sql_id) compress;
 
+--will be recreated by create_struct_asha.sql with additional columns
 CREATE GLOBAL TEMPORARY TABLE OPAS_OT_TMP_GV$ASH 
    (INST_ID NUMBER, 
 	SAMPLE_ID NUMBER, 
@@ -918,7 +921,6 @@ CREATE GLOBAL TEMPORARY TABLE OPAS_OT_TMP_GV$ASH
 	DBOP_NAME VARCHAR2(30 BYTE), 
 	DBOP_EXEC_ID NUMBER
    ) ON COMMIT DELETE ROWS ;
-
 
 create global temporary table opas_ot_tmp_gv$ash_objs (
 object_id number,

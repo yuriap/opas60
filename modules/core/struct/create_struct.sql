@@ -3,6 +3,7 @@
 @@create_struct_sql_reg
 @@create_struct_dbg
 @@create_struct_objects
+@@create_struct_asha
 
 ---------------------------------------------------------------------------------------------
 -- reports

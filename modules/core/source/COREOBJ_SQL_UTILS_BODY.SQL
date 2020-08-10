@@ -284,8 +284,8 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
         COREMOD_FILE_UTILS.store_content(l_file_id,l_sql);
         update opas_ot_sql_descriptions set
           sql_text            = l_file_id,
-          first_discovered    = systimestamp,
-          FIRST_DISCOVERED_AT = p_data.dblink
+          first_discovered    = nvl(first_discovered,systimestamp),
+          FIRST_DISCOVERED_AT = nvl(p_data.dblink,FIRST_DISCOVERED_AT)
         where sql_id = p_data.sql_id;
         begin
           coreobj_sql_tags.auto_tag_sql(p_sql_id => p_data.sql_id);
@@ -303,6 +303,48 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       rollback;
       coremod_tasks.log('Error load_sql_text ('||p_data.sql_data_point_id||'): '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
       finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQL_TEXT, sqlerrm);
+  end;
+
+  procedure get_approxtext(p_sql_data_point_id         opas_ot_sql_data.sql_data_point_id%type,
+                           p_raise_exception            boolean default true)
+  is
+    l_file_id opas_files.file_id%type;
+    l_text_available boolean := false;
+  begin
+    for i in (select s.sql_id, d.SQL_DATA_POINT_ID, s.created_by
+                from opas_ot_sql_descriptions s, OPAS_OT_SQL_DATA d
+               where s.sql_id=d.sql_id
+                 and d.SQL_DATA_POINT_ID = p_sql_data_point_id
+                 and sql_text is null and SQL_TEXT_APPROX is null) loop
+      for j in (select SQL_TEXT, DBLINK from OPAS_OT_SQL_SQLMON_REF d2r, OPAS_OT_SQL_SQLMON_DATA d, OPAS_OT_SQL_SQLMON m
+                 where d2r.SQL_DATA_POINT_ID = p_sql_data_point_id
+                   and d2r.SQLMON_ID = d.SQLMON_ID
+                and d2r.SQLMON_ID = m.SQLMON_ID) loop
+        if j.SQL_TEXT is not null then
+          l_file_id := COREMOD_FILE_UTILS.create_file(P_MODNAME => COREMOD_API.gMODNAME,
+                                                      P_FILE_TYPE => 'SQL Text',
+                                                      P_FILE_NAME => i.sql_id,
+                                                      P_MIMETYPE  => COREMOD_FILE_UTILS.mtTEXT,
+                                                      P_OWNER     => i.created_by);
+          COREMOD_FILE_UTILS.store_content(l_file_id,j.SQL_TEXT);
+          update opas_ot_sql_descriptions set
+            SQL_TEXT_APPROX     = l_file_id,
+            first_discovered    = nvl(first_discovered,systimestamp),
+            FIRST_DISCOVERED_AT = nvl(FIRST_DISCOVERED_AT,j.dblink)
+          where sql_id = i.sql_id;
+          update OPAS_OT_SQL_DATA_SECT set GATHERING_STATUS = sstReady where SQL_DATA_POINT_ID = p_sql_data_point_id and SECTION_NAME = COREOBJ_SQL_REPORT_UTILS.repsSQL_TEXT;
+          begin
+            coreobj_sql_tags.auto_tag_sql(p_sql_id => i.sql_id);
+          exception
+            when others then coremod_tasks.log('Warning (get_approxtext_from): coreobj_sql_tags.auto_tag_sql failed for '||i.sql_id||' with: '||SQLERRM);
+          end;
+          l_text_available := true;
+        end if;
+      end loop;
+      if not l_text_available and p_raise_exception then
+        raise_application_error(-20000,'Aproximate SQL text is not awailable.');
+      end if;
+    end loop;
   end;
 
   procedure load_non_shared(p_data   opas_ot_sql_data%rowtype)
@@ -458,7 +500,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
         p_data.dblink
     from (
     SELECT 'I' op, t.* FROM opas_ot_tmp_gv$sql_monitor t
-    where report_id = 0 --and status in ( 'EXECUTING', 'DONE (ERROR)')
+--    where report_id = 0 --and status in ( 'EXECUTING', 'DONE (ERROR)')
 /*    union all
     SELECT 'I' op, t.* FROM opas_ot_tmp_gv$sql_monitor t
     where report_id = 0 and status not in ( 'EXECUTING', 'DONE (ERROR)')
@@ -470,10 +512,10 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                          and i.dblink = p_data.dblink
                          and t.sid = i.sid
                          and t.session_serial# = i.session_serial#)*/
-    union all
-    SELECT 'I' op, t.* FROM opas_ot_tmp_gv$sql_monitor t
-    where report_id <> 0
-      and report_id not in (select report_id from opas_ot_sql_sqlmon where sql_id = p_data.sql_id and dblink = p_data.dblink)
+--    union all
+--    SELECT 'I' op, t.* FROM opas_ot_tmp_gv$sql_monitor t
+--    where report_id <> 0
+--      and report_id not in (select report_id from opas_ot_sql_sqlmon where sql_id = p_data.sql_id and dblink = p_data.dblink)
       );
 --coremod_tasks.log('4: '||sql%rowcount);
     INSERT ALL
@@ -520,7 +562,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       INTO opas_ot_sql_sqlmon_ref ( sql_data_point_id, sqlmon_id)
       values( p_data.sql_data_point_id, sqlmon_id)
     SELECT 'I' op, t.*/*, sqlmon_id*/ FROM opas_ot_tmp_gv$sql_monitor t
-    where report_id = 0 --and status in ( 'EXECUTING', 'DONE (ERROR)')
+--    where report_id = 0 --and status in ( 'EXECUTING', 'DONE (ERROR)')
 /*    union all
     SELECT 'I' op, t.* FROM opas_ot_tmp_gv$sql_monitor t
     where report_id = 0 and status not in ( 'EXECUTING', 'DONE (ERROR)')
@@ -532,10 +574,10 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                          and i.dblink = p_data.dblink
                          and t.sid = i.sid
                          and t.session_serial# = i.session_serial#)*/
-    union all
-    SELECT 'I' op, t.*/*, sqlmon_id*/ FROM opas_ot_tmp_gv$sql_monitor t
-    where report_id <> 0
-      and report_id not in (select report_id from opas_ot_sql_sqlmon where sql_id = p_data.sql_id and dblink = p_data.dblink)
+--    union all
+--    SELECT 'I' op, t.*/*, sqlmon_id*/ FROM opas_ot_tmp_gv$sql_monitor t
+--    where report_id <> 0
+--      and report_id not in (select report_id from opas_ot_sql_sqlmon where sql_id = p_data.sql_id and dblink = p_data.dblink)
 --    union all
 --    SELECT 'L' op, t.*, p.sqlmon_id FROM opas_ot_tmp_gv$sql_monitor t, opas_ot_sql_sqlmon p
 --    where t.report_id(+) <> 0 and t.report_id(+) = p.report_id and t.sql_id(+) = p.sql_id
@@ -632,16 +674,16 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
               --TODO filter istory reports
     l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_DBA_HIST_REPORTS'));
 
-coremod_log.log('load_sql_mon_hst','INFO');
-coremod_log.log(l_sql,'INFO');
+--coremod_log.log('load_sql_mon_hst','INFO');
+--coremod_log.log(l_sql,'INFO');
 
     l_ddays := nvl( COREOBJ_API.get_param_n(p_obj_id, pnSQLMONHSTDays, true), defSQLMONHSTDays);
     l_drows := nvl( COREOBJ_API.get_param_n(p_obj_id, pnSQLMONHSTRows, true), defSQLMONHSTRows);
 
     if gAWRParams.DATES_SPECIFIED then
       begin
-coremod_log.log(gAWRParams.BEGIN_INTERVAL_TIME,'INFO');
-coremod_log.log(gAWRParams.END_INTERVAL_TIME,'INFO');
+--coremod_log.log(gAWRParams.BEGIN_INTERVAL_TIME,'INFO');
+--coremod_log.log(gAWRParams.END_INTERVAL_TIME,'INFO');
         execute immediate l_sql using p_data.sql_id, l_drows, gAWRParams.BEGIN_INTERVAL_TIME, gAWRParams.END_INTERVAL_TIME;
       exception
         when others then execute immediate l_sql using p_data.sql_id, 20, gAWRParams.BEGIN_INTERVAL_TIME, gAWRParams.END_INTERVAL_TIME;
@@ -876,6 +918,11 @@ coremod_log.log(gAWRParams.END_INTERVAL_TIME,'INFO');
               FIRST_DISCOVERED = nvl(FIRST_DISCOVERED, systimestamp),
               FIRST_DISCOVERED_AT = nvl(FIRST_DISCOVERED_AT, p_data.dblink)
             where sql_id = p_data.sql_id;
+            begin
+              coreobj_sql_tags.auto_tag_sql(p_sql_id => p_data.sql_id);
+            exception
+              when others then coremod_tasks.log('Warning: coreobj_sql_tags.auto_tag_sql failed for '||p_data.sql_id||' with: '||SQLERRM);
+            end;
             finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQL_TEXT, p_rows_processed => 1);
         end loop;
       exception
@@ -1737,6 +1784,12 @@ coremod_log.log(gAWRParams.END_INTERVAL_TIME,'INFO');
      into p_params.INSTANCE_LIST_C
     from ( select unique INSTANCE_NUMBER from opas_dbl_tmp_awrsnaps);
 
+    COREMOD_API.lock_resource
+                 (p_resource_name => 'update_dblink_db_info_awrsn',
+                  p_mode => DBMS_LOCK.X_MODE,
+                  p_timeout => 300,
+                  p_release_on_commit => true);
+
     merge into OPAS_DB_LINK_AWRSNAPS t
       using opas_dbl_tmp_awrsnaps s
       on (t.DBLINK = p_db_link_name and
@@ -1751,6 +1804,7 @@ coremod_log.log(gAWRParams.END_INTERVAL_TIME,'INFO');
        p_db_link_name, s.SNAP_ID, s.DBID, s.INSTANCE_NUMBER, s.STARTUP_TIME, s.BEGIN_INTERVAL_TIME, s.END_INTERVAL_TIME, s.FLUSH_ELAPSED, s.SNAP_LEVEL, s.ERROR_COUNT, s.SNAP_FLAG, s.SNAP_TIMEZONE, s.BEGIN_INTERVAL_TIME_TZ, s.END_INTERVAL_TIME_TZ, s.CON_ID,
        p_params.INCARNATION#
        );
+
     --commit;
     coremod_log.log('t_awr_params_rec','DEBUG');
     coremod_log.log('DBLINK: '||p_params.DBLINK,'DEBUG');
@@ -1852,11 +1906,11 @@ coremod_log.log(gAWRParams.END_INTERVAL_TIME,'INFO');
       gAWRParams.DATES_SPECIFIED := false;
     end if;
 
-    COREMOD_API.lock_resource
+/*    COREMOD_API.lock_resource
                  (p_resource_name => 'update_dblink_db_info_awrsn',
                   p_mode => DBMS_LOCK.X_MODE,
                   p_timeout => 300,
-                  p_release_on_commit => true);
+                  p_release_on_commit => true);*/
 
     update_dblink_db_info_awrsn(p_db_link_name     => p_data.dblink,
                                 p_days             => l_awrdays,
@@ -1997,6 +2051,7 @@ coremod_log.log(gAWRParams.END_INTERVAL_TIME,'INFO');
     coremod_api.end_longops_section(p_sofar => 4, p_lops_ind => l_lops_ind);
     commit;
     load_sql_mon_hst(l_data, l_obj_id);
+    get_approxtext(p_sql_data_point_id, false);
     coremod_api.end_longops_section(p_sofar => 5, p_lops_ind => l_lops_ind);
     commit;
 

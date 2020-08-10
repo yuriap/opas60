@@ -25,6 +25,8 @@ package coreobj_sql_tags is
                          p_delim     varchar2 default ',',
                          p_enclosed  varchar2 default 'Y') return varchar2;
 
+  function parse_tag_list(p_tag_names varchar2) return tableofstrings;
+
   procedure tag_sql_by_expr(p_tag_name opas_ot_sql_tags.tag_name%type,
                             p_expr     varchar2);
 end coreobj_sql_tags;

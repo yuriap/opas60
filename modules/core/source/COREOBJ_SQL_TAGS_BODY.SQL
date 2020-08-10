@@ -1,6 +1,8 @@
 CREATE OR REPLACE
 package body coreobj_sql_tags is
 
+  gTagListTable tableofstrings;
+
   procedure add(p_tag_name opas_ot_sql_tags.tag_name%type,
                 p_tag_prnt opas_ot_sql_tags.tag_prnt%type,
                 p_tag_description opas_ot_sql_tags.tag_description%type,
@@ -90,6 +92,7 @@ package body coreobj_sql_tags is
     l_cnt   number := 0;
     l_parsed varchar2(32765);
   begin
+    gTagListTable.delete;
     loop
       l_cnt := l_cnt + 1;
       if instr(l_names,':')>0 then
@@ -97,6 +100,9 @@ package body coreobj_sql_tags is
       else
         l_tag := l_names;
       end if;
+
+      gTagListTable.extend;
+      gTagListTable(gTagListTable.count):=l_tag;
 
       l_parsed := l_parsed ||
                   case when p_enclosed = 'Y' then q'[']' end ||
@@ -111,6 +117,14 @@ package body coreobj_sql_tags is
     return rtrim(l_parsed,p_delim);
   end;
 
+  function parse_tag_list(p_tag_names varchar2) return tableofstrings
+  is
+    l_parsed varchar2(32765);
+  begin
+    l_parsed := parse_tag_ist(p_tag_names);
+    return gTagListTable;
+  end;
+
   procedure auto_tag_sql(p_sql_id    opas_ot_sql_descriptions.sql_id%type)
   is
     l_sql_id opas_ot_sql_descriptions.sql_id%type;
@@ -118,7 +132,7 @@ package body coreobj_sql_tags is
   begin
     --coremod_log.log('coreobj_sql_tags.tag_sql: '||p_tag_names||' -- ' || p_sql_id);
 
-    for i in (select * from opas_ot_sql_tags where tag_autoexpr is not null)
+    for i in (select * from opas_ot_sql_tags where tag_autoexpr is not null and tag_name not like '%!Copy!')
     loop
       open l_crsr for
         q'[select sql_id from opas_ot_sql_descriptions s, opas_files f
@@ -141,7 +155,7 @@ where s.sql_id = :sqlid and (s.sql_text = f.file_id or s.sql_text_approx = f.fil
   begin
     --coremod_log.log('coreobj_sql_tags.tag_sql: '||p_tag_names||' -- ' || p_sql_id);
 
-    for i in (select * from opas_ot_sql_tags where tag_name = p_tag_name)
+    for i in (select * from opas_ot_sql_tags where tag_name = p_tag_name and tag_name not like '%!Copy!')
     loop
       open l_crsr for
         q'[select sql_id from opas_ot_sql_descriptions s, opas_files f where (s.sql_text = f.file_id or s.sql_text_approx = f.file_id) and (]'||i.tag_autoexpr||')';
@@ -176,7 +190,7 @@ where s.sql_id = :sqlid and (s.sql_text = f.file_id or s.sql_text_approx = f.fil
   begin
     --coremod_log.log('coreobj_sql_tags.tag_sql: '||p_tag_names||' -- ' || p_sql_id);
 
-    for i in (select * from opas_ot_sql_tags where tag_name = p_tag_name)
+    for i in (select * from opas_ot_sql_tags where tag_name = p_tag_name and tag_name not like '%!Copy!')
     loop
       open l_crsr for
         q'[select sql_id from opas_ot_sql_descriptions s, opas_files f where (s.sql_text = f.file_id or s.sql_text_approx = f.file_id) and (]'||p_expr||')';
@@ -194,5 +208,7 @@ where s.sql_id = :sqlid and (s.sql_text = f.file_id or s.sql_text_approx = f.fil
     end loop;
   end;
 
+begin
+  gTagListTable := tableofstrings();
 end coreobj_sql_tags;
 /

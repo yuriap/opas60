@@ -66,5 +66,8 @@ PACKAGE COREOBJ_SQL_UTILS AS
 
   procedure cancel_discover_sql (p_sql_data_point_id         opas_ot_sql_data.sql_data_point_id%type);
 
+  procedure get_approxtext(p_sql_data_point_id         opas_ot_sql_data.sql_data_point_id%type,
+                           p_raise_exception            boolean default true);
+
 END COREOBJ_SQL_UTILS;
 /

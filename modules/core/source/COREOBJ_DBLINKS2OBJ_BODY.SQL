@@ -98,8 +98,32 @@ PACKAGE BODY COREOBJ_DBLINKS2OBJ AS
            v$opas_db_links odbl
      where dbl.trg_obj_id = dbl_objs.obj_id
        and dbl.dblink = odbl.db_link_name
-       and objs.obj_id = dbl_objs.obj_prnt and dbl_objs.obj_ot=130;
+       and objs.obj_id = dbl_objs.obj_prnt
+       and dbl_objs.obj_ot=130;
     return l_tab;
+  end;
+
+  function get_default_dblink(p_obj_id opas_objects.obj_id%type) return v$opas_db_links.db_link_name%type
+  is
+    crsr sys_refcursor;
+    l_res v$opas_db_links.db_link_name%type := null;
+  begin
+    open crsr for select odbl.db_link_name
+      from opas_ot_dblinks2obj dbl,
+           opas_objects dbl_objs,
+          (select obj_id, level lvl
+             from opas_objects
+            start with obj_id=p_obj_id
+          connect by prior obj_prnt = obj_id) objs,
+           v$opas_db_links odbl
+     where dbl.trg_obj_id = dbl_objs.obj_id
+       and dbl.dblink = odbl.db_link_name
+       and objs.obj_id = dbl_objs.obj_prnt
+       and dbl_objs.obj_ot=130
+       order by objs.lvl;
+    fetch crsr into l_res;
+    close crsr;
+    return l_res;
   end;
 
   function get_object_status_to_display (p_obj_id          opas_objects.obj_id%type) return varchar2

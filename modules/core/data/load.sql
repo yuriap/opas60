@@ -17,8 +17,9 @@ INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','SQ
 
 --INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','ALERT','HIDEVIEWED', 1,'Hide viewed alerts after N days.');
 
---new
 INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','RETENTION','SQLSEARCHRETENTION', 60,'Retention time in minutes for SQL Searches.');
+--new
+INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','RETENTION','ASHARANGE', 8,'Retention time in days for non referenced ASHA Cube ranges.');
 
 insert into opas_groups (group_id,group_name,group_descr) values (0, 'Administrators','Full set of rights');
 insert into opas_groups (group_id,group_name,group_descr) values (1, 'Reas-write users','All application functions');
@@ -67,8 +68,10 @@ INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) 
 INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (8000,         800,   'CREATE',     'Register new SQL Comparison');
 INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (8000,         800,   'OPEN',       'Show SQL Comparison');
 --
+delete from opas_object_pages where ot_id=300;
 INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (3000,         300,   'CREATE',     'Create ASHA Cube');
-INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (3001,         300,   'OPEN',       'Show ASHA Cube');
+INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (3000,         300,   'OPEN',       'Parameters of ASHA Cube');
+INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (3001,         300,   'PREVIEW',    'Show ASHA Cube');
 
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','FILE_MIMETYPE','TXT'                     ,'Text file'   ,null,null,null,10);
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','FILE_MIMETYPE','TEXT/HTML'               ,'HTML file'   ,null,null,null,20);

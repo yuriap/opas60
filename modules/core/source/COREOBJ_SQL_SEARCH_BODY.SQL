@@ -27,9 +27,12 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
     l_res clob;
   begin
     --dbms_lock.sleep(5);
+    if p_sql_text is null then
+      return 'N/A';
+    end if;
     l_res :=case when p_length = 0 then p_sql_text
                  when dbms_lob.getlength(p_sql_text) <= p_length then p_sql_text
-                 else substr(p_sql_text,1,p_length-3)||'...' end;
+                 else substr(p_sql_text,1,round(p_length*2/3)-5)||' ... '||substr(p_sql_text,-1*round(p_length*2/3)) end;
     if p_replace_spec = 'Y' then
       return replace(replace(replace(l_res,'  ','&nbsp;'),chr(13)||chr(10),'<br>'),chr(10),'<br>');
     else

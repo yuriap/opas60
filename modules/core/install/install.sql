@@ -59,7 +59,7 @@ begin
 end;
 /
 
---new
+
 begin
   coremod_cleanup.register_cleanup_tasks (  P_TASKNAME => 'CLEANUPSQLSEARCH',
                                             P_MODNAME => '&MODNM.',
@@ -68,6 +68,14 @@ begin
 end;
 /
 
+--new
+begin
+  coremod_cleanup.register_cleanup_tasks (  P_TASKNAME => 'CLEANUPASHARANGES',
+                                            P_MODNAME => '&MODNM.',
+                                            p_frequency_h => 24,
+                                            p_task_body => 'begin coreobj_asha_cube.cleanup_ranges; end;');
+end;
+/
 commit;
 
 begin

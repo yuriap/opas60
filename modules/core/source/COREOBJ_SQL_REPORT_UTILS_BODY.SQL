@@ -1324,12 +1324,15 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
     l_text     clob;
     l_length   number;
     l_file_id   opas_files.file_id%type;
+    l_is_approx number;
   begin
 
     p_output(1):='<code class="codeView">';
     p_output(1):=p_output(1)||'<ol start="1">';
 
-    select nvl(sql_text,sql_text_approx) into l_file_id from OPAS_OT_SQL_DESCRIPTIONS de where sql_id=p_sql_id;
+    select nvl(sql_text,sql_text_approx),
+           case when sql_text is not null then 0 when sql_text_approx is not null then 1 else null end
+      into l_file_id, l_is_approx from OPAS_OT_SQL_DESCRIPTIONS de where sql_id=p_sql_id;
 
     for i in (SELECT line_number, payload
                 FROM V$OPAS_FILE_CONTENTBYROW
@@ -1338,6 +1341,10 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
     loop
       l_text:=l_text||'<li id="L'||to_char(i.line_number)||'">'||apex_escape.html(i.payload) ||'</li>';
     end loop;
+
+    if l_is_approx = 1 then
+      l_text := 'Approx...'||l_text;
+    end if;
 
     l_length := dbms_lob.getlength(l_text);
     l_text := substr(l_text,1,32600);

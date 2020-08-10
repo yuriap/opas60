@@ -100,6 +100,9 @@ PACKAGE COREOBJ_API AS
   function get_object_path(p_obj_id           opas_objects.obj_id%type,
                            p_including_object varchar2 default 'Y') return varchar2;
 
+  --JSON params
+  procedure set_json_par_name(p_ParamName opas_object_pars.par_name%type default jsParamName);
+
   procedure add_jparam(p_obj_id           opas_objects.obj_id%type,
                       p_pname      varchar2,
                       p_value      varchar2);

@@ -2,6 +2,7 @@ CREATE OR REPLACE
 PACKAGE BODY COREOBJ_API AS
 
   gCurrentParamsObject opas_objects.obj_id%type;
+  gCurrentJSONParamName opas_object_pars.par_name%type := jsParamName;
 
   function get_obj(p_obj_id           opas_objects.obj_id%type) return opas_objects%rowtype
   is
@@ -278,6 +279,12 @@ PACKAGE BODY COREOBJ_API AS
       when no_data_found then return case when p_obj_id is null then null else 'Not found for: <'||p_obj_id||'>' end;
   end;
 
+  procedure set_json_par_name(p_ParamName opas_object_pars.par_name%type default jsParamName)
+  is
+  begin
+    gCurrentJSONParamName := p_ParamName;
+  end;
+
   procedure add_jparam(p_obj_id           opas_objects.obj_id%type,
                        p_pname      varchar2,
                        p_value      varchar2)
@@ -318,7 +325,7 @@ PACKAGE BODY COREOBJ_API AS
     APEX_JSON.close_object;
 
     merge into opas_object_pars t
-    using (select p_obj_id obj_id, jsParamName par_name, APEX_JSON.get_clob_output jsparams from dual) s
+    using (select p_obj_id obj_id, gCurrentJSONParamName par_name, APEX_JSON.get_clob_output jsparams from dual) s
     on (t.obj_id = s.obj_id and t.par_name = s.par_name)
     when matched then update set jsparams = APEX_JSON.get_clob_output
     when not matched then insert (t.obj_id, t.par_name, t.jsparams)
@@ -326,6 +333,7 @@ PACKAGE BODY COREOBJ_API AS
 --coremod_log.log('Stored rows:'||sql%rowcount);
     APEX_JSON.free_output;
     --commit;
+    set_json_par_name(); --reset to default param name
   end;
 
 
@@ -337,7 +345,7 @@ PACKAGE BODY COREOBJ_API AS
     gCurrentParamsObject := p_obj_id;
     gParams.delete;
 
-    select jsparams into l_json_text from opas_object_pars where obj_id = p_obj_id and par_name=jsParamName;
+    select jsparams into l_json_text from opas_object_pars where obj_id = p_obj_id and par_name=gCurrentJSONParamName;
 
     APEX_JSON.parse(l_json_text);
     l_count := APEX_JSON.get_count(p_path => 'params');
