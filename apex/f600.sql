@@ -28,26 +28,26 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 -- Application Export:
 --   Application:     600
 --   Name:            Oracle Performance Analytic Suite
---   Date and Time:   10:41 Monday August 10, 2020
+--   Date and Time:   16:58 Friday August 14, 2020
 --   Exported By:     OPAS60DADM
 --   Flashback:       0
 --   Export Type:     Application Export
---     Pages:                     56
---       Items:                  385
+--     Pages:                     57
+--       Items:                  388
 --       Validations:              4
---       Processes:              216
---       Regions:                282
---       Buttons:                195
+--       Processes:              219
+--       Regions:                284
+--       Buttons:                196
 --       Dynamic Actions:         66
 --     Shared Components:
 --       Logic:
 --         Items:                 11
---         Processes:              3
+--         Processes:              4
 --         Computations:           2
 --       Navigation:
 --         Lists:                  6
 --         Breadcrumbs:            1
---           Entries:             31
+--           Entries:             32
 --       Security:
 --         Authentication:         1
 --         Authorization:          3
@@ -132,7 +132,7 @@ wwv_flow_api.create_flow(
 ,p_substitution_string_06=>'APP_GRID_DT_FMT_TZ_FULL'
 ,p_substitution_value_06=>'YYYY-MM-DD HH24:MI:SS.ff9 TZH:TZM'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200810104009'
+,p_last_upd_yyyymmddhh24miss=>'20200814165816'
 ,p_file_prefix => nvl(wwv_flow_application_install.get_static_app_file_prefix,'')
 ,p_files_version=>3
 ,p_ui_type_name => null
@@ -218,7 +218,6 @@ wwv_flow_api.create_list_item(
 ,p_list_item_link_target=>'f?p=&APP_ID.:1410:&SESSION.::&DEBUG.:1410:::'
 ,p_list_item_icon=>'fa-database-search'
 ,p_list_item_current_type=>'COLON_DELIMITED_PAGE_LIST'
-,p_list_item_current_for_pages=>'1410,1414,1415,1418,1412,8002,1418'
 );
 wwv_flow_api.create_list_item(
  p_id=>wwv_flow_api.id(76408950132549621)
@@ -241,37 +240,6 @@ wwv_flow_api.create_list_item(
 ,p_list_item_current_type=>'TARGET_PAGE'
 );
 wwv_flow_api.create_list_item(
- p_id=>wwv_flow_api.id(76454701916263358)
-,p_list_item_display_sequence=>44
-,p_list_item_link_text=>'SQL Tags'
-,p_list_item_link_target=>'f?p=&APP_ID.:1413:&SESSION.::&DEBUG.::::'
-,p_list_item_icon=>'fa-tags'
-,p_parent_list_item_id=>wwv_flow_api.id(76404948389493998)
-,p_list_item_current_type=>'TARGET_PAGE'
-);
-wwv_flow_api.create_list_item(
- p_id=>wwv_flow_api.id(76580438503212981)
-,p_list_item_display_sequence=>46
-,p_list_item_link_text=>'Tagging SQLs'
-,p_list_item_link_target=>'f?p=&APP_ID.:1415:&SESSION.::&DEBUG.::::'
-,p_list_item_icon=>'fa-bolt'
-,p_parent_list_item_id=>wwv_flow_api.id(76404948389493998)
-,p_list_item_current_type=>'COLON_DELIMITED_PAGE_LIST'
-,p_list_item_current_for_pages=>'1415'
-);
-wwv_flow_api.create_list_item(
- p_id=>wwv_flow_api.id(3129273850289046)
-,p_list_item_display_sequence=>50
-,p_list_item_link_text=>'SQL Tag Report'
-,p_list_item_link_target=>'f?p=&APP_ID.:1418:&SESSION.::&DEBUG.::::'
-,p_list_item_icon=>'fa-hashtag'
-,p_list_item_disp_cond_type=>'EXISTS'
-,p_list_item_disp_condition=>'select 1 from opas_objects where obj_prnt = :APP_FOLDER_ID and obj_ot = 140'
-,p_parent_list_item_id=>wwv_flow_api.id(76404948389493998)
-,p_list_item_current_type=>'COLON_DELIMITED_PAGE_LIST'
-,p_list_item_current_for_pages=>'1418'
-);
-wwv_flow_api.create_list_item(
  p_id=>wwv_flow_api.id(3123917924458024)
 ,p_list_item_display_sequence=>60
 ,p_list_item_link_text=>'SQL Comparison'
@@ -290,6 +258,47 @@ wwv_flow_api.create_list_item(
 ,p_parent_list_item_id=>wwv_flow_api.id(76404948389493998)
 ,p_list_item_current_type=>'COLON_DELIMITED_PAGE_LIST'
 ,p_list_item_current_for_pages=>'8002'
+);
+wwv_flow_api.create_list_item(
+ p_id=>wwv_flow_api.id(5309738831663082)
+,p_list_item_display_sequence=>70
+,p_list_item_link_text=>'SQL Tags'
+,p_list_item_link_target=>'f?p=&APP_ID.:1413:&SESSION.::&DEBUG.::::'
+,p_list_item_icon=>'fa-tags'
+,p_security_scheme=>wwv_flow_api.id(64510375970101025)
+,p_list_item_current_type=>'TARGET_PAGE'
+);
+wwv_flow_api.create_list_item(
+ p_id=>wwv_flow_api.id(76580438503212981)
+,p_list_item_display_sequence=>46
+,p_list_item_link_text=>'Tagging SQLs'
+,p_list_item_link_target=>'f?p=&APP_ID.:1415:&SESSION.::&DEBUG.::::'
+,p_list_item_icon=>'fa-bolt'
+,p_parent_list_item_id=>wwv_flow_api.id(5309738831663082)
+,p_list_item_current_type=>'COLON_DELIMITED_PAGE_LIST'
+,p_list_item_current_for_pages=>'1415'
+);
+wwv_flow_api.create_list_item(
+ p_id=>wwv_flow_api.id(3129273850289046)
+,p_list_item_display_sequence=>50
+,p_list_item_link_text=>'SQL Tag Report'
+,p_list_item_link_target=>'f?p=&APP_ID.:1418:&SESSION.::&DEBUG.::::'
+,p_list_item_icon=>'fa-hashtag'
+,p_list_item_disp_cond_type=>'EXISTS'
+,p_list_item_disp_condition=>'select 1 from opas_objects where obj_prnt = :APP_FOLDER_ID and obj_ot = 140'
+,p_parent_list_item_id=>wwv_flow_api.id(5309738831663082)
+,p_list_item_current_type=>'COLON_DELIMITED_PAGE_LIST'
+,p_list_item_current_for_pages=>'1418'
+);
+wwv_flow_api.create_list_item(
+ p_id=>wwv_flow_api.id(5312044448713452)
+,p_list_item_display_sequence=>75
+,p_list_item_link_text=>'SQL Tagged Table Report'
+,p_list_item_link_target=>'f?p=&APP_ID.:1419:&SESSION.::&DEBUG.::::'
+,p_list_item_icon=>'fa-file-sql'
+,p_parent_list_item_id=>wwv_flow_api.id(5309738831663082)
+,p_list_item_current_type=>'COLON_DELIMITED_PAGE_LIST'
+,p_list_item_current_for_pages=>'1419'
 );
 wwv_flow_api.create_list_item(
  p_id=>wwv_flow_api.id(64490499762648460)
@@ -741,6 +750,24 @@ wwv_flow_api.create_flow_process(
 );
 end;
 /
+prompt --application/shared_components/logic/application_processes/delnotification
+begin
+wwv_flow_api.create_flow_process(
+ p_id=>wwv_flow_api.id(5339082846287151)
+,p_process_sequence=>1
+,p_process_point=>'ON_DEMAND'
+,p_process_type=>'NATIVE_PLSQL'
+,p_process_name=>'DelNotification'
+,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'begin',
+'  --raise_application_error(-20100,''Notification id = ''||apex_application.g_x01);',
+'  delete from OPAS_NOTIFICATION where ID = apex_application.g_x01;',
+'  commit;',
+'end;'))
+,p_security_scheme=>'MUST_NOT_BE_PUBLIC_USER'
+);
+end;
+/
 prompt --application/shared_components/logic/application_items/app_curr_obj_ot
 begin
 wwv_flow_api.create_flow_item(
@@ -1180,6 +1207,13 @@ wwv_flow_api.create_menu_option(
 ,p_short_name=>'ASHA Cube'
 ,p_link=>'f?p=&APP_ID.:3001:&APP_SESSION.::&DEBUG.:::'
 ,p_page_id=>3001
+);
+wwv_flow_api.create_menu_option(
+ p_id=>wwv_flow_api.id(5318839505713823)
+,p_parent_id=>wwv_flow_api.id(62703384660167995)
+,p_short_name=>'SQL Tagged Table Report'
+,p_link=>'f?p=&APP_ID.:1419:&SESSION.::&DEBUG.:::'
+,p_page_id=>1419
 );
 wwv_flow_api.create_menu_option(
  p_id=>wwv_flow_api.id(58913745031993378)
@@ -15401,7 +15435,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(64516740137155169)
 ,p_protection_level=>'D'
 ,p_last_updated_by=>'OLYA'
-,p_last_upd_yyyymmddhh24miss=>'20200807114233'
+,p_last_upd_yyyymmddhh24miss=>'20200813162155'
 );
 wwv_flow_api.create_page_da_event(
  p_id=>wwv_flow_api.id(4002475162620619)
@@ -15419,7 +15453,7 @@ wwv_flow_api.create_page_da_action(
 ,p_action=>'PLUGIN_APEX.NOTIFICATION'
 ,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
 '{',
-'    "refresh": 0,',
+'    "refresh": 10,',
 '    "mainIcon": "fa-bell",',
 '    "mainIconColor": "white",',
 '    "mainIconBackgroundColor": "rgba(70,70,70,0.9)",',
@@ -15445,47 +15479,29 @@ wwv_flow_api.create_page_da_action(
 '}'))
 ,p_attribute_02=>'notification-menu'
 ,p_attribute_04=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'SELECT /* sets the icon of the list item */',
-'    ''fa-exclamation-triangle'' AS NOTE_ICON, ',
-'    /* sets the color of the list icon */',
-'    ''rgb(192,0,15)'' AS NOTE_ICON_COLOR, ',
-'    /* sets the title of the list item (html possible) */',
-'    ''Alarm occurred'' AS NOTE_HEADER,',
-'    /* sets the text of the list item (html possible */',
-'    ''There''''s an alarm in <b>Station 3</b>. Error code is <b style="color:rgba(192,0,15);">#304-AD. </b>'' AS NOTE_TEXT, ',
-'    /* set the link when click on list item */',
-'    ''javascript:alert("Click on Notification Entry");void(0);'' AS NOTE_LINK, ',
-'    /* sets the color of the left box shadow */',
-'    ''rgb(192,0,15)'' AS NOTE_COLOR,',
-'    /* Link or js that is executed when press accept link (if left or null not accept is shown */ ',
-'    ''javascript:alert("Accepted");void(0);'' AS NOTE_ACCEPT,',
-'    /* Link or js that is executed when press decline link (if left or null not decline is shown */ ',
-'    ''javascript:alert("Declined");void(0);'' AS NOTE_DECLINE,',
-'    /* When enable Browser Notifications in ConfigJSON then you can select which notifications should not be fire browser not. */',
-'    0 AS NO_BROWSER_NOTIFICATION',
+'SELECT ',
+'    nt.icon AS NOTE_ICON, ',
+'    nt.icon_color AS NOTE_ICON_COLOR, ',
+'    nt.header AS NOTE_HEADER,',
+'    n.text AS NOTE_TEXT, ',
+'    n.link AS NOTE_LINK, ',
+'    n.color AS NOTE_COLOR,',
+'    ''javascript:apex.server.process ',
+'  ( "DelNotification",',
+'    { x01: "''||n.ID||''" ',
+'    },',
+'    { success: function( pData ) {',
+'               },',
+'     dataType: "text"',
+'    }',
+'  );'' AS NOTE_ACCEPT,',
+'    '''' AS NOTE_DECLINE,',
+'    n.no_browser_notif_flag AS NO_BROWSER_NOTIFICATION',
 'FROM',
-'    DUAL',
-'UNION ALL',
-'SELECT',
-'    ''fa-wrench'' AS NOTE_ICON,',
-'    ''#3e6ebc'' AS NOTE_ICON_COLOR,',
-'    ''System maintenance'' AS NOTE_HEADER,',
-'    ''In the time between <b>08:30</b> and <b>11:00</b> a system maintenance takes place. The systems can only be used in read-only mode and are limited in use'' AS NOTE_TEXT,',
-'    ''https://apex.world'' AS NOTE_LINK,',
-'    ''#3e6ebc'' AS NOTE_COLOR,',
-'    NULL AS NOTE_ACCEPT,',
-'    ''javascript:alert("Declined");void(0);'' AS NOTE_DECLINE,',
-'    /* When enable Browser Notifications in ConfigJSON then you can select which notifications should not be fire browser not. */',
-'    0 AS NO_BROWSER_NOTIFICATION',
-'FROM',
-'    DUAL',
-'WHERE',
-'    2 = ROUND(',
-'        DBMS_RANDOM.VALUE(',
-'            1,',
-'            2',
-'        )',
-'    )'))
+'    OPAS_NOTIFICATION n',
+'  , OPAS_NOTIF_TYPES nt',
+'where n.type_id = nt.id',
+'order by n.id desc'))
 ,p_attribute_05=>'Y'
 );
 end;
@@ -29253,7 +29269,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(65526486119996516)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200810104009'
+,p_last_upd_yyyymmddhh24miss=>'20200813121833'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(76371333510543706)
@@ -29664,7 +29680,7 @@ wwv_flow_api.create_page_plug(
 '       created_by,',
 '       first_discovered,',
 '       first_discovered_at,',
-'       COREOBJ_SQL_SEARCH.get_shorten_sql_text_for_html_expose(t.file_contentc,256) sql_text,',
+'       COREOBJ_SQL_SEARCH.get_shorten_sql_text_for_html_expose(t.file_contentc,:P1410_SQLTEXTLONG_1) sql_text,',
 '       coreobj_sql_tags.tags(sql_id) tags',
 '  from opas_ot_sql_descriptions s, ',
 '       opas_files t',
@@ -29715,8 +29731,9 @@ wwv_flow_api.create_worksheet(
  p_id=>wwv_flow_api.id(229176737746120564)
 ,p_max_row_count=>'1000000'
 ,p_show_nulls_as=>'-'
-,p_pagination_type=>'ROWS_X_TO_Y'
-,p_pagination_display_pos=>'BOTTOM_RIGHT'
+,p_pagination_type=>'ROWS_X_TO_Y_OF_Z'
+,p_pagination_display_pos=>'TOP_AND_BOTTOM_RIGHT'
+,p_show_display_row_count=>'Y'
 ,p_report_list_mode=>'TABS'
 ,p_show_detail_link=>'N'
 ,p_show_notify=>'Y'
@@ -29795,12 +29812,25 @@ wwv_flow_api.create_worksheet_rpt(
 ,p_report_columns=>'SQL_ID:CREATED_BY:FIRST_DISCOVERED:FIRST_DISCOVERED_AT:SQL_TEXT:TAGS'
 );
 wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(76375704683543750)
+,p_button_sequence=>30
+,p_button_plug_id=>wwv_flow_api.id(229176647084120563)
+,p_button_name=>'Refresh'
+,p_button_action=>'SUBMIT'
+,p_button_template_options=>'#DEFAULT#:t-Button--large:t-Button--simple:t-Button--gapTop'
+,p_button_template_id=>wwv_flow_api.id(59012285338993961)
+,p_button_image_alt=>'Refresh'
+,p_button_position=>'BODY'
+,p_grid_new_row=>'N'
+,p_grid_new_column=>'Y'
+);
+wwv_flow_api.create_page_button(
  p_id=>wwv_flow_api.id(4724664894788033)
-,p_button_sequence=>40
+,p_button_sequence=>50
 ,p_button_plug_id=>wwv_flow_api.id(154092762204183443)
 ,p_button_name=>'FilterTags'
 ,p_button_action=>'SUBMIT'
-,p_button_template_options=>'#DEFAULT#:t-Button--large:t-Button--simple:t-Button--gapTop'
+,p_button_template_options=>'#DEFAULT#:t-Button--large:t-Button--simple:t-Button--padRight:t-Button--gapTop'
 ,p_button_template_id=>wwv_flow_api.id(59012285338993961)
 ,p_button_image_alt=>'Filter'
 ,p_button_position=>'BODY'
@@ -29808,16 +29838,17 @@ wwv_flow_api.create_page_button(
 ,p_grid_new_column=>'Y'
 );
 wwv_flow_api.create_page_button(
- p_id=>wwv_flow_api.id(76375704683543750)
-,p_button_sequence=>10
-,p_button_plug_id=>wwv_flow_api.id(229176647084120563)
-,p_button_name=>'Refresh'
+ p_id=>wwv_flow_api.id(5324479678849961)
+,p_button_sequence=>60
+,p_button_plug_id=>wwv_flow_api.id(154092762204183443)
+,p_button_name=>'Close'
 ,p_button_action=>'SUBMIT'
-,p_button_template_options=>'#DEFAULT#'
+,p_button_template_options=>'#DEFAULT#:t-Button--large:t-Button--simple:t-Button--padLeft:t-Button--gapTop'
 ,p_button_template_id=>wwv_flow_api.id(59012285338993961)
-,p_button_image_alt=>'Refresh'
-,p_button_position=>'TOP'
-,p_button_alignment=>'LEFT'
+,p_button_image_alt=>'Close'
+,p_button_position=>'BODY'
+,p_grid_new_row=>'N'
+,p_grid_new_column=>'Y'
 );
 wwv_flow_api.create_page_button(
  p_id=>wwv_flow_api.id(76493463465688720)
@@ -29833,10 +29864,19 @@ wwv_flow_api.create_page_button(
 ,p_button_redirect_url=>'f?p=&APP_ID.:1414:&SESSION.::&DEBUG.:RP,1414:P1414_MODE:CREATE'
 ,p_security_scheme=>wwv_flow_api.id(64510632529107389)
 );
+wwv_flow_api.create_page_branch(
+ p_id=>wwv_flow_api.id(5324064525846879)
+,p_branch_name=>'Back'
+,p_branch_action=>'f?p=&APP_ID.:&APP_PREV_PAGE.:&SESSION.::&DEBUG.:::&success_msg=#SUCCESS_MSG#'
+,p_branch_point=>'AFTER_PROCESSING'
+,p_branch_type=>'REDIRECT_URL'
+,p_branch_when_button_id=>wwv_flow_api.id(5324479678849961)
+,p_branch_sequence=>70
+);
 wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(4724455494788031)
 ,p_name=>'P1410_INCLUDING_TAGS'
-,p_item_sequence=>20
+,p_item_sequence=>30
 ,p_item_plug_id=>wwv_flow_api.id(154092762204183443)
 ,p_item_default=>'N/A'
 ,p_prompt=>'Including Tags'
@@ -29864,7 +29904,7 @@ wwv_flow_api.create_page_item(
 wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(4724540423788032)
 ,p_name=>'P1410_EXCLUDING_TAGS'
-,p_item_sequence=>30
+,p_item_sequence=>40
 ,p_item_plug_id=>wwv_flow_api.id(154092762204183443)
 ,p_item_default=>'N/A'
 ,p_prompt=>'Excluding Tags'
@@ -29890,9 +29930,26 @@ wwv_flow_api.create_page_item(
 ,p_attribute_15=>'5'
 );
 wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(4724762147788034)
+,p_name=>'P1410_SQLTEXTLONG_1'
+,p_item_sequence=>10
+,p_item_plug_id=>wwv_flow_api.id(229176647084120563)
+,p_item_default=>'512'
+,p_prompt=>'SQL Text Chars'
+,p_display_as=>'NATIVE_TEXT_FIELD'
+,p_cSize=>30
+,p_colspan=>2
+,p_field_template=>wwv_flow_api.id(59011674591993943)
+,p_item_template_options=>'#DEFAULT#'
+,p_attribute_01=>'Y'
+,p_attribute_02=>'N'
+,p_attribute_04=>'TEXT'
+,p_attribute_05=>'BOTH'
+);
+wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(76480510447894644)
 ,p_name=>'P1410_TAGS'
-,p_item_sequence=>10
+,p_item_sequence=>20
 ,p_item_plug_id=>wwv_flow_api.id(229176647084120563)
 ,p_prompt=>'Tags'
 ,p_display_as=>'PLUGIN_BE.CTB.SELECT2'
@@ -29900,6 +29957,7 @@ wwv_flow_api.create_page_item(
 'select ltrim(SYS_CONNECT_BY_PATH(tag_name,''.''),''.'') d, tag_name r',
 'from OPAS_OT_SQL_TAGS',
 'start with tag_prnt is null connect by prior tag_name=tag_prnt'))
+,p_begin_on_new_line=>'N'
 ,p_field_template=>wwv_flow_api.id(59011674591993943)
 ,p_item_template_options=>'#DEFAULT#'
 ,p_lov_display_extra=>'NO'
@@ -29907,7 +29965,7 @@ wwv_flow_api.create_page_item(
 ,p_attribute_03=>'2'
 ,p_attribute_04=>'4000'
 ,p_attribute_08=>'CIC'
-,p_attribute_10=>'1400'
+,p_attribute_10=>'1000'
 ,p_attribute_14=>'Y'
 ,p_attribute_15=>'5'
 );
@@ -29935,6 +29993,47 @@ wwv_flow_api.create_page_item(
 ,p_attribute_02=>'N'
 ,p_attribute_04=>'TEXT'
 ,p_attribute_05=>'BOTH'
+);
+wwv_flow_api.create_page_process(
+ p_id=>wwv_flow_api.id(5326073381873597)
+,p_process_sequence=>10
+,p_process_point=>'AFTER_HEADER'
+,p_process_type=>'NATIVE_PLSQL'
+,p_process_name=>'SetClosePage'
+,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'begin',
+'  if :APP_PREV_PAGE is not null and :APP_PREV_PAGE <> :APP_PAGE_ID then',
+'    :APP_PAGE_STACK := :APP_PAGE_STACK ||'':''||:APP_PREV_PAGE;',
+'    :APP_PREV_PAGE := null;',
+'  end if;',
+'end;'))
+,p_error_display_location=>'INLINE_IN_NOTIFICATION'
+);
+wwv_flow_api.create_page_process(
+ p_id=>wwv_flow_api.id(4725621762788043)
+,p_process_sequence=>20
+,p_process_point=>'AFTER_HEADER'
+,p_process_type=>'NATIVE_PLSQL'
+,p_process_name=>'InitData'
+,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'begin',
+'  :P1410_INCLUDING_TAGS := replace(:P1410_INCLUDING_TAGS,''?'','':'');',
+'end;'))
+,p_error_display_location=>'INLINE_IN_NOTIFICATION'
+);
+wwv_flow_api.create_page_process(
+ p_id=>wwv_flow_api.id(5326391586876754)
+,p_process_sequence=>20
+,p_process_point=>'AFTER_SUBMIT'
+,p_process_type=>'NATIVE_PLSQL'
+,p_process_name=>'GetClosePage'
+,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'begin',
+'  :APP_PREV_PAGE := substr(:APP_PAGE_STACK,instr(:APP_PAGE_STACK,'':'',-1)+1);',
+'  :APP_PAGE_STACK := substr(:APP_PAGE_STACK,1,instr(:APP_PAGE_STACK,'':'',-1)-1);',
+'end;'))
+,p_error_display_location=>'INLINE_IN_NOTIFICATION'
+,p_process_when_button_id=>wwv_flow_api.id(5324479678849961)
 );
 end;
 /
@@ -32408,9 +32507,9 @@ wwv_flow_api.create_page(
 ,p_autocomplete_on_off=>'OFF'
 ,p_group_id=>wwv_flow_api.id(65526486119996516)
 ,p_page_template_options=>'#DEFAULT#'
-,p_dialog_width=>'1000'
+,p_dialog_width=>'1500'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200809194606'
+,p_last_upd_yyyymmddhh24miss=>'20200812121041'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(76373830484543731)
@@ -32626,8 +32725,8 @@ wwv_flow_api.create_page_item(
 ,p_item_plug_id=>wwv_flow_api.id(76373830484543731)
 ,p_prompt=>'Autotag expression'
 ,p_display_as=>'NATIVE_TEXTAREA'
-,p_cSize=>30
-,p_cHeight=>5
+,p_cSize=>60
+,p_cHeight=>10
 ,p_field_template=>wwv_flow_api.id(59011729453993944)
 ,p_item_template_options=>'#DEFAULT#'
 ,p_attribute_01=>'Y'
@@ -32810,10 +32909,10 @@ wwv_flow_api.create_page(
 ,p_name=>'Auto SQL Collection'
 ,p_step_title=>'Auto SQL Collection'
 ,p_autocomplete_on_off=>'OFF'
-,p_group_id=>wwv_flow_api.id(66300724402351173)
+,p_group_id=>wwv_flow_api.id(65526486119996516)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200731125249'
+,p_last_upd_yyyymmddhh24miss=>'20200813113522'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(142763482574013688)
@@ -35520,7 +35619,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(65526486119996516)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200730122738'
+,p_last_upd_yyyymmddhh24miss=>'20200814165816'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(3052800719156717)
@@ -35533,55 +35632,81 @@ wwv_flow_api.create_page_plug(
 ,p_plug_display_point=>'BODY'
 ,p_query_type=>'SQL'
 ,p_plug_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'select',
-'  y.*',
+'with including_tags as ',
+'  (select tag_name, tag_description table_name, (select tag_description from OPAS_OT_SQL_TAGS p where o.tag_prnt = p.tag_name ) tag_description, tag_prnt',
+'     from OPAS_OT_SQL_TAGS o',
+'    start with tag_name in (select column_value from table(coreobj_sql_tags.parse_tag_list(''MAPPING''))) connect by prior tag_name = tag_prnt),',
+'including_sqls as',
+'  (select /* materialize */ sql_id, tag_name, tag_description, table_name, tag_prnt',
+'     from OPAS_OT_SQL_SQL2TAGS, including_tags',
+'    where tag=tag_name)',
+'select /* gather_plan_statistics */',
+'  y.*,',
+'  round(real_dur/case when tag_prnt in (''MultiLoading'', ''InitialFill'') and cnt>=to_number(:P1418_DEGREE) then to_number(:P1418_DEGREE) else 1 end,2) real_dur_with_degree,',
+'  sum(real_dur) over (partition by table_name) tab_tot_dur,',
+'  round(sum(real_dur/case when tag_prnt in (''MultiLoading'', ''InitialFill'') and cnt>=to_number(:P1418_DEGREE) then to_number(:P1418_DEGREE) else 1 end) over (partition by table_name),2) tot_dur_with_degree,',
+'  sum(cnt)over() tot_num_of_queries',
 'from (',
 'select',
 '  x.*,',
-'  case when tag_name like ''REL%'' or (tag_description=''Statistics gathering'' and tag_name like ''P%'') then dur else ela_tim end real_dur,',
-'  round(case when tag_name like ''REL%'' or (tag_description=''Statistics gathering'' and tag_name like ''P%'') then dur else ela_tim end/case when cnt>=to_number(:P1418_DEGREE) then to_number(:P1418_DEGREE) else 1 end,2) real_dur_with_degree_4,',
-'  sum(case when tag_name like ''REL%'' or (tag_description=''Statistics gathering'' and tag_name like ''P%'') then dur else ela_tim end)over (partition by table_name) tab_tot_dur,',
-'  round(sum(case when tag_name like ''REL%'' or (tag_description=''Statistics gathering'' and tag_name like ''P%'') ',
-'     then dur else ela_tim end/case when cnt>=to_number(:P1418_DEGREE) then to_number(:P1418_DEGREE) else 1 end )over (partition by table_name)/3600,2) tot_dur_with_degree_4',
+'  case when tag_name like ''REL%'' ',
+'             or (tag_description=''Statistics gathering'' and tag_name like ''P%'') ',
+'             or (tag_description=''Index creating'')',
+'               then dur else ela_tim end real_dur',
 'from (',
 'select',
-'  tag_name, table_name, tag_description, ',
+'  tag_name, table_name, tag_description, tag_prnt, src source,',
 '  count(1) cnt,',
 '  round(sum(elapsed_time)/1e6) ela_tim,',
 '  round(sum(dur)) dur,',
 '  round(100*(1-(sum(elapsed_time)/1e6)/nullif(sum(dur),0)),2) pct',
 'from (',
-'select o.obj_created,',
-'       ss1.sql_id,',
-'       ss1.elapsed_time,',
-'       t.tag_name,',
-'       t.tag_description table_name,',
-'       tp.tag_description,',
-'       ss1.last_load_time,',
-'       ss1.last_active_time,',
-'       (ss1.last_active_time-ss1.last_load_time)*(24*3600) dur',
+'select /*+ use_nl(ss1) use_nl(mon1) use_nl(awr1)*/',
+'       --o.obj_created,',
+'       sd.sql_id,',
+'       coalesce(ss1.src, mon1.src, awr1.src) src,',
+'       coalesce(ss1.elapsed_time, mon1.elapsed_time, awr1.elapsed_time) elapsed_time,',
+'       tags.tag_name,',
+'       tags.table_name,',
+'       tags.tag_description,tags.tag_prnt,',
+'       coalesce(ss1.last_load_time, mon1.last_load_time, awr1.last_load_time) last_load_time,',
+'       coalesce(ss1.last_active_time, mon1.last_active_time, awr1.last_active_time) last_active_time,',
+'       (coalesce(ss1.last_active_time, mon1.last_active_time, awr1.last_active_time)-coalesce(ss1.last_load_time, mon1.last_load_time, awr1.last_load_time))*(24*3600) dur',
 'from opas_objects o,',
 '     opas_ot_sql_data_point_ref r,',
-'     (select sql_data_point_id,sql_id,sum(elapsed_time)elapsed_time,',
+'     OPAS_OT_SQL_DATA sd,',
+'     lateral',
+'     (select ''V$SQL'' src, i.sql_data_point_id, sum(elapsed_time)elapsed_time,',
 '             min(to_date(last_load_time,''yyyy-mm-dd/hh24:mi:ss'')) last_load_time,',
 '             max(last_active_time) last_active_time',
-'       from opas_ot_sql_vsql group by sql_data_point_id,sql_id) ss1, --opas_ot_sql_sqlmon_ref d2m, opas_ot_sql_sqlmon sm,',
+'       from opas_ot_sql_vsql i where nvl(PX_SERVERS_EXECUTIONS,1) < 2 and sd.sql_data_point_id = i.sql_data_point_id group by sql_data_point_id)(+) ss1,',
+'     lateral',
+'     (select ''SQL Mon'' src, r1.sql_data_point_id, sum(md1.elapsed_time)elapsed_time,',
+'             min(m1.FIRST_REFRESH_TIME) last_load_time,',
+'             max(m1.LAST_REFRESH_TIME) last_active_time',
+'       from OPAS_OT_SQL_SQLMON_REF r1, OPAS_OT_SQL_SQLMON m1, OPAS_OT_SQL_SQLMON_DATA md1 ',
+'      where r1.SQLMON_ID=m1.SQLMON_ID and r1.SQLMON_ID =md1.SQLMON_ID and source=''V$'' and sd.sql_data_point_id = r1.sql_data_point_id ',
+'        and ss1.sql_data_point_id is null group by r1.sql_data_point_id)(+) mon1,',
+'      lateral',
+'      (select ''AWR'' src, sum(a.ELAPSED_TIME_DELTA) elapsed_time,',
+'            to_date(to_char(min(END_INTERVAL_TIME),''yymmddhh24miss''),''yymmddhh24miss'') last_load_time,',
+'            to_date(to_char(max(END_INTERVAL_TIME),''yymmddhh24miss''),''yymmddhh24miss'') last_active_time',
+'         from OPAS_OT_SQL_AWR_SQLSTAT a, OPAS_DB_LINK_AWRSNAPS s',
+'        where a.SQL_ID = sd.sql_id and a.dblink=sd.dblink and a.INCARNATION# = sd.INCARNATION# and a.SNAP_ID between sd.AWR_SNAP_START and sd.AWR_SNAP_END',
+'          and a.DBLINK=s.DBLINK and a.DBID=s.DBID and a.INCARNATION#=s.INCARNATION# and a.SNAP_ID=s.SNAP_ID and a.INSTANCE_NUMBER=s.INSTANCE_NUMBER',
+'          and (ss1.sql_data_point_id is null or mon1.sql_data_point_id is null))(+) awr1,     ',
 '     opas_ot_sql_descriptions d,',
-'     opas_files f,',
-'     opas_ot_sql_sql2tags s2t,',
-'     opas_ot_sql_tags t,',
-'     opas_ot_sql_tags tp',
+'     including_sqls tags',
 'where o.obj_prnt=:APP_FOLDER_ID and o.obj_ot=140',
 'and o.obj_id=r.obj_id',
-'and r.sql_data_point_id = ss1.sql_data_point_id',
-'and ss1.sql_id = d.sql_id',
-'and d.sql_text = f.file_id',
-'and s2t.sql_id=d.sql_id',
-'and s2t.tag = t.tag_name and t.tag_prnt = tp.tag_name',
-'and tp.tag_prnt = ''MAPPING''',
-') group by tag_name, table_name, tag_description) x) y',
+'and r.sql_data_point_id = sd.sql_data_point_id',
+'--and r.sql_data_point_id = ss1.sql_data_point_id(+)',
+'--and r.sql_data_point_id = mon1.sql_data_point_id(+)',
+'and sd.sql_id = d.sql_id',
+'and d.sql_id = tags.sql_id',
+') group by tag_name, table_name, tag_description, tag_prnt, src) x) y',
 'order by 2,1',
-''))
+';'))
 ,p_plug_source_type=>'NATIVE_IR'
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
 ,p_prn_content_disposition=>'ATTACHMENT'
@@ -35618,8 +35743,9 @@ wwv_flow_api.create_page_plug(
 wwv_flow_api.create_worksheet(
  p_id=>wwv_flow_api.id(3052974012156718)
 ,p_max_row_count=>'1000000'
-,p_pagination_type=>'ROWS_X_TO_Y'
-,p_pagination_display_pos=>'BOTTOM_RIGHT'
+,p_pagination_type=>'ROWS_X_TO_Y_OF_Z'
+,p_pagination_display_pos=>'TOP_AND_BOTTOM_RIGHT'
+,p_show_display_row_count=>'Y'
 ,p_report_list_mode=>'TABS'
 ,p_show_detail_link=>'N'
 ,p_show_notify=>'Y'
@@ -35697,15 +35823,6 @@ wwv_flow_api.create_worksheet_column(
 ,p_column_alignment=>'RIGHT'
 );
 wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(3053828581156727)
-,p_db_column_name=>'REAL_DUR_WITH_DEGREE_4'
-,p_display_order=>90
-,p_column_identifier=>'I'
-,p_column_label=>'Real Duration With Degree &P1418_DEGREE.'
-,p_column_type=>'NUMBER'
-,p_column_alignment=>'RIGHT'
-);
-wwv_flow_api.create_worksheet_column(
  p_id=>wwv_flow_api.id(3053974588156728)
 ,p_db_column_name=>'TAB_TOT_DUR'
 ,p_display_order=>100
@@ -35715,13 +35832,47 @@ wwv_flow_api.create_worksheet_column(
 ,p_column_alignment=>'RIGHT'
 );
 wwv_flow_api.create_worksheet_column(
- p_id=>wwv_flow_api.id(3054030516156729)
-,p_db_column_name=>'TOT_DUR_WITH_DEGREE_4'
+ p_id=>wwv_flow_api.id(4724899299788035)
+,p_db_column_name=>'TAG_PRNT'
 ,p_display_order=>110
-,p_column_identifier=>'K'
-,p_column_label=>'Total Duration With Degree &P1418_DEGREE.'
+,p_column_identifier=>'L'
+,p_column_label=>'Tag Prnt'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(4724974873788036)
+,p_db_column_name=>'REAL_DUR_WITH_DEGREE'
+,p_display_order=>120
+,p_column_identifier=>'M'
+,p_column_label=>'Real Dur With Degree'
 ,p_column_type=>'NUMBER'
 ,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(4725010563788037)
+,p_db_column_name=>'TOT_DUR_WITH_DEGREE'
+,p_display_order=>130
+,p_column_identifier=>'N'
+,p_column_label=>'Tot Dur With Degree'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(4725192510788038)
+,p_db_column_name=>'TOT_NUM_OF_QUERIES'
+,p_display_order=>140
+,p_column_identifier=>'O'
+,p_column_label=>'Tot Num Of Queries'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(4725707223788044)
+,p_db_column_name=>'SOURCE'
+,p_display_order=>150
+,p_column_identifier=>'P'
+,p_column_label=>'Source'
+,p_column_type=>'STRING'
 );
 wwv_flow_api.create_worksheet_rpt(
  p_id=>wwv_flow_api.id(3135786835356905)
@@ -35730,7 +35881,7 @@ wwv_flow_api.create_worksheet_rpt(
 ,p_report_alias=>'31358'
 ,p_status=>'PUBLIC'
 ,p_is_default=>'Y'
-,p_report_columns=>'TAG_NAME:TABLE_NAME:TAG_DESCRIPTION:CNT:ELA_TIM:DUR:PCT:REAL_DUR:REAL_DUR_WITH_DEGREE_4:TAB_TOT_DUR:TOT_DUR_WITH_DEGREE_4'
+,p_report_columns=>'TAG_NAME:TABLE_NAME:TAG_DESCRIPTION:CNT:ELA_TIM:DUR:PCT:REAL_DUR_4:TAB_TOT_DUR_4:TAG_PRNT:REAL_DUR_WITH_DEGREE:TOT_DUR_WITH_DEGREE:TOT_NUM_OF_QUERIES:SOURCE'
 );
 wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(3054175972156730)
@@ -35741,6 +35892,361 @@ wwv_flow_api.create_page_item(
 ,p_prompt=>'Degree of Apply Parallelism'
 ,p_display_as=>'NATIVE_TEXT_FIELD'
 ,p_cSize=>30
+,p_field_template=>wwv_flow_api.id(59011729453993944)
+,p_item_template_options=>'#DEFAULT#'
+,p_attribute_01=>'Y'
+,p_attribute_02=>'N'
+,p_attribute_04=>'TEXT'
+,p_attribute_05=>'BOTH'
+);
+end;
+/
+prompt --application/pages/page_01419
+begin
+wwv_flow_api.create_page(
+ p_id=>1419
+,p_user_interface_id=>wwv_flow_api.id(59034179868994205)
+,p_name=>'SQL Tagged Table Report'
+,p_alias=>'SQL-TAGGED-TABLE-REPORT'
+,p_step_title=>'SQL Tagged Table Report'
+,p_autocomplete_on_off=>'OFF'
+,p_group_id=>wwv_flow_api.id(65526486119996516)
+,p_page_template_options=>'#DEFAULT#'
+,p_last_updated_by=>'OPAS60DADM'
+,p_last_upd_yyyymmddhh24miss=>'20200814165430'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(5318579822713815)
+,p_plug_name=>'Breadcrumb'
+,p_region_template_options=>'#DEFAULT#:t-BreadcrumbRegion--useBreadcrumbTitle'
+,p_component_template_options=>'#DEFAULT#'
+,p_plug_template=>wwv_flow_api.id(58969580676993713)
+,p_plug_display_sequence=>10
+,p_plug_display_point=>'REGION_POSITION_01'
+,p_menu_id=>wwv_flow_api.id(58913514827993374)
+,p_plug_source_type=>'NATIVE_BREADCRUMB'
+,p_menu_template_id=>wwv_flow_api.id(59013031676993965)
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(8364524687870103)
+,p_plug_name=>'Report'
+,p_region_template_options=>'#DEFAULT#'
+,p_component_template_options=>'#DEFAULT#'
+,p_plug_template=>wwv_flow_api.id(58959020573993670)
+,p_plug_display_sequence=>10
+,p_include_in_reg_disp_sel_yn=>'Y'
+,p_plug_display_point=>'BODY'
+,p_query_type=>'SQL'
+,p_plug_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'with including_tags as ',
+'  (select tag_name, tag_description table_name, (select tag_description from OPAS_OT_SQL_TAGS p where o.tag_prnt = p.tag_name ) tag_description, tag_prnt',
+'     from OPAS_OT_SQL_TAGS o',
+'    start with tag_name in (select column_value from table(coreobj_sql_tags.parse_tag_list(''MAPPING''))) connect by prior tag_name = tag_prnt),',
+'including_sqls as',
+'  (select /* materialize */ sql_id, tag_name, tag_description, table_name, tag_prnt',
+'     from OPAS_OT_SQL_SQL2TAGS, including_tags',
+'    where tag=tag_name and table_name=:P1419_TABLE_NAME)',
+'select /* gather_plan_statistics */',
+'  (select to_char(obj_created,:APP_GRID_DT_FMT) from opas_objects i where i.obj_id=y.obj_prnt)||'': ''||coreobj_api.get_object_path(p_obj_id => obj_prnt, p_including_object => ''Y'') path_to_folder,',
+'  y.*,',
+'  round(real_dur/case when tag_prnt in (''MultiLoading'', ''InitialFill'') and cnt>=to_number(:P1419_DEGREE) then to_number(:P1419_DEGREE) else 1 end,2) real_dur_with_degree,',
+'  sum(real_dur) over (partition by table_name, obj_prnt) tab_tot_dur,',
+'  round(sum(real_dur/case when tag_prnt in (''MultiLoading'', ''InitialFill'') and cnt>=to_number(:P1419_DEGREE) then to_number(:P1419_DEGREE) else 1 end) over (partition by table_name, obj_prnt),2) tot_dur_with_degree,',
+'  sum(cnt)over(partition by obj_prnt) tot_num_of_queries,',
+'  listagg(tag_name,''?'')within group (order by tag_name) over (partition by table_name, obj_prnt)||''?'' tags2flt',
+'from (',
+'select',
+'  x.*,',
+'  case when tag_name like ''REL%'' ',
+'             or (tag_description=''Statistics gathering'' and tag_name like ''P%'') ',
+'             or (tag_description=''Index creating'')',
+'               then dur else ela_tim end real_dur',
+'from (',
+'select',
+'  obj_prnt, tag_name, table_name, tag_description, tag_prnt, src source,',
+'  count(1) cnt,',
+'  round(sum(elapsed_time)/1e6) ela_tim,',
+'  round(sum(dur)) dur,',
+'  round(100*(1-(sum(elapsed_time)/1e6)/nullif(sum(dur),0)),2) pct',
+'from (',
+'select /*+ use_nl(ss1) use_nl(mon1) use_nl(awr1)*/',
+'       o.obj_prnt,',
+'       --sd.sql_id,',
+'       coalesce(ss1.src, mon1.src, awr1.src) src,',
+'       coalesce(ss1.elapsed_time, mon1.elapsed_time, awr1.elapsed_time) elapsed_time,',
+'       tags.tag_name,',
+'       tags.table_name,',
+'       tags.tag_description,tags.tag_prnt,',
+'       coalesce(ss1.last_load_time, mon1.last_load_time, awr1.last_load_time) last_load_time,',
+'       coalesce(ss1.last_active_time, mon1.last_active_time, awr1.last_active_time) last_active_time,',
+'       (coalesce(ss1.last_active_time, mon1.last_active_time, awr1.last_active_time)-coalesce(ss1.last_load_time, mon1.last_load_time, awr1.last_load_time))*(24*3600) dur',
+'from opas_objects o,',
+'     opas_ot_sql_data_point_ref r,',
+'     OPAS_OT_SQL_DATA sd,',
+'     lateral',
+'     (select ''V$SQL'' src, i.sql_data_point_id, sum(elapsed_time)elapsed_time,',
+'             min(to_date(last_load_time,''yyyy-mm-dd/hh24:mi:ss'')) last_load_time,',
+'             max(last_active_time) last_active_time',
+'       from opas_ot_sql_vsql i where nvl(PX_SERVERS_EXECUTIONS,1) < 2 and sd.sql_data_point_id = i.sql_data_point_id group by sql_data_point_id)(+) ss1,',
+'     lateral',
+'     (select ''SQL Mon'' src, r1.sql_data_point_id, sum(md1.elapsed_time)elapsed_time,',
+'             min(m1.FIRST_REFRESH_TIME) last_load_time,',
+'             max(m1.LAST_REFRESH_TIME) last_active_time',
+'       from OPAS_OT_SQL_SQLMON_REF r1, OPAS_OT_SQL_SQLMON m1, OPAS_OT_SQL_SQLMON_DATA md1 ',
+'      where r1.SQLMON_ID=m1.SQLMON_ID and r1.SQLMON_ID =md1.SQLMON_ID and source=''V$'' and sd.sql_data_point_id = r1.sql_data_point_id ',
+'        and ss1.sql_data_point_id is null group by r1.sql_data_point_id)(+) mon1,',
+'      lateral',
+'      (select ''AWR'' src, sum(a.ELAPSED_TIME_DELTA) elapsed_time,',
+'            to_date(to_char(min(END_INTERVAL_TIME),''yymmddhh24miss''),''yymmddhh24miss'') last_load_time,',
+'            to_date(to_char(max(END_INTERVAL_TIME),''yymmddhh24miss''),''yymmddhh24miss'') last_active_time',
+'         from OPAS_OT_SQL_AWR_SQLSTAT a, OPAS_DB_LINK_AWRSNAPS s',
+'        where a.SQL_ID = sd.sql_id and a.dblink=sd.dblink and a.INCARNATION# = sd.INCARNATION# and a.SNAP_ID between sd.AWR_SNAP_START and sd.AWR_SNAP_END',
+'          and a.DBLINK=s.DBLINK and a.DBID=s.DBID and a.INCARNATION#=s.INCARNATION# and a.SNAP_ID=s.SNAP_ID and a.INSTANCE_NUMBER=s.INSTANCE_NUMBER',
+'          and (ss1.sql_data_point_id is null or mon1.sql_data_point_id is null))(+) awr1,',
+'     opas_ot_sql_descriptions d,',
+'     including_sqls tags',
+'where /*o.obj_prnt=5846 and */ o.obj_ot=140',
+'and o.obj_id=r.obj_id',
+'and r.sql_data_point_id = sd.sql_data_point_id',
+'--and r.sql_data_point_id = ss1.sql_data_point_id(+)',
+'--and r.sql_data_point_id = mon1.sql_data_point_id(+)',
+'and sd.sql_id = d.sql_id',
+'and d.sql_id = tags.sql_id',
+') group by tag_name, table_name, tag_description, tag_prnt, obj_prnt, src) x) y',
+'order by 2,1',
+';'))
+,p_plug_source_type=>'NATIVE_IR'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_prn_content_disposition=>'ATTACHMENT'
+,p_prn_document_header=>'APEX'
+,p_prn_units=>'INCHES'
+,p_prn_paper_size=>'LETTER'
+,p_prn_width=>11
+,p_prn_height=>8.5
+,p_prn_orientation=>'HORIZONTAL'
+,p_prn_page_header=>'Report'
+,p_prn_page_header_font_color=>'#000000'
+,p_prn_page_header_font_family=>'Helvetica'
+,p_prn_page_header_font_weight=>'normal'
+,p_prn_page_header_font_size=>'12'
+,p_prn_page_footer_font_color=>'#000000'
+,p_prn_page_footer_font_family=>'Helvetica'
+,p_prn_page_footer_font_weight=>'normal'
+,p_prn_page_footer_font_size=>'12'
+,p_prn_header_bg_color=>'#EEEEEE'
+,p_prn_header_font_color=>'#000000'
+,p_prn_header_font_family=>'Helvetica'
+,p_prn_header_font_weight=>'bold'
+,p_prn_header_font_size=>'10'
+,p_prn_body_bg_color=>'#FFFFFF'
+,p_prn_body_font_color=>'#000000'
+,p_prn_body_font_family=>'Helvetica'
+,p_prn_body_font_weight=>'normal'
+,p_prn_body_font_size=>'10'
+,p_prn_border_width=>.5
+,p_prn_page_header_alignment=>'CENTER'
+,p_prn_page_footer_alignment=>'CENTER'
+,p_prn_border_color=>'#666666'
+);
+wwv_flow_api.create_worksheet(
+ p_id=>wwv_flow_api.id(8364697980870104)
+,p_max_row_count=>'1000000'
+,p_pagination_type=>'ROWS_X_TO_Y_OF_Z'
+,p_pagination_display_pos=>'TOP_AND_BOTTOM_RIGHT'
+,p_show_display_row_count=>'Y'
+,p_report_list_mode=>'TABS'
+,p_show_detail_link=>'N'
+,p_show_notify=>'Y'
+,p_download_formats=>'CSV:HTML:EMAIL:XLS:PDF:RTF'
+,p_owner=>'OPAS60DADM'
+,p_internal_uid=>8364697980870104
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(5312773794713537)
+,p_db_column_name=>'TAG_NAME'
+,p_display_order=>10
+,p_column_identifier=>'A'
+,p_column_label=>'Tag Name'
+,p_column_link=>'f?p=&APP_ID.:1410:&SESSION.::&DEBUG.::P1410_FOLDER_ID,APP_FOLDER_ID,APP_PREV_PAGE,P1410_INCLUDING_TAGS:#OBJ_PRNT#,#OBJ_PRNT#,1419,#TAG_NAME#'
+,p_column_linktext=>'#TAG_NAME#'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(5313009761713578)
+,p_db_column_name=>'TABLE_NAME'
+,p_display_order=>20
+,p_column_identifier=>'B'
+,p_column_label=>'Table Name'
+,p_column_link=>'f?p=&APP_ID.:1410:&SESSION.::&DEBUG.::P1410_FOLDER_ID,APP_FOLDER_ID,APP_PREV_PAGE,P1410_INCLUDING_TAGS:#OBJ_PRNT#,#OBJ_PRNT#,1419,#TAGS2FLT#'
+,p_column_linktext=>'#TABLE_NAME#'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(5313412041713583)
+,p_db_column_name=>'TAG_DESCRIPTION'
+,p_display_order=>30
+,p_column_identifier=>'C'
+,p_column_label=>'Tag Description'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(5313700827713586)
+,p_db_column_name=>'CNT'
+,p_display_order=>40
+,p_column_identifier=>'D'
+,p_column_label=>'Number of queries'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(5314190126713588)
+,p_db_column_name=>'ELA_TIM'
+,p_display_order=>50
+,p_column_identifier=>'E'
+,p_column_label=>'Elapsed time for queries'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(5314578659713590)
+,p_db_column_name=>'DUR'
+,p_display_order=>60
+,p_column_identifier=>'F'
+,p_column_label=>'Duration (for parallel)'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(5314994002713592)
+,p_db_column_name=>'PCT'
+,p_display_order=>70
+,p_column_identifier=>'G'
+,p_column_label=>'% Diff ela/dur'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(5315347307713594)
+,p_db_column_name=>'REAL_DUR'
+,p_display_order=>80
+,p_column_identifier=>'H'
+,p_column_label=>'Actual Duration'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(5315753798713596)
+,p_db_column_name=>'TAB_TOT_DUR'
+,p_display_order=>100
+,p_column_identifier=>'J'
+,p_column_label=>'Table Total Duration'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(5316175198713606)
+,p_db_column_name=>'TAG_PRNT'
+,p_display_order=>110
+,p_column_identifier=>'L'
+,p_column_label=>'Tag Prnt'
+,p_column_type=>'STRING'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(5316551707713608)
+,p_db_column_name=>'REAL_DUR_WITH_DEGREE'
+,p_display_order=>120
+,p_column_identifier=>'M'
+,p_column_label=>'Real Dur With Degree'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(5316995105713609)
+,p_db_column_name=>'TOT_DUR_WITH_DEGREE'
+,p_display_order=>130
+,p_column_identifier=>'N'
+,p_column_label=>'Tot Dur With Degree'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(5317385641713636)
+,p_db_column_name=>'TOT_NUM_OF_QUERIES'
+,p_display_order=>140
+,p_column_identifier=>'O'
+,p_column_label=>'Tot Num Of Queries'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(4725369362788040)
+,p_db_column_name=>'PATH_TO_FOLDER'
+,p_display_order=>150
+,p_column_identifier=>'P'
+,p_column_label=>'Path To Folder'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(4725451943788041)
+,p_db_column_name=>'OBJ_PRNT'
+,p_display_order=>160
+,p_column_identifier=>'Q'
+,p_column_label=>'GoTo'
+,p_column_type=>'NUMBER'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(4725562041788042)
+,p_db_column_name=>'TAGS2FLT'
+,p_display_order=>170
+,p_column_identifier=>'R'
+,p_column_label=>'Tags2flt'
+,p_column_type=>'STRING'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(4725892528788045)
+,p_db_column_name=>'SOURCE'
+,p_display_order=>180
+,p_column_identifier=>'S'
+,p_column_label=>'Source'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_rpt(
+ p_id=>wwv_flow_api.id(8447510804070291)
+,p_application_user=>'APXWS_DEFAULT'
+,p_report_seq=>10
+,p_report_alias=>'53177'
+,p_status=>'PUBLIC'
+,p_is_default=>'Y'
+,p_report_columns=>'TAG_NAME:TABLE_NAME:TAG_DESCRIPTION:CNT:ELA_TIM:DUR:PCT:REAL_DUR_4:TAB_TOT_DUR_4:TAG_PRNT:REAL_DUR_WITH_DEGREE:TOT_DUR_WITH_DEGREE:TOT_NUM_OF_QUERIES:PATH_TO_FOLDER:OBJ_PRNT:TAGS2FLT:SOURCE'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(4725225891788039)
+,p_name=>'P1419_TABLE_NAME'
+,p_item_sequence=>10
+,p_item_plug_id=>wwv_flow_api.id(8364524687870103)
+,p_prompt=>'Table Name'
+,p_display_as=>'NATIVE_TEXT_FIELD'
+,p_cSize=>30
+,p_field_template=>wwv_flow_api.id(59011729453993944)
+,p_item_template_options=>'#DEFAULT#'
+,p_attribute_01=>'Y'
+,p_attribute_02=>'N'
+,p_attribute_04=>'TEXT'
+,p_attribute_05=>'BOTH'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(5318195683713719)
+,p_name=>'P1419_DEGREE'
+,p_item_sequence=>20
+,p_item_plug_id=>wwv_flow_api.id(8364524687870103)
+,p_item_default=>'3'
+,p_prompt=>'Degree of Apply Parallelism'
+,p_display_as=>'NATIVE_TEXT_FIELD'
+,p_cSize=>30
+,p_begin_on_new_line=>'N'
 ,p_field_template=>wwv_flow_api.id(59011729453993944)
 ,p_item_template_options=>'#DEFAULT#'
 ,p_attribute_01=>'Y'

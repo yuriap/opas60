@@ -29,5 +29,6 @@ package coreobj_sql_tags is
 
   procedure tag_sql_by_expr(p_tag_name opas_ot_sql_tags.tag_name%type,
                             p_expr     varchar2);
+  procedure tag_all_sqls;
 end coreobj_sql_tags;
 /

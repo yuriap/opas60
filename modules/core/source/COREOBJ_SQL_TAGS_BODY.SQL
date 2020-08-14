@@ -132,19 +132,33 @@ package body coreobj_sql_tags is
   begin
     --coremod_log.log('coreobj_sql_tags.tag_sql: '||p_tag_names||' -- ' || p_sql_id);
 
-    for i in (select * from opas_ot_sql_tags where tag_autoexpr is not null and tag_name not like '%!Copy!')
+    for i in (select * from opas_ot_sql_tags where tag_autoexpr is not null and tag_name not like '%!Copy!' and tag_name not like '%1=2%')
     loop
-      open l_crsr for
-        q'[select sql_id from opas_ot_sql_descriptions s, opas_files f
+      begin
+        open l_crsr for
+          q'[select sql_id from opas_ot_sql_descriptions s, opas_files f
 where s.sql_id = :sqlid and (s.sql_text = f.file_id or s.sql_text_approx = f.file_id) and (]'||i.tag_autoexpr||')' using p_sql_id;
-      fetch l_crsr into l_sql_id;
-      if l_crsr%found then
-        insert into opas_ot_sql_sql2tags
-          (sql_id, tag, tag_type)
-        values
-          (p_sql_id, i.tag_name, 'A');
-      end if;
-      close l_crsr;
+        fetch l_crsr into l_sql_id;
+        if l_crsr%found then
+          insert into opas_ot_sql_sql2tags
+            (sql_id, tag, tag_type)
+          values
+            (p_sql_id, i.tag_name, 'A');
+        end if;
+        close l_crsr;
+      exception
+        when others then
+          if l_crsr%isopen then close l_crsr; end if;
+      end;
+    end loop;
+  end;
+
+  procedure tag_all_sqls
+  is
+  begin
+    for i in (select sql_id from opas_ot_sql_descriptions s where sql_text is not null or sql_text_approx is not null) loop
+      auto_tag_sql(i.sql_id);
+      commit;
     end loop;
   end;
 
@@ -155,7 +169,7 @@ where s.sql_id = :sqlid and (s.sql_text = f.file_id or s.sql_text_approx = f.fil
   begin
     --coremod_log.log('coreobj_sql_tags.tag_sql: '||p_tag_names||' -- ' || p_sql_id);
 
-    for i in (select * from opas_ot_sql_tags where tag_name = p_tag_name and tag_name not like '%!Copy!')
+    for i in (select * from opas_ot_sql_tags where tag_name = p_tag_name and tag_name not like '%!Copy!' and tag_name not like '%1=2%')
     loop
       open l_crsr for
         q'[select sql_id from opas_ot_sql_descriptions s, opas_files f where (s.sql_text = f.file_id or s.sql_text_approx = f.file_id) and (]'||i.tag_autoexpr||')';
@@ -190,7 +204,7 @@ where s.sql_id = :sqlid and (s.sql_text = f.file_id or s.sql_text_approx = f.fil
   begin
     --coremod_log.log('coreobj_sql_tags.tag_sql: '||p_tag_names||' -- ' || p_sql_id);
 
-    for i in (select * from opas_ot_sql_tags where tag_name = p_tag_name and tag_name not like '%!Copy!')
+    for i in (select * from opas_ot_sql_tags where tag_name = p_tag_name and tag_name not like '%!Copy!' and tag_name not like '%1=2%')
     loop
       open l_crsr for
         q'[select sql_id from opas_ot_sql_descriptions s, opas_files f where (s.sql_text = f.file_id or s.sql_text_approx = f.file_id) and (]'||p_expr||')';

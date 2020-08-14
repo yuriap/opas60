@@ -244,6 +244,8 @@ alter table OPAS_DB_LINK_AWRSNAPS add INCARNATION# NUMBER;
 create index idx_opas_db_link_awrsn_dblink on opas_db_link_awrsnaps(dblink);
 alter table opas_db_link_awrsnaps add constraint fk_dbl_awrsn_dblink foreign key (dblink) references opas_db_links(db_link_name) on delete cascade;
 
+create index IDX_OPAS_DB_LINK_AWRSN_SEL1 on OPAS_DB_LINK_AWRSNAPS(DBLINK,DBID,INCARNATION#,INSTANCE_NUMBER,SNAP_ID);
+
 DROP TABLE OPAS_DBL_TMP_AWRSNAPS;
 CREATE GLOBAL TEMPORARY TABLE OPAS_DBL_TMP_AWRSNAPS 
 ON COMMIT PRESERVE ROWS as

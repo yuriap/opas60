@@ -24,6 +24,8 @@ tag_created         timestamp default systimestamp,
 tag_modified        timestamp
 );
 
+create index idx_opas_ot_sql_prnt_tag  on opas_ot_sql_tags(tag_prnt);
+
 create table opas_ot_sql_sql2tags(
 sql_id              varchar2(13)                                     references opas_ot_sql_descriptions(sql_id) on delete cascade,
 tag                 varchar2(128)                                    references opas_ot_sql_tags(tag_name),
