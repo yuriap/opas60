@@ -1834,6 +1834,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     l_obj_id     opas_ot_sql_data_point_ref.obj_id%type;
     l_sql        varchar2(32765);
     l_owner      OPAS_OT_SQL_DESCRIPTIONS.CREATED_BY%type;
+    l_sqllist    TABLEOFSTRINGS;
   begin
     l_rec_v$  := nvl(COREOBJ_API.get_param_n(p_obj_id, COREOBJ_SQL_UTILS.pnV$Recursive,    true), COREOBJ_SQL_UTILS.defV$Recursive);
     l_rec_awr := nvl(COREOBJ_API.get_param_n(p_obj_id, COREOBJ_SQL_UTILS.pnAWRRecursive,   true), COREOBJ_SQL_UTILS.defAWRRecursive);
@@ -1857,15 +1858,16 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       l_sql := null;
     end if;
 
-    select CREATED_BY into l_owner from OPAS_OT_SQL_DESCRIPTIONS where sql_id=p_data.sql_id;
+    select OBJ_OWNER into l_owner from OPAS_OBJECTS where OBJ_ID=p_obj_id;
 
-    for i in (select unique sql_id from opas_ot_tmp_rec_sql_ids) loop
+    select unique sql_id bulk collect into l_sqllist from opas_ot_tmp_rec_sql_ids;
+    for i in 1..l_sqllist.count loop
       COREOBJ_SQL.add (
         P_OBJ_ID   => l_obj_id, --new ID is created here
         P_OBJ_PRNT => p_obj_id,
         P_OWNER    => l_owner,
         P_DESCR    => 'Recursive SQL for SQL_ID='||p_data.SQL_ID,
-        P_SQL_ID   => i.sql_id,
+        P_SQL_ID   => l_sqllist(i),
         P_DB_LINK  => p_data.DBLINK,
         p_prnt_dp  => p_data.sql_data_point_id) ;
 
