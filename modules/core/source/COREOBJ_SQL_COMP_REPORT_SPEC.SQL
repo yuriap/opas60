@@ -1,6 +1,6 @@
+
+
 CREATE OR REPLACE
-
-
 package COREOBJ_SQL_COMP_REPORT is
 
   flgTEXT      constant pls_integer := 1; -- comparing two texts

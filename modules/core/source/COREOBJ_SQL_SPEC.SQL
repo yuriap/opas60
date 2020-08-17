@@ -1,6 +1,6 @@
+
+
 CREATE OR REPLACE
-
-
 PACKAGE COREOBJ_SQL AS
 
   -- SQL Data Object statuses

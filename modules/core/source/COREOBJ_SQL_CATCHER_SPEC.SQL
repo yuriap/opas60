@@ -1,6 +1,6 @@
+
+
 CREATE OR REPLACE
-
-
 package COREOBJ_SQL_CATCHER is
 
   --Catcher config status

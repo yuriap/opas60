@@ -1,6 +1,6 @@
+
+
 CREATE OR REPLACE
-
-
 package body COREOBJ_SQL_COMP_REPORT is
 
   g_plan_sections_all COREMOD_REPORT_UTILS.t_arrayofstrings :=

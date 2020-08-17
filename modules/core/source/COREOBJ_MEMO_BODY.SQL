@@ -1,6 +1,6 @@
+
+
 CREATE OR REPLACE
-
-
 PACKAGE BODY COREOBJ_MEMO AS
 
   procedure add   (p_obj_id           opas_objects.obj_id%type)

@@ -1,6 +1,6 @@
+
+
 CREATE OR REPLACE
-
-
 package body COREOBJ_DB_GROWTH is
 
   gLockName varchar2(256) := 'OPASDBGPART';

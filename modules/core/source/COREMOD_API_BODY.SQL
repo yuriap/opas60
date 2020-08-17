@@ -1,6 +1,6 @@
+
+
 CREATE OR REPLACE
-
-
 package body COREMOD_API as
 
   type t_lops_rec is record(

@@ -1,6 +1,6 @@
+
+
 CREATE OR REPLACE
-
-
 PACKAGE BODY COREOBJ_SQL_UTILS AS
 
   gAWRParams   t_awr_params_rec;

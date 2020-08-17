@@ -1,6 +1,6 @@
+
+
 CREATE OR REPLACE
-
-
 PACKAGE BODY COREOBJ_FOLDER AS
 
   procedure lock_object(p_obj_id opas_objects.obj_id%type) AS

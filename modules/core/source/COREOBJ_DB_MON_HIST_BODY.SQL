@@ -1,6 +1,6 @@
+
+
 CREATE OR REPLACE
-
-
 package body coreobj_db_mon_hist is
 
   ctRegular  constant varchar2(10) := 'REGULAR';

@@ -1,6 +1,6 @@
+
+
 CREATE OR REPLACE
-
-
 PACKAGE COREMOD_REPORT_UTILS AS
 
   gPixelPerChar  constant number := 6.1;

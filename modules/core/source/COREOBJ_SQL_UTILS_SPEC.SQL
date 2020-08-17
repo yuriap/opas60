@@ -1,6 +1,6 @@
+
+
 CREATE OR REPLACE
-
-
 PACKAGE COREOBJ_SQL_UTILS AS
 
   sstNotStarted    constant varchar2(30) := 'Not started';

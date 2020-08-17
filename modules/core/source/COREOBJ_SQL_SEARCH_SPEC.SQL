@@ -1,6 +1,6 @@
+
+
 CREATE OR REPLACE
-
-
 PACKAGE COREOBJ_SQL_SEARCH AS
 
   --I - internal registry, E - through dblink, B - both

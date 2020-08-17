@@ -1,6 +1,6 @@
+
+
 CREATE OR REPLACE
-
-
 package coreobj_db_mon_hist is
 
   stActive   constant varchar2(10) := 'ACTIVE';

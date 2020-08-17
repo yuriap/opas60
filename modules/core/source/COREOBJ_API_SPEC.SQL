@@ -1,6 +1,6 @@
+
+
 CREATE OR REPLACE
-
-
 PACKAGE COREOBJ_API AS
 
   --select rpad('  ot'||upper(replace(ot_name,' ','_')),30,' ')||'constant number := '||ot_id||';', x.* from opas_object_types x order by 2;

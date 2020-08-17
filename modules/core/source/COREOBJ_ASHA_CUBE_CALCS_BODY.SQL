@@ -1,6 +1,6 @@
+
+
 CREATE OR REPLACE
-
-
 PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
 
   procedure load_v$ash

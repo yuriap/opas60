@@ -1,6 +1,6 @@
+
+
 CREATE OR REPLACE
-
-
 PACKAGE COREMOD_SCHEDULER AS
 
   scaSave              constant varchar2(32) := 'SAVE';

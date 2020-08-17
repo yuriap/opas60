@@ -1,6 +1,6 @@
+
+
 CREATE OR REPLACE
-
-
 PACKAGE COREMOD_FILE_UTILS AS
 
   --Mime Types

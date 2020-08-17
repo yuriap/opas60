@@ -1,6 +1,6 @@
+
+
 CREATE OR REPLACE
-
-
 package body coreobj_sql_tags is
 
   gTagListTable tableofstrings;
