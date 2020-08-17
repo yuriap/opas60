@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 PACKAGE COREOBJ_SQL AS
 
   -- SQL Data Object statuses
@@ -42,3 +44,5 @@ PACKAGE COREOBJ_SQL AS
                                 p_sql_text                   opas_ot_sql_descriptions.sql_text%type);
 END COREOBJ_SQL;
 /
+
+

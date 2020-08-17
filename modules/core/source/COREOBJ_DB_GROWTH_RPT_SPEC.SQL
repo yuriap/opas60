@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 package COREOBJ_DB_GROWTH_RPT is
 
   chrtMain                    constant number := 1;
@@ -46,3 +48,5 @@ package COREOBJ_DB_GROWTH_RPT is
 
 end COREOBJ_DB_GROWTH_RPT;
 /
+
+

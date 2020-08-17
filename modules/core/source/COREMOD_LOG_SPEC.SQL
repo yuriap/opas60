@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 package COREMOD_LOG is
   -- INFO
   -- DEBUG
@@ -17,3 +19,5 @@ package COREMOD_LOG is
   procedure debug_off;
 end;
 /
+
+

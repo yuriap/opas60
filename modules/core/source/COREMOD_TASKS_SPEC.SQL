@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 package coremod_tasks as
 
   --Task queue status
@@ -54,3 +56,5 @@ package coremod_tasks as
   function get_curr_tq_id return opas_task_queue.tq_id%type;
 end;
 /
+
+

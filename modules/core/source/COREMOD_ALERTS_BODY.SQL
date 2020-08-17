@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 PACKAGE BODY COREMOD_ALERTS AS
 
   procedure add_alert(p_alert_id  out opas_alert_queue.alert_id%type,
@@ -60,3 +62,5 @@ PACKAGE BODY COREMOD_ALERTS AS
 
 END COREMOD_ALERTS;
 /
+
+

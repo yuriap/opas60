@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 package body COREOBJ_DB_GROWTH_RPT is
 
   procedure gather_alert_chart_data(p_alert_type       opas_ot_dbg_monitor_al_cfg.alert_type%type,
@@ -428,3 +430,5 @@ package body COREOBJ_DB_GROWTH_RPT is
   end;
 end COREOBJ_DB_GROWTH_RPT;
 /
+
+

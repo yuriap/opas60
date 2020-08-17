@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 PACKAGE COREOBJ_SQL_REPORT_UTILS AS
 
   -- select rpad('  reps'||upper(x.val),30,' ')||'constant varchar2(30) := '''||rpad(upper(x.val||''';'),20,' ')||' -- '||x.display_val from opas_dictionary x where dic_name='SQLREPSECT' order by dic_ordr;
@@ -79,3 +81,5 @@ PACKAGE COREOBJ_SQL_REPORT_UTILS AS
 
 END COREOBJ_SQL_REPORT_UTILS;
 /
+
+

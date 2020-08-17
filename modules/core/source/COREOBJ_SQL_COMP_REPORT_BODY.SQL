@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 package body COREOBJ_SQL_COMP_REPORT is
 
   g_plan_sections_all COREMOD_REPORT_UTILS.t_arrayofstrings :=
@@ -1560,3 +1562,5 @@ coremod_log.log('p_txt2: found sect '||l_cnt||' '||l_plan_sections(l_cnt));
   end;
 end COREOBJ_SQL_COMP_REPORT;
 /
+
+

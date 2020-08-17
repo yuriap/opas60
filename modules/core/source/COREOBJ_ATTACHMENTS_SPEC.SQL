@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 PACKAGE COREOBJ_ATTACHMENTS AS
 
   procedure add   (p_obj_id       out opas_objects.obj_id%type,
@@ -31,3 +33,5 @@ PACKAGE COREOBJ_ATTACHMENTS AS
 
 END COREOBJ_ATTACHMENTS;
 /
+
+

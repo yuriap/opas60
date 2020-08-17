@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 PACKAGE BODY COREOBJ_SQL_SEARCH AS
 
   gCurrentSession opas_ot_sql_searches.session_id%type;
@@ -557,3 +559,5 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
   end;
 END COREOBJ_SQL_SEARCH;
 /
+
+

@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 PACKAGE BODY COREOBJ_SQL AS
 
   procedure queue_discover_sql(p_sql_data_point    opas_ot_sql_data%rowtype)
@@ -244,3 +246,5 @@ end loop;
 
 END COREOBJ_SQL;
 /
+
+

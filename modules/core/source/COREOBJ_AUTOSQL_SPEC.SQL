@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 package coreobj_autosql is
 
   procedure execute_autosql(p_ags_id opas_ot_sql_auto_gather_sqls.ags_id%type);
@@ -19,3 +21,5 @@ package coreobj_autosql is
 
 end coreobj_autosql;
 /
+
+

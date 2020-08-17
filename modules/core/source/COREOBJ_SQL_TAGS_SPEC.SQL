@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 package coreobj_sql_tags is
 
   procedure add(p_tag_name opas_ot_sql_tags.tag_name%type,
@@ -32,3 +34,5 @@ package coreobj_sql_tags is
   procedure tag_all_sqls;
 end coreobj_sql_tags;
 /
+
+

@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 PACKAGE COREOBJ_FOLDER AS
 
   procedure lock_object(p_obj_id opas_objects.obj_id%type);
@@ -23,3 +25,5 @@ PACKAGE COREOBJ_FOLDER AS
 
 END COREOBJ_FOLDER;
 /
+
+

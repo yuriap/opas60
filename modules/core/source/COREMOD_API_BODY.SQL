@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 package body COREMOD_API as
 
   type t_lops_rec is record(
@@ -280,7 +282,7 @@ package body COREMOD_API as
     end if;
   end;
 
-  function get_ora_dblink_cache_i(p_db_link_name varchar2, p_key varchar2) return varchar2
+  function get_ora_dblink_cache_i(p_db_link_name varchar2, p_key varchar2, p_local_tab varchar2 default null) return varchar2
   is
     l_res          opas_db_link_cache.value%type;
     l_last_updated opas_db_link_cache.last_updated%type;
@@ -296,27 +298,40 @@ package body COREMOD_API as
           case
             when p_key like 'TABCOLLIST%' then
               begin
-                l_sql := q'[select listagg(column_name,',') within group (order by column_name) from (select column_name from dba_tab_cols]' || get_dblink_for_query(p_db_link_name) || q'[ where table_name=upper(:p_tab_name) and owner='SYS'
-                                     intersect select column_name from dba_tab_cols where table_name=upper(:p_tab_name) and owner='SYS' and DATA_TYPE not in ('XMLTYPE','LONG'))]';
+                l_sql := q'[select listagg(column_name,',') within group (order by column_name) from
+                                    (select column_name from dba_tab_cols]' || get_dblink_for_query(p_db_link_name) || q'[ where table_name=upper(:p_tab_name) and owner='SYS'
+                                     intersect
+                                     select column_name from dba_tab_cols where table_name=upper(:p_tab_name) and owner='SYS' and DATA_TYPE not in ('XMLTYPE','LONG'))]';
                 execute immediate l_sql into l_res using ltrim(p_key, 'TABCOLLIST_'), ltrim(p_key, 'TABCOLLIST_');
 
-                if l_res is not null then
-                  INSERT INTO opas_db_link_cache ( dblink, key, value, last_updated ) VALUES (p_db_link_name, upper(p_key), l_res, systimestamp);
-                end if;
-                commit;
               exception
                 when others then raise_application_error(-20000,'Unable to get DB Link Cache for Key|DB Link: '||p_key||'|'||p_db_link_name||chr(10)||' '||sqlerrm||chr(10)||l_sql);
+              end;
+            when p_key like 'LOCTABCOLS%' then
+              begin
+                l_sql := q'[select listagg(column_name,',') within group (order by column_name) from
+                                    (select column_name from dba_tab_cols]' || get_dblink_for_query(p_db_link_name) || q'[ where table_name=upper(:p_tab_name) and owner='SYS'
+                                     intersect
+                                     select column_name from user_tab_cols where table_name=upper(:p_tab_name) and DATA_TYPE not in ('XMLTYPE','LONG'))]';
+                execute immediate l_sql into l_res using ltrim(p_key, 'LOCTABCOLS_'), p_local_tab;
+
+              exception
+                when others then raise_application_error(-20000,'Unable to get DB Link Cache for Key|Local Tab|DB Link: '||p_key||'|'||p_local_tab||'|'||p_db_link_name||chr(10)||' '||sqlerrm||chr(10)||l_sql);
               end;
           else
             raise_application_error(-20000,'Unsupported DB Link Cache Key: '||p_key);
           end case;
+          if l_res is not null then
+            INSERT INTO opas_db_link_cache ( dblink, key, value, last_updated ) VALUES (p_db_link_name, upper(p_key), l_res, systimestamp);
+          end if;
+          commit;
       end;
     end;
 
     return l_res;
   end;
 
-  function get_ora_dblink_cache(p_db_link_name varchar2, p_key varchar2) return varchar2
+  function get_ora_dblink_cache(p_db_link_name varchar2, p_key varchar2, p_local_tab varchar2 default null) return varchar2
   is
     l_res          opas_db_link_cache.value%type;
     l_last_updated opas_db_link_cache.last_updated%type;
@@ -325,7 +340,7 @@ package body COREMOD_API as
     if l_last_updated < add_months(sysdate,-1) then raise no_data_found; end if;
     return l_res;
   exception
-    when no_data_found then return get_ora_dblink_cache_i(p_db_link_name, p_key);
+    when no_data_found then return get_ora_dblink_cache_i(p_db_link_name, p_key, p_local_tab);
   end;
 
   function get_dblink_dbid(p_dblink varchar2) return number
@@ -336,35 +351,56 @@ package body COREMOD_API as
     return l_res;
   end;
 
-  procedure update_dblink_db_info(p_db_link_name varchar2)
+  procedure load_tmp_data(p_db_link_name varchar2,
+                          p_src_table_name_r varchar2,
+                          p_src_table_name varchar2,
+                          p_trg_table_name varchar2,
+                          p_suff varchar2,
+                          p_dbid number default null,
+                          p_key_pref varchar2 default 'TABCOLLIST',
+                          p_filter varchar2 default null)
   is
     l_sql           varchar2(32765);
-    l_data_point_ts timestamp := systimestamp;
-    l_dbid          OPAS_DB_LINKS.dbid%type;
-
-    procedure load_tmp_data(p_src_table_name_r varchar2, p_src_table_name varchar2, p_trg_table_name varchar2, p_suff varchar2, p_dbid number default null) is
-    begin
+  begin
       l_sql :=q'[INSERT /*+ OPAS60_DBLINK_<SUFF> */ INTO <TRG_TABLE> (<SRC_DB_COL_LICT>)
-              select <SRC_DB_COL_LICT> from <SRC_TABLE>]' || COREMOD_API.get_dblink_for_query(p_db_link_name);
-      l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_db_link_name, P_KEY => replace('TABCOLLIST_<SRC_TABLE>','<SRC_TABLE>',p_src_table_name_r)));
+              select <SRC_DB_COL_LICT> from <SRC_TABLE>]' || COREMOD_API.get_dblink_for_query(p_db_link_name) || ' where (<FILTER>) <DBID>';
+      if p_key_pref = 'TABCOLLIST' then
+        l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_db_link_name,
+                                                                                    P_KEY => replace(p_key_pref||'_<SRC_TABLE>','<SRC_TABLE>',p_src_table_name_r)));
+      elsif p_key_pref = 'LOCTABCOLS' then
+        l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_db_link_name,
+                                                                                    P_KEY => replace(p_key_pref||'_<SRC_TABLE>','<SRC_TABLE>',p_src_table_name_r),
+                                                                                    p_local_tab => p_trg_table_name));
+      else
+        raise_application_error(-20000,'Invalid p_key_pref: '||p_key_pref||'. Supported: TABCOLLIST, LOCTABCOLS');
+      end if;
       l_sql := replace(l_sql,'<TRG_TABLE>',p_trg_table_name);
       l_sql := replace(l_sql,'<SRC_TABLE>',p_src_table_name);
       l_sql := replace(l_sql,'<SUFF>',p_suff);
+      l_sql := replace(l_sql,'<FILTER>',nvl(p_filter,'1=1'));
       if p_dbid is not null then
-        l_sql := l_sql || ' where dbid=' || p_dbid;
+        l_sql := replace(l_sql,'<DBID>', 'and dbid=' || p_dbid);
+      else
+        l_sql := replace(l_sql,'<DBID>','');
       end if;
+      coremod_log.log('COREMOD_API.load_tmp_data:'||chr(10)||l_sql,'DEBUG');
       execute immediate l_sql;
-      l_sql := null;
-    exception
+  exception
       when others then
-        coremod_tasks.log('Error update_dblink_db_info loading p_src_table_name: '||p_trg_table_name||':'||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE||chr(10)||l_sql);
-    end;
+        coremod_tasks.log('Error in COREMOD_API.load_tmp_data loading p_src_table_name: '||p_trg_table_name||':'||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE||chr(10)||l_sql);
+  end;
+
+  procedure update_dblink_db_info(p_db_link_name varchar2)
+  is
+    --l_sql           varchar2(32765);
+    l_data_point_ts timestamp := systimestamp;
+    l_dbid          OPAS_DB_LINKS.dbid%type;
   begin
-    load_tmp_data('V_$DATABASE',                'V$DATABASE',                 'opas_dbl_tmp_v$database','V$DB');
-    load_tmp_data('V_$PDBS',                    'V$PDBS',                     'opas_dbl_tmp_v$pdbs',    'V$PDBS');
-    load_tmp_data('GV_$INSTANCE',               'GV$INSTANCE',                'opas_dbl_tmp_v$inst',    'GV$INST');
-    load_tmp_data('DBA_REGISTRY_HISTORY',       'DBA_REGISTRY_HISTORY',       'opas_dbl_tmp_reghst',    'REGHST');
-    load_tmp_data('DBA_REGISTRY_SQLPATCH',      'DBA_REGISTRY_SQLPATCH',      'opas_dbl_tmp_sqlptchhst','SQLPTCH');
+    load_tmp_data(p_db_link_name, 'V_$DATABASE',                'V$DATABASE',                 'opas_dbl_tmp_v$database','V$DB');
+    load_tmp_data(p_db_link_name, 'V_$PDBS',                    'V$PDBS',                     'opas_dbl_tmp_v$pdbs',    'V$PDBS');
+    load_tmp_data(p_db_link_name, 'GV_$INSTANCE',               'GV$INSTANCE',                'opas_dbl_tmp_v$inst',    'GV$INST');
+    load_tmp_data(p_db_link_name, 'DBA_REGISTRY_HISTORY',       'DBA_REGISTRY_HISTORY',       'opas_dbl_tmp_reghst',    'REGHST');
+    load_tmp_data(p_db_link_name, 'DBA_REGISTRY_SQLPATCH',      'DBA_REGISTRY_SQLPATCH',      'opas_dbl_tmp_sqlptchhst','SQLPTCH');
 
     merge into opas_db_link_v$db t
       using opas_dbl_tmp_v$database s
@@ -399,7 +435,7 @@ package body COREMOD_API as
       update opas_db_links set dbid = (select dbid from opas_dbl_tmp_v$database) where DB_LINK_NAME = p_db_link_name returning dbid into l_dbid;
     end if;
 
-    load_tmp_data('DBA_HIST_DATABASE_INSTANCE', 'DBA_HIST_DATABASE_INSTANCE', 'opas_dbl_tmp_awrinst',   'DBH_INST', l_dbid);
+    load_tmp_data(p_db_link_name, 'DBA_HIST_DATABASE_INSTANCE', 'DBA_HIST_DATABASE_INSTANCE', 'opas_dbl_tmp_awrinst',   'DBH_INST', l_dbid);
 
     MERGE INTO opas_db_link_v$pdbs t
       using opas_dbl_tmp_v$pdbs s
@@ -537,3 +573,5 @@ package body COREMOD_API as
 
 end COREMOD_API;
 /
+
+

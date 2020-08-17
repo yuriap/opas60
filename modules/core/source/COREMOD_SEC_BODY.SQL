@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 package body COREMOD_SEC as
 
   function is_mod_installed(p_modname opas_modules.MODNAME%type) return boolean RESULT_CACHE
@@ -102,3 +104,5 @@ package body COREMOD_SEC as
   end;
 end COREMOD_SEC;
 /
+
+

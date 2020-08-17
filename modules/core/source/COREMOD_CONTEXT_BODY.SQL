@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 PACKAGE BODY COREMOD_CONTEXT IS
 
 PROCEDURE set_parameter (p_name   IN  VARCHAR2,
@@ -9,3 +11,5 @@ END set_parameter;
 
 END COREMOD_CONTEXT;
 /
+
+

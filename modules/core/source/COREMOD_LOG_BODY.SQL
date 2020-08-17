@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 package body COREMOD_LOG is
 
   g_user_expirience_id varchar2(100);
@@ -103,3 +105,5 @@ package body COREMOD_LOG is
 
 end;
 /
+
+

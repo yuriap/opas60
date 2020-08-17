@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 package body COREOBJ_DB_GROWTH is
 
   gLockName varchar2(256) := 'OPASDBGPART';
@@ -723,3 +725,5 @@ select dbgdp_id, size_bytes - lag(size_bytes) over(order by snapped) res
   end;
 end COREOBJ_DB_GROWTH;
 /
+
+

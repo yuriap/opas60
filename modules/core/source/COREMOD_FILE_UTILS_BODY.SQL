@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 PACKAGE BODY COREMOD_FILE_UTILS AS
 
   function clob2tab(p_file_id    opas_files.file_id%type) return clob_page pipelined
@@ -334,3 +336,5 @@ PACKAGE BODY COREMOD_FILE_UTILS AS
 
 END COREMOD_FILE_UTILS;
 /
+
+

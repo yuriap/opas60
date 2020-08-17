@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 PACKAGE BODY COREOBJ_DBLINKS2OBJ AS
 
   procedure add_obj   (p_obj_id       out opas_objects.obj_id%type,
@@ -142,3 +144,5 @@ PACKAGE BODY COREOBJ_DBLINKS2OBJ AS
 
 END COREOBJ_DBLINKS2OBJ;
 /
+
+

@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 PACKAGE COREMOD_UTILS AS
 
   function lsttochr(p_list tableofnumbers) return varchar2;
@@ -12,3 +14,5 @@ PACKAGE COREMOD_UTILS AS
 
 END COREMOD_UTILS;
 /
+
+

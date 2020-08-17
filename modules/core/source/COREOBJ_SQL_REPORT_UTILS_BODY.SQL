@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
 
   function get_header_refresh_interval(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type) return number
@@ -1732,3 +1734,5 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
 
 END COREOBJ_SQL_REPORT_UTILS;
 /
+
+

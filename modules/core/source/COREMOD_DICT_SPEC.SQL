@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 PACKAGE COREMOD_DICT AS
 
   type t_dict_table is table of opas_dictionary.display_val%type index by opas_dictionary.val%type;
@@ -6,3 +8,5 @@ PACKAGE COREMOD_DICT AS
 
 END COREMOD_DICT;
 /
+
+

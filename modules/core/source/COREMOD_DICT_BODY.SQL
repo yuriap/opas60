@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 PACKAGE BODY COREMOD_DICT AS
 
 begin
@@ -7,3 +9,5 @@ begin
   end loop;
 END COREMOD_DICT;
 /
+
+

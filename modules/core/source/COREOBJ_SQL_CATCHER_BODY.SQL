@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 package body COREOBJ_SQL_CATCHER is
 
   procedure add   (p_obj_id       out opas_objects.obj_id%type,
@@ -266,3 +268,5 @@ package body COREOBJ_SQL_CATCHER is
 
 end COREOBJ_SQL_CATCHER;
 /
+
+

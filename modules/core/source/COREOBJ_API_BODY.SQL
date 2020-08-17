@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 PACKAGE BODY COREOBJ_API AS
 
   gCurrentParamsObject opas_objects.obj_id%type;
@@ -382,3 +384,5 @@ begin
   end loop;
 END COREOBJ_API;
 /
+
+

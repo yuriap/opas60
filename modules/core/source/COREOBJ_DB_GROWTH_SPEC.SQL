@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 package COREOBJ_DB_GROWTH is
 
 --select rpad('  alrt'||upper(x.val),30,' ')||'constant varchar2(30) := '''||rpad(upper(x.val||''';'),20,' ')||' -- '||x.display_val from opas_dictionary x where dic_name='DBGALERT' order by dic_ordr;
@@ -42,3 +44,5 @@ package COREOBJ_DB_GROWTH is
 
 end COREOBJ_DB_GROWTH;
 /
+
+

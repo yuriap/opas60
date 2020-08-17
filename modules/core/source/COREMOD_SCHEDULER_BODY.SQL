@@ -1,4 +1,6 @@
 CREATE OR REPLACE
+
+
 PACKAGE BODY COREMOD_SCHEDULER AS
 
   function check_action(p_sch_id OPAS_SCHEDULER.SCH_ID%type, p_action varchar2) return boolean
@@ -233,3 +235,5 @@ PACKAGE BODY COREMOD_SCHEDULER AS
   end;
 END COREMOD_SCHEDULER;
 /
+
+
