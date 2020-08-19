@@ -601,3 +601,20 @@ from
     opas_files,
     table(coremod_file_utils.clob2tab(opas_files.file_id)) p1
 ;
+
+---------------------------------------------------------------------------------------------
+-- Browser notificatinos
+---------------------------------------------------------------------------------------------
+
+  CREATE TABLE OPAS_NOTIFICATION 
+   (ID NUMBER GENERATED ALWAYS AS IDENTITY MINVALUE 1 MAXVALUE 9999999999999999999999999999 INCREMENT BY 1 START WITH 1 CACHE 20 NOORDER  NOCYCLE  NOKEEP  NOSCALE  NOT NULL ENABLE, 
+	TYPE_ID NUMBER NOT NULL ENABLE, 
+	TEXT VARCHAR2(1000 BYTE), 
+	LINK VARCHAR2(1000 BYTE), 
+	COLOR VARCHAR2(128 BYTE) DEFAULT 'rgb(86,86,86)' NOT NULL ENABLE, 
+	USERNAME VARCHAR2(128 BYTE) DEFAULT 'PUBLIC', 
+	NO_BROWSER_NOTIF_FLAG NUMBER(1,0) DEFAULT 0, 
+	STATUS VARCHAR2(32 BYTE) DEFAULT 'NEW', 
+	created timestamp default systimestamp
+   );
+

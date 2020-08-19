@@ -54,11 +54,80 @@ PACKAGE BODY COREMOD_ALERTS AS
   procedure cleanup
   is
   begin
-    delete from opas_alert_queue
-     where (viewed is not null and viewed < sysdate - COREMOD_API.getconf('ALERTRETVED',COREMOD_API.gMODNAME))
-        or (viewed is null and created < sysdate - COREMOD_API.getconf('ALERTRETNVED',COREMOD_API.gMODNAME));
-    commit;
+    begin
+      delete from opas_alert_queue
+       where (viewed is not null and viewed < sysdate - COREMOD_API.getconf('ALERTRETVED',COREMOD_API.gMODNAME))
+          or (viewed is null and created < sysdate - COREMOD_API.getconf('ALERTRETNVED',COREMOD_API.gMODNAME));
+      commit;
+    exception
+      when others then
+        rollback;
+        coremod_log.log('Cleanup job COREMOD_ALERTS.cleanup opas_alert_queue error: '||sqlerrm);
+        coremod_log.log(DBMS_UTILITY.FORMAT_ERROR_STACK);
+        coremod_log.log(DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+    end;
+
+    begin
+      delete from OPAS_NOTIFICATION
+       where CREATED < sysdate - COREMOD_API.getconf('NOTIFICATIONS',COREMOD_API.gMODNAME)/24;
+      commit;
+    exception
+      when others then
+        rollback;
+        coremod_log.log('Cleanup job COREMOD_ALERTS.cleanup OPAS_NOTIFICATION error: '||sqlerrm);
+        coremod_log.log(DBMS_UTILITY.FORMAT_ERROR_STACK);
+        coremod_log.log(DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+    end;
   end;
+
+  procedure add_notification(
+    nt_id         out opas_notification.ID%type,
+    nt_text       opas_notification.text%type,
+    nt_link       opas_notification.link%type default null,
+    nt_type_id    opas_notification.type_id%type default nttTaskfinished, -- 1	Maintenance; 2	Task finished; 3	Information
+    nt_color      opas_notification.color%type default ntcGray,
+    nt_username   opas_notification.username%type default 'PUBLIC',
+    nt_no_browser_notif_flag opas_notification.no_browser_notif_flag%type default 1,
+    nt_activate    number default 1
+  ) is
+  begin
+    insert into OPAS_NOTIFICATION (type_id, text, link, color, username, no_browser_notif_flag, STATUS)
+    values (nt_type_id, nt_text, nt_link, nt_color, nt_username, nt_no_browser_notif_flag, case when nt_activate = 1 then ntReady else ntNew end)
+    returning ID into nt_id;
+    --commit;
+  end add_notification;
+
+  procedure set_url(nt_id     opas_notification.id%type,
+                    p_obj_id  opas_objects.obj_id%type,
+                    p_page_id number,
+                    p_prev_page number default 10)
+  is
+  begin
+    update OPAS_NOTIFICATION
+    set link = 'f?p='||nvl(v('APP_ID'),COREMOD_API.gAPEX_APP_ID)||':'||p_page_id||':<APP_SESSION>::::APP_OBJ_ID,APP_PREV_PAGE,APP_NOTIF:'||p_obj_id||','||p_prev_page||','||nt_id
+    where ID = nt_id;
+  end;
+
+  procedure activate_notification(nt_id     opas_notification.id%type,
+                                  nt_result varchar2,
+                                  nt_color  opas_notification.color%type default null,
+                                  nt_type   opas_notification.type_id%type default null) is
+    pragma autonomous_transaction;
+  begin
+    update OPAS_NOTIFICATION
+    set text = substr(replace(text,ntPlaceHolder,nt_result),1,1000),
+        status = ntReady,
+        color  = nvl(nt_color, color),
+        type_id = nvl(nt_type,type_id)
+    where ID = nt_id;
+    commit;
+  end activate_notification;
+
+  procedure viewed_notification(nt_id opas_notification.id%type) is
+  begin
+    delete from OPAS_NOTIFICATION where ID = nt_id;
+    --commit;
+  end viewed_notification;
 
 END COREMOD_ALERTS;
 /

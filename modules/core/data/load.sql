@@ -19,7 +19,8 @@ INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','SQ
 
 INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','RETENTION','SQLSEARCHRETENTION', 60,'Retention time in minutes for SQL Searches.');
 --new
-INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','RETENTION','ASHARANGE', 8,'Retention time in days for non referenced ASHA Cube ranges.');
+INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','RETENTION','ASHARANGE',      8,'Retention time in days for non referenced ASHA Cube ranges.');
+INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','RETENTION','NOTIFICATIONS', 48,'Retention time in hours for non-viewed notifications.');
 
 insert into opas_groups (group_id,group_name,group_descr) values (0, 'Administrators','Full set of rights');
 insert into opas_groups (group_id,group_name,group_descr) values (1, 'Reas-write users','All application functions');
@@ -114,6 +115,13 @@ INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sp
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLCOMPSECT','AWRSTAT'                   ,'AWR statistics'       ,'ccawrst',        null,null,40);
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLCOMPSECT','ASHWAIT'                   ,'ASH Wait Profiles'    ,'ccashwt',        null,null,50);
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLCOMPSECT','ASHPLANSTAT'               ,'ASH Plan STats'       ,'ccashplst',      null,null,50);
+
+--Notifications
+INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','NOTIFTYPES','1'                          ,'Maintenance'   ,'fa-wrench',                'rgb(86,86,86)' ,null,10);
+INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','NOTIFTYPES','2'                          ,'Task finished' ,'fa-server-check',          'rgb(34,177,76)',null,20);
+INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','NOTIFTYPES','3'                          ,'Information'   ,'fa-info-square-o',         'rgb(86,86,86)' ,null,30);
+INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','NOTIFTYPES','4'                          ,'Exception'     ,'fa-exclamation-diamond-o', 'rgb(192,0,15)' ,null,40);
+
 
 declare
   l_file_id number;

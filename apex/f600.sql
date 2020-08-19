@@ -28,12 +28,12 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 -- Application Export:
 --   Application:     600
 --   Name:            Oracle Performance Analytic Suite
---   Date and Time:   16:58 Friday August 14, 2020
+--   Date and Time:   14:36 Wednesday August 19, 2020
 --   Exported By:     OPAS60DADM
 --   Flashback:       0
 --   Export Type:     Application Export
 --     Pages:                     57
---       Items:                  388
+--       Items:                  389
 --       Validations:              4
 --       Processes:              219
 --       Regions:                284
@@ -41,8 +41,8 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 --       Dynamic Actions:         66
 --     Shared Components:
 --       Logic:
---         Items:                 11
---         Processes:              4
+--         Items:                 12
+--         Processes:              5
 --         Computations:           2
 --       Navigation:
 --         Lists:                  6
@@ -132,7 +132,7 @@ wwv_flow_api.create_flow(
 ,p_substitution_string_06=>'APP_GRID_DT_FMT_TZ_FULL'
 ,p_substitution_value_06=>'YYYY-MM-DD HH24:MI:SS.ff9 TZH:TZM'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200814165816'
+,p_last_upd_yyyymmddhh24miss=>'20200819101926'
 ,p_file_prefix => nvl(wwv_flow_application_install.get_static_app_file_prefix,'')
 ,p_files_version=>3
 ,p_ui_type_name => null
@@ -729,6 +729,24 @@ wwv_flow_api.create_flow_process(
 );
 end;
 /
+prompt --application/shared_components/logic/application_processes/deletenotification
+begin
+wwv_flow_api.create_flow_process(
+ p_id=>wwv_flow_api.id(6179723239659103)
+,p_process_sequence=>1
+,p_process_point=>'BEFORE_HEADER'
+,p_process_type=>'NATIVE_PLSQL'
+,p_process_name=>'DeleteNotification'
+,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'begin',
+'  if :APP_NOTIF is not null then',
+'    COREMOD_ALERTS.viewed_notification (  NT_ID => :APP_NOTIF) ;  ',
+'    :APP_NOTIF:= null;',
+'  end if;',
+'end;'))
+);
+end;
+/
 prompt --application/shared_components/logic/application_processes/closedblinksbeforepagerendering
 begin
 wwv_flow_api.create_flow_process(
@@ -760,9 +778,7 @@ wwv_flow_api.create_flow_process(
 ,p_process_name=>'DelNotification'
 ,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'begin',
-'  --raise_application_error(-20100,''Notification id = ''||apex_application.g_x01);',
-'  delete from OPAS_NOTIFICATION where ID = apex_application.g_x01;',
-'  commit;',
+'  COREMOD_ALERTS.viewed_notification(apex_application.g_x01);',
 'end;'))
 ,p_security_scheme=>'MUST_NOT_BE_PUBLIC_USER'
 );
@@ -792,6 +808,16 @@ wwv_flow_api.create_flow_item(
  p_id=>wwv_flow_api.id(77326372761544306)
 ,p_name=>'APP_NEXT_OBJ'
 ,p_protection_level=>'I'
+);
+end;
+/
+prompt --application/shared_components/logic/application_items/app_notif
+begin
+wwv_flow_api.create_flow_item(
+ p_id=>wwv_flow_api.id(6179480010646241)
+,p_name=>'APP_NOTIF'
+,p_protection_level=>'N'
+,p_item_comment=>'Notification to be deleted'
 );
 end;
 /
@@ -15434,8 +15460,8 @@ wwv_flow_api.create_page(
 ,p_autocomplete_on_off=>'OFF'
 ,p_group_id=>wwv_flow_api.id(64516740137155169)
 ,p_protection_level=>'D'
-,p_last_updated_by=>'OLYA'
-,p_last_upd_yyyymmddhh24miss=>'20200813162155'
+,p_last_updated_by=>'OPAS60DADM'
+,p_last_upd_yyyymmddhh24miss=>'20200819093654'
 );
 wwv_flow_api.create_page_da_event(
  p_id=>wwv_flow_api.id(4002475162620619)
@@ -15480,11 +15506,11 @@ wwv_flow_api.create_page_da_action(
 ,p_attribute_02=>'notification-menu'
 ,p_attribute_04=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'SELECT ',
-'    nt.icon AS NOTE_ICON, ',
-'    nt.icon_color AS NOTE_ICON_COLOR, ',
-'    nt.header AS NOTE_HEADER,',
+'    nt.sparse1 AS NOTE_ICON, ',
+'    nt.sparse2 AS NOTE_ICON_COLOR, ',
+'    nt.display_val || '' at '' || to_char(n.created,''&APP_GRID_DT_FMT_L1.'') AS NOTE_HEADER,',
 '    n.text AS NOTE_TEXT, ',
-'    n.link AS NOTE_LINK, ',
+'    replace(n.link,''<APP_SESSION>'',v(''APP_SESSION'')) AS NOTE_LINK, ',
 '    n.color AS NOTE_COLOR,',
 '    ''javascript:apex.server.process ',
 '  ( "DelNotification",',
@@ -15499,8 +15525,9 @@ wwv_flow_api.create_page_da_action(
 '    n.no_browser_notif_flag AS NO_BROWSER_NOTIFICATION',
 'FROM',
 '    OPAS_NOTIFICATION n',
-'  , OPAS_NOTIF_TYPES nt',
-'where n.type_id = nt.id',
+'  , opas_dictionary nt',
+'where n.type_id = to_number(nt.val) and n.status=''READY'' and nt.modname = ''OPASCORE'' and nt.dic_name = ''NOTIFTYPES''',
+'and USERNAME = decode(USERNAME,''PUBLIC'', USERNAME,''INTERNAL'', USERNAME, nvl(v(''APP_USER''),''~^''))',
 'order by n.id desc'))
 ,p_attribute_05=>'Y'
 );
@@ -25027,7 +25054,7 @@ wwv_flow_api.create_page(
 ,p_page_template_options=>'#DEFAULT#'
 ,p_required_role=>wwv_flow_api.id(64510632529107389)
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200729095231'
+,p_last_upd_yyyymmddhh24miss=>'20200818160112'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(65667258443133133)
@@ -25147,6 +25174,18 @@ wwv_flow_api.create_page_branch(
 ,p_branch_condition_type=>'VAL_OF_ITEM_IN_COND_EQ_COND2'
 ,p_branch_condition=>'P1400_CLOSE_OPTIONS'
 ,p_branch_condition_text=>'G'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(4903315143860803)
+,p_name=>'P1400_NOTIFYME'
+,p_item_sequence=>130
+,p_item_plug_id=>wwv_flow_api.id(438782066933280287)
+,p_item_default=>'Y'
+,p_prompt=>'Notify me'
+,p_display_as=>'NATIVE_YES_NO'
+,p_field_template=>wwv_flow_api.id(59011729453993944)
+,p_item_template_options=>'#DEFAULT#'
+,p_attribute_01=>'APPLICATION'
 );
 wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(65431781187589306)
@@ -25354,7 +25393,7 @@ wwv_flow_api.create_page_item(
 ,p_is_required=>true
 ,p_item_sequence=>70
 ,p_item_plug_id=>wwv_flow_api.id(65667571609133136)
-,p_prompt=>'V$ASH Recursive limit (-1 not gather)'
+,p_prompt=>'V$ASH Recursive minimum number of samples (-1 not gather)'
 ,p_display_as=>'NATIVE_NUMBER_FIELD'
 ,p_cSize=>30
 ,p_field_template=>wwv_flow_api.id(59011729453993944)
@@ -25369,7 +25408,7 @@ wwv_flow_api.create_page_item(
 ,p_is_required=>true
 ,p_item_sequence=>80
 ,p_item_plug_id=>wwv_flow_api.id(65667571609133136)
-,p_prompt=>'ASH HST Recursive limit (-1 not gather)'
+,p_prompt=>'ASH HST Recursive minimum number of samples (-1 not gather)'
 ,p_display_as=>'NATIVE_NUMBER_FIELD'
 ,p_cSize=>30
 ,p_begin_on_new_line=>'N'
@@ -25512,7 +25551,8 @@ wwv_flow_api.create_page_process(
 '      P_OWNER => V(''APP_USER''),',
 '      P_DESCR => :P1400_DESCR,',
 '      P_SQL_ID => :P1400_SQL_ID,',
-'      P_DB_LINK => :P1400_DB_LINK) ;',
+'      P_DB_LINK => :P1400_DB_LINK,',
+'      p_notifyme => case when :P1400_NOTIFYME=''Y'' then true else false end) ;',
 '      ',
 '    COREOBJ_API.set_param(p_obj_id   => :P1400_OBJ_ID,',
 '                          p_par_name => COREOBJ_SQL_UTILS.pnSQLMONHSTDays,',
@@ -32509,7 +32549,7 @@ wwv_flow_api.create_page(
 ,p_page_template_options=>'#DEFAULT#'
 ,p_dialog_width=>'1500'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200812121041'
+,p_last_upd_yyyymmddhh24miss=>'20200819101855'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(76373830484543731)
@@ -32893,7 +32933,8 @@ wwv_flow_api.create_page_process(
 ,p_process_name=>'TagSQLs'
 ,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'begin',
-'coreobj_sql_tags.start_auto_tag_sql_task(p_tag_name => :p1413_tag_name);',
+'coreobj_sql_tags.start_auto_tag_sql_task(p_tag_name => :p1413_tag_name,',
+'                                         p_notifyme => true);',
 'end;'))
 ,p_error_display_location=>'INLINE_IN_NOTIFICATION'
 ,p_process_when_button_id=>wwv_flow_api.id(4724002431788027)
@@ -33278,7 +33319,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(65526486119996516)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200809194808'
+,p_last_upd_yyyymmddhh24miss=>'20200819101926'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(76495912550688745)
@@ -33926,7 +33967,8 @@ wwv_flow_api.create_page_process(
 ,p_process_name=>'StartTagging'
 ,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'begin',
-'coreobj_sql_tags.start_auto_tag_sql_task(p_tag_name => :p1415_tag_name);',
+'coreobj_sql_tags.start_auto_tag_sql_task(p_tag_name => :p1415_tag_name,',
+'                                         p_notifyme => true);',
 'end;'))
 ,p_error_display_location=>'INLINE_IN_NOTIFICATION'
 ,p_process_when_button_id=>wwv_flow_api.id(76494369593688729)

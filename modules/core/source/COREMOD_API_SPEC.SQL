@@ -10,6 +10,8 @@ package COREMOD_API as
 
    gMODNAME       constant varchar2(32) := 'OPASCORE';
 
+   gAPEX_APP_ID   constant number := 600;
+
    exDBLinkSuspended exception;
    pragma exception_init(exDBLinkSuspended, -20999);
 

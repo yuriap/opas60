@@ -16,13 +16,24 @@ set verify off
 spool _tmp_get_src.sql
 select 
 'spool &COREMODPATH.'||object_name||'_SPEC.SQL'||chr(10)||
+'prompt '||chr(10)||
+'prompt '||chr(10)||
 'prompt CREATE OR REPLACE '||chr(10)||
 q'[select text from user_source where name=']'||object_name||q'[' and type='PACKAGE' order by line;]'||chr(10)||
-'prompt /'||chr(10)||'spool off'||chr(10)||
+'prompt /'||chr(10)||
+'prompt '||chr(10)||
+'prompt '||chr(10)||
+'spool off'||
+chr(10)||
 'spool &COREMODPATH.'||object_name||'_BODY.SQL'||chr(10)||
+'prompt '||chr(10)||
+'prompt '||chr(10)||
 'prompt CREATE OR REPLACE '||chr(10)||
 q'[select text from user_source where name=']'||object_name||q'[' and type='PACKAGE BODY' order by line;]'||chr(10)||
-'prompt /'||chr(10)||'spool off'
+'prompt /'||chr(10)||
+'prompt '||chr(10)||
+'prompt '||chr(10)||
+'spool off'
 from user_objects 
 where object_type like 'PACKAGE' 
 and object_name like 'CORE%'

@@ -21,7 +21,8 @@ package coreobj_sql_tags is
   procedure remove_tag_from_sqls(p_tag_name opas_ot_sql_tags.tag_name%type,
                                  p_tag_type opas_ot_sql_sql2tags.tag_type%type default 'A');
   procedure auto_tag_sql_task(p_tag_name opas_ot_sql_tags.tag_name%type);
-  procedure start_auto_tag_sql_task(p_tag_name opas_ot_sql_tags.tag_name%type);
+  procedure start_auto_tag_sql_task(p_tag_name opas_ot_sql_tags.tag_name%type,
+                                    p_notifyme         boolean default false);
 
   function parse_tag_ist(p_tag_names varchar2,
                          p_delim     varchar2 default ',',

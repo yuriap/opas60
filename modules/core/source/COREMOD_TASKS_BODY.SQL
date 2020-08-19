@@ -366,8 +366,9 @@ package body coremod_tasks as
 
   procedure execute_task(p_tq_id opas_task_queue.tq_id%type)
   is
-    l_task opas_task%rowtype;
-    l_task_body clob;
+    l_task       opas_task%rowtype;
+    l_task_body  clob;
+    l_nt_id      opas_notification.ID%type;
   begin
 
     --to be able to wait for job finish
@@ -381,7 +382,7 @@ package body coremod_tasks as
     set_task_running(p_tq_id);
     select * into l_task from opas_task where taskname=(select taskname from opas_task_queue where tq_id = p_tq_id);
     l_task_body:=l_task.task_body;
-    for i in (select * from opas_task_pars where tq_id = p_tq_id) loop
+    for i in (select * from opas_task_pars where tq_id = p_tq_id and par_name not in (parNotifyMe)) loop
       case
         when i.num_par is not null then
           l_task_body:=replace(l_task_body,'<'||i.par_name||'>',i.num_par);
@@ -395,10 +396,25 @@ package body coremod_tasks as
           raise_application_error(-20000,'Null parameter passed');
       end case;
     end loop;
+
+    for i in (select * from opas_task_pars where tq_id = p_tq_id and par_name in (parNotifyMe)) loop
+      if i.par_name = parNotifyMe then
+        l_nt_id := i.num_par;
+      end if;
+    end loop;
+
     log('Start task: '||l_task.taskname,p_tq_id);
     execute immediate l_task_body;
     log('End task: '||l_task.taskname,p_tq_id);
+
     set_task_finished(p_tq_id,gtqSUCCEEDED);
+    if l_nt_id is not null then
+      COREMOD_ALERTS.activate_notification (
+        NT_ID => l_nt_id,
+        NT_RESULT => 'Success',
+        NT_COLOR => COREMOD_ALERTS.ntcGreen) ;
+    end if;
+
     gTQ_ID:=null;
   exception
     when others then
@@ -407,6 +423,13 @@ package body coremod_tasks as
       log('Task body: '||l_task_body,p_tq_id);
       log('Execute task error stack: '||DBMS_UTILITY.FORMAT_ERROR_STACK,p_tq_id);
       gTQ_ID:=null;
+      if l_nt_id is not null then
+        COREMOD_ALERTS.activate_notification (
+          NT_ID => l_nt_id,
+          NT_RESULT => 'Error: '||sqlerrm,
+          NT_COLOR => COREMOD_ALERTS.ntcRed,
+          nt_type => COREMOD_ALERTS.nttException) ;
+      end if;
       raise_application_error(-20000, 'Execute task error ('||l_task.taskname||'): '||sqlerrm);
   end;
 

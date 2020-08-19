@@ -3,22 +3,53 @@
 CREATE OR REPLACE
 PACKAGE BODY COREOBJ_SQL AS
 
-  procedure queue_discover_sql(p_sql_data_point    opas_ot_sql_data%rowtype)
+  procedure queue_discover_sql(p_sql_data_point    opas_ot_sql_data%rowtype,
+                               p_notifyme         boolean default false)
   is
     L_TASKNAME   OPAS_TASK.TASKNAME%type := case when p_sql_data_point.prnt_data_point_id is null then 'OPAS_SQL_DISCOVER' else 'OPAS_SQL_DISCOVER_REC' end;
     l_tq_id      OPAS_TASK_QUEUE.tq_id%type;
 
     l_status     opas_ot_sql_data.gathering_status%type;
+    l_sql_id     opas_ot_sql_data.sql_id%type;
+    l_owner      OPAS_OBJECTS.OBJ_OWNER%type;
+    l_obj_id     OPAS_OBJECTS.obj_id%type;
+    l_nt_id      opas_notification.ID%type;
   begin
-    select gathering_status into l_status from opas_ot_sql_data where sql_data_point_id = p_sql_data_point.sql_data_point_id for update;
+    select gathering_status, sql_id into l_status, l_sql_id from opas_ot_sql_data where sql_data_point_id = p_sql_data_point.sql_data_point_id for update;
+
     if l_status in (sdoNotStarted, sdoFAILED) then
+
       l_tq_id:=COREMOD_TASKS.prep_execute_task (  P_TASKNAME => L_TASKNAME) ;
       COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => 'B1', p_num_par => p_sql_data_point.sql_data_point_id);
+
+      if p_notifyme then
+        select OBJ_OWNER, obj_id into l_owner, l_obj_id from OPAS_OBJECTS where obj_id = (select obj_id from OPAS_OT_SQL_DATA_POINT_REF where SQL_DATA_POINT_ID = p_sql_data_point.SQL_DATA_POINT_ID);
+
+        COREMOD_ALERTS.add_notification (
+          nt_id => l_nt_id,
+          NT_TEXT => 'SQL Report for "'||l_sql_id|| '" finished with '||COREMOD_ALERTS.ntPlaceHolder,
+          --NT_LINK => COREMOD_ALERTS.create_url(), 'f?p='||v('APP_ID')||':1401:<APP_SESSION>::::APP_OBJ_ID,APP_PREV_PAGE:'||l_obj_id||',10',
+          NT_TYPE_ID => COREMOD_ALERTS.nttTaskfinished,
+          --NT_COLOR => NT_COLOR, --default
+          NT_USERNAME => l_owner,
+          --NT_NO_BROWSER_NOTIF_FLAG => NT_NO_BROWSER_NOTIF_FLAG, default
+          NT_ACTIVATE => 0) ;
+
+        COREMOD_ALERTS.set_url (
+          NT_ID => l_nt_id,
+          P_OBJ_ID => l_obj_id,
+          p_page_id => 1401,
+          P_PREV_PAGE => 10) ;
+
+        COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => COREMOD_TASKS.parNotifyMe, p_num_par => l_nt_id);
+      end if;
+
       COREMOD_TASKS.queue_task ( p_tq_id => l_tq_id ) ;
 
       update opas_ot_sql_data set tq_id = l_tq_id, gathering_status = sdoInQueue where sql_data_point_id = p_sql_data_point.sql_data_point_id;
 
       COREOBJ_SQL_UTILS.init_section_statuses(p_sql_data_point.sql_data_point_id);
+
     else
       raise_application_error(-20000,'Inapropriate data object '|| p_sql_data_point.sql_data_point_id || ' status: '||l_status);
     end if;
@@ -55,7 +86,8 @@ PACKAGE BODY COREOBJ_SQL AS
                    p_descr            opas_objects.obj_descr%type,
                    p_sql_id           opas_ot_sql_descriptions.sql_id%type,
                    p_db_link          opas_db_links.db_link_name%type,
-                   p_prnt_dp          opas_ot_sql_data.prnt_data_point_id%type default null)
+                   p_prnt_dp          opas_ot_sql_data.prnt_data_point_id%type default null,
+                   p_notifyme         boolean default false)
   AS
     l_sql_exists number;
     l_sql_data_point    opas_ot_sql_data%rowtype;
@@ -82,7 +114,7 @@ PACKAGE BODY COREOBJ_SQL AS
              ( obj_id,  sql_data_point_id)
       VALUES ( P_OBJ_ID, l_sql_data_point.sql_data_point_id);
 
-    queue_discover_sql(l_sql_data_point);
+    queue_discover_sql(l_sql_data_point, p_notifyme);
   END add;
 
   procedure remove  (p_obj_id    opas_objects.obj_id%type,

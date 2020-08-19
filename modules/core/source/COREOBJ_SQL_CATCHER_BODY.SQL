@@ -170,6 +170,8 @@ package body COREOBJ_SQL_CATCHER is
     l_cnt2              number := 0;
     l_cnt3              number := 0;
     l_log_time          number := dbms_utility.get_time;
+    l_name              opas_objects.obj_name%type;
+    l_nt_id             opas_notification.ID%type;
 
     procedure load_sqls is
     begin
@@ -179,7 +181,7 @@ package body COREOBJ_SQL_CATCHER is
     end;
 
   begin
-    select obj_owner into l_owner from opas_objects where obj_id = p_obj_id;
+    select obj_owner, obj_name into l_owner, l_name from opas_objects where obj_id = p_obj_id;
     select * into l_ctchr from opas_ot_sqlcatch where obj_id = p_obj_id;
     coremod_api.init_longops(p_op_name => 'SQL Catching',
                              p_target_desc => 'for duration',
@@ -256,10 +258,43 @@ package body COREOBJ_SQL_CATCHER is
       dbms_lock.sleep(l_ctchr.check_interval);
     end loop;
     UPDATE opas_ot_sqlcatch SET status =  stInactive WHERE obj_id = p_obj_id;
+
+    COREMOD_ALERTS.add_notification (
+          nt_id => l_nt_id,
+          NT_TEXT => 'SQL Catcher "'|| l_name|| '" finished by schedule',
+          NT_TYPE_ID => COREMOD_ALERTS.nttTaskfinished,
+          NT_COLOR => COREMOD_ALERTS.ntcGreen,
+          NT_USERNAME => l_owner,
+          --NT_NO_BROWSER_NOTIF_FLAG => 0,
+          NT_ACTIVATE => 1) ;
+
+    COREMOD_ALERTS.set_url (
+          NT_ID => l_nt_id,
+          P_OBJ_ID => p_obj_id,
+          p_page_id => 7000,
+          P_PREV_PAGE => 10) ;
+
     commit;
+
   exception
     when others then
       rollback;
+
+      COREMOD_ALERTS.add_notification (
+          nt_id => l_nt_id,
+          NT_TEXT => 'SQL Catcher "'|| l_name|| '" failed with: '||sqlerrm,
+          NT_TYPE_ID => COREMOD_ALERTS.nttException,
+          NT_COLOR => COREMOD_ALERTS.ntcRed,
+          NT_USERNAME => l_owner,
+          NT_NO_BROWSER_NOTIF_FLAG => 0,
+          NT_ACTIVATE => 1) ;
+
+         COREMOD_ALERTS.set_url (
+          NT_ID => l_nt_id,
+          P_OBJ_ID => p_obj_id,
+          p_page_id => 7000,
+          P_PREV_PAGE => 10) ;
+
       UPDATE opas_ot_sqlcatch SET status =  stInactive WHERE obj_id = p_obj_id;
       commit;
       if l_sql is not null then coremod_tasks.log('Error task_catcher ('||p_obj_id||'): '||l_sql); end if;

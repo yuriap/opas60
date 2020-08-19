@@ -19,6 +19,8 @@ package coremod_tasks as
   tpLOW        constant varchar2(10):='LOW';
   tpINTERNAL   constant varchar2(10):='INTERNAL';
 
+  parNotifyMe  constant varchar2(10):='<NOTIFYME>';
+
   exTimedOutTask exception;
 
   procedure cleanup_tasks;

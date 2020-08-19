@@ -4,6 +4,10 @@ Version 6.5 PROD
 Release notes:
 ==============
 
+Version 6.6.0 2020-Aug-19
+-------------------------
+Browser notifications added
+ 
 Version 6.5.0 2020-Jul-05
 -------------------------
 SQL Comparison Report

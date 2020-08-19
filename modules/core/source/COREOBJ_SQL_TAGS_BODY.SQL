@@ -189,12 +189,30 @@ where s.sql_id = :sqlid and (s.sql_text = f.file_id or s.sql_text_approx = f.fil
     end loop;
   end;
 
-  procedure start_auto_tag_sql_task(p_tag_name opas_ot_sql_tags.tag_name%type)
+  procedure start_auto_tag_sql_task(p_tag_name opas_ot_sql_tags.tag_name%type,
+                                    p_notifyme         boolean default false)
     is
     l_tq_id      OPAS_TASK_QUEUE.tq_id%type;
+    l_nt_id      opas_notification.ID%type;
   begin
     l_tq_id:=COREMOD_TASKS.prep_execute_task (  P_TASKNAME => 'OPAS_SQL_TAGSQL') ;
     COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => 'B1', p_varchar_par => p_tag_name);
+
+      if p_notifyme then
+
+        COREMOD_ALERTS.add_notification (
+          nt_id => l_nt_id,
+          NT_TEXT => 'Tagging finished for "'||p_tag_name|| '" with '||COREMOD_ALERTS.ntPlaceHolder,
+          --NT_LINK => COREMOD_ALERTS.create_url(), 'f?p='||v('APP_ID')||':1401:<APP_SESSION>::::APP_OBJ_ID,APP_PREV_PAGE:'||l_obj_id||',10',
+          NT_TYPE_ID => COREMOD_ALERTS.nttTaskfinished,
+          --NT_COLOR => NT_COLOR, --default
+          NT_USERNAME => v('APP_USER'),
+          --NT_NO_BROWSER_NOTIF_FLAG => NT_NO_BROWSER_NOTIF_FLAG, default
+          NT_ACTIVATE => 0) ;
+
+        COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => COREMOD_TASKS.parNotifyMe, p_num_par => l_nt_id);
+      end if;
+
     COREMOD_TASKS.queue_task ( p_tq_id => l_tq_id ) ;
   end;
 
