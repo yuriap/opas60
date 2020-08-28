@@ -108,7 +108,9 @@ connstr             varchar2(1000),
 status              varchar2(32)     default 'NEW'         not null,
 is_public           varchar2(1)      default 'Y'           not null,
 dbid                number,
-update_sched        number                                           references opas_scheduler(sch_id) on delete set null
+update_sched        varchar2(512),
+created             timestamp default systimestamp,
+data_updated        timestamp
 );
 
 create or replace force view v$opas_db_links as 
@@ -366,6 +368,11 @@ create table opas_last_nav_folder (
   folder_id           number
 )
 organization index; 
+
+create table opas_app_state (
+apex_user      varchar2(100)                        primary key,
+jsparams       CLOB,
+CONSTRAINT obj_app_st_json_chk CHECK (jsparams IS JSON));
 
 create or replace force view v$opas_objects as
 select

@@ -151,24 +151,67 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
     commit;
   end;
 
-  procedure start_search(p_session_id opas_ot_sql_searches.session_id%type)
+  procedure start_search(p_session_id opas_ot_sql_searches.session_id%type,
+                         p_notifyme   boolean default false)
   is
     l_tq_id      OPAS_TASK_QUEUE.tq_id%type;
+    l_nt_id      opas_notification.ID%type;
   begin
     store_params(p_session_id);
     commit;
     if gSearchMode in (stInternal,stBoth) then
       l_tq_id:=COREMOD_TASKS.prep_execute_task (  P_TASKNAME => 'OPAS_SQL_LOCAL_SEARCH') ;
+      if p_notifyme then
+        COREMOD_ALERTS.add_notification (
+          nt_id => l_nt_id,
+          NT_TEXT => 'Local search session #'||p_session_id|| ' finished with '||COREMOD_ALERTS.ntPlaceHolder,
+          --NT_LINK => 'f?p='||v('APP_ID')||':1411:<APP_SESSION>::::'||COREMOD_ALERTS.url_with_cleanup('P1411_MODE,P1411_SESSION', 'COMMON,'||p_session_id, l_nt_id),
+          NT_TYPE_ID => COREMOD_ALERTS.nttTaskfinished,
+          --NT_COLOR => NT_COLOR, --default
+          NT_USERNAME => v('APP_USER'),
+          --NT_NO_BROWSER_NOTIF_FLAG => NT_NO_BROWSER_NOTIF_FLAG, default
+          NT_ACTIVATE => 0) ;
+
+        COREMOD_ALERTS.set_url (  NT_ID => l_nt_id,
+          --P_OBJ_ID => P_OBJ_ID,
+          P_PAGE_ID => 1411,
+          --P_PREV_PAGE => P_PREV_PAGE,
+          P_ITEMS => 'P1411_MODE,P1411_SESSION',
+          P_VALUES => 'COMMON,'||p_session_id) ;
+
+        COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => COREMOD_TASKS.parNotifyMe, p_num_par => l_nt_id);
+      end if;
       COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => 'B1', p_num_par => p_session_id);
       COREMOD_TASKS.queue_task ( p_tq_id => l_tq_id ) ;
       commit;
     end if;
     if gSearchMode in (stExternal,stBoth) then
       l_tq_id:=COREMOD_TASKS.prep_execute_task (  P_TASKNAME => 'OPAS_SQL_EXTERNAL_SEARCH') ;
+      if p_notifyme then
+        COREMOD_ALERTS.add_notification (
+          nt_id => l_nt_id,
+          NT_TEXT => 'External search session #'||p_session_id|| ' finished with '||COREMOD_ALERTS.ntPlaceHolder,
+          --NT_LINK => 'f?p='||v('APP_ID')||':1411:<APP_SESSION>::::'||COREMOD_ALERTS.url_with_cleanup('P1411_MODE,P1411_SESSION', 'COMMON,'||p_session_id, l_nt_id),
+          NT_TYPE_ID => COREMOD_ALERTS.nttTaskfinished,
+          --NT_COLOR => NT_COLOR, --default
+          NT_USERNAME => v('APP_USER'),
+          --NT_NO_BROWSER_NOTIF_FLAG => NT_NO_BROWSER_NOTIF_FLAG, default
+          NT_ACTIVATE => 0) ;
+
+        COREMOD_ALERTS.set_url (  NT_ID => l_nt_id,
+          --P_OBJ_ID => P_OBJ_ID,
+          P_PAGE_ID => 1411,
+          --P_PREV_PAGE => P_PREV_PAGE,
+          P_ITEMS => 'P1411_MODE,P1411_SESSION',
+          P_VALUES => 'COMMON,'||p_session_id) ;
+
+        COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => COREMOD_TASKS.parNotifyMe, p_num_par => l_nt_id);
+      end if;
       COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => 'B1', p_num_par => p_session_id);
       COREMOD_TASKS.queue_task ( p_tq_id => l_tq_id ) ;
       commit;
     end if;
+
     begin
       coremod_tasks.exec_coordinator;
     exception

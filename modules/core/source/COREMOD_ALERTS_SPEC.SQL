@@ -50,10 +50,12 @@ PACKAGE COREMOD_ALERTS AS
     nt_activate   number default 1
   );
 
-  procedure set_url(nt_id     opas_notification.id%type,
-                    p_obj_id  opas_objects.obj_id%type,
-                    p_page_id number,
-                    p_prev_page number default 10);
+  procedure set_url(nt_id       opas_notification.id%type,
+                    p_page_id   number,
+                    p_obj_id    opas_objects.obj_id%type default null,
+                    p_prev_page number default 10,
+                    p_items     varchar2 default null,
+                    p_values    varchar2 default null);
 
   procedure activate_notification(nt_id     opas_notification.id%type,
                                   nt_result varchar2,

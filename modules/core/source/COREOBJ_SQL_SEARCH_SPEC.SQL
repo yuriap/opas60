@@ -30,7 +30,8 @@ PACKAGE COREOBJ_SQL_SEARCH AS
                       p_pname      varchar2,
                       p_value  out varchar2);
 
-  procedure start_search(p_session_id opas_ot_sql_searches.session_id%type);
+  procedure start_search(p_session_id opas_ot_sql_searches.session_id%type,
+                         p_notifyme   boolean default false);
   --async
   procedure start_local_search(p_session_id opas_ot_sql_searches.session_id%type);
   procedure start_external_search(p_session_id opas_ot_sql_searches.session_id%type);

@@ -5,6 +5,9 @@ show errors
 @@COREMOD_API_SPEC.SQL
 show errors
 
+@@COREMOD_APPSTATE_SPEC.SQL
+show errors
+
 @@COREMOD_CLEANUP_SPEC.SQL
 show errors
 
@@ -96,6 +99,9 @@ show errors
 show errors
 
 @@COREMOD_API_BODY.SQL
+show errors
+
+@@COREMOD_APPSTATE_BODY.SQL
 show errors
 
 @@COREMOD_CLEANUP_BODY.SQL

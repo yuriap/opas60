@@ -214,8 +214,10 @@ PACKAGE BODY COREMOD_SCHEDULER AS
                 COREMOD_LOG.log('Suspension: Stopping job '||l_params.job_name||' error: '||sqlerrm);
             end;
           end loop;
-          DBMS_SCHEDULER.disable(l_params.job_name);
-          DBMS_SCHEDULER.drop_job(l_params.job_name);
+          for i in (select job_name from user_scheduler_jobs where job_name=l_params.job_name) loop
+            DBMS_SCHEDULER.disable(i.job_name);
+            DBMS_SCHEDULER.drop_job(i.job_name);
+          end loop;
         end if;
         update OPAS_SCHEDULER t set t.status = getstatus(scaCleanup, t.status) where sch_id=l_params.sch_id;
       end loop;

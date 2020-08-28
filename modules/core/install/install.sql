@@ -137,8 +137,17 @@ begin
   COREMOD_TASKS.create_task (  p_taskname  => 'OPAS_SQL_CATCHER',
                                p_modname   => '&MODNM.',
                                p_is_public => 'Y', 
-							   p_task_priority => COREMOD_TASKS.tpLOW,
+							   p_task_priority => COREMOD_TASKS.tpHIGH,
                                p_task_body => 'begin COREOBJ_SQL_CATCHER.task_catcher(p_obj_id => <B1>); end;');
+end;
+/
+
+begin
+  COREMOD_TASKS.create_task (  p_taskname  => 'OPAS_DBLINKDATA',
+                               p_modname   => '&MODNM.',
+                               p_is_public => 'Y', 
+							   p_task_priority => COREMOD_TASKS.tpLOW,
+                               p_task_body => 'begin COREMOD_API.update_dblink_db_info(p_db_link_name => <B1>); end;');
 end;
 /
 

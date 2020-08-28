@@ -59,11 +59,15 @@ PACKAGE BODY COREOBJ_FOLDER AS
   is
   begin
     begin
-      select folder_id into p_folder from opas_last_nav_folder f, v$opas_objects o where apex_user = V('APP_USER') and f.folder_id = o.obj_id;
+      --select folder_id into p_folder from opas_last_nav_folder f, v$opas_objects o where apex_user = V('APP_USER') and f.folder_id = o.obj_id;
+      COREMOD_APPSTATE.get_jparam('CURRENT_FOLDER',p_folder);
+      --coremod_log.log('CURRENT_FOLDER:'||p_folder);
     exception
       when no_data_found then
         begin
+          --coremod_log.log('CURRENT_FOLDER 1:'||p_folder);
           select min(obj_id) into p_folder from v$opas_objects where obj_ot = COREOBJ_API.otFOLDER and obj_prnt is null;
+          --coremod_log.log('CURRENT_FOLDER 2:'||p_folder);
         exception
           when no_data_found then
             p_folder := null;
@@ -77,11 +81,14 @@ PACKAGE BODY COREOBJ_FOLDER AS
     pragma autonomous_transaction;
   begin
     if p_folder is not null then
-      merge into opas_last_nav_folder t
-      using (select V('APP_USER') usr, p_folder fldr from dual) s
-      on (t.apex_user = s.usr)
-      when matched then update set folder_id = s.fldr
-      when not matched then insert (apex_user, folder_id) values (s.usr, s.fldr);
+      --merge into opas_last_nav_folder t
+      --using (select V('APP_USER') usr, p_folder fldr from dual) s
+      --on (t.apex_user = s.usr)
+      --when matched then update set folder_id = s.fldr
+      --when not matched then insert (apex_user, folder_id) values (s.usr, s.fldr);
+
+      COREMOD_APPSTATE.set_jparam('CURRENT_FOLDER',p_folder);
+
       commit;
     end if;
   end;

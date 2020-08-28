@@ -171,7 +171,7 @@ where s.sql_id = :sqlid and (s.sql_text = f.file_id or s.sql_text_approx = f.fil
   begin
     --coremod_log.log('coreobj_sql_tags.tag_sql: '||p_tag_names||' -- ' || p_sql_id);
 
-    for i in (select * from opas_ot_sql_tags where tag_name = p_tag_name and tag_name not like '%!Copy!' and tag_name not like '%1=2%')
+    for i in (select * from opas_ot_sql_tags where tag_name = p_tag_name and tag_name not like '%!Copy!' and tag_autoexpr not like '%1=2%')
     loop
       open l_crsr for
         q'[select sql_id from opas_ot_sql_descriptions s, opas_files f where (s.sql_text = f.file_id or s.sql_text_approx = f.file_id) and (]'||i.tag_autoexpr||')';

@@ -65,6 +65,16 @@ package body coremod_cleanup as
         coremod_log.log(DBMS_UTILITY.FORMAT_ERROR_STACK);
         coremod_log.log(DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
     end;
+
+    begin
+      COREMOD_API.update_dblink_data;
+    exception
+      when others then
+        rollback;
+        coremod_log.log('DB Link data update job COREMOD_API.update_dblink_data error: '||sqlerrm);
+        coremod_log.log(DBMS_UTILITY.FORMAT_ERROR_STACK);
+        coremod_log.log(DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+    end;
   end;
 
 end;

@@ -86,6 +86,28 @@ package body COREOBJ_DB_GROWTH is
       raise;
   end;
 
+  procedure drop_partition(p_obj_id       opas_objects.obj_id%type)
+  is
+  begin
+    coremod_api.lock_resource(p_resource_name => gLockName,
+                              p_mode => 6,
+                              p_timeout => 600,
+                              p_release_on_commit => false);
+    for i in (select partition_name from user_tab_partitions where table_name='OPAS_OT_DBG_SEG_SIZES' and partition_name='PART_'||p_obj_id) loop
+      execute immediate 'alter table opas_ot_dbg_seg_sizes drop partition '||i.partition_name;
+    end loop;
+
+    for i in (select partition_name from user_tab_partitions where table_name='OPAS_OT_DBG_OBJECTS' and partition_name='PART_'||p_obj_id) loop
+      execute immediate 'alter table opas_ot_dbg_objects drop partition '||i.partition_name;
+    end loop;
+
+    coremod_api.release_resource;
+  exception
+    when others then
+      coremod_api.release_resource;
+      raise;
+  end;
+
   procedure add_subpartition
   is
     l_split opas_ot_dbg_datapoint.dbgdp_id%type;
@@ -167,14 +189,20 @@ package body COREOBJ_DB_GROWTH is
 
   procedure drop_monitor(p_obj_id           opas_objects.obj_id%type)
   is
-    l_mon   opas_ot_dbg_monitor%rowtype;
+    --l_mon   opas_ot_dbg_monitor%rowtype;
   BEGIN
-    select * into l_mon from opas_ot_dbg_monitor where dbg_id = p_obj_id;
-    if l_mon.schedule is not null then
-      COREMOD_SCHEDULER.suspend_config (  P_SCH_ID => l_mon.schedule);
-      COREMOD_SCHEDULER.cleanup_config (  P_SCH_ID => l_mon.schedule);
-      COREMOD_SCHEDULER.drop_config    (  P_SCH_ID => l_mon.schedule);
-    end if;
+    for i in (select m.* from opas_ot_dbg_monitor m, OPAS_SCHEDULER s where m.dbg_id = p_obj_id and m.schedule = s.SCH_ID) loop
+      if i.schedule is not null then
+        COREMOD_SCHEDULER.suspend_config (  P_SCH_ID => i.schedule);
+        COREMOD_SCHEDULER.cleanup_config (  P_SCH_ID => i.schedule);
+        COREMOD_SCHEDULER.drop_config    (  P_SCH_ID => i.schedule);
+      end if;
+    end loop;
+
+    delete from OPAS_OT_DBG_TS_SIZES where DBGDP_ID in (select DBGDP_ID from OPAS_OT_DBG_DATAPOINT where dbg_id = p_obj_id);
+    delete from OPAS_OT_DBG_SEG_SIZES where dbg_id = p_obj_id;
+    delete from OPAS_OT_DBG_OBJECTS where dbg_id = p_obj_id;
+    delete from OPAS_OT_DBG_DATAPOINT where dbg_id = p_obj_id;
     delete from opas_ot_dbg_monitor where dbg_id = p_obj_id;
   end;
 
@@ -184,6 +212,7 @@ package body COREOBJ_DB_GROWTH is
   begin
     drop_monitor(p_obj_id);
     COREOBJ_API.remove(p_obj_id);
+    drop_partition(p_obj_id);
   end;
 
   procedure get_schedule  (p_obj_id       opas_objects.obj_id%type,

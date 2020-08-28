@@ -135,6 +135,9 @@ PARTITION BY LIST (dbg_id)
 )
 ROW STORE COMPRESS ADVANCED;
 --indexes ???
+
+create index IDX_DBGSZ_OBJ on OPAS_OT_DBG_SEG_SIZES(DBGOBJ_ID) local;
+
 ----------------------
 CREATE TABLE opas_ot_dbg_seg_sizes (
 dbg_id           number not null references opas_ot_dbg_monitor (dbg_id) on delete cascade,

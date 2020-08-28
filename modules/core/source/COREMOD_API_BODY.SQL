@@ -177,7 +177,10 @@ package body COREMOD_API as
 
   procedure create_dblink(p_db_link_name varchar2, p_recreate boolean default false)
   is
-    l_dblink opas_db_links%rowtype;
+    l_dblink     opas_db_links%rowtype;
+    L_TASKNAME   OPAS_TASK.TASKNAME%type := 'OPAS_DBLINKDATA';
+    l_tq_id      OPAS_TASK_QUEUE.tq_id%type;
+    l_nt_id      opas_notification.ID%type;
   begin
     if p_db_link_name=gDefaultSource then
       raise_application_error(-20000, gDefaultSource||' db link is not supposed to be created.');
@@ -199,14 +202,31 @@ package body COREMOD_API as
       execute immediate q'[CREATE DATABASE LINK ]'||l_dblink.db_link_name||q'[ CONNECT TO ]'||l_dblink.username||q'[ IDENTIFIED BY ]'||l_dblink.password||q'[ USING ']'||l_dblink.connstr||q'[']';
       update opas_db_links set STATUS=dblCREATED where DB_LINK_NAME=upper(p_db_link_name);
       commit;
-      update_dblink_db_info(upper(p_db_link_name));
+      --update_dblink_db_info(upper(p_db_link_name));
+      l_tq_id:=COREMOD_TASKS.prep_execute_task (  P_TASKNAME => L_TASKNAME) ;
+      COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => 'B1', p_varchar_par => upper(p_db_link_name));
+      COREMOD_ALERTS.add_notification (
+          nt_id => l_nt_id,
+          NT_TEXT => 'Database dossier gathering for DB Link "'||upper(p_db_link_name)|| '" finished with '||COREMOD_ALERTS.ntPlaceHolder,
+          --NT_LINK => COREMOD_ALERTS.create_url(), 'f?p='||v('APP_ID')||':1401:<APP_SESSION>::::APP_OBJ_ID,APP_PREV_PAGE:'||l_obj_id||',10',
+          NT_TYPE_ID => COREMOD_ALERTS.nttTaskfinished,
+          --NT_COLOR => NT_COLOR, --default
+          NT_USERNAME => l_dblink.owner,
+          --NT_NO_BROWSER_NOTIF_FLAG => NT_NO_BROWSER_NOTIF_FLAG, default
+          NT_ACTIVATE => 0) ;
+
+      COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => COREMOD_TASKS.parNotifyMe, p_num_par => l_nt_id);
+      COREMOD_TASKS.queue_task ( p_tq_id => l_tq_id ) ;
+      commit;
     end if;
   end;
 
   procedure drop_dblink(p_db_link_name varchar2, p_suspend boolean default false)
   is
-    l_domain varchar2(128);
-    l_cnt number;
+    l_domain     varchar2(128);
+    l_cnt        number;
+    l_nt_id      opas_notification.ID%type;
+    l_owner      opas_db_links.owner%type;
   begin
     if p_db_link_name=gDefaultSource then
       raise_application_error(-20000, gDefaultSource||' db link is not supposed to be created.');
@@ -216,7 +236,17 @@ package body COREMOD_API as
       if l_cnt>0 then
         begin
           if p_suspend then
-            update opas_db_links set STATUS=dblSUSPENDED where DB_LINK_NAME=upper(p_db_link_name);
+            update opas_db_links set STATUS=dblSUSPENDED where DB_LINK_NAME=upper(p_db_link_name) returning owner into l_owner;
+            COREMOD_ALERTS.add_notification (
+              nt_id =>      l_nt_id,
+              NT_TEXT =>    'DB Link "'||upper(p_db_link_name)|| '" has been suspended.',
+              --NT_LINK => COREMOD_ALERTS.create_url(), 'f?p='||v('APP_ID')||':1401:<APP_SESSION>::::APP_OBJ_ID,APP_PREV_PAGE:'||l_obj_id||',10',
+              NT_TYPE_ID =>  COREMOD_ALERTS.nttMaintenance,
+              NT_COLOR =>    COREMOD_ALERTS.ntcRed, --default
+              NT_USERNAME => l_owner
+              --NT_NO_BROWSER_NOTIF_FLAG => NT_NO_BROWSER_NOTIF_FLAG, default
+              --NT_ACTIVATE => 1
+              ) ;
           else
             update opas_db_links set STATUS=dblTODELETE where DB_LINK_NAME=upper(p_db_link_name);
           end if;
@@ -395,13 +425,33 @@ package body COREMOD_API as
     --l_sql           varchar2(32765);
     l_data_point_ts timestamp := systimestamp;
     l_dbid          OPAS_DB_LINKS.dbid%type;
+    l_previous_upd  OPAS_DB_LINKS.DATA_UPDATED%type;
   begin
+    COREMOD_TASKS.log('Updating database dossier for "'||p_db_link_name||'"');
+
+    test_dblink(p_db_link_name);
+
+    select DATA_UPDATED into l_previous_upd from OPAS_DB_LINKS where DB_LINK_NAME = upper(p_db_link_name);
+    update OPAS_DB_LINKS set DATA_UPDATED = systimestamp+10 where DB_LINK_NAME = upper(p_db_link_name);
+    commit;
+
     load_tmp_data(p_db_link_name, 'V_$DATABASE',                'V$DATABASE',                 'opas_dbl_tmp_v$database','V$DB');
     load_tmp_data(p_db_link_name, 'V_$PDBS',                    'V$PDBS',                     'opas_dbl_tmp_v$pdbs',    'V$PDBS');
     load_tmp_data(p_db_link_name, 'GV_$INSTANCE',               'GV$INSTANCE',                'opas_dbl_tmp_v$inst',    'GV$INST');
     load_tmp_data(p_db_link_name, 'DBA_REGISTRY_HISTORY',       'DBA_REGISTRY_HISTORY',       'opas_dbl_tmp_reghst',    'REGHST');
     load_tmp_data(p_db_link_name, 'DBA_REGISTRY_SQLPATCH',      'DBA_REGISTRY_SQLPATCH',      'opas_dbl_tmp_sqlptchhst','SQLPTCH');
-
+/*
+select
+  listagg(src, ',') within group (order by src) src, group_id, metric_id, metric_name
+from
+(select unique 'V$' src, group_id, metric_id, metric_name from gv$sysmetric_history
+union all
+select unique 'AWR' src, group_id, metric_id, metric_name
+ from dba_hist_sysmetric_history where dbid=2745483974 and instance_number>0
+  and snap_id>(select min(snap_id) from dba_hist_snapshot where end_interval_time>systimestamp-8))
+group by group_id, metric_id, metric_name
+order by 1, 2,3
+*/
     merge into opas_db_link_v$db t
       using opas_dbl_tmp_v$database s
       on (t.dblink = p_db_link_name and
@@ -523,6 +573,46 @@ package body COREMOD_API as
     if sql%rowcount > 0 then
       null; --TODO alert new sql patch
     end if;
+
+    update OPAS_DB_LINKS set DATA_UPDATED = systimestamp where DB_LINK_NAME = upper(p_db_link_name);
+    commit;
+  exception
+    when others then rollback;
+      update OPAS_DB_LINKS set DATA_UPDATED = l_previous_upd where DB_LINK_NAME = upper(p_db_link_name);
+      commit;
+      raise;
+  end;
+
+  procedure update_dblink_data
+  is
+    L_TASKNAME   OPAS_TASK.TASKNAME%type := 'OPAS_DBLINKDATA';
+    l_tq_id      OPAS_TASK_QUEUE.tq_id%type;
+    l_nt_id      opas_notification.ID%type;
+    l_next_date  timestamp;
+  begin
+    for i in (select * from OPAS_DB_LINKS where status=dblCREATED and 1=2) loop
+      DBMS_SCHEDULER.EVALUATE_CALENDAR_STRING(
+          calendar_string    => i.UPDATE_SCHED,
+          start_date         => nvl(i.DATA_UPDATED,i.CREATED),
+          return_date_after  => null,
+          next_run_date      => l_next_date);
+      if l_next_date < systimestamp then
+        l_tq_id:=COREMOD_TASKS.prep_execute_task (  P_TASKNAME => L_TASKNAME) ;
+        COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => 'B1', p_varchar_par => upper(i.DB_LINK_NAME));
+        COREMOD_ALERTS.add_notification (
+          nt_id => l_nt_id,
+          NT_TEXT => 'Scheduled database dossier update for DB Link "'||upper(i.DB_LINK_NAME)|| '" finished with '||COREMOD_ALERTS.ntPlaceHolder,
+          --NT_LINK => COREMOD_ALERTS.create_url(), 'f?p='||v('APP_ID')||':1401:<APP_SESSION>::::APP_OBJ_ID,APP_PREV_PAGE:'||l_obj_id||',10',
+          NT_TYPE_ID => COREMOD_ALERTS.nttTaskfinished,
+          --NT_COLOR => NT_COLOR, --default
+          NT_USERNAME => i.owner,
+          --NT_NO_BROWSER_NOTIF_FLAG => NT_NO_BROWSER_NOTIF_FLAG, default
+          NT_ACTIVATE => 0) ;
+
+        COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => COREMOD_TASKS.parNotifyMe, p_num_par => l_nt_id);
+        COREMOD_TASKS.queue_task ( p_tq_id => l_tq_id ) ;
+      end if;
+    end loop;
     commit;
   end;
 

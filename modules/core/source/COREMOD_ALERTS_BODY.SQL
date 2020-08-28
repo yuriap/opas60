@@ -97,14 +97,24 @@ PACKAGE BODY COREMOD_ALERTS AS
     --commit;
   end add_notification;
 
-  procedure set_url(nt_id     opas_notification.id%type,
-                    p_obj_id  opas_objects.obj_id%type,
-                    p_page_id number,
-                    p_prev_page number default 10)
+  procedure set_url(nt_id       opas_notification.id%type,
+                    p_page_id   number,
+                    p_obj_id    opas_objects.obj_id%type default null,
+                    p_prev_page number default 10,
+                    p_items     varchar2 default null,
+                    p_values    varchar2 default null)
   is
   begin
     update OPAS_NOTIFICATION
-    set link = 'f?p='||nvl(v('APP_ID'),COREMOD_API.gAPEX_APP_ID)||':'||p_page_id||':<APP_SESSION>::::APP_OBJ_ID,APP_PREV_PAGE,APP_NOTIF:'||p_obj_id||','||p_prev_page||','||nt_id
+    set link = 'f?p='||nvl(v('APP_ID'),COREMOD_API.gAPEX_APP_ID)||':'||p_page_id||':<APP_SESSION>::::'||
+      case
+        when p_items is null or p_values  is null
+          then 'APP_OBJ_ID,APP_PREV_PAGE,APP_NOTIF:'||p_obj_id||','||p_prev_page||','||nt_id
+        when p_items is not null and p_values is not null
+          then p_items||',APP_NOTIF:'||p_values||','||nt_id
+      else
+        null
+      end
     where ID = nt_id;
   end;
 

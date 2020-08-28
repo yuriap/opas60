@@ -3,9 +3,6 @@
 CREATE OR REPLACE
 package coreobj_asha_cube is
 
-  -- Main Parameters
-  pDBLINK         constant varchar2(100) := 'ASHAB_DBLINK';
-
   procedure add   (p_obj_id       out opas_objects.obj_id%type,
                    p_obj_prnt         opas_objects.obj_prnt%type,
                    p_modname          opas_files.modname%type default COREMOD_API.gMODNAME,
