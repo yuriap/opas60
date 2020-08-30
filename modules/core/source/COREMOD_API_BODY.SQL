@@ -426,14 +426,71 @@ package body COREMOD_API as
     l_data_point_ts timestamp := systimestamp;
     l_dbid          OPAS_DB_LINKS.dbid%type;
     l_previous_upd  OPAS_DB_LINKS.DATA_UPDATED%type;
+
+    l_snap number;
+    l_version     OPAS_DB_METRICS2VER.VERSION%type;
+    l_v$_metrics  TABLEOF2NUM;
+    l_awr_metrics TABLEOF2NUM;
+
+    l_sql_get_snaps varchar2(4000)
+      := q'[select min_snap, dbid from (select min(snap_id) min_snap, min(dbid) dbid from dba_hist_snapshot<DBLINK> where dbid = (select dbid from v$database<DBLINK>) and end_interval_time > systimestamp - 1)]';
+    l_sql_get_v4metrics varchar2(4000)
+      := q'[insert into opas_dbl_tmp_metrics (GROUP_ID, METRIC_ID) select unique group_id, metric_id from v$sysmetric_history<DBLINK>]';
+    l_sql_get_awr_metric varchar2(4000)
+      := q'[insert into opas_dbl_tmp_metrics (GROUP_ID, METRIC_ID) select unique group_id, metric_id from dba_hist_sysmetric_history<DBLINK> h where h.snap_id > :l_snap and h.dbid = :l_dbid and h.instance_number > 0]';
   begin
     COREMOD_TASKS.log('Updating database dossier for "'||p_db_link_name||'"');
 
     test_dblink(p_db_link_name);
 
+    execute immediate replace(l_sql_get_snaps,'<DBLINK>',COREMOD_API.get_dblink_for_query(p_db_link_name)) into l_snap, l_dbid;
+
     select DATA_UPDATED into l_previous_upd from OPAS_DB_LINKS where DB_LINK_NAME = upper(p_db_link_name);
     update OPAS_DB_LINKS set DATA_UPDATED = systimestamp+10 where DB_LINK_NAME = upper(p_db_link_name);
     commit;
+    if COREMOD_API.get_dblink_for_query(p_db_link_name) is not null then
+      execute immediate 'ALTER SESSION CLOSE DATABASE LINK '||p_db_link_name;
+    end if;
+
+    l_version := COREMOD_UTILS.get_remote_full_oracle_version(P_DBLINK => p_db_link_name);
+
+    execute immediate replace(l_sql_get_v4metrics,'<DBLINK>',COREMOD_API.get_dblink_for_query(p_db_link_name));
+    select TWO_NUMBERS(GROUP_ID, METRIC_ID)  bulk collect into l_v$_metrics from opas_dbl_tmp_metrics;
+    delete from opas_dbl_tmp_metrics;
+
+    execute immediate replace(l_sql_get_awr_metric,'<DBLINK>',COREMOD_API.get_dblink_for_query(p_db_link_name)) using l_snap, l_dbid;
+    select TWO_NUMBERS(GROUP_ID, METRIC_ID)  bulk collect into l_awr_metrics from opas_dbl_tmp_metrics;
+    delete from opas_dbl_tmp_metrics;
+
+    insert into opas_dbl_tmp_metrics (SRC, GROUP_ID, GROUP_NAME, METRIC_ID, METRIC_NAME, METRIC_UNIT)
+    select listagg(src, ',') within group(order by src) src,
+           group_id,
+           group_name,
+           metric_id,
+           metric_name,
+           metric_unit
+      from (select 'V$' src, group_id, group_name, metric_id, metric_name, metric_unit
+              from v$metricname mn
+             where (group_id, metric_id) in (select col1, col2 from table(l_v$_metrics))
+            union all
+            select 'AWR' src, group_id, group_name, metric_id, metric_name, metric_unit
+              from v$metricname mn
+             where (group_id, metric_id) in (select col1, col2 from table(l_awr_metrics)))
+     group by group_id, group_name, metric_id, metric_name, metric_unit;
+
+    merge into OPAS_DB_METRICS t
+    using opas_dbl_tmp_metrics s
+    on (t.GROUP_ID = s.GROUP_ID and t.METRIC_ID = s.METRIC_ID)
+    when not matched then
+    insert (GROUP_ID, GROUP_NAME, METRIC_ID, METRIC_NAME, METRIC_UNIT, SRC)
+    values (s.GROUP_ID, s.GROUP_NAME, s.METRIC_ID, s.METRIC_NAME, s.METRIC_UNIT, s.SRC);
+
+    merge into OPAS_DB_METRICS2VER t
+    using opas_dbl_tmp_metrics s
+    on (t.VERSION = l_version and t.GROUP_ID = s.GROUP_ID and t.METRIC_ID = s.METRIC_ID)
+    when not matched then
+    insert (VERSION, GROUP_ID, METRIC_ID)
+    values (l_version, s.GROUP_ID, s.METRIC_ID);
 
     load_tmp_data(p_db_link_name, 'V_$DATABASE',                'V$DATABASE',                 'opas_dbl_tmp_v$database','V$DB');
     load_tmp_data(p_db_link_name, 'V_$PDBS',                    'V$PDBS',                     'opas_dbl_tmp_v$pdbs',    'V$PDBS');
@@ -574,7 +631,7 @@ order by 1, 2,3
       null; --TODO alert new sql patch
     end if;
 
-    update OPAS_DB_LINKS set DATA_UPDATED = systimestamp where DB_LINK_NAME = upper(p_db_link_name);
+    update OPAS_DB_LINKS set DATA_UPDATED = systimestamp, current_version=l_version where DB_LINK_NAME = upper(p_db_link_name);
     commit;
   exception
     when others then rollback;

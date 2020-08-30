@@ -48,6 +48,7 @@ grant select on gv_$sql_monitor to &localscheme.;
 grant select on gv_$sql_workarea to &localscheme.;
 grant select on gv_$sql_optimizer_env to &localscheme.;
 grant select on gv_$sql_plan_statistics_all to &localscheme.;
+grant select on v_$metricname to &localscheme.;
 --
 grant select on dba_hist_database_instance to &localscheme.;
 grant select on dba_hist_reports to &localscheme.;

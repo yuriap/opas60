@@ -110,7 +110,8 @@ is_public           varchar2(1)      default 'Y'           not null,
 dbid                number,
 update_sched        varchar2(512),
 created             timestamp default systimestamp,
-data_updated        timestamp
+data_updated        timestamp,
+current_version     VARCHAR2(100)
 );
 
 create or replace force view v$opas_db_links as 
@@ -125,7 +126,7 @@ select db_link_name,
          else 
            case when l.username is not null then db_link_name||' ('||l.username||'@'||l.host||')' else db_link_name||' (suspended)' end
          end display_name,
-       owner, status, is_public, dbid,update_sched
+       o.owner, o.status, o.is_public, o.dbid, o.update_sched, o.created, o.data_updated, o.current_version
   from opas_db_links o, user_db_links l, gn
  where owner =
        decode(owner,
@@ -252,6 +253,35 @@ DROP TABLE OPAS_DBL_TMP_AWRSNAPS;
 CREATE GLOBAL TEMPORARY TABLE OPAS_DBL_TMP_AWRSNAPS 
 ON COMMIT PRESERVE ROWS as
 select * from DBA_HIST_SNAPSHOT where 1=2;
+
+
+
+CREATE GLOBAL TEMPORARY TABLE OPAS_DBL_TMP_METRICS
+(GROUP_ID   NUMBER, 
+GROUP_NAME  VARCHAR2(64 BYTE), 
+METRIC_ID   NUMBER, 
+METRIC_NAME VARCHAR2(64 BYTE), 
+METRIC_UNIT VARCHAR2(64 BYTE),
+SRC         VARCHAR2(100 BYTE)
+) ON COMMIT DELETE ROWS ;
+
+CREATE TABLE OPAS_DB_METRICS
+(
+GROUP_ID    NUMBER, 
+GROUP_NAME  VARCHAR2(64 BYTE), 
+METRIC_ID   NUMBER,
+METRIC_NAME VARCHAR2(64 BYTE), 
+METRIC_UNIT VARCHAR2(64 BYTE),
+SRC         VARCHAR2(100 BYTE),
+ primary key(GROUP_ID, METRIC_ID)
+);
+
+CREATE TABLE OPAS_DB_METRICS2VER
+(
+VERSION     VARCHAR2(100),
+GROUP_ID    NUMBER, 
+METRIC_ID   NUMBER,
+constraint  FK_METR2VERS foreign key (GROUP_ID, METRIC_ID) references OPAS_DB_METRICS(GROUP_ID, METRIC_ID));
 
 ---------------------------------------------------------------------------------------------
 -- file storage
@@ -584,6 +614,17 @@ and x.sess_id=m.sess_id and x.expimp_file=f.file_id(+);
 create or replace type tableofnumbers as table of number
 /
 create or replace type tableofstrings as table of varchar2(4000)
+/
+
+drop type tableof2num;
+drop type tableof2str;
+create or replace type two_numbers as object (col1 number, col2 number)
+/
+create or replace type two_strings AS OBJECT(col1 VARCHAR2(4000), col2 VARCHAR2(4000))
+/
+create or replace type tableof2num as table of two_numbers
+/
+create or replace type tableof2str AS TABLE OF two_strings
 /
 
 --clob2row representation

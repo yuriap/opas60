@@ -25,12 +25,20 @@ PACKAGE BODY COREMOD_UTILS AS
 
   function get_remote_oracle_version(p_dblink opas_db_links.db_link_name%type) return number
   is
+    l_ver  varchar2(100);
+  begin
+    l_ver := get_remote_full_oracle_version(p_dblink);
+    return to_number(substr(l_ver,1,instr(l_ver,'.')-1));
+  end;
+
+  function get_remote_full_oracle_version(p_dblink opas_db_links.db_link_name%type) return varchar2
+  is
     l_sql  varchar2(1000) := q'[begin dbms_utility.db_version]'||COREMOD_API.get_dblink_for_query(p_dblink)||q'[(:a, :b); end;]';
     l_ver  varchar2(100);
     l_comp varchar2(100);
   begin
     execute immediate l_sql using out l_ver, out l_comp;
-    return to_number(substr(l_ver,1,instr(l_ver,'.')-1));
+    return l_ver;
   end;
 
   function get_remote_ts(p_dblink opas_db_links.db_link_name%type) return timestamp with time zone
