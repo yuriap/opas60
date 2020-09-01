@@ -377,7 +377,7 @@ package body COREMOD_API as
   is
     l_res number;
   begin
-    select dbid into l_res from OPAS_DB_LINK_V$DB where dblink = p_dblink;
+    select dbid into l_res from OPAS_DB_LINK_V$DB where dblink = p_dblink and is_actual='Y';
     return l_res;
   end;
 

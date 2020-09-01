@@ -28,7 +28,7 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 -- Application Export:
 --   Application:     600
 --   Name:            Oracle Performance Analytic Suite
---   Date and Time:   08:42 Friday August 28, 2020
+--   Date and Time:   14:40 Tuesday September 1, 2020
 --   Exported By:     OPAS60DADM
 --   Flashback:       0
 --   Export Type:     Application Export
@@ -132,7 +132,7 @@ wwv_flow_api.create_flow(
 ,p_substitution_string_06=>'APP_GRID_DT_FMT_TZ_FULL'
 ,p_substitution_value_06=>'YYYY-MM-DD HH24:MI:SS.ff9 TZH:TZM'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200825185738'
+,p_last_upd_yyyymmddhh24miss=>'20200901141336'
 ,p_file_prefix => nvl(wwv_flow_application_install.get_static_app_file_prefix,'')
 ,p_files_version=>3
 ,p_ui_type_name => null
@@ -52348,7 +52348,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(76886219658220205)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200723140251'
+,p_last_upd_yyyymmddhh24miss=>'20200901141336'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(76676007484342345)
@@ -52378,12 +52378,42 @@ wwv_flow_api.create_page_plug(
 '    status,',
 '    execs_num_to_init,',
 '    sql_text,',
-'    actual_execs',
+'    actual_execs,',
+'    to_char(PICKED,''&APP_GRID_DT_FMT_L1.'') PICKED',
 'FROM',
 '    opas_ot_sqlcatch_sqls',
 'where obj_id = :P7000_OBJ_ID;'))
 ,p_plug_source_type=>'NATIVE_IG'
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+);
+wwv_flow_api.create_region_column(
+ p_id=>wwv_flow_api.id(7632797083256501)
+,p_name=>'PICKED'
+,p_source_type=>'DB_COLUMN'
+,p_source_expression=>'PICKED'
+,p_data_type=>'VARCHAR2'
+,p_is_query_only=>false
+,p_item_type=>'NATIVE_TEXT_FIELD'
+,p_heading=>'Picked'
+,p_heading_alignment=>'LEFT'
+,p_display_sequence=>90
+,p_value_alignment=>'LEFT'
+,p_attribute_05=>'BOTH'
+,p_is_required=>false
+,p_max_length=>75
+,p_enable_filter=>true
+,p_filter_operators=>'C:S:CASE_INSENSITIVE:REGEXP'
+,p_filter_is_required=>false
+,p_filter_text_case=>'MIXED'
+,p_filter_exact_match=>true
+,p_filter_lov_type=>'DISTINCT'
+,p_use_as_row_header=>false
+,p_enable_sort_group=>true
+,p_enable_control_break=>true
+,p_enable_hide=>true
+,p_is_primary_key=>false
+,p_duplicate_value=>true
+,p_include_in_export=>true
 );
 wwv_flow_api.create_region_column(
  p_id=>wwv_flow_api.id(76892774093331323)
@@ -52426,6 +52456,7 @@ wwv_flow_api.create_region_column(
 ,p_value_alignment=>'LEFT'
 ,p_attribute_05=>'BOTH'
 ,p_is_required=>true
+,p_max_length=>13
 ,p_enable_filter=>true
 ,p_filter_operators=>'C:S:CASE_INSENSITIVE:REGEXP'
 ,p_filter_is_required=>false
@@ -52517,6 +52548,7 @@ wwv_flow_api.create_region_column(
 ,p_attribute_03=>'N'
 ,p_attribute_04=>'BOTH'
 ,p_is_required=>false
+,p_max_length=>4000
 ,p_enable_filter=>true
 ,p_filter_operators=>'C:S:CASE_INSENSITIVE:REGEXP'
 ,p_filter_is_required=>false
@@ -52524,7 +52556,6 @@ wwv_flow_api.create_region_column(
 ,p_filter_lov_type=>'NONE'
 ,p_use_as_row_header=>false
 ,p_enable_sort_group=>false
-,p_enable_control_break=>false
 ,p_enable_hide=>true
 ,p_is_primary_key=>false
 ,p_include_in_export=>true
@@ -52617,6 +52648,14 @@ wwv_flow_api.create_ig_report_view(
 ,p_srv_exclude_null_values=>false
 ,p_srv_only_display_columns=>true
 ,p_edit_mode=>false
+);
+wwv_flow_api.create_ig_report_column(
+ p_id=>wwv_flow_api.id(7638764848256619)
+,p_view_id=>wwv_flow_api.id(76914366876340738)
+,p_display_seq=>7
+,p_column_id=>wwv_flow_api.id(7632797083256501)
+,p_is_visible=>true
+,p_is_frozen=>false
 );
 wwv_flow_api.create_ig_report_column(
  p_id=>wwv_flow_api.id(76914780503340819)

@@ -207,8 +207,8 @@ package body COREOBJ_SQL_CATCHER is
           t.actual_execs = s.ACTUAL_EXECS
           where t.status in (ssqltNew)
         when not matched then
-        INSERT (obj_id, sql_id, status, execs_num_to_init, sql_text, actual_execs)
-        VALUES (p_obj_id, s.sql_id, ssqltNew, l_ctchr.sql_exec_def,  s.sql_text, s.ACTUAL_EXECS);
+        INSERT (obj_id, sql_id, status, execs_num_to_init, sql_text, actual_execs, PICKED)
+        VALUES (p_obj_id, s.sql_id, ssqltNew, l_ctchr.sql_exec_def,  s.sql_text, s.ACTUAL_EXECS, systimestamp);
         l_cnt1 := l_cnt1 + sql%rowcount;
 
         update OPAS_OT_SQLCATCH_SQLS set
