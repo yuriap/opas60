@@ -140,10 +140,10 @@ package body COREMOD_API as
   is
   begin
     insert into opas_db_links
-      (DB_LINK_NAME,OWNER,STATUS,is_public,username,password,connstr)
+      (DB_LINK_NAME,OWNER,STATUS,is_public,username,password,connstr,UPDATE_SCHED)
     values
       (upper(p_db_link_name), upper(p_owner),
-       dblNEW, case when upper(p_owner)='PUBLIC' then 'Y' else case when p_is_public = 'Y' then 'Y' else 'N' end end, p_username,p_password,p_connectstring);
+       dblNEW, case when upper(p_owner)='PUBLIC' then 'Y' else case when p_is_public = 'Y' then 'Y' else 'N' end end, p_username,p_password,p_connectstring,'freq=monthly; interval=1;');
   end;
 
   procedure edit_dblink    (p_db_link_name varchar2,

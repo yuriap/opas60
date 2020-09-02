@@ -178,6 +178,11 @@ package body COREOBJ_SQL_CATCHER is
       delete from opas_ot_tmp_sqlcatch_sqls;
       l_sql := replace(replace(l_sql_load,'<FILTER>',l_ctchr.SEARCH_CONDITION),'<DBLINK>',COREMOD_API.get_dblink_for_query(l_ctchr.srcdb));
       execute immediate l_sql using l_ctchr.sql_num_limit;
+
+      commit;
+      if l_ctchr.check_interval > 60 and COREMOD_API.get_dblink_for_query(l_ctchr.srcdb) is not null then
+        execute immediate 'ALTER SESSION CLOSE DATABASE LINK '||l_ctchr.srcdb;
+      end if;
     end;
 
   begin
@@ -198,8 +203,9 @@ package body COREOBJ_SQL_CATCHER is
       elsif l_ctchr.status in (stActive, stActiveCO, stPaused) and 100 * l_ctchr.sql_time_limit < dbms_utility.get_time - l_start_tim then exit;
       elsif l_ctchr.status = stPaused then dbms_lock.sleep(10); continue;
       elsif l_ctchr.status in (stActive, stActiveCO) then
+        -- short distributed transaction with connection closing
         load_sqls;
-        commit;
+        --
         merge into OPAS_OT_SQLCATCH_SQLS t
         using opas_ot_tmp_sqlcatch_sqls s
         on (t.OBJ_ID = p_obj_id and t.SQL_ID = s.SQL_ID)

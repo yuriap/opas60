@@ -14,10 +14,21 @@ package body COREOBJ_SQL_COMP_REPORT is
                                                              'Column Projection Information',
                                                              'Predicate Information',
                                                              'Query Block Registry',
-                                                             'Hint Report');
+                                                             'Hint Report',
+                                                             --
+                                                             'SQL Text',
+                                                             'Global Information',
+                                                             'Binds',
+                                                             'Global Stats',
+                                                             'Parallel Execution Details',
+                                                             'SQL Plan Monitoring Details');
   --g_params COREMOD_REPORT_UTILS.t_params;
 
   g_SectNum number;
+
+  g_Debug   boolean := false;
+  procedure debug_on is begin g_Debug:=true; end;
+  procedure debug_off is begin g_Debug:=false; end;
 
   function ifiamcalledfromcompreport return boolean
   is
@@ -421,8 +432,8 @@ package body COREOBJ_SQL_COMP_REPORT is
     --aligning sections
     if p_flags = flgSQLPLAN then
       for i in 1..p_txt1.count loop
+if g_Debug then coremod_log.log('p_txt1(i): '||p_txt1(i)); end if;
         for j in 1..g_plan_sections_all.count loop
---coremod_log.log('p_txt1(i): '||p_txt1(i));
           if instr(p_txt1(i),g_plan_sections_all(j))>0 then
             l_available_sections(g_plan_sections_all(j)):=1;
           end if;
@@ -430,20 +441,20 @@ package body COREOBJ_SQL_COMP_REPORT is
       end loop;
 
       for i in 1..p_txt2.count loop
+if g_Debug then coremod_log.log('p_txt2(i): '||p_txt2(i)); end if;
         for j in 1..g_plan_sections_all.count loop
---coremod_log.log('p_txt1(i): '||p_txt1(i));
           if instr(p_txt2(i),g_plan_sections_all(j))>0 then
             l_available_sections(g_plan_sections_all(j)):=1;
           end if;
         end loop;
       end loop;
---coremod_log.log('l_available_sections.count: '||l_available_sections.count);
+if g_Debug then coremod_log.log('l_available_sections.count: '||l_available_sections.count); end if;
       for j in 1..g_plan_sections_all.count loop
---coremod_log.log('g_plan_sections_all(j): '||g_plan_sections_all(j));
+if g_Debug then coremod_log.log('g_plan_sections_all(j): '||g_plan_sections_all(j)); end if;
         if l_available_sections.exists(g_plan_sections_all(j)) then
           l_plan_sections.extend;
           l_plan_sections(l_plan_sections.count):=g_plan_sections_all(j);
---coremod_log.log('l_plan_sections(l_plan_sections.count): '||l_plan_sections(l_plan_sections.count));
+if g_Debug then coremod_log.log('l_plan_sections(l_plan_sections.count): '||l_plan_sections(l_plan_sections.count)); end if;
         end if;
       end loop;
 
@@ -664,23 +675,72 @@ coremod_log.log('p_txt2: found sect '||l_cnt||' '||l_plan_sections(l_cnt));
 --    pr('IOWAIT(SEC)5ms:         '||r_stats1.io_wait_5ms,         'IOWAIT(SEC)5ms:    '||r_stats2.io_wait_5ms,         round(100*((r_stats2.io_wait_5ms-r_stats1.io_wait_5ms)                  /(case when r_stats1.io_wait_5ms=0 then case when r_stats2.io_wait_5ms=0 then 1 else r_stats2.io_wait_5ms end else r_stats1.io_wait_5ms end)),2)||'%');
   end;
 
+  function getopastext(p_file_id   opas_files.file_id%type,
+                       p_max_length out number) return COREMOD_REPORT_UTILS.t_output_lines
+  is
+    l_file_id   opas_files.file_id%type;
+    l_output    COREMOD_REPORT_UTILS.t_output_lines;
+  begin
+    p_max_length := 0;
+    for i in (SELECT line_number, payload
+                FROM V$OPAS_FILE_CONTENTBYROW
+               where file_id=p_file_id
+               order by line_number)
+    loop
+      l_output(i.line_number) := rtrim(apex_escape.html(i.payload));
+      if length(i.payload) > p_max_length then p_max_length := length(i.payload); end if;
+    end loop;
+if g_Debug then coremod_log.log('p_file_id: '||p_file_id|| '; l_output.count: '||l_output.count); end if;
+    return l_output;
+  end;
+
   function getsqltext(p_sql_id varchar2,
                       p_max_length out number) return COREMOD_REPORT_UTILS.t_output_lines
   is
     l_file_id   opas_files.file_id%type;
     l_output    COREMOD_REPORT_UTILS.t_output_lines;
   begin
-    p_max_length := 0;
+
     select nvl(sql_text,sql_text_approx) into l_file_id from OPAS_OT_SQL_DESCRIPTIONS de where sql_id=p_sql_id;
+    l_output := getopastext(l_file_id,p_max_length);
+
+    return l_output;
+  end;
+
+  function getsqlmonrep(p_file_id   opas_files.file_id%type,
+                        p_max_length out number) return COREMOD_REPORT_UTILS.t_output_lines
+  is
+    l_file_id   opas_files.file_id%type;
+    l_output    COREMOD_REPORT_UTILS.t_output_lines;
+    l_sqltextsect boolean := false;
+    l_idx         pls_integer;
+  begin
+    p_max_length := 0;
     for i in (SELECT line_number, payload
                 FROM V$OPAS_FILE_CONTENTBYROW
-               where file_id=l_file_id
+               where file_id=p_file_id
                order by line_number)
     loop
-      l_output(i.line_number) := rtrim(apex_escape.html(i.payload));
-      if length(i.payload) > p_max_length then p_max_length := length(i.payload); end if;
+      if instr(i.payload,'SQL Text')>0 then l_sqltextsect := true; end if;
+      if instr(i.payload,'Global Information')>0 then l_sqltextsect := false; end if;
+
+      l_output(i.line_number) := i.payload;
+
+      if length(i.payload) > p_max_length and not l_sqltextsect then p_max_length := length(i.payload); end if;
     end loop;
 
+    l_idx := l_output.first;
+    loop
+      if length(l_output(l_idx))>p_max_length then
+        l_output(l_idx) := rtrim(apex_escape.html(substr(l_output(l_idx),1,p_max_length-3)||'...'));
+      else
+        l_output(l_idx) := rtrim(apex_escape.html(substr(l_output(l_idx),1,p_max_length)));
+      end if;
+      l_idx := l_output.next(l_idx);
+      exit when l_idx is null;
+    end loop;
+
+if g_Debug then coremod_log.log('p_file_id: '||p_file_id|| '; l_output.count: '||l_output.count); end if;
     return l_output;
   end;
 
@@ -715,6 +775,8 @@ coremod_log.log('p_txt2: found sect '||l_cnt||' '||l_plan_sections(l_cnt));
                            p_output     out COREMOD_REPORT_UTILS.t_output_lines,
                            p_max_length out number) AS
     l_display_params varchar2(100);
+    l_plan_hash      number;
+    l_start_line    number := 0;
   begin
     p_max_length := 0;
     case p_section_name
@@ -726,11 +788,24 @@ coremod_log.log('p_txt2: found sect '||l_cnt||' '||l_plan_sections(l_cnt));
         then l_display_params:='ALL ALLSTATS +peeked_binds';
       when COREOBJ_SQL_REPORT_UTILS.repsSQLPLADAPT
         then l_display_params:='adaptive LAST ALLSTATS +peeked_binds';
+    else
+      l_display_params:=null;
     end case;
+
+    if p_section_name = ptHST then
+      begin
+        select plan_hash_value into l_plan_hash from OPAS_OT_SQL_PLAN_DET where plan_id=p_plan_id and rownum=1 and plan_hash_value is not null;
+      exception
+        when no_data_found then l_plan_hash := 0;
+      end;
+      read_plan_main.p_output(1) := 'Plan hash value: '||l_plan_hash;
+      --read_plan_main.p_output(2) := null;
+      l_start_line := 1;
+    end if;
 
     for i in (select rownum line_number, plan_table_output from table(dbms_xplan.display('OPAS_OT_SQL_PLAN_DET', null, l_display_params, 'plan_id='||p_plan_id)))
     loop
-      read_plan_main.p_output(i.line_number) := rtrim(apex_escape.html(i.plan_table_output));
+      read_plan_main.p_output(i.line_number+l_start_line) := rtrim(apex_escape.html(i.plan_table_output));
       if length(i.plan_table_output) > p_max_length then p_max_length := length(i.plan_table_output); end if;
     end loop;
   end;
@@ -760,7 +835,7 @@ coremod_log.log('p_txt2: found sect '||l_cnt||' '||l_plan_sections(l_cnt));
         coreobj_api.get_jparam(p_obj_id,pMAINPLANSECTION,l_section_name);
         read_plan_main(l_plan_id, l_section_name, l_output, p_max_length);
       when ptHST then
-        read_plan_main(l_plan_id, null, l_output, p_max_length);
+        read_plan_main(l_plan_id, ptHST, l_output, p_max_length);
     end case;
 
     return l_output;
@@ -807,6 +882,59 @@ coremod_log.log('p_txt2: found sect '||l_cnt||' '||l_plan_sections(l_cnt));
                  p_col2       => l_c2,
                  p_col3       => l_c3);
 
+  end;
+
+  procedure comprep_section_sqlmonrep(p_obj_id           opas_objects.obj_id%type,
+                                      p_output    out COREMOD_REPORT_UTILS.t_output_lines,
+                                      p_pixel_per_char number default COREMOD_REPORT_UTILS.gPixelPerChar)
+  is
+    --l_max_width number;
+    l_output    COREMOD_REPORT_UTILS.t_output_lines;
+    l_c1        COREMOD_REPORT_UTILS.t_output_lines;
+    l_c2        COREMOD_REPORT_UTILS.t_output_lines;
+    l_c3        COREMOD_REPORT_UTILS.t_output_lines;
+    l_sqlmon1      OPAS_OT_SQL_SQLMON.SQLMON_ID%type;
+    l_sqlmon2      OPAS_OT_SQL_SQLMON.SQLMON_ID%type;
+
+    l_f1   OPAS_FILES.FILE_ID%type;
+    l_f2   OPAS_FILES.FILE_ID%type;
+    l_length1   number;
+    l_length2   number;
+  begin
+    coreobj_api.extract_jparams(p_obj_id);
+    coreobj_api.get_jparam(p_obj_id,pSQLMONREP#1,l_sqlmon1);
+    coreobj_api.get_jparam(p_obj_id,pSQLMONREP#2,l_sqlmon2);
+--coremod_log.log(l_sqlmon1||' '||l_sqlmon2);
+    if l_sqlmon1 is not null and l_sqlmon2 is not null then
+      select SQL_MON_REPORT into l_f1 from OPAS_OT_SQL_SQLMON where SQLMON_ID = l_sqlmon1;
+      select SQL_MON_REPORT into l_f2 from OPAS_OT_SQL_SQLMON where SQLMON_ID = l_sqlmon2;
+--coremod_log.log(l_f1||' '||l_f2);
+      COREOBJ_SQL_COMP_REPORT.compare
+                      (getsqlmonrep(l_f1, l_length1),
+                       getsqlmonrep(l_f2, l_length2),
+                       flgSQLPLAN,
+                       l_output,
+                       l_c1,
+                       l_c2,
+                       l_c3);
+
+      COREMOD_REPORT_UTILS.print_3arrays
+                  (p_t_header   => 'SQL Monitor Report Comparison', -- of '||l_sql1||' and '||l_sql2,
+                   p_width      => (l_length1 + l_length2 + 2) * (p_pixel_per_char),
+                   p_style_r1   => 'awrc1', --odd rows
+                   p_style_r2   => 'awrnc1', --even rows
+                   p_style_head => 'trchd',
+                   p_style_tab  => 'trctd',
+                   p_output     => comprep_section_sqlmonrep.p_output,
+                   p_col1       => l_c1,
+                   p_col2       => l_c2,
+                   p_col3       => l_c3);
+    end if;
+  exception
+    when others then
+      coremod_log.log('COREOBJ_SQL_COMP_REPORT.comprep_section_sqlmonrep: '||sqlerrm);
+      coremod_log.log('COREOBJ_SQL_COMP_REPORT.comprep_section_sqlmonrep error stack: '||DBMS_UTILITY.FORMAT_ERROR_STACK);
+      comprep_section_sqlmonrep.p_output.delete; comprep_section_sqlmonrep.p_output(1) := 'Comparison is not available';
   end;
 
   procedure comprep_section_sqlplan(p_obj_id           opas_objects.obj_id%type,
@@ -858,7 +986,10 @@ coremod_log.log('p_txt2: found sect '||l_cnt||' '||l_plan_sections(l_cnt));
                    p_col3       => l_c3);
     end if;
   exception
-    when others then comprep_section_sqlplan.p_output.delete; comprep_section_sqlplan.p_output(1) := 'Comparison not available';
+    when others then
+      coremod_log.log('COREOBJ_SQL_COMP_REPORT.comprep_section_sqlplan: '||sqlerrm);
+      coremod_log.log('COREOBJ_SQL_COMP_REPORT.comprep_section_sqlplan error stack: '||DBMS_UTILITY.FORMAT_ERROR_STACK);
+      comprep_section_sqlplan.p_output.delete; comprep_section_sqlplan.p_output(1) := 'Comparison is not available';
   end;
 
   procedure stats_open_awr_crsr(p_obj_id           opas_objects.obj_id%type,
@@ -996,8 +1127,8 @@ coremod_log.log('p_txt2: found sect '||l_cnt||' '||l_plan_sections(l_cnt));
     coreobj_api.get_jparam(p_obj_id,pPLANDP#2,l_dp_id2);
     coreobj_api.get_jparam(p_obj_id,pCHLD#1,l_chld1);
     coreobj_api.get_jparam(p_obj_id,pCHLD#2,l_chld2);
-    coreobj_api.get_jparam(p_obj_id,pPLNHASH#1,l_plhs1);
-    coreobj_api.get_jparam(p_obj_id,pPLNHASH#2,l_plhs2);
+    coreobj_api.get_jparam(p_obj_id,pV$PLNHASH#1,l_plhs1);
+    coreobj_api.get_jparam(p_obj_id,pV$PLNHASH#2,l_plhs2);
     coreobj_api.get_jparam(p_obj_id,pV$INST#1,l_inst1);
     coreobj_api.get_jparam(p_obj_id,pV$INST#2,l_inst2);
 
@@ -1141,6 +1272,7 @@ coremod_log.log('p_txt2: found sect '||l_cnt||' '||l_plan_sections(l_cnt));
       when repcoAWRSTAT  then comprep_section_stats (p_obj_id, stAWR,   p_output);
       when repcoASHWAIT  then null;           -- ASH Wait Profiles
       when repcoASHPLANSTAT then null;        -- ASH Plan Stats
+      when repcoSQLMON then comprep_section_sqlmonrep(p_obj_id, p_output, p_pixel_per_char);
     else
       null;
     end case;

@@ -630,17 +630,19 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                                            p_output => l_report);
           end if;
         end if;
-        l_file_id := COREMOD_FILE_UTILS.create_file(
-          P_MODNAME => COREMOD_API.gMODNAME,
-          P_FILE_TYPE => 'SQLMON',
-          P_FILE_NAME => p_data.sql_id||'_sqlmon.txt',
-          P_MIMETYPE => COREMOD_FILE_UTILS.mtTEXT,
-          P_OWNER => 'PUBLIC');
-        COREMOD_FILE_UTILS.store_content (
-           P_FILE_ID => l_file_id,
-           P_CONTENT => l_report) ;
+        if l_report not like 'SQL Monitoring Report' then
+          l_file_id := COREMOD_FILE_UTILS.create_file(
+            P_MODNAME => COREMOD_API.gMODNAME,
+            P_FILE_TYPE => 'SQLMON',
+            P_FILE_NAME => p_data.sql_id||'_sqlmon.txt',
+            P_MIMETYPE => COREMOD_FILE_UTILS.mtTEXT,
+            P_OWNER => 'PUBLIC');
+          COREMOD_FILE_UTILS.store_content (
+             P_FILE_ID => l_file_id,
+             P_CONTENT => l_report) ;
 
         update opas_ot_sql_sqlmon set sql_mon_report = l_file_id where sqlmon_id = i.sqlmon_id;
+        end if;
       exception
         when others then
           coremod_tasks.log('Error load_sql_mon ('||p_data.sql_data_point_id||') calling dbms_sqltune.report_sql_monitor: '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);

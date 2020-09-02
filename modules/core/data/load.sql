@@ -114,7 +114,8 @@ INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sp
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLCOMPSECT','VSQLSTAT'                  ,'V$SQL statistics'     ,'ccvsqlst',       null,null,20);
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLCOMPSECT','AWRSTAT'                   ,'AWR statistics'       ,'ccawrst',        null,null,40);
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLCOMPSECT','ASHWAIT'                   ,'ASH Wait Profiles'    ,'ccashwt',        null,null,50);
-INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLCOMPSECT','ASHPLANSTAT'               ,'ASH Plan STats'       ,'ccashplst',      null,null,50);
+INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLCOMPSECT','ASHPLANSTAT'               ,'ASH Plan Stats'       ,'ccashplst',      null,null,60);
+INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','SQLCOMPSECT','SQLMON'                    ,'SQL Moitor Report'    ,'ccsqlmonrep',    null,null,70);
 
 --Notifications
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','NOTIFTYPES','1'                          ,'Maintenance'   ,'fa-wrench',                'rgb(86,86,86)' ,null,10);

@@ -13,6 +13,7 @@ package COREOBJ_SQL_COMP_REPORT is
   repcoAWRSTAT                constant varchar2(30) := 'AWRSTAT';            -- AWR statistics
   repcoASHWAIT                constant varchar2(30) := 'ASHWAIT';            -- ASH Wait Profiles
   repcoASHPLANSTAT            constant varchar2(30) := 'ASHPLANSTAT';        -- ASH Plan Stats
+  repcoSQLMON                 constant varchar2(30) := 'SQLMON';             -- SQL Moitor Report
 
   --params
   pSQLID#1                    constant varchar2(30) := 'SQLID1';
@@ -50,6 +51,9 @@ package COREOBJ_SQL_COMP_REPORT is
   pV$PLNHASH#1               constant varchar2(30) := 'V$PLNHASH#1';
   pV$PLNHASH#2               constant varchar2(30) := 'V$PLNHASH#2';
 
+  pSQLMONREP#1               constant varchar2(30) := 'SQLMONREP#1';
+  pSQLMONREP#2               constant varchar2(30) := 'SQLMONREP#2';
+
   --plan types
   ptAWR                       constant varchar2(30) := 'AWR';  --AWR
   ptEP                        constant varchar2(30) := 'EP';   --Explain plan
@@ -59,6 +63,7 @@ package COREOBJ_SQL_COMP_REPORT is
   --STAT types
   stAWR                       constant varchar2(30) := 'AWR';
   stV$SQL                     constant varchar2(30) := 'V$SQL';
+
 
   TYPE r_sqlstat_base_crsr IS RECORD (
     executions_delta     NUMBER,
@@ -94,6 +99,8 @@ package COREOBJ_SQL_COMP_REPORT is
 
   TYPE t_sqlstat_base_crsr IS REF CURSOR RETURN r_sqlstat_base_crsr;
 
+  procedure debug_on;
+  procedure debug_off;
   procedure add   (p_obj_id       out opas_objects.obj_id%type,
                    p_obj_prnt         opas_objects.obj_prnt%type,
                    p_modname          opas_files.modname%type default COREMOD_API.gMODNAME,

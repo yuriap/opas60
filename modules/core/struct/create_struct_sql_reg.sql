@@ -1453,6 +1453,7 @@ create table opas_ot_sqlcatch_sqls (
  execs_num_to_init                 number,
  actual_execs                      number,
  sql_text                          varchar2(4000),
+ picked                            timestamp,
  primary key (obj_id, sql_id)
 );
 
