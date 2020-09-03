@@ -28,7 +28,7 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 -- Application Export:
 --   Application:     600
 --   Name:            Oracle Performance Analytic Suite
---   Date and Time:   18:33 Wednesday September 2, 2020
+--   Date and Time:   17:08 Thursday September 3, 2020
 --   Exported By:     OPAS60DADM
 --   Flashback:       0
 --   Export Type:     Application Export
@@ -36,9 +36,9 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 --       Items:                  397
 --       Validations:              4
 --       Processes:              231
---       Regions:                288
+--       Regions:                290
 --       Buttons:                200
---       Dynamic Actions:         67
+--       Dynamic Actions:         69
 --     Shared Components:
 --       Logic:
 --         Items:                 12
@@ -132,7 +132,7 @@ wwv_flow_api.create_flow(
 ,p_substitution_string_06=>'APP_GRID_DT_FMT_TZ_FULL'
 ,p_substitution_value_06=>'YYYY-MM-DD HH24:MI:SS.ff9 TZH:TZM'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200902183043'
+,p_last_upd_yyyymmddhh24miss=>'20200903164652'
 ,p_file_prefix => nvl(wwv_flow_application_install.get_static_app_file_prefix,'')
 ,p_files_version=>3
 ,p_ui_type_name => null
@@ -27984,7 +27984,7 @@ wwv_flow_api.create_page(
 ,p_step_template=>wwv_flow_api.id(58924046682993504)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200825185738'
+,p_last_upd_yyyymmddhh24miss=>'20200903153436'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(2403697753561432)
@@ -28774,6 +28774,15 @@ wwv_flow_api.create_worksheet_column(
 ,p_column_label=>'Samples Cnt'
 ,p_column_type=>'NUMBER'
 ,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_rpt(
+ p_id=>wwv_flow_api.id(7831268612025778)
+,p_application_user=>'APXWS_DEFAULT'
+,p_report_seq=>10
+,p_report_alias=>'78313'
+,p_status=>'PUBLIC'
+,p_is_default=>'Y'
+,p_report_columns=>'MIN_SAMPLE_TIME:MAX_SAMPLE_TIME:SQL_EXEC_START:PROGRAM:MODULE:ACTION:CLIENT_ID:SAMPLES_CNT'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(2913735982341117)
@@ -53384,7 +53393,7 @@ wwv_flow_api.create_page(
 ,p_step_template=>wwv_flow_api.id(58924046682993504)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200902183043'
+,p_last_upd_yyyymmddhh24miss=>'20200903164652'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(3125913210647009)
@@ -53510,13 +53519,43 @@ wwv_flow_api.create_page_plug(
 ,p_plug_name=>'SQL Monitor Comparison'
 ,p_region_template_options=>'#DEFAULT#:t-Region--removeHeader:t-Region--scrollBody'
 ,p_plug_template=>wwv_flow_api.id(58960191682993672)
-,p_plug_display_sequence=>120
+,p_plug_display_sequence=>140
 ,p_include_in_reg_disp_sel_yn=>'Y'
 ,p_plug_display_point=>'BODY'
 ,p_plug_source=>'<div id="p8000_sqlmonrep"></div>'
 ,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
 ,p_plug_display_condition_type=>'PLSQL_EXPRESSION'
 ,p_plug_display_when_condition=>'instr(:P8000_SECTIONS,''SQLMON'')>0 and :P8000_DP1 is not null and :P8000_DP2 is not null'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(7633668344256510)
+,p_plug_name=>'ASH Wait Profiles'
+,p_region_template_options=>'#DEFAULT#:t-Region--removeHeader:t-Region--scrollBody'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>120
+,p_include_in_reg_disp_sel_yn=>'Y'
+,p_plug_display_point=>'BODY'
+,p_plug_source=>'<div id="p8000_ashwaitprof"></div>'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_plug_display_condition_type=>'PLSQL_EXPRESSION'
+,p_plug_display_when_condition=>'instr(:P8000_SECTIONS,''ASHWAIT'')>0 and :P8000_DP1 is not null and :P8000_DP2 is not null'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(7634114155256515)
+,p_plug_name=>'ASH Plans Wait Profiles'
+,p_region_template_options=>'#DEFAULT#:t-Region--removeHeader:t-Region--scrollBody'
+,p_plug_template=>wwv_flow_api.id(58960191682993672)
+,p_plug_display_sequence=>130
+,p_include_in_reg_disp_sel_yn=>'Y'
+,p_plug_display_point=>'BODY'
+,p_plug_source=>'<div id="p8000_ashplanprof"></div>'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_plug_display_condition_type=>'PLSQL_EXPRESSION'
+,p_plug_display_when_condition=>'instr(:P8000_SECTIONS,''ASHPLANSTAT'')>0 and :P8000_DP1 is not null and :P8000_DP2 is not null'
 ,p_attribute_01=>'N'
 ,p_attribute_02=>'HTML'
 );
@@ -54075,6 +54114,9 @@ wwv_flow_api.create_page_item(
 ,p_attribute_04=>'N'
 ,p_attribute_05=>'N'
 );
+end;
+/
+begin
 wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(2844192483737043)
 ,p_name=>'P8000_DP1_OBJ'
@@ -54099,9 +54141,6 @@ wwv_flow_api.create_page_item(
 ,p_display_as=>'NATIVE_HIDDEN'
 ,p_attribute_01=>'Y'
 );
-end;
-/
-begin
 wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(2844539868737047)
 ,p_name=>'P8000_DP2_PRNT'
@@ -54808,6 +54847,56 @@ wwv_flow_api.create_page_da_action(
 '  COREOBJ_SQL_COMP_REPORT.debug_off;',
 'end;'))
 ,p_attribute_02=>'p8000_sqlmonrep'
+,p_attribute_04=>'0'
+,p_attribute_05=>'REPLACE'
+);
+wwv_flow_api.create_page_da_event(
+ p_id=>wwv_flow_api.id(7633915281256513)
+,p_name=>'RenderAWRASHWaitProfile'
+,p_event_sequence=>110
+,p_triggering_element_type=>'REGION'
+,p_triggering_region_id=>wwv_flow_api.id(7633668344256510)
+,p_bind_type=>'bind'
+,p_bind_event_type=>'apexafterrefresh'
+);
+wwv_flow_api.create_page_da_action(
+ p_id=>wwv_flow_api.id(7634052318256514)
+,p_event_id=>wwv_flow_api.id(7633915281256513)
+,p_event_result=>'TRUE'
+,p_action_sequence=>10
+,p_execute_on_page_init=>'Y'
+,p_action=>'PLUGIN_MULEDEV.SERVER_REGION_REFRESH'
+,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'begin',
+'  COREOBJ_SQL_COMP_REPORT.print_comprep_section_web(:P8000_OBJ_ID,',
+'                                                    COREOBJ_SQL_COMP_REPORT.repcoASHWAIT);',
+'end;'))
+,p_attribute_02=>'p8000_ashwaitprof'
+,p_attribute_04=>'0'
+,p_attribute_05=>'REPLACE'
+);
+wwv_flow_api.create_page_da_event(
+ p_id=>wwv_flow_api.id(7634280580256516)
+,p_name=>'RenderAshPlanProfile'
+,p_event_sequence=>120
+,p_triggering_element_type=>'REGION'
+,p_triggering_region_id=>wwv_flow_api.id(7634114155256515)
+,p_bind_type=>'bind'
+,p_bind_event_type=>'apexafterrefresh'
+);
+wwv_flow_api.create_page_da_action(
+ p_id=>wwv_flow_api.id(7634319349256517)
+,p_event_id=>wwv_flow_api.id(7634280580256516)
+,p_event_result=>'TRUE'
+,p_action_sequence=>10
+,p_execute_on_page_init=>'Y'
+,p_action=>'PLUGIN_MULEDEV.SERVER_REGION_REFRESH'
+,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'begin',
+'  COREOBJ_SQL_COMP_REPORT.print_comprep_section_web(:P8000_OBJ_ID,',
+'                                                    COREOBJ_SQL_COMP_REPORT.repcoASHPLANSTAT);',
+'end;'))
+,p_attribute_02=>'p8000_ashplanprof'
 ,p_attribute_04=>'0'
 ,p_attribute_05=>'REPLACE'
 );

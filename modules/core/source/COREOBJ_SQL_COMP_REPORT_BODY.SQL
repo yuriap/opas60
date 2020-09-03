@@ -374,6 +374,9 @@ package body COREOBJ_SQL_COMP_REPORT is
       p_c1(p_c1.count+1):=p_col1;
       p_c2(p_c2.count+1):=p_col2;
       p_c3(p_c3.count+1):=p_col3;
+      --if g_Debug then coremod_log.log('p_col1: '||p_col1); end if;
+      --if g_Debug then coremod_log.log('p_col2: '||p_col2); end if;
+      --if g_Debug then coremod_log.log('p_col3: '||p_col3); end if;
     end;
 
     procedure to_table_for_comparison(p_list IN OUT VARCHAR2,
@@ -432,7 +435,7 @@ package body COREOBJ_SQL_COMP_REPORT is
     --aligning sections
     if p_flags = flgSQLPLAN then
       for i in 1..p_txt1.count loop
-if g_Debug then coremod_log.log('p_txt1(i): '||p_txt1(i)); end if;
+--if g_Debug then coremod_log.log('p_txt1(i): '||p_txt1(i)); end if;
         for j in 1..g_plan_sections_all.count loop
           if instr(p_txt1(i),g_plan_sections_all(j))>0 then
             l_available_sections(g_plan_sections_all(j)):=1;
@@ -441,20 +444,20 @@ if g_Debug then coremod_log.log('p_txt1(i): '||p_txt1(i)); end if;
       end loop;
 
       for i in 1..p_txt2.count loop
-if g_Debug then coremod_log.log('p_txt2(i): '||p_txt2(i)); end if;
+--if g_Debug then coremod_log.log('p_txt2(i): '||p_txt2(i)); end if;
         for j in 1..g_plan_sections_all.count loop
           if instr(p_txt2(i),g_plan_sections_all(j))>0 then
             l_available_sections(g_plan_sections_all(j)):=1;
           end if;
         end loop;
       end loop;
-if g_Debug then coremod_log.log('l_available_sections.count: '||l_available_sections.count); end if;
+--if g_Debug then coremod_log.log('l_available_sections.count: '||l_available_sections.count); end if;
       for j in 1..g_plan_sections_all.count loop
-if g_Debug then coremod_log.log('g_plan_sections_all(j): '||g_plan_sections_all(j)); end if;
+--if g_Debug then coremod_log.log('g_plan_sections_all(j): '||g_plan_sections_all(j)); end if;
         if l_available_sections.exists(g_plan_sections_all(j)) then
           l_plan_sections.extend;
           l_plan_sections(l_plan_sections.count):=g_plan_sections_all(j);
-if g_Debug then coremod_log.log('l_plan_sections(l_plan_sections.count): '||l_plan_sections(l_plan_sections.count)); end if;
+--if g_Debug then coremod_log.log('l_plan_sections(l_plan_sections.count): '||l_plan_sections(l_plan_sections.count)); end if;
         end if;
       end loop;
 
@@ -546,21 +549,28 @@ coremod_log.log('p_txt2: found sect '||l_cnt||' '||l_plan_sections(l_cnt));
 
       if p2.exists(j)then
         r2 := p2(j);
+--if g_Debug then coremod_log.log('p2(j): ('||j||')'||p2(j)); end if;
+      else
+        r2 := null;
       end if;
+--if g_Debug then coremod_log.log('l_text_rowcnt: '||l_text_rowcnt); end if;
 
       if p1.exists(j) then
         r1:=--rpad(
             nvl(rtrim(replace(p1(j),chr(9),' ')),' ')
             --, p_max_width, ' ')
             ;
-      else
-        if r2 is not null then
+      elsif r2 is not null then
           r1 := --rpad(
                ' '
                --, p_max_width, ' ')
                ;
-        end if;
+      else
+        r1 := null;
       end if;
+
+--if g_Debug and j > 87 then coremod_log.log('r1: ('||j||')'||r1); end if;
+--if g_Debug and j > 87 then coremod_log.log('r2: ('||j||')'||r2); end if;
 
       if REGEXP_REPLACE(trim(ltrim(r1,'.')),'\s+','')=REGEXP_REPLACE(trim(r2),'\s+','') or (trim(TRANSLATE(r1,'-',' ')) is null and trim(TRANSLATE(r2,'-',' ')) is null) then
         --pr2(r1 || '+' || r2, '+');
@@ -1009,6 +1019,7 @@ if g_Debug then coremod_log.log('p_file_id: '||p_file_id|| '; l_output.count: '|
     l_plhs1        number;
     l_plhs2        number;
   begin
+    coreobj_api.extract_jparams(p_obj_id);
     coreobj_api.get_jparam(p_obj_id,pDBID#1,l_dbid1);
     coreobj_api.get_jparam(p_obj_id,pDBID#2,l_dbid2);
     coreobj_api.get_jparam(p_obj_id,pSQLID#1,l_sql1);
@@ -1123,6 +1134,7 @@ if g_Debug then coremod_log.log('p_file_id: '||p_file_id|| '; l_output.count: '|
     l_inst1        number;
     l_inst2        number;
   begin
+    coreobj_api.extract_jparams(p_obj_id);
     coreobj_api.get_jparam(p_obj_id,pPLANDP#1,l_dp_id1);
     coreobj_api.get_jparam(p_obj_id,pPLANDP#2,l_dp_id2);
     coreobj_api.get_jparam(p_obj_id,pCHLD#1,l_chld1);
@@ -1259,6 +1271,185 @@ if g_Debug then coremod_log.log('p_file_id: '||p_file_id|| '; l_output.count: '|
 
   end;
 
+  function getq_ashawr_comp (p_obj_id        opas_objects.obj_id%type,
+                             p_for_grid             boolean default false) return varchar2
+  is
+    l_dp_id1       number;
+    l_dp_id2       number;
+  begin
+    coreobj_api.extract_jparams(p_obj_id);
+    coreobj_api.get_jparam(p_obj_id,pPLANDP#1,l_dp_id1);
+    coreobj_api.get_jparam(p_obj_id,pPLANDP#2,l_dp_id2);
+
+    return replace(replace(q'[with locals as (
+ select x.wait_class, x.event, sum(samples)*10 cntl from (
+ select nvl(e.wait_class, '_') wait_class, s.event, s.samples
+   from OPAS_OT_SQL_AWR_ASH_PLST s, v$event_name e, OPAS_OT_SQL_DATA d
+  where SQL_DATA_POINT_ID = <DP1>
+    and s.EVENT=e.name(+)
+    and d.SQL_ID = s.SQL_ID
+    and d.DBLINK = s.DBLINK
+    and s.snap_id between AWR_SNAP_START and AWR_SNAP_END
+    and d.INCARNATION# = s.INCARNATION#) x
+  group by wait_class, event),
+  remotes as (
+ select x.wait_class, x.event, sum(samples)*10 cntr from (
+ select nvl(e.wait_class, '_') wait_class, s.event, s.samples
+   from OPAS_OT_SQL_AWR_ASH_PLST s, v$event_name e, OPAS_OT_SQL_DATA d
+  where SQL_DATA_POINT_ID = <DP2>
+    and s.EVENT=e.name(+)
+    and d.SQL_ID = s.SQL_ID
+    and d.DBLINK = s.DBLINK
+    and s.snap_id between AWR_SNAP_START and AWR_SNAP_END
+    and d.INCARNATION# = s.INCARNATION#) x
+  group by wait_class, event)
+ select decode(wait_class,'_','N/A',wait_class) wait_class,event,cntl db1_tim,cntr db2_tim,case when cntr-cntl is not null then round(100*(cntr-cntl)/decode(cntr,0,1,cntr),2)||'%' else '-' end delta
+ from locals full outer join remotes using (wait_class,event)
+ order by 1 nulls first,2]','<DP1>',l_dp_id1),'<DP2>',l_dp_id2);
+  end;
+
+  function getq_ashash_comp (p_obj_id        opas_objects.obj_id%type,
+                             p_for_grid             boolean default false) return varchar2
+  is
+    l_dp_id1       number;
+    l_dp_id2       number;
+  begin
+    coreobj_api.extract_jparams(p_obj_id);
+    coreobj_api.get_jparam(p_obj_id,pPLANDP#1,l_dp_id1);
+    coreobj_api.get_jparam(p_obj_id,pPLANDP#2,l_dp_id2);
+
+    return replace(replace(q'[with locals as (
+ select x.wait_class, x.event, sum(CNT) cntl from (
+ select nvl(e.wait_class, '_') wait_class, s.event, s.CNT
+   from OPAS_OT_SQL_VASH2 s, v$event_name e
+  where s.SQL_DATA_POINT_ID = <DP1>
+    and s.EVENT=e.name(+)) x
+  group by wait_class, event),
+  remotes as (
+ select x.wait_class, x.event, sum(CNT) cntr from (
+ select nvl(e.wait_class, '_') wait_class, s.event, s.CNT
+   from OPAS_OT_SQL_VASH2 s, v$event_name e
+  where s.SQL_DATA_POINT_ID = <DP2>
+    and s.EVENT=e.name(+)) x
+  group by wait_class, event)
+ select decode(wait_class,'_','N/A',wait_class) wait_class,event,cntl db1_tim,cntr db2_tim,case when cntr-cntl is not null then round(100*(cntr-cntl)/decode(cntr,0,1,cntr),2)||'%' else '-' end delta
+ from locals full outer join remotes using (wait_class,event)
+ order by 1 nulls first,2]','<DP1>',l_dp_id1),'<DP2>',l_dp_id2);
+  end;
+
+  procedure comprep_section_qry(p_qry           varchar2,
+                                p_caption       varchar2,
+                                p_output in out COREMOD_REPORT_UTILS.t_output_lines) AS
+  begin
+    COREMOD_REPORT_UTILS.print_query_result_html (
+                                            p_query => p_qry,
+                                            p_width => COREOBJ_SQL_REPORT_UTILS.gwWideSection1,
+                                            p_summary => p_caption,--'
+                                            --p_search varchar2 default null,
+                                            --p_replacement varchar2 default null,
+                                            p_style_tab => 'trctd',
+                                            p_style_head => 'trchd', --head
+                                            p_style_r1 => 'trcr1',   --odd rows
+                                            p_style_r2  => 'trcr2', --even rows
+                                            p_style_finrow => null, --'trctotr',
+                                            --p_header number default 0,
+                                            p_break_col => 'inst_id',
+                                            p_output => comprep_section_qry.p_output);
+  end;
+
+  procedure comprep_section_ash_profile(p_obj_id        opas_objects.obj_id%type,
+                                        p_output    out COREMOD_REPORT_UTILS.t_output_lines)
+  is
+  begin
+    comprep_section_ash_profile.p_output(1) := 'AWR ASH Wait Profile';
+    comprep_section_qry (getq_ashawr_comp(p_obj_id), 'AWR ASH Wait Profile', comprep_section_ash_profile.p_output);
+    comprep_section_ash_profile.p_output(comprep_section_ash_profile.p_output.count+1) := 'V$ASH Wait Profile';
+    comprep_section_qry (getq_ashash_comp(p_obj_id), 'V$ASH Wait Profile', comprep_section_ash_profile.p_output);
+  end;
+
+ function getq_awrash_plan_comp (p_obj_id        opas_objects.obj_id%type,
+                                 p_for_grid             boolean default false) return varchar2
+  is
+    l_dp_id1       number;
+    l_dp_id2       number;
+  begin
+    coreobj_api.extract_jparams(p_obj_id);
+    coreobj_api.get_jparam(p_obj_id,pPLANDP#1,l_dp_id1);
+    coreobj_api.get_jparam(p_obj_id,pPLANDP#2,l_dp_id2);
+
+    return replace(replace(q'[with db1 as (
+select rownum n, PLAN_HASH_VALUE, ID, ROW_SRC, SQL_PLAN_OPTIONS, OBJ, TBS, EVENT, tim*10 tim from (
+select SQL_PLAN_HASH_VALUE PLAN_HASH_VALUE, SQL_PLAN_LINE_ID ID, SQL_PLAN_OPERATION ROW_SRC, SQL_PLAN_OPTIONS, OBJ, TBS, EVENT, sum(SAMPLES) tim
+  from OPAS_OT_SQL_AWR_ASH_PLST s, v$event_name e, OPAS_OT_SQL_DATA d
+ where d.SQL_DATA_POINT_ID = <DP1>
+   and s.EVENT=e.name(+)
+   and d.SQL_ID = s.SQL_ID
+   and d.DBLINK = s.DBLINK
+   and s.snap_id between AWR_SNAP_START and AWR_SNAP_END
+   and d.INCARNATION# = s.INCARNATION#
+group by SQL_PLAN_HASH_VALUE, SQL_PLAN_LINE_ID, SQL_PLAN_OPERATION, SQL_PLAN_OPTIONS, OBJ, TBS, EVENT) x1
+order by PLAN_HASH_VALUE, ID nulls first, ROW_SRC, SQL_PLAN_OPTIONS, OBJ, TBS, EVENT),
+db2 as (
+select rownum n, PLAN_HASH_VALUE, ID, ROW_SRC, SQL_PLAN_OPTIONS, OBJ, TBS, EVENT, tim*10 tim from (
+select SQL_PLAN_HASH_VALUE PLAN_HASH_VALUE, SQL_PLAN_LINE_ID ID, SQL_PLAN_OPERATION ROW_SRC, SQL_PLAN_OPTIONS, OBJ, TBS, EVENT, sum(SAMPLES) tim
+  from OPAS_OT_SQL_AWR_ASH_PLST s, v$event_name e, OPAS_OT_SQL_DATA d
+ where d.SQL_DATA_POINT_ID = <DP2>
+   and s.EVENT=e.name(+)
+   and d.SQL_ID = s.SQL_ID
+   and d.DBLINK = s.DBLINK
+   and s.snap_id between AWR_SNAP_START and AWR_SNAP_END
+   and d.INCARNATION# = s.INCARNATION#
+group by SQL_PLAN_HASH_VALUE, SQL_PLAN_LINE_ID, SQL_PLAN_OPERATION, SQL_PLAN_OPTIONS, OBJ, TBS, EVENT) x1
+order by PLAN_HASH_VALUE, ID nulls first, ROW_SRC, SQL_PLAN_OPTIONS, OBJ, TBS, EVENT)
+select
+  a.PLAN_HASH_VALUE plan_hash_db1, a.ID line_db1, a.ROW_SRC op_db1, a.SQL_PLAN_OPTIONS opt_db1, a.OBJ obj_db1, a.TBS tbs_db1, a.EVENT event_db1, a.tim tim_db1,
+  b.PLAN_HASH_VALUE plan_hash_db2, b.ID line_db2, b.ROW_SRC op_db2, b.SQL_PLAN_OPTIONS opt_db2, b.OBJ obj_db2, b.TBS tbs_db2, b.EVENT event_db2, b.tim tim_db2
+from db1 a full outer join db2 b on (a.n=b.n)
+order by a.n,b.n]','<DP1>',l_dp_id1),'<DP2>',l_dp_id2);
+  end;
+
+ function getq_ashash_plan_comp (p_obj_id        opas_objects.obj_id%type,
+                                 p_for_grid             boolean default false) return varchar2
+  is
+    l_dp_id1       number;
+    l_dp_id2       number;
+  begin
+    coreobj_api.extract_jparams(p_obj_id);
+    coreobj_api.get_jparam(p_obj_id,pPLANDP#1,l_dp_id1);
+    coreobj_api.get_jparam(p_obj_id,pPLANDP#2,l_dp_id2);
+
+    return replace(replace(q'[with db1 as
+(select rownum n, PLAN_HASH_VALUE, ID, ROW_SRC, OBJ, TBS, EVENT, tim from (
+select PLAN_HASH_VALUE, ID, ROW_SRC, OBJ, TBS, EVENT, sum(CNT) tim
+  from OPAS_OT_SQL_VASH2 s, v$event_name e
+ where s.SQL_DATA_POINT_ID = <DP1>
+   and s.EVENT=e.name(+)
+group by PLAN_HASH_VALUE, ID, ROW_SRC, OBJ, TBS, EVENT) x1
+order by PLAN_HASH_VALUE, ID nulls first, ROW_SRC, OBJ, TBS, EVENT),
+db2 as
+(select rownum n, PLAN_HASH_VALUE, ID, ROW_SRC, OBJ, TBS, EVENT, tim from (
+select PLAN_HASH_VALUE, ID, ROW_SRC, OBJ, TBS, EVENT, sum(CNT) tim
+  from OPAS_OT_SQL_VASH2 s, v$event_name e
+ where s.SQL_DATA_POINT_ID = <DP2>
+   and s.EVENT=e.name(+)
+group by PLAN_HASH_VALUE, ID, ROW_SRC, OBJ, TBS, EVENT) x1
+order by PLAN_HASH_VALUE, ID nulls first, ROW_SRC, OBJ, TBS, EVENT)
+select
+  a.PLAN_HASH_VALUE plan_hash_db1, a.ID line_db1, a.ROW_SRC op_db1, a.OBJ obj_db1, a.TBS tbs_db1, a.EVENT event_db1, a.tim tim_db1,
+  b.PLAN_HASH_VALUE plan_hash_db2, b.ID line_db2, b.ROW_SRC op_db2, b.OBJ obj_db2, b.TBS tbs_db2, b.EVENT event_db2, b.tim tim_db2
+from db1 a full outer join db2 b on (a.n=b.n) order by a.n,b.n]','<DP1>',l_dp_id1),'<DP2>',l_dp_id2);
+  end;
+
+  procedure comprep_section_ash_plan_profile(p_obj_id        opas_objects.obj_id%type,
+                                        p_output    out COREMOD_REPORT_UTILS.t_output_lines)
+  is
+  begin
+    comprep_section_ash_plan_profile.p_output(1) := 'AWR ASH Plan Profile';
+    comprep_section_qry (getq_awrash_plan_comp(p_obj_id), 'AWR ASH Plan Profile', comprep_section_ash_plan_profile.p_output);
+    comprep_section_ash_plan_profile.p_output(comprep_section_ash_plan_profile.p_output.count+1) := 'V$ASH Plan Profile';
+    comprep_section_qry (getq_ashash_plan_comp(p_obj_id), 'V$ASH Plan Profile', comprep_section_ash_plan_profile.p_output);
+  end;
+
   procedure create_comprep_section(p_obj_id        opas_objects.obj_id%type,
                                    p_section       varchar2,
                                    p_output    out COREMOD_REPORT_UTILS.t_output_lines,
@@ -1270,8 +1461,8 @@ if g_Debug then coremod_log.log('p_file_id: '||p_file_id|| '; l_output.count: '|
       when repcoEXECPLAN then comprep_section_sqlplan(p_obj_id, p_output, p_pixel_per_char);
       when repcoVSQLSTAT then comprep_section_stats (p_obj_id, stV$SQL, p_output);
       when repcoAWRSTAT  then comprep_section_stats (p_obj_id, stAWR,   p_output);
-      when repcoASHWAIT  then null;           -- ASH Wait Profiles
-      when repcoASHPLANSTAT then null;        -- ASH Plan Stats
+      when repcoASHWAIT  then comprep_section_ash_profile (p_obj_id, p_output);  -- ASH Wait Profiles
+      when repcoASHPLANSTAT then comprep_section_ash_plan_profile (p_obj_id, p_output);  -- ASH Plan Stats
       when repcoSQLMON then comprep_section_sqlmonrep(p_obj_id, p_output, p_pixel_per_char);
     else
       null;
