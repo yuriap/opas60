@@ -365,6 +365,16 @@ package body COREOBJ_SQL_COMP_REPORT is
     l_s_tag  varchar2(2)  := '<`';
     l_e_tag  varchar2(2)  := '`>';
     l_max_ind number;
+    l_left_id number;
+    l_right_id number;
+    l_left_offs number;
+    l_right_offs number;
+    l_id       number;
+    l_num_rows number;
+    i number;
+
+    l_left_finish boolean := false;
+    l_right_finish boolean := false;
 
     procedure pr11(p_msg varchar2) is begin p_output(p_output.count+1):=p_msg; end;
     procedure pr21(p_msg varchar2, p_match varchar2) is begin p_output(p_output.count+1):='~~*'||p_match||'*~~'||p_msg; end;
@@ -374,9 +384,6 @@ package body COREOBJ_SQL_COMP_REPORT is
       p_c1(p_c1.count+1):=p_col1;
       p_c2(p_c2.count+1):=p_col2;
       p_c3(p_c3.count+1):=p_col3;
-      --if g_Debug then coremod_log.log('p_col1: '||p_col1); end if;
-      --if g_Debug then coremod_log.log('p_col2: '||p_col2); end if;
-      --if g_Debug then coremod_log.log('p_col3: '||p_col3); end if;
     end;
 
     procedure to_table_for_comparison(p_list IN OUT VARCHAR2,
@@ -393,7 +400,7 @@ package body COREOBJ_SQL_COMP_REPORT is
       p_tab := COREMOD_REPORT_UTILS.t_arrayofstrings();
       if instr(p_list,'|') > 0 then l_sep := '|';end if;
       if instr(p_list,'Plan hash value') > 0 then l_sep := ':';end if;
---      l_trailing_space:=nvl(length(l_string),0)-nvl(length(trim(l_string)),0);
+
       if substr(trim(l_string),nvl(length(trim(l_string)),0))=l_sep then null; else l_string:=l_string||l_sep; end if;
       p_list:= null;
       LOOP
@@ -407,28 +414,15 @@ package body COREOBJ_SQL_COMP_REPORT is
       if l_sep <> '|' then
         p_list:=rtrim(p_list,l_sep);
       else
-        --p_list:=p_list||rpad(' ',l_trailing_space, ' ');
         null;
       end if;
-      --l_trailing_space:=nvl(length(p_list),0)-nvl(length(trim(p_list)),0);
     END;
+    function get_plan_line_number(p_line varchar2, p_default number default null) return number
+    is
+    begin
+      return to_number(ltrim(trim(substr(p_line,2,instr(p_line,'|',2)-2)),'*') DEFAULT p_default ON CONVERSION ERROR);
+    end;
   begin
-    -- get max width
---    l_max_width := 0;
---    for j in 1 .. p_txt1.count loop
---      if length(p_txt1(j)) > l_max_width then
---        l_max_width := length(p_txt1(j));
---      end if;
---    end loop;
---    p_max_width := l_max_width;
-
---    l_max_width := 0;
---    for j in 1 .. p_txt2.count loop
---      if length(p_txt2(j)) > l_max_width then
---        l_max_width := length(p_txt2(j));
---      end if;
---    end loop;
---    p_max_width := p_max_width+l_max_width;
 
     l_text_rowcnt := greatest(p_txt1.count, p_txt2.count);
 
@@ -465,41 +459,25 @@ package body COREOBJ_SQL_COMP_REPORT is
         l_sec1(l_plan_sections(i)):=COREMOD_REPORT_UTILS.t_arrayofstrings();
         l_sec2(l_plan_sections(i)):=COREMOD_REPORT_UTILS.t_arrayofstrings();
       end loop;
---http://localhost:8080/apex/f?p=600:8000:10297124338276:::RP:APP_OBJ_ID,APP_PREV_PAGE:15258,10
-      --l_cnt := 1;
+
       l_curr_section:=0;
---coremod_log.log('l_plan_sections.count: '||l_plan_sections.count);
       for i in 1..p_txt1.count loop
-/*        if instr(p_txt1(i),l_plan_sections(l_cnt))>0 then
-          l_curr_section:=l_cnt;
-coremod_log.log('p_txt1: found sect '||l_cnt||' '||l_plan_sections(l_cnt));
-          if l_cnt<l_plan_sections.count then l_cnt:=l_cnt+1; end if;
-        end if;*/
         for j in 1..l_plan_sections.count loop
           if instr(p_txt1(i),l_plan_sections(j))>0 then
             l_curr_section := j;
---coremod_log.log('p_txt1: found sect '||l_curr_section||' '||l_plan_sections(l_curr_section));
           end if;
         end loop;
         if l_plan_sections.exists(l_curr_section) then
           l_sec1(l_plan_sections(l_curr_section)).extend;
           l_sec1(l_plan_sections(l_curr_section))(l_sec1(l_plan_sections(l_curr_section)).count):=p_txt1(i);
         end if;
---coremod_log.log('l_sec1(l_plan_sections(l_curr_section))(l_sec1(l_plan_sections(l_curr_section)).count): '||l_sec1(l_plan_sections(l_curr_section))(l_sec1(l_plan_sections(l_curr_section)).count));
       end loop;
 
-      --l_cnt := 1;
       l_curr_section:=0;
       for i in 1..p_txt2.count loop
-/*        if instr(p_txt2(i),l_plan_sections(l_cnt))>0 then
-          l_curr_section:=l_cnt;
-coremod_log.log('p_txt2: found sect '||l_cnt||' '||l_plan_sections(l_cnt));
-          if l_cnt<l_plan_sections.count then l_cnt:=l_cnt+1; end if;
-        end if;*/
         for j in 1..l_plan_sections.count loop
           if instr(p_txt2(i),l_plan_sections(j))>0 then
             l_curr_section := j;
---coremod_log.log('p_txt2: found sect '||l_curr_section||' '||l_plan_sections(l_curr_section));
           end if;
         end loop;
         if l_plan_sections.exists(l_curr_section) then
@@ -509,21 +487,71 @@ coremod_log.log('p_txt2: found sect '||l_cnt||' '||l_plan_sections(l_cnt));
       end loop;
 
       for a in 1..l_plan_sections.count loop
-        for i in 1..greatest(l_sec1(l_plan_sections(a)).count,l_sec2(l_plan_sections(a)).count) loop
+
+        l_left_id  := -1;
+        l_right_id := -1;
+        l_left_offs := 0;
+        l_right_offs := 0;
+
+        l_num_rows :=  greatest(l_sec1(l_plan_sections(a)).count,l_sec2(l_plan_sections(a)).count);
+
+        i := 1;
+        loop
+          if l_plan_sections(a) = 'SQL Plan Monitoring Details' then
+
+            l_id := null;
+            if l_sec1(l_plan_sections(a)).exists(i+l_left_offs) then
+              l_id := get_plan_line_number(l_sec1(l_plan_sections(a))(i+l_left_offs), l_left_id);
+              if l_id is null and l_left_id > 0 and l_sec1(l_plan_sections(a))(i+l_left_offs) like '====%' then
+                l_left_finish := true;
+              end if;
+            end if;
+            if l_id is not null then l_left_id := l_id; end if;
+
+            l_id := null;
+            if l_sec2(l_plan_sections(a)).exists(i+l_right_offs) then
+              l_id := get_plan_line_number(l_sec2(l_plan_sections(a))(i+l_right_offs), l_right_id);
+              if l_id is null and l_right_id > 0 and l_sec2(l_plan_sections(a))(i+l_right_offs) like '====%' then
+                l_right_finish := true;
+              end if;
+            end if;
+            if l_id is not null then l_right_id := l_id; end if;
+
+          end if;
+
+          if l_plan_sections(a) = 'SQL Plan Monitoring Details' and l_left_id != l_right_id
+          then
+            if l_left_id > l_right_id and not l_right_finish
+              then l_left_offs := l_left_offs - 1; end if;
+            if l_left_id < l_right_id and not l_left_finish
+              then l_right_offs := l_right_offs - 1; end if;
+          end if;
+
           p1.extend;
-          if l_sec1(l_plan_sections(a)).exists(i) then
-            p1(p1.count) := l_sec1(l_plan_sections(a))(i);
+          if l_sec1(l_plan_sections(a)).exists(i+l_left_offs) and (l_left_id <= l_right_id or l_right_finish)
+          then
+            p1(p1.count) := l_sec1(l_plan_sections(a))(i+l_left_offs);
           else
             p1(p1.count):=' ';
           end if;
+          --p1(p1.count) := l_left_id||':'||i||':'||l_left_offs||':'|| p1(p1.count);
+
           p2.extend;
-          if l_sec2(l_plan_sections(a)).exists(i) then
-            p2(p2.count) := l_sec2(l_plan_sections(a))(i);
+          if l_sec2(l_plan_sections(a)).exists(i+l_right_offs) and (l_left_id >= l_right_id or l_left_finish)
+          then
+            p2(p2.count) := l_sec2(l_plan_sections(a))(i+l_right_offs);
           else
             p2(p2.count):=' ';
           end if;
+          --p2(p2.count) := l_right_id||':'||i||':'||l_right_offs||':'||p2(p2.count);
+
+          i := i + 1;
+
+          exit when not l_sec1(l_plan_sections(a)).exists(i+l_left_offs) and not l_sec2(l_plan_sections(a)).exists(i+l_right_offs) or i > l_num_rows+100;
+
         end loop;
       end loop;
+      l_text_rowcnt := l_text_rowcnt + i - l_num_rows - 3;
     else
       for i in 1..l_text_rowcnt loop
         p1.extend;
@@ -541,8 +569,8 @@ coremod_log.log('p_txt2: found sect '||l_cnt||' '||l_plan_sections(l_cnt));
       end loop;
     end if;
 
-    --comparing
-    --pr1(rpad('-',p_max_width*2+1,'-'));
+
+--if g_Debug then coremod_log.log('abs(l_left_offs+l_left_offs) '||abs(l_left_offs+l_left_offs)); end if;
 
     <<print_plan_comparison>>
     for j in 1 .. l_text_rowcnt loop
@@ -556,15 +584,9 @@ coremod_log.log('p_txt2: found sect '||l_cnt||' '||l_plan_sections(l_cnt));
 --if g_Debug then coremod_log.log('l_text_rowcnt: '||l_text_rowcnt); end if;
 
       if p1.exists(j) then
-        r1:=--rpad(
-            nvl(rtrim(replace(p1(j),chr(9),' ')),' ')
-            --, p_max_width, ' ')
-            ;
+        r1:=nvl(rtrim(replace(p1(j),chr(9),' ')),' ');
       elsif r2 is not null then
-          r1 := --rpad(
-               ' '
-               --, p_max_width, ' ')
-               ;
+          r1 := ' ';
       else
         r1 := null;
       end if;
@@ -572,8 +594,10 @@ coremod_log.log('p_txt2: found sect '||l_cnt||' '||l_plan_sections(l_cnt));
 --if g_Debug and j > 87 then coremod_log.log('r1: ('||j||')'||r1); end if;
 --if g_Debug and j > 87 then coremod_log.log('r2: ('||j||')'||r2); end if;
 
-      if REGEXP_REPLACE(trim(ltrim(r1,'.')),'\s+','')=REGEXP_REPLACE(trim(r2),'\s+','') or (trim(TRANSLATE(r1,'-',' ')) is null and trim(TRANSLATE(r2,'-',' ')) is null) then
-        --pr2(r1 || '+' || r2, '+');
+      if REGEXP_REPLACE(trim(ltrim(r1,'.')),'\s+','')=REGEXP_REPLACE(trim(r2),'\s+','') or
+         (trim(TRANSLATE(r1,'-',' ')) is null and trim(TRANSLATE(r2,'-',' ')) is null) or
+         (trim(TRANSLATE(r1,'=',' ')) is null and trim(TRANSLATE(r2,'=',' ')) is null)
+      then
         pr2(r1, '+', r2);
       else
         --coloring different words
@@ -750,7 +774,7 @@ if g_Debug then coremod_log.log('p_file_id: '||p_file_id|| '; l_output.count: '|
       exit when l_idx is null;
     end loop;
 
-if g_Debug then coremod_log.log('p_file_id: '||p_file_id|| '; l_output.count: '||l_output.count); end if;
+--if g_Debug then coremod_log.log('p_file_id: '||p_file_id|| '; l_output.count: '||l_output.count); end if;
     return l_output;
   end;
 
@@ -1378,8 +1402,9 @@ if g_Debug then coremod_log.log('p_file_id: '||p_file_id|| '; l_output.count: '|
     coreobj_api.get_jparam(p_obj_id,pPLANDP#2,l_dp_id2);
 
     return replace(replace(q'[with db1 as (
-select rownum n, PLAN_HASH_VALUE, ID, ROW_SRC, SQL_PLAN_OPTIONS, OBJ, TBS, EVENT, tim*10 tim from (
-select SQL_PLAN_HASH_VALUE PLAN_HASH_VALUE, SQL_PLAN_LINE_ID ID, SQL_PLAN_OPERATION ROW_SRC, SQL_PLAN_OPTIONS, OBJ, TBS, EVENT, sum(SAMPLES) tim
+select rownum n, x2.* from (
+select /*+ NO_ELIMINATE_OBY */ PLAN_HASH_VALUE, ID, ROW_SRC, SQL_PLAN_OPTIONS, /*OBJ, TBS,*/ EVENT, tim*10 tim from (
+select SQL_PLAN_HASH_VALUE PLAN_HASH_VALUE, SQL_PLAN_LINE_ID ID, SQL_PLAN_OPERATION ROW_SRC, SQL_PLAN_OPTIONS, /*OBJ, TBS,*/ EVENT, sum(SAMPLES) tim
   from OPAS_OT_SQL_AWR_ASH_PLST s, v$event_name e, OPAS_OT_SQL_DATA d
  where d.SQL_DATA_POINT_ID = <DP1>
    and s.EVENT=e.name(+)
@@ -1387,11 +1412,12 @@ select SQL_PLAN_HASH_VALUE PLAN_HASH_VALUE, SQL_PLAN_LINE_ID ID, SQL_PLAN_OPERAT
    and d.DBLINK = s.DBLINK
    and s.snap_id between AWR_SNAP_START and AWR_SNAP_END
    and d.INCARNATION# = s.INCARNATION#
-group by SQL_PLAN_HASH_VALUE, SQL_PLAN_LINE_ID, SQL_PLAN_OPERATION, SQL_PLAN_OPTIONS, OBJ, TBS, EVENT) x1
-order by PLAN_HASH_VALUE, ID nulls first, ROW_SRC, SQL_PLAN_OPTIONS, OBJ, TBS, EVENT),
+group by SQL_PLAN_HASH_VALUE, SQL_PLAN_LINE_ID, SQL_PLAN_OPERATION, SQL_PLAN_OPTIONS, /*OBJ, TBS,*/ EVENT) x1
+order by PLAN_HASH_VALUE, ID nulls first, ROW_SRC, SQL_PLAN_OPTIONS, /*OBJ, TBS,*/ EVENT) x2),
 db2 as (
-select rownum n, PLAN_HASH_VALUE, ID, ROW_SRC, SQL_PLAN_OPTIONS, OBJ, TBS, EVENT, tim*10 tim from (
-select SQL_PLAN_HASH_VALUE PLAN_HASH_VALUE, SQL_PLAN_LINE_ID ID, SQL_PLAN_OPERATION ROW_SRC, SQL_PLAN_OPTIONS, OBJ, TBS, EVENT, sum(SAMPLES) tim
+select rownum n, x2.* from (
+select /*+ NO_ELIMINATE_OBY */ PLAN_HASH_VALUE, ID, ROW_SRC, SQL_PLAN_OPTIONS, /*OBJ, TBS,*/ EVENT, tim*10 tim from (
+select SQL_PLAN_HASH_VALUE PLAN_HASH_VALUE, SQL_PLAN_LINE_ID ID, SQL_PLAN_OPERATION ROW_SRC, SQL_PLAN_OPTIONS, /*OBJ, TBS,*/ EVENT, sum(SAMPLES) tim
   from OPAS_OT_SQL_AWR_ASH_PLST s, v$event_name e, OPAS_OT_SQL_DATA d
  where d.SQL_DATA_POINT_ID = <DP2>
    and s.EVENT=e.name(+)
@@ -1399,11 +1425,11 @@ select SQL_PLAN_HASH_VALUE PLAN_HASH_VALUE, SQL_PLAN_LINE_ID ID, SQL_PLAN_OPERAT
    and d.DBLINK = s.DBLINK
    and s.snap_id between AWR_SNAP_START and AWR_SNAP_END
    and d.INCARNATION# = s.INCARNATION#
-group by SQL_PLAN_HASH_VALUE, SQL_PLAN_LINE_ID, SQL_PLAN_OPERATION, SQL_PLAN_OPTIONS, OBJ, TBS, EVENT) x1
-order by PLAN_HASH_VALUE, ID nulls first, ROW_SRC, SQL_PLAN_OPTIONS, OBJ, TBS, EVENT)
+group by SQL_PLAN_HASH_VALUE, SQL_PLAN_LINE_ID, SQL_PLAN_OPERATION, SQL_PLAN_OPTIONS, /*OBJ, TBS,*/ EVENT) x1
+order by PLAN_HASH_VALUE, ID nulls first, ROW_SRC, SQL_PLAN_OPTIONS, /*OBJ, TBS,*/ EVENT) x2)
 select
-  a.PLAN_HASH_VALUE plan_hash_db1, a.ID line_db1, a.ROW_SRC op_db1, a.SQL_PLAN_OPTIONS opt_db1, a.OBJ obj_db1, a.TBS tbs_db1, a.EVENT event_db1, a.tim tim_db1,
-  b.PLAN_HASH_VALUE plan_hash_db2, b.ID line_db2, b.ROW_SRC op_db2, b.SQL_PLAN_OPTIONS opt_db2, b.OBJ obj_db2, b.TBS tbs_db2, b.EVENT event_db2, b.tim tim_db2
+  a.PLAN_HASH_VALUE plan_hash_db1, a.ID line_db1, a.ROW_SRC op_db1, a.SQL_PLAN_OPTIONS opt_db1, /*a.OBJ obj_db1, a.TBS tbs_db1,*/ a.EVENT event_db1, a.tim tim_db1,
+  b.PLAN_HASH_VALUE plan_hash_db2, b.ID line_db2, b.ROW_SRC op_db2, b.SQL_PLAN_OPTIONS opt_db2, /*b.OBJ obj_db2, b.TBS tbs_db2,*/ b.EVENT event_db2, b.tim tim_db2
 from db1 a full outer join db2 b on (a.n=b.n)
 order by a.n,b.n]','<DP1>',l_dp_id1),'<DP2>',l_dp_id2);
   end;
@@ -1419,24 +1445,26 @@ order by a.n,b.n]','<DP1>',l_dp_id1),'<DP2>',l_dp_id2);
     coreobj_api.get_jparam(p_obj_id,pPLANDP#2,l_dp_id2);
 
     return replace(replace(q'[with db1 as
-(select rownum n, PLAN_HASH_VALUE, ID, ROW_SRC, OBJ, TBS, EVENT, tim from (
-select PLAN_HASH_VALUE, ID, ROW_SRC, OBJ, TBS, EVENT, sum(CNT) tim
+(select rownum n, x2.* from (
+select /*+ NO_ELIMINATE_OBY */PLAN_HASH_VALUE, ID, ROW_SRC, /*OBJ, TBS,*/ EVENT, tim from (
+select PLAN_HASH_VALUE, ID, ROW_SRC, /*OBJ, TBS,*/ EVENT, sum(CNT) tim
   from OPAS_OT_SQL_VASH2 s, v$event_name e
  where s.SQL_DATA_POINT_ID = <DP1>
    and s.EVENT=e.name(+)
-group by PLAN_HASH_VALUE, ID, ROW_SRC, OBJ, TBS, EVENT) x1
-order by PLAN_HASH_VALUE, ID nulls first, ROW_SRC, OBJ, TBS, EVENT),
+group by PLAN_HASH_VALUE, ID, ROW_SRC, /*OBJ, TBS,*/ EVENT) x1
+order by PLAN_HASH_VALUE, ID nulls first, ROW_SRC, /*OBJ, TBS,*/ EVENT) x2),
 db2 as
-(select rownum n, PLAN_HASH_VALUE, ID, ROW_SRC, OBJ, TBS, EVENT, tim from (
-select PLAN_HASH_VALUE, ID, ROW_SRC, OBJ, TBS, EVENT, sum(CNT) tim
+(select rownum n, x2.* from (
+select /*+ NO_ELIMINATE_OBY */ PLAN_HASH_VALUE, ID, ROW_SRC, /*OBJ, TBS,*/ EVENT, tim from (
+select PLAN_HASH_VALUE, ID, ROW_SRC, /*OBJ, TBS,*/ EVENT, sum(CNT) tim
   from OPAS_OT_SQL_VASH2 s, v$event_name e
  where s.SQL_DATA_POINT_ID = <DP2>
    and s.EVENT=e.name(+)
-group by PLAN_HASH_VALUE, ID, ROW_SRC, OBJ, TBS, EVENT) x1
-order by PLAN_HASH_VALUE, ID nulls first, ROW_SRC, OBJ, TBS, EVENT)
+group by PLAN_HASH_VALUE, ID, ROW_SRC, /*OBJ, TBS,*/ EVENT) x1
+order by PLAN_HASH_VALUE, ID nulls first, ROW_SRC, /*OBJ, TBS,*/ EVENT) x2)
 select
-  a.PLAN_HASH_VALUE plan_hash_db1, a.ID line_db1, a.ROW_SRC op_db1, a.OBJ obj_db1, a.TBS tbs_db1, a.EVENT event_db1, a.tim tim_db1,
-  b.PLAN_HASH_VALUE plan_hash_db2, b.ID line_db2, b.ROW_SRC op_db2, b.OBJ obj_db2, b.TBS tbs_db2, b.EVENT event_db2, b.tim tim_db2
+  a.PLAN_HASH_VALUE plan_hash_db1, a.ID line_db1, a.ROW_SRC op_db1, /*a.OBJ obj_db1, a.TBS tbs_db1,*/ a.EVENT event_db1, a.tim tim_db1,
+  b.PLAN_HASH_VALUE plan_hash_db2, b.ID line_db2, b.ROW_SRC op_db2, /*b.OBJ obj_db2, b.TBS tbs_db2,*/ b.EVENT event_db2, b.tim tim_db2
 from db1 a full outer join db2 b on (a.n=b.n) order by a.n,b.n]','<DP1>',l_dp_id1),'<DP2>',l_dp_id2);
   end;
 
