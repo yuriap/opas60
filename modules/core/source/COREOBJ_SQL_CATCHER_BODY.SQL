@@ -252,7 +252,7 @@ package body COREOBJ_SQL_CATCHER is
 
             update opas_ot_sqlcatch_sqls set status=ssqltCollected where obj_id=i.obj_id and sql_id=i.sql_id;
             commit;
-            dbms_lock.sleep(3);
+            dbms_lock.sleep(1);
           end loop;
         end if;
       end if;

@@ -5,6 +5,7 @@ package body coreobj_db_mon_hist is
 
   ctRegular  constant varchar2(10) := 'REGULAR';
   ctDelta    constant varchar2(10) := 'DELTA';
+  ctRatio#1  constant varchar2(10) := 'RATIO#1';
 
   ssSnapshot constant varchar2(1) := 'S';
   ssReady    constant varchar2(1) := 'R';
@@ -59,12 +60,22 @@ select <SESS_ID>, d.inst_id, r.range#, count(1) cnt
   from (<STAT>) d, ranges r
  where val between r.range#_start and r.range#_end
  group by d.inst_id, r.range#]';
+          elsif i.calc_type = ctRatio#1 then
+            l_view_sql := q'[insert into opas_ot_db_mon_hist_data (sess_id, inst_id, range#, quantity)
+with ranges as (<BUCKETS>),
+ranges_with_instances as (
+select r.range#, i.inst_id
+from ranges r, gv$instance<DBLINK> i)
+select <SESS_ID>, r.inst_id, r.range#, nvl(d.stats,0)
+  from (<STAT>) d, ranges_with_instances r
+where d.range#(+) = r.range#
+  and d.inst_id(+) = r.inst_id]';
           end if;
 
           l_next_rem_date := coremod_utils.get_remote_ts(p_dblink => i.dblink);
 
           insert into opas_ot_db_mon_hist_sess (dbmh_id, tim_tz, status)
-               values (i.dbmh_id, l_next_rem_date, case i.calc_type when ctRegular then ssReady when ctDelta then ssSnapshot else 'N/A' end)
+               values (i.dbmh_id, l_next_rem_date, case i.calc_type when ctRegular then ssReady when ctDelta then ssSnapshot when ctRatio#1 then ssSnapshot else 'N/A' end)
                returning sess_id into l_sess_id;
 
           l_view_sql:=replace(replace(replace(replace(l_view_sql,'<BUCKETS>',i.dbmh_buckets),'<STAT>',i.dbmh_stat),'<SESS_ID>',l_sess_id),'<DBLINK>',COREMOD_API.get_dblink_for_query(i.dblink));
@@ -72,29 +83,59 @@ select <SESS_ID>, d.inst_id, r.range#, count(1) cnt
           execute immediate l_view_sql;
           update opas_ot_db_mon_hist set last_exec_ts = systimestamp where dbmh_id = i.dbmh_id;
 
-          if i.calc_type = ctDelta then
+--coremod_log.log('i.dbmh_id: '||i.dbmh_id);
+          if i.calc_type in ( ctDelta, ctRatio#1 ) then
+--coremod_log.log('i.calc_type: '||i.calc_type);
             for j in (select unique prev_sess_id, prev_tim_tz from (
                       select FIRST_VALUE(sess_id) OVER (ORDER BY tim_tz desc ROWS UNBOUNDED PRECEDING) prev_sess_id,
                              FIRST_VALUE(tim_tz) OVER (ORDER BY tim_tz desc ROWS UNBOUNDED PRECEDING) prev_tim_tz
                         from opas_ot_db_mon_hist_sess where dbmh_id = i.dbmh_id and status = ssSnapshot and sess_id <> l_sess_id)) loop
+--coremod_log.log('j.prev_tim_tz: '||j.prev_tim_tz);
+--coremod_log.log('i.last_exec_ts: '||i.last_exec_ts);
+--coremod_log.log('l_next_date: '||l_next_date);
               if (systimestamp - j.prev_tim_tz) < 3 * ( l_next_date - i.last_exec_ts ) then
                 insert into opas_ot_db_mon_hist_sess (dbmh_id, tim_tz, status)
                      values (i.dbmh_id, l_next_rem_date, ssReady)
                      returning sess_id into l_sess_id2;
+--coremod_log.log('i.calc_type 2: '||i.calc_type);
+                if i.calc_type in ( ctDelta ) then
+                  insert into opas_ot_db_mon_hist_data
+                    (sess_id, inst_id, range#, quantity)
+                  select l_sess_id2, c.inst_id, c.range#,
+                         c.quantity - p.quantity
+                    from opas_ot_db_mon_hist_data p,
+                         opas_ot_db_mon_hist_data c
+                    where p.sess_id = j.prev_sess_id
+                      and c.sess_id = l_sess_id
+                      and p.inst_id = c.inst_id
+                      and p.range# = c.range#
+                      and c.quantity > p.quantity;
+                end if;
 
-                insert into opas_ot_db_mon_hist_data
-                  (sess_id, inst_id, range#, quantity)
-                select l_sess_id2, c.inst_id, c.range#,
-                       c.quantity - p.quantity
-                  from opas_ot_db_mon_hist_data p,
-                       opas_ot_db_mon_hist_data c
-                  where p.sess_id = j.prev_sess_id
-                    and c.sess_id = l_sess_id
-                    and p.inst_id = c.inst_id
-                    and p.range# = c.range#
-                    and c.quantity > p.quantity;
+                if i.calc_type in ( ctRatio#1 ) then
+                  insert into opas_ot_db_mon_hist_data
+                    (sess_id, inst_id, range#, quantity)
+                  select * from (
+                  select l_sess_id2, c.inst_id, c.range#,
+                         case when (floor(c.quantity) - floor(p.quantity)) <> 0
+                           then 1000000*((c.quantity - floor(c.quantity))*1e18 - (p.quantity - floor(p.quantity))*1e18)/(floor(c.quantity) - floor(p.quantity))
+                           else 0
+                           end quantity
+                    from opas_ot_db_mon_hist_data p,
+                         opas_ot_db_mon_hist_data c
+                    where p.sess_id = j.prev_sess_id
+                      and c.sess_id = l_sess_id
+                      and p.inst_id = c.inst_id
+                      and p.range# = c.range#
+                      --and c.quantity > p.quantity
+                      ) where quantity<>0
+                      ;
+--coremod_log.log(ctRatio#1||': '||sql%rowcount);
+                end if;
               end if;
+              --if i.calc_type in ( ctDelta ) then
               delete from opas_ot_db_mon_hist_sess where dbmh_id = i.dbmh_id and sess_id = j.prev_sess_id;
+              --end if;
             end loop;
           end if;
 

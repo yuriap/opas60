@@ -71,6 +71,8 @@ PACKAGE COREOBJ_SQL_UTILS AS
   procedure get_approxtext(p_sql_data_point_id         opas_ot_sql_data.sql_data_point_id%type,
                            p_raise_exception            boolean default true);
 
+  procedure add_awr_data_task(p_obj_prnt         opas_objects.obj_prnt%type);
+
 END COREOBJ_SQL_UTILS;
 /
 

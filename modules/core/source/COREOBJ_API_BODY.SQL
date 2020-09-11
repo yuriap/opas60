@@ -374,6 +374,12 @@ PACKAGE BODY COREOBJ_API AS
 --coremod_log.log('get_jparam:'||p_pname||':'||p_value);
   end;
 
+  function get_all_jparam(p_obj_id           opas_objects.obj_id%type) return t_params
+  is
+  begin
+    extract_jparams(p_obj_id);
+    return gParams;
+  end;
 begin
   for i in (select * from opas_object_types) loop
     g_ot_icons(i.ot_id) := i.ot_icon;

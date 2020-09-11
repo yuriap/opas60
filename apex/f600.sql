@@ -28,12 +28,12 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 -- Application Export:
 --   Application:     600
 --   Name:            Oracle Performance Analytic Suite
---   Date and Time:   17:08 Thursday September 3, 2020
+--   Date and Time:   19:32 Friday September 11, 2020
 --   Exported By:     OPAS60DADM
 --   Flashback:       0
 --   Export Type:     Application Export
 --     Pages:                     58
---       Items:                  397
+--       Items:                  398
 --       Validations:              4
 --       Processes:              231
 --       Regions:                290
@@ -132,7 +132,7 @@ wwv_flow_api.create_flow(
 ,p_substitution_string_06=>'APP_GRID_DT_FMT_TZ_FULL'
 ,p_substitution_value_06=>'YYYY-MM-DD HH24:MI:SS.ff9 TZH:TZM'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200903164652'
+,p_last_upd_yyyymmddhh24miss=>'20200911163756'
 ,p_file_prefix => nvl(wwv_flow_application_install.get_static_app_file_prefix,'')
 ,p_files_version=>3
 ,p_ui_type_name => null
@@ -727,10 +727,10 @@ wwv_flow_api.create_flow_process(
 ,p_process_name=>'CalcPrevNextObjects'
 ,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'begin',
-'  select max(obj_id), count(1) into :APP_PREV_OBJ, :APP_NUM_BEFORE from v$opas_objects where obj_ot = :APP_CURR_OBJ_OT and obj_prnt = :APP_FOLDER_ID and obj_id < :app_obj_id;',
-'  select min(obj_id), count(1) into :APP_NEXT_OBJ, :APP_NUM_AFTER from v$opas_objects where obj_ot = :APP_CURR_OBJ_OT and obj_prnt = :APP_FOLDER_ID and obj_id > :app_obj_id; ',
+'  select max(obj_id), count(1) into :APP_PREV_OBJ, :APP_NUM_BEFORE from v$opas_objects where obj_ot = :APP_CURR_OBJ_OT and obj_prnt = :APP_FOLDER_ID and obj_id < :APP_OBJ_ID;',
+'  select min(obj_id), count(1) into :APP_NEXT_OBJ, :APP_NUM_AFTER from v$opas_objects where obj_ot = :APP_CURR_OBJ_OT and obj_prnt = :APP_FOLDER_ID and obj_id > :APP_OBJ_ID; ',
 'end;'))
-,p_process_when=>'5000,6000,7000,1401,8000'
+,p_process_when=>'5000,6000,7000,1401,8000,3000'
 ,p_process_when_type=>'CURRENT_PAGE_IN_CONDITION'
 );
 end;
@@ -19600,7 +19600,7 @@ wwv_flow_api.create_page(
 ,p_page_template_options=>'#DEFAULT#'
 ,p_required_role=>wwv_flow_api.id(64510375970101025)
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200821151939'
+,p_last_upd_yyyymmddhh24miss=>'20200907113309'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(3127172477647021)
@@ -19717,7 +19717,7 @@ wwv_flow_api.create_worksheet_column(
 ,p_display_order=>40
 ,p_column_identifier=>'F'
 ,p_column_label=>'Name'
-,p_column_link=>'f?p=&APP_ID.:#LINK_PAGE#:&SESSION.::&DEBUG.:RP,:#APP_ITEM#,APP_PREV_PAGE,APP_FOLDER_ID,APP_OBJ_ID:#OBJ_ID#,11,#OBJ_PRNT#,#OBJ_ID#'
+,p_column_link=>'f?p=&APP_ID.:#LINK_PAGE#:&SESSION.::&DEBUG.:RP,:#APP_ITEM#,APP_PREV_PAGE,APP_FOLDER_ID:#OBJ_ID#,11,#OBJ_PRNT#'
 ,p_column_linktext=>'#OBJ_NAME#'
 ,p_column_link_attr=>'<span class="fa #OT_ICON#"> </span'
 ,p_column_type=>'STRING'
@@ -38344,7 +38344,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(65526486119996516)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200821110303'
+,p_last_upd_yyyymmddhh24miss=>'20200908130128'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(5318579822713815)
@@ -38376,7 +38376,7 @@ wwv_flow_api.create_page_plug(
 'including_sqls as',
 '  (select /* materialize */ sql_id, tag_name, tag_description, table_name, tag_prnt',
 '     from OPAS_OT_SQL_SQL2TAGS, including_tags',
-'    where tag=tag_name and table_name=:P1419_TABLE_NAME),',
+'    where tag=tag_name and (table_name=:P1419_TABLE_NAME or :P1419_TABLE_NAME is null)),',
 'folders as ',
 '  (select column_value folder_id from table(coreobj_sql_tags.parse_tag_list(:P1419_FOLDER)))',
 'select /* gather_plan_statistics */',
@@ -39185,7 +39185,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(2566321371882923)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200821170913'
+,p_last_upd_yyyymmddhh24miss=>'20200911163756'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(3055925085156748)
@@ -39317,7 +39317,7 @@ wwv_flow_api.create_page_button(
 ,p_button_template_id=>wwv_flow_api.id(59012147360993949)
 ,p_button_image_alt=>'Previous Object in folder (&APP_NUM_BEFORE.)'
 ,p_button_position=>'BELOW_BOX'
-,p_button_redirect_url=>'f?p=&APP_ID.:3000:&SESSION.::&DEBUG.:RP:APP_OBJ_ID,APP_PREV_PAGE:&APP_PREV_OBJ.,7000'
+,p_button_redirect_url=>'f?p=&APP_ID.:3000:&SESSION.::&DEBUG.:RP,:APP_OBJ_ID,APP_PREV_PAGE:&APP_PREV_OBJ.,3000'
 ,p_button_condition=>'APP_PREV_OBJ'
 ,p_button_condition_type=>'ITEM_IS_NOT_NULL'
 ,p_icon_css_classes=>'fa-angle-double-left'
@@ -39332,7 +39332,7 @@ wwv_flow_api.create_page_button(
 ,p_button_template_id=>wwv_flow_api.id(59012147360993949)
 ,p_button_image_alt=>'Next Object in folder (&APP_NUM_AFTER.)'
 ,p_button_position=>'BELOW_BOX'
-,p_button_redirect_url=>'f?p=&APP_ID.:3000:&SESSION.::&DEBUG.:RP:APP_OBJ_ID,APP_PREV_PAGE:&APP_NEXT_OBJ.,7000'
+,p_button_redirect_url=>'f?p=&APP_ID.:3000:&SESSION.::&DEBUG.:RP,:APP_OBJ_ID,APP_PREV_PAGE:&APP_NEXT_OBJ.,3000'
 ,p_button_condition=>'APP_NEXT_OBJ'
 ,p_button_condition_type=>'ITEM_IS_NOT_NULL'
 ,p_icon_css_classes=>'fa-angle-double-right'
@@ -39464,8 +39464,8 @@ wwv_flow_api.create_page_item(
 ,p_name=>'P3000_STARTDT'
 ,p_item_sequence=>110
 ,p_item_plug_id=>wwv_flow_api.id(7567397272181729)
-,p_prompt=>'Start Date&Time'
-,p_format_mask=>'&APP_EDIT_DT_FMT.'
+,p_prompt=>'Start Date&Time UTC'
+,p_format_mask=>'&P3000_DTFMT.'
 ,p_display_as=>'NATIVE_DATE_PICKER'
 ,p_cSize=>30
 ,p_field_template=>wwv_flow_api.id(59011729453993944)
@@ -39479,8 +39479,8 @@ wwv_flow_api.create_page_item(
 ,p_name=>'P3000_ENDDT'
 ,p_item_sequence=>120
 ,p_item_plug_id=>wwv_flow_api.id(7567397272181729)
-,p_prompt=>'End Date&Time'
-,p_format_mask=>'&APP_EDIT_DT_FMT.'
+,p_prompt=>'End Date&Time UTC'
+,p_format_mask=>'&P3000_DTFMT.'
 ,p_display_as=>'NATIVE_DATE_PICKER'
 ,p_cSize=>30
 ,p_begin_on_new_line=>'N'
@@ -39506,16 +39506,37 @@ wwv_flow_api.create_page_item(
 ,p_name=>'P3000_METRICLIST'
 ,p_item_sequence=>130
 ,p_item_plug_id=>wwv_flow_api.id(7567397272181729)
-,p_prompt=>'Metriclist'
-,p_display_as=>'NATIVE_TEXT_FIELD'
-,p_cSize=>30
-,p_begin_on_new_line=>'N'
-,p_field_template=>wwv_flow_api.id(59011729453993944)
+,p_prompt=>'Metrics'
+,p_display_as=>'PLUGIN_BE.CTB.SELECT2'
+,p_lov=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select',
+'  group_name || '': ''|| metric_name || ''; ''|| metric_unit || ''; ('' || src ||'', '' || l.CURRENT_VERSION || '')'' d,',
+'  m.rowid r',
+'from OPAS_DB_LINKS l,',
+'     OPAS_DB_METRICS2VER v2m,',
+'     OPAS_DB_METRICS m',
+'where l.CURRENT_VERSION = v2m.VERSION(+)',
+'  and v2m.GROUP_ID = m.GROUP_ID(+)',
+'  and v2m.METRIC_ID = m.METRIC_ID(+)',
+'  and l.DB_LINK_NAME = :P3000_SRCDB',
+'  order by m.group_id, m.metric_id;'))
+,p_lov_display_null=>'YES'
+,p_lov_cascade_parent_items=>'P3000_SRCDB'
+,p_ajax_optimize_refresh=>'Y'
+,p_field_template=>wwv_flow_api.id(59011674591993943)
 ,p_item_template_options=>'#DEFAULT#'
-,p_attribute_01=>'N'
-,p_attribute_02=>'N'
-,p_attribute_04=>'TEXT'
-,p_attribute_05=>'BOTH'
+,p_lov_display_extra=>'NO'
+,p_attribute_01=>'MULTI'
+,p_attribute_08=>'CIC'
+,p_attribute_10=>'1400'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(7634421225256518)
+,p_name=>'P3000_DTFMT'
+,p_item_sequence=>150
+,p_item_plug_id=>wwv_flow_api.id(7567397272181729)
+,p_display_as=>'NATIVE_HIDDEN'
+,p_attribute_01=>'Y'
 );
 wwv_flow_api.create_page_process(
  p_id=>wwv_flow_api.id(4606565071240506)
@@ -39575,7 +39596,10 @@ wwv_flow_api.create_page_process(
 '                         p_value => :P3000_GETSTAT);',
 '  coreobj_api.add_jparam(p_obj_id => :P3000_OBJ_ID,',
 '                         p_pname => COREOBJ_ASHA_CUBE_CALCS.pMetricList,',
-'                         p_value => :P3000_METRICLIST);                           ',
+'                         p_value => :P3000_METRICLIST);          ',
+'  coreobj_api.add_jparam(p_obj_id => :P3000_OBJ_ID,',
+'                         p_pname => COREOBJ_ASHA_CUBE_CALCS.pDTFMT,',
+'                         p_value => :P3000_DTFMT);  ',
 '  coreobj_api.store_jparams(p_obj_id => :P3000_OBJ_ID);  ',
 'end;'))
 ,p_error_display_location=>'INLINE_IN_NOTIFICATION'
@@ -39616,7 +39640,7 @@ wwv_flow_api.create_page_process(
 '  l_exists number;',
 'begin',
 '  :APP_CURR_OBJ_OT := 300;',
-'/*  ',
+'',
 '  if :P3000_OBJ_ID_PREV is not null then',
 '    select count(1) into l_exists from opas_objects where obj_id = :P3000_OBJ_ID_PREV;',
 '    if l_exists>0 then',
@@ -39624,12 +39648,11 @@ wwv_flow_api.create_page_process(
 '    end if;',
 '    :P3000_OBJ_ID_PREV := null;',
 '  end if;',
-'*/ ',
+' ',
 '  :P3000_OBJ_ID := :APP_OBJ_ID;',
 '  select obj_name, obj_descr, obj_prnt, obj_owner into :P3000_NAME, :P3000_DESCR, :P3000_PRNT_ID, :P3000_OWNER from v$opas_objects where obj_id = :P3000_OBJ_ID;',
-'  --:APP_FOLDER_ID := :P3000_PRNT_ID;',
-'  ',
-'  if :P3000_MODE = ''OPEN'' then',
+'  :APP_FOLDER_ID := :P3000_PRNT_ID;',
+'   ',
 '    coreobj_api.extract_jparams(p_obj_id => :P3000_OBJ_ID);',
 '    coreobj_api.get_jparam(p_obj_id => :P3000_OBJ_ID,',
 '                           p_pname => COREOBJ_ASHA_CUBE_CALCS.pDBLINK,',
@@ -39645,8 +39668,12 @@ wwv_flow_api.create_page_process(
 '                           p_value => :P3000_GETSTAT);',
 '    coreobj_api.get_jparam(p_obj_id => :P3000_OBJ_ID,',
 '                           p_pname => COREOBJ_ASHA_CUBE_CALCS.pMetricList,',
-'                           p_value => :P3000_METRICLIST);                           ',
-'  end if;',
+'                           p_value => :P3000_METRICLIST); ',
+'    coreobj_api.get_jparam(p_obj_id => :P3000_OBJ_ID,',
+'                           p_pname => COREOBJ_ASHA_CUBE_CALCS.pDTFMT,',
+'                           p_value => :P3000_DTFMT);                            ',
+'',
+'  if :P3000_DTFMT is null then :P3000_DTFMT := :APP_EDIT_DT_FMT; end if;',
 'end;'))
 ,p_error_display_location=>'INLINE_IN_NOTIFICATION'
 );

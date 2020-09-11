@@ -2030,6 +2030,70 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       raise_application_error(-20000, 'Error discover_sql ('||p_sql_data_point_id||'): '||sqlerrm);
   END discover_sql;
 
+  procedure add_awr_data_task(p_obj_prnt         opas_objects.obj_prnt%type)
+  is
+    l_cnt               number;
+    l_lops_ind          pls_integer;
+    l_sql_id            OPAS_OT_SQL_DATA.sql_id%type;
+    l_data       opas_ot_sql_data%rowtype;
+    l_obj_id     opas_ot_sql_data_point_ref.obj_id%type;
+  begin
+    COREMOD_LOG.Start_SQL_GATHER_STAT('COREOBJ_SQL_UTILS.ADD_AWR_DATA_TASK.GATHER_SQL_STAT');
+    COREMOD_LOG.Start_SQL_TRACE('COREOBJ_SQL_UTILS.ADD_AWR_DATA_TASK.SQL_TRACE');
+/*
+  type t_awr_params_rec is record (
+    DBLINK               OPAS_DB_LINK_V$DB.DBLINK%type,
+    DBID                 OPAS_DB_LINK_V$DB.DBID%type,
+    CON_ID               OPAS_DB_LINK_V$DB.CON_ID%type,
+    INSTANCE_LIST_C      varchar2(32765),
+    SNAP_START           OPAS_DB_LINK_AWRSNAPS.SNAP_ID%type,
+    SNAP_END             OPAS_DB_LINK_AWRSNAPS.SNAP_ID%type,
+    BEGIN_INTERVAL_TIME  OPAS_DB_LINK_AWRSNAPS.BEGIN_INTERVAL_TIME%type,
+    END_INTERVAL_TIME    OPAS_DB_LINK_AWRSNAPS.END_INTERVAL_TIME%type,
+    INCARNATION#         OPAS_DB_LINK_AWRSNAPS.INCARNATION#%type,
+    DATES_SPECIFIED      boolean
+  );
+*/
+    select count(1) into l_cnt from OPAS_OT_SQL_DATA
+               where SQL_DATA_POINT_ID in (select SQL_DATA_POINT_ID from OPAS_OT_SQL_DATA_POINT_REF
+                                            where OBJ_ID in (select obj_id from opas_objects
+                                                              where obj_prnt = p_obj_prnt and obj_ot=140));
+
+    coremod_api.init_longops(p_op_name => gModuleName,
+                             p_target_desc => 'sqls',
+                             p_units => 'sql',
+                             p_totalwork => l_cnt,
+                             p_lops_ind => l_lops_ind);
+
+    l_cnt := 1;
+    for i in (select * from OPAS_OT_SQL_DATA
+               where SQL_DATA_POINT_ID in (select SQL_DATA_POINT_ID from OPAS_OT_SQL_DATA_POINT_REF
+                                            where OBJ_ID in (select obj_id from opas_objects
+                                                              where obj_prnt = p_obj_prnt and obj_ot=140)))
+    loop
+      begin
+        start_processing(i.sql_data_point_id, l_data, l_obj_id);
+        l_data.AWR_SNAP_END := l_data.AWR_SNAP_END + 10;
+        load_awr_data(l_data, l_obj_id, l_lops_ind);
+        coremod_api.end_longops_section(p_sofar => l_cnt, p_lops_ind => l_lops_ind);
+        l_cnt := l_cnt + 1;
+        commit;
+      exception
+        when others then
+          coremod_tasks.log('Error add_awr_data_task ('||p_obj_prnt||':'||i.sql_id||'): '||sqlerrm);
+          coremod_tasks.log('Error add_awr_data_task error stack: '||DBMS_UTILITY.FORMAT_ERROR_STACK);
+      end;
+    end loop;
+
+    COREMOD_LOG.Stop_SQL_TRACE('COREOBJ_SQL_UTILS.ADD_AWR_DATA_TASK.SQL_TRACE');
+    COREMOD_LOG.Stop_SQL_GATHER_STAT('COREOBJ_SQL_UTILS.ADD_AWR_DATA_TASK.GATHER_SQL_STAT');
+  exception
+    when others then
+      coremod_tasks.log('Error add_awr_data_task ('||p_obj_prnt||'): '||sqlerrm);
+      coremod_tasks.log('Error add_awr_data_task error stack: '||DBMS_UTILITY.FORMAT_ERROR_STACK);
+      raise_application_error(-20000, 'Error add_awr_data_task ('||p_obj_prnt||'): '||sqlerrm);
+  end;
+
   procedure discover_sql2(p_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type)
   AS
     l_data opas_ot_sql_data%rowtype;
