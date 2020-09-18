@@ -413,7 +413,7 @@ package body COREMOD_API as
       else
         l_sql := replace(l_sql,'<DBID>','');
       end if;
-      coremod_log.log('COREMOD_API.load_tmp_data:'||chr(10)||l_sql,'DEBUG');
+      coremod_log.log('COREMOD_API.load_tmp_data:'||chr(10)||l_sql,'INFO');
       execute immediate l_sql;
   exception
       when others then

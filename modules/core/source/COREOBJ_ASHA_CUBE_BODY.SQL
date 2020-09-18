@@ -23,6 +23,9 @@ package body coreobj_asha_cube is
       P_OBJ_NAME  => nvl(p_name, 'ASHA Cube ' ||to_char(sysdate,'YYYYMMDD HH24:MI')),
       P_OBJ_DESCR => p_descr,
       p_obj_owner => p_owner) ;
+    INSERT INTO opas_ot_ashacube
+           ( ashacube_id, dblink, start_time_utc, end_time_utc, status,                        created, modified)
+    VALUES (P_OBJ_ID,     null,   null,           null,         COREOBJ_ASHA_CUBE_CALCS.csNEW, default, null);
   end;
 
   procedure edit  (p_obj_id           opas_objects.obj_id%type,
@@ -41,6 +44,18 @@ package body coreobj_asha_cube is
                      p_cascade        varchar2 default 'N')
   is
   begin
+
+    delete from opas_ot_ashacube_ash
+     where asharange_id in (select asharange_id from opas_ot_ashacube_ref where ashacube_id = p_obj_id)
+       and not exists (select 1 from opas_ot_ashacube_ref where ashacube_id != p_obj_id);
+
+    delete from opas_ot_ashacube_ranges
+     where asharange_id in (select asharange_id from opas_ot_ashacube_ref where ashacube_id = p_obj_id)
+       and not exists (select 1 from opas_ot_ashacube_ref where ashacube_id != p_obj_id);
+
+    delete from opas_ot_ashacube_ref  where ashacube_id = p_obj_id;
+    delete from opas_ot_ashacube where ashacube_id = p_obj_id;
+
     COREOBJ_API.remove(p_obj_id);
   end;
 
@@ -49,7 +64,7 @@ package body coreobj_asha_cube is
   begin
     delete from opas_ot_ashacube_ranges d
      where created + NUMTODSINTERVAL(COREMOD_API.getconf(P_KEY => 'ASHARANGE', P_MODULE => 'OPASCORE'), 'DAY') > systimestamp
-       and not exists (select 1 from opas_ot_ashacube_range_ref r where r.asharange_id = d.asharange_id);
+       and not exists (select 1 from opas_ot_ashacube_ref r where r.asharange_id = d.asharange_id);
     commit;
   end;
 
