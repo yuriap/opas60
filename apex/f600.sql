@@ -28,12 +28,12 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 -- Application Export:
 --   Application:     600
 --   Name:            Oracle Performance Analytic Suite
---   Date and Time:   19:32 Friday September 11, 2020
+--   Date and Time:   18:31 Friday September 25, 2020
 --   Exported By:     OPAS60DADM
 --   Flashback:       0
 --   Export Type:     Application Export
 --     Pages:                     58
---       Items:                  398
+--       Items:                  399
 --       Validations:              4
 --       Processes:              231
 --       Regions:                290
@@ -132,7 +132,7 @@ wwv_flow_api.create_flow(
 ,p_substitution_string_06=>'APP_GRID_DT_FMT_TZ_FULL'
 ,p_substitution_value_06=>'YYYY-MM-DD HH24:MI:SS.ff9 TZH:TZM'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200911163756'
+,p_last_upd_yyyymmddhh24miss=>'20200924113920'
 ,p_file_prefix => nvl(wwv_flow_application_install.get_static_app_file_prefix,'')
 ,p_files_version=>3
 ,p_ui_type_name => null
@@ -39185,7 +39185,7 @@ wwv_flow_api.create_page(
 ,p_group_id=>wwv_flow_api.id(2566321371882923)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200911163756'
+,p_last_upd_yyyymmddhh24miss=>'20200915115735'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(3055925085156748)
@@ -39462,7 +39462,7 @@ wwv_flow_api.create_page_item(
 wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(6322102326554704)
 ,p_name=>'P3000_STARTDT'
-,p_item_sequence=>110
+,p_item_sequence=>120
 ,p_item_plug_id=>wwv_flow_api.id(7567397272181729)
 ,p_prompt=>'Start Date&Time UTC'
 ,p_format_mask=>'&P3000_DTFMT.'
@@ -39477,7 +39477,7 @@ wwv_flow_api.create_page_item(
 wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(6322279912554705)
 ,p_name=>'P3000_ENDDT'
-,p_item_sequence=>120
+,p_item_sequence=>130
 ,p_item_plug_id=>wwv_flow_api.id(7567397272181729)
 ,p_prompt=>'End Date&Time UTC'
 ,p_format_mask=>'&P3000_DTFMT.'
@@ -39493,7 +39493,7 @@ wwv_flow_api.create_page_item(
 wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(6322385532554706)
 ,p_name=>'P3000_GETSTAT'
-,p_item_sequence=>140
+,p_item_sequence=>150
 ,p_item_plug_id=>wwv_flow_api.id(7567397272181729)
 ,p_prompt=>'Gather Session and System statistics'
 ,p_display_as=>'NATIVE_YES_NO'
@@ -39504,7 +39504,7 @@ wwv_flow_api.create_page_item(
 wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(6322469687554707)
 ,p_name=>'P3000_METRICLIST'
-,p_item_sequence=>130
+,p_item_sequence=>140
 ,p_item_plug_id=>wwv_flow_api.id(7567397272181729)
 ,p_prompt=>'Metrics'
 ,p_display_as=>'PLUGIN_BE.CTB.SELECT2'
@@ -39533,10 +39533,26 @@ wwv_flow_api.create_page_item(
 wwv_flow_api.create_page_item(
  p_id=>wwv_flow_api.id(7634421225256518)
 ,p_name=>'P3000_DTFMT'
-,p_item_sequence=>150
+,p_item_sequence=>160
 ,p_item_plug_id=>wwv_flow_api.id(7567397272181729)
 ,p_display_as=>'NATIVE_HIDDEN'
 ,p_attribute_01=>'Y'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(7634531820256519)
+,p_name=>'P3000_ASH_STATUS'
+,p_item_sequence=>110
+,p_item_plug_id=>wwv_flow_api.id(7567397272181729)
+,p_prompt=>'Current Target ASH status'
+,p_display_as=>'NATIVE_TEXT_FIELD'
+,p_cSize=>30
+,p_read_only_when_type=>'ALWAYS'
+,p_field_template=>wwv_flow_api.id(59011729453993944)
+,p_item_template_options=>'#DEFAULT#'
+,p_attribute_01=>'N'
+,p_attribute_02=>'N'
+,p_attribute_04=>'TEXT'
+,p_attribute_05=>'BOTH'
 );
 wwv_flow_api.create_page_process(
  p_id=>wwv_flow_api.id(4606565071240506)
@@ -39674,6 +39690,8 @@ wwv_flow_api.create_page_process(
 '                           p_value => :P3000_DTFMT);                            ',
 '',
 '  if :P3000_DTFMT is null then :P3000_DTFMT := :APP_EDIT_DT_FMT; end if;',
+'  ',
+'  if :P3000_SRCDB is not null then :P3000_ASH_STATUS:=COREOBJ_ASHA_CUBE_CALCS.show_remote_date_context(:P3000_SRCDB); end if;',
 'end;'))
 ,p_error_display_location=>'INLINE_IN_NOTIFICATION'
 );
@@ -53420,7 +53438,7 @@ wwv_flow_api.create_page(
 ,p_step_template=>wwv_flow_api.id(58924046682993504)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200903164652'
+,p_last_upd_yyyymmddhh24miss=>'20200924113920'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(3125913210647009)
@@ -55153,25 +55171,6 @@ wwv_flow_api.create_page_process(
 '  :P8000_OBJ_ID := :APP_OBJ_ID;',
 '  select obj_name, obj_descr, obj_prnt, obj_owner into :P8000_NAME, :P8000_DESCR, :P8000_PRNT_ID, :P8000_OWNER from v$opas_objects where obj_id = :P8000_OBJ_ID;',
 '  :APP_FOLDER_ID := :P8000_PRNT_ID;',
-'',
-'  begin',
-'    select o.obj_id, o.obj_prnt, d.incarnation# into :P8000_DP1_OBJ, :P8000_DP1_PRNT, l_inc1',
-'      from opas_ot_sql_data_point_ref r, opas_objects o, opas_ot_sql_data d',
-'     where r.sql_data_point_id = :P8000_DP1',
-'       and r.obj_id = o.obj_id',
-'       and r.sql_data_point_id = d.sql_data_point_id;',
-'  exception',
-'    when no_data_found then :P8000_DP1_OBJ := null; :P8000_DP1_PRNT := null;',
-'  end;',
-'  begin',
-'    select o.obj_id, o.obj_prnt, d.incarnation# into :P8000_DP2_OBJ, :P8000_DP2_PRNT, l_inc2',
-'      from opas_ot_sql_data_point_ref r, opas_objects o, opas_ot_sql_data d',
-'     where r.sql_data_point_id = :P8000_DP2',
-'       and r.obj_id = o.obj_id',
-'       and r.sql_data_point_id = d.sql_data_point_id;',
-'  exception',
-'    when no_data_found then :P8000_DP2_OBJ := null; :P8000_DP2_PRNT := null;',
-'  end;  ',
 '  ',
 '  coreobj_api.extract_jparams(p_obj_id => :P8000_OBJ_ID);',
 '  ',
@@ -55193,6 +55192,26 @@ wwv_flow_api.create_page_process(
 '  coreobj_api.get_jparam(p_obj_id => :P8000_OBJ_ID,',
 '                         p_pname => COREOBJ_SQL_COMP_REPORT.pPLANDP#2,',
 '                         p_value => :P8000_DP2);',
+'',
+'  begin',
+'    select o.obj_id, o.obj_prnt, d.incarnation# into :P8000_DP1_OBJ, :P8000_DP1_PRNT, l_inc1',
+'      from opas_ot_sql_data_point_ref r, opas_objects o, opas_ot_sql_data d',
+'     where r.sql_data_point_id = :P8000_DP1',
+'       and r.obj_id = o.obj_id',
+'       and r.sql_data_point_id = d.sql_data_point_id;',
+'  exception',
+'    when no_data_found then :P8000_DP1_OBJ := null; :P8000_DP1_PRNT := null;',
+'  end;',
+'  begin',
+'    select o.obj_id, o.obj_prnt, d.incarnation# into :P8000_DP2_OBJ, :P8000_DP2_PRNT, l_inc2',
+'      from opas_ot_sql_data_point_ref r, opas_objects o, opas_ot_sql_data d',
+'     where r.sql_data_point_id = :P8000_DP2',
+'       and r.obj_id = o.obj_id',
+'       and r.sql_data_point_id = d.sql_data_point_id;',
+'  exception',
+'    when no_data_found then :P8000_DP2_OBJ := null; :P8000_DP2_PRNT := null;',
+'  end;  ',
+'  ',
 '  --ID',
 '  coreobj_api.get_jparam(p_obj_id => :P8000_OBJ_ID,',
 '                         p_pname => COREOBJ_SQL_COMP_REPORT.pPLANID#1,',

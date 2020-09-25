@@ -25,6 +25,7 @@ MIN_SNAP_ID                  NUMBER,
 MAX_SNAP_ID                  NUMBER,
 STATUS                       VARCHAR2(10),
 created                      timestamp default systimestamp,
+modified                     timestamp,
 preserve_policy              varchar2(1)  default 'N' not null check (preserve_policy in ('Y','N'))
 );
 
@@ -173,3 +174,8 @@ create index idx_opas_ot_ashac_dbl  on opas_ot_ashacube_ash(dblink) local;
 
 drop table opas_ot_tmp_gv$ash;
 create global temporary table opas_ot_tmp_gv$ash ON COMMIT DELETE ROWS as select * from opas_ot_ashacube_ash where 1=2;
+
+drop table opas_ot_tmp_gv$session;
+create global temporary table opas_ot_tmp_gv$session ON COMMIT DELETE ROWS as select * from gv$session where 1=2;
+alter table opas_ot_tmp_gv$session drop column ts;
+alter table opas_ot_tmp_gv$session add lts timestamp;

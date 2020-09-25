@@ -16,6 +16,7 @@ PACKAGE COREOBJ_ASHA_CUBE_CALCS AS
   csNEW           constant varchar2(100) := 'NEW';
   csReady         constant varchar2(100) := 'READY';
   csInProgress    constant varchar2(100) := 'INPROGRESS';
+  csEmpty         constant varchar2(100) := 'EMPTY';
 
   --granule type V GV$ASH, A DBA_HIST_ASH, S - Samples of GV$SESS
   gtGV$ASH        constant varchar2(100) := 'V';

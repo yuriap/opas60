@@ -381,19 +381,20 @@ package body COREMOD_API as
     return l_res;
   end;
 
-  procedure load_tmp_data(p_db_link_name varchar2,
-                          p_src_table_name_r varchar2,
-                          p_src_table_name varchar2,
-                          p_trg_table_name varchar2,
-                          p_suff varchar2,
-                          p_dbid number default null,
-                          p_key_pref varchar2 default 'TABCOLLIST',
-                          p_filter varchar2 default null)
+  function get_tmp_load_query(p_db_link_name varchar2,
+                              p_src_table_name_r varchar2,
+                              p_src_table_name varchar2,
+                              p_trg_table_name varchar2,
+                              p_suff varchar2,
+                              p_dbid number default null,
+                              p_key_pref varchar2 default 'TABCOLLIST',
+                              p_filter varchar2 default null,
+                              p_timestamp_col varchar2 default null) return varchar2
   is
     l_sql           varchar2(32765);
   begin
-      l_sql :=q'[INSERT /*+ OPAS60_DBLINK_<SUFF> */ INTO <TRG_TABLE> (<SRC_DB_COL_LICT>)
-              select <SRC_DB_COL_LICT> from <SRC_TABLE>]' || COREMOD_API.get_dblink_for_query(p_db_link_name) || ' where (<FILTER>) <DBID>';
+      l_sql :=q'[INSERT /*+ OPAS60_DBLINK_<SUFF> */ INTO <TRG_TABLE> (<TSCOL> <SRC_DB_COL_LICT>)
+              select <TSFNC> <SRC_DB_COL_LICT> from <SRC_TABLE>]' || COREMOD_API.get_dblink_for_query(p_db_link_name) || ' where (<FILTER>) <DBID>';
       if p_key_pref = 'TABCOLLIST' then
         l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_db_link_name,
                                                                                     P_KEY => replace(p_key_pref||'_<SRC_TABLE>','<SRC_TABLE>',p_src_table_name_r)));
@@ -413,7 +414,45 @@ package body COREMOD_API as
       else
         l_sql := replace(l_sql,'<DBID>','');
       end if;
-      coremod_log.log('COREMOD_API.load_tmp_data:'||chr(10)||l_sql,'INFO');
+
+      if p_timestamp_col is not null and p_timestamp_col in ('TS', 'LTS', 'TSTZ') then
+        l_sql := replace(l_sql,'<TSCOL>',p_timestamp_col||',');
+        l_sql := replace(l_sql,'<TSFNC>',case p_timestamp_col
+                                           when 'TS' then 'cast(systimestamp as timestamp)'
+                                           when 'LTS' then 'localtimestamp'
+                                           when 'TSTZ' then 'systimestamp'
+                                           when 'TSUTC' then 'sys_extract_utc(systimestamp)' end||',');
+      else
+        l_sql := replace(l_sql,'<TSCOL>',null);
+        l_sql := replace(l_sql,'<TSFNC>',null);
+      end if;
+
+      return l_sql;
+  end;
+
+  procedure load_tmp_data(p_db_link_name varchar2,
+                          p_src_table_name_r varchar2,
+                          p_src_table_name varchar2,
+                          p_trg_table_name varchar2,
+                          p_suff varchar2,
+                          p_dbid number default null,
+                          p_key_pref varchar2 default 'TABCOLLIST',
+                          p_filter varchar2 default null)
+  is
+    l_sql           varchar2(32765);
+  begin
+
+    l_sql := COREMOD_API.get_tmp_load_query(
+      P_DB_LINK_NAME => load_tmp_data.P_DB_LINK_NAME,
+      P_SRC_TABLE_NAME_R => load_tmp_data.P_SRC_TABLE_NAME_R,
+      P_SRC_TABLE_NAME => load_tmp_data.P_SRC_TABLE_NAME,
+      P_TRG_TABLE_NAME => load_tmp_data.P_TRG_TABLE_NAME,
+      P_SUFF => load_tmp_data.P_SUFF,
+      P_DBID => load_tmp_data.P_DBID,
+      P_KEY_PREF => load_tmp_data.P_KEY_PREF,
+      P_FILTER => load_tmp_data.P_FILTER);
+
+      coremod_log.log('COREMOD_API.load_tmp_data:'||chr(10)||l_sql,'DEBUG');
       execute immediate l_sql;
   exception
       when others then
