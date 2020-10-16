@@ -153,16 +153,22 @@ end;
 
 define MODNM=OPASCORE
 begin
+  delete from OPAS_TASK where TASKNAME in ('OPAS_ASHA_GRNL','OPAS_ASHA_GRNLSMPL');
   COREMOD_TASKS.create_task (  p_taskname  => 'OPAS_ASHA_GRNL',
                                p_modname   => '&MODNM.',
                                p_is_public => 'Y', 
 							   p_task_priority => COREMOD_TASKS.tpNORM,
-                               p_task_body => 'begin COREOBJ_ASHA_CUBE_CALCS.get_ash_data(p_obj_id => <B1>); end;');
+                               p_task_body => 'begin COREOBJ_ASHA_CUBE_CALCS.get_ash_data(p_obj_id => <B1>); end;');					   
   COREMOD_TASKS.create_task (  p_taskname  => 'OPAS_ASHA_GRNLSMPL',
                                p_modname   => '&MODNM.',
                                p_is_public => 'Y', 
 							   p_task_priority => COREMOD_TASKS.tpINTERNAL,
-                               p_task_body => 'begin COREOBJ_ASHA_CUBE_CALCS.sample_data_for_granule(p_asharange_id => <B1>); end;');							   
+                               p_task_body => 'begin COREOBJ_ASHA_CUBE_CALCS.sample_data_for_granule(p_asharange_id => <B1>); end;');
+  COREMOD_TASKS.create_task (  p_taskname  => 'OPAS_ASHA_STATSMPL',
+                               p_modname   => '&MODNM.',
+                               p_is_public => 'Y', 
+							   p_task_priority => COREMOD_TASKS.tpINTERNAL,
+                               p_task_body => 'begin COREOBJ_ASHA_CUBE_CALCS.sample_stat_for_granule(p_asharange_id => <B1>); end;');	
 end;
 /
 

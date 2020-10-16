@@ -51,9 +51,11 @@ package coremod_tasks as
   procedure stop_task(p_tq_id opas_task_queue.tq_id%type);
   procedure stop_previous_user_task(p_taskname   opas_task.taskname%type);
 
+  function is_task_finish(p_tq_id opas_task_queue.tq_id%type) return boolean;
   procedure wait_task_finish(p_tq_id opas_task_queue.tq_id%type, p_timeout number default 3600);
 
-  procedure log(p_msg opas_log.msg%type, p_tq_id opas_task_queue.tq_id%type default null);
+  procedure log(p_msg opas_log.msg%type, p_tq_id opas_task_queue.tq_id%type default null, p_module varchar2 default 'DEFAULT');
+  procedure log(p_msg opas_log.MSG_LONG%type, p_tq_id opas_task_queue.tq_id%type default null, p_module varchar2 default 'DEFAULT');
 
   function get_curr_tq_id return opas_task_queue.tq_id%type;
 end;

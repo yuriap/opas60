@@ -326,18 +326,35 @@ PACKAGE BODY COREOBJ_API AS
     APEX_JSON.close_array;
     APEX_JSON.close_object;
 
-    merge into opas_object_pars t
-    using (select p_obj_id obj_id, gCurrentJSONParamName par_name, APEX_JSON.get_clob_output jsparams from dual) s
-    on (t.obj_id = s.obj_id and t.par_name = s.par_name)
-    when matched then update set jsparams = APEX_JSON.get_clob_output
-    when not matched then insert (t.obj_id, t.par_name, t.jsparams)
-      values (s.obj_id, s.par_name, s.jsparams);
+--    merge into opas_object_pars t
+--    using (select p_obj_id obj_id, gCurrentJSONParamName par_name, APEX_JSON.get_clob_output jsparams from dual) s
+--    on (t.obj_id = s.obj_id and t.par_name = s.par_name)
+--    when matched then update set jsparams = APEX_JSON.get_clob_output
+--    when not matched then insert (t.obj_id, t.par_name, t.jsparams)
+--      values (s.obj_id, s.par_name, s.jsparams);
 --coremod_log.log('Stored rows:'||sql%rowcount);
+
+   set_jparam(p_obj_id => p_obj_id,
+              p_pname =>  gCurrentJSONParamName,
+              p_json =>   APEX_JSON.get_clob_output);
+
     APEX_JSON.free_output;
     --commit;
     set_json_par_name(); --reset to default param name
   end;
 
+  procedure set_jparam(p_obj_id           opas_objects.obj_id%type,
+                       p_pname            varchar2,
+                       p_json             clob)
+  is
+  begin
+    merge into opas_object_pars t
+    using (select p_obj_id obj_id, p_pname par_name, p_json jsparams from dual) s
+    on (t.obj_id = s.obj_id and t.par_name = s.par_name)
+    when matched then update set t.jsparams = s.jsparams
+    when not matched then insert (t.obj_id, t.par_name, t.jsparams)
+      values (s.obj_id, s.par_name, s.jsparams);
+  end;
 
   procedure extract_jparams(p_obj_id           opas_objects.obj_id%type)
   is

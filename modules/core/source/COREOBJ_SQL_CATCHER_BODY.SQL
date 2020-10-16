@@ -3,6 +3,53 @@
 CREATE OR REPLACE
 package body COREOBJ_SQL_CATCHER is
 
+  gJSParams             COREOBJ_API.t_params;
+
+  procedure load_params(p_obj_id  opas_objects.obj_id%type)
+  is
+  begin
+    gJSParams.delete;
+    gJSParams := coreobj_api.get_all_jparam(p_obj_id => p_obj_id);
+  end;
+
+  procedure store_params(p_obj_id  opas_objects.obj_id%type)
+  is
+    l_name varchar2(1000);
+  begin
+    COREOBJ_API.extract_jparams(p_obj_id);
+
+    l_name := gJSParams.first;
+    loop
+      exit when l_name is null;
+      COREOBJ_API.add_jparam (  P_OBJ_ID => store_params.P_OBJ_ID,
+        P_PNAME => l_name,
+        P_VALUE => gJSParams(l_name));
+      l_name := gJSParams.next(l_name);
+    end loop;
+
+    COREOBJ_API.store_jparams(p_obj_id);
+  end;
+
+  function gp(p_name varchar2) return varchar2
+  is
+    PRAGMA UDF;
+  begin
+
+    if gJSParams.exists(upper(p_name))
+    then
+      return gJSParams(upper(p_name));
+    else
+      return null;
+    end if;
+
+  end;
+
+  procedure setp(p_name varchar2, p_value varchar2)
+  is
+  begin
+    gJSParams(upper(p_name)) := p_value;
+  end;
+
   procedure add   (p_obj_id       out opas_objects.obj_id%type,
                    p_obj_prnt         opas_objects.obj_prnt%type,
                    p_modname          opas_files.modname%type default COREMOD_API.gMODNAME,
@@ -195,7 +242,7 @@ package body COREOBJ_SQL_CATCHER is
                              p_lops_ind => l_lops_ind);
     --coremod_tasks.log(l_ctchr.sql_time_limit);
     loop
-
+      load_params(p_obj_id);
       select * into l_ctchr from opas_ot_sqlcatch where obj_id = p_obj_id;
       --coremod_tasks.log('task_catcher: time active: '||((dbms_utility.get_time - l_start_tim)/100));
 
@@ -214,7 +261,11 @@ package body COREOBJ_SQL_CATCHER is
           where t.status in (ssqltNew)
         when not matched then
         INSERT (obj_id, sql_id, status, execs_num_to_init, sql_text, actual_execs, PICKED)
-        VALUES (p_obj_id, s.sql_id, ssqltNew, l_ctchr.sql_exec_def,  s.sql_text, s.ACTUAL_EXECS, systimestamp);
+        VALUES (p_obj_id, s.sql_id, ssqltNew,
+                case when nvl(gp(parCatchAfter),pvFirstExec) = pvFirstExec then l_ctchr.sql_exec_def
+                     when gp(parCatchAfter) = pvNextExec then s.ACTUAL_EXECS + 1
+                     else l_ctchr.sql_exec_def end,
+                s.sql_text, s.ACTUAL_EXECS, systimestamp);
         l_cnt1 := l_cnt1 + sql%rowcount;
 
         update OPAS_OT_SQLCATCH_SQLS set

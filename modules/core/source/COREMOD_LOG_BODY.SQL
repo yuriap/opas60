@@ -25,21 +25,28 @@ package body COREMOD_LOG is
        AND ckey = 'LOGGING_LEVEL';
   end;
 
-  procedure log(p_msg clob, p_loglevel varchar2 default 'INFO')
+  procedure log(p_msg clob, p_loglevel varchar2 default 'INFO', p_module varchar2 default 'DEFAULT')
   is
     l_level varchar2(100):=COREMOD_API.getconf('LOGGING_LEVEL',COREMOD_API.gMODNAME);
   begin
     if (l_level='INFO' and p_loglevel='INFO') or
        (l_level='DEBUG' and p_loglevel in ('INFO', 'DEBUG'))
     then
-      coremod_tasks.log(p_msg);
+      coremod_tasks.log(p_msg => log.p_msg, p_module => log.p_module);
     end if;
   end;
 
-  procedure log(p_msg varchar2, p_loglevel varchar2 default 'INFO')
+  procedure log(p_msg varchar2, p_loglevel varchar2 default 'INFO', p_module varchar2 default 'DEFAULT')
   is
+  --begin
+    --log(cast(log.p_msg as clob),log.p_loglevel,log.p_module);
+    l_level varchar2(100):=COREMOD_API.getconf('LOGGING_LEVEL',COREMOD_API.gMODNAME);
   begin
-    log(cast(p_msg as clob),p_loglevel);
+    if (l_level='INFO' and p_loglevel='INFO') or
+       (l_level='DEBUG' and p_loglevel in ('INFO', 'DEBUG'))
+    then
+      coremod_tasks.log(p_msg => log.p_msg, p_module => log.p_module);
+    end if;
   end;
 
   procedure cleanup_logs

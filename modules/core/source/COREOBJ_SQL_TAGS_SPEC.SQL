@@ -6,7 +6,8 @@ package coreobj_sql_tags is
   procedure add(p_tag_name opas_ot_sql_tags.tag_name%type,
                 p_tag_prnt opas_ot_sql_tags.tag_prnt%type,
                 p_tag_description opas_ot_sql_tags.tag_description%type,
-                p_tag_autoexpr opas_ot_sql_tags.tag_autoexpr%type);
+                p_tag_autoexpr opas_ot_sql_tags.tag_autoexpr%type,
+                p_tag_dependent opas_ot_sql_tags.tag_dependent%type);
 
   procedure remove(p_tag_name opas_ot_sql_tags.tag_name%type,
                    p_tag_type opas_ot_sql_sql2tags.tag_type%type default '%');

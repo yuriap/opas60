@@ -22,6 +22,10 @@ package COREOBJ_SQL_CATCHER is
   def_check_interval   constant number := 30;
   def_execs            constant number := 1;
 
+  parCatchAfter        constant varchar2(30) := 'CatchAfter'; -- FIRSTEXEC, NEXTEXEC
+  pvFirstExec          constant varchar2(30) := 'FIRSTEXEC';
+  pvNextExec           constant varchar2(30) := 'NEXTEXEC';
+
   procedure add     (p_obj_id       out opas_objects.obj_id%type,
                      p_obj_prnt         opas_objects.obj_prnt%type,
                      p_modname          opas_files.modname%type default COREMOD_API.gMODNAME,
@@ -52,6 +56,12 @@ package COREOBJ_SQL_CATCHER is
   procedure stop_catcher     (p_obj_id            opas_objects.obj_id%type);
 
   procedure task_catcher     (p_obj_id            opas_objects.obj_id%type);
+
+  procedure load_params (p_obj_id  opas_objects.obj_id%type);
+  procedure store_params(p_obj_id  opas_objects.obj_id%type);
+
+  function gp(p_name varchar2) return varchar2;
+  procedure setp(p_name varchar2, p_value varchar2);
 
 end COREOBJ_SQL_CATCHER;
 /

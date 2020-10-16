@@ -621,7 +621,7 @@ q'[select plan_table_output "Plan Table Output" from table(dbms_xplan.display('O
 q'[select plan_table_output "Plan Table Output" from table(dbms_xplan.display('OPAS_OT_SQL_PLAN_DET', null, '<display_params>', 'plan_id=<PLAN_ID>'))]'
                                               ,'<PLAN_ID>',plans.PLAN_ID)
                                               ,'<display_params>',l_display_params),--'
-                                            p_width => gwWideSection1,
+                                            p_width => gwWideSection1+50,
                                             p_summary => 'Execution plan',
                                             --p_search varchar2 default null,
                                             --p_replacement varchar2 default null,

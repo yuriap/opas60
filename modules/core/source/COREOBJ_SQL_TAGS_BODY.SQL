@@ -8,19 +8,21 @@ package body coreobj_sql_tags is
   procedure add(p_tag_name opas_ot_sql_tags.tag_name%type,
                 p_tag_prnt opas_ot_sql_tags.tag_prnt%type,
                 p_tag_description opas_ot_sql_tags.tag_description%type,
-                p_tag_autoexpr opas_ot_sql_tags.tag_autoexpr%type)
+                p_tag_autoexpr opas_ot_sql_tags.tag_autoexpr%type,
+                p_tag_dependent opas_ot_sql_tags.tag_dependent%type)
   is
   begin
     merge into opas_ot_sql_tags t
-    using (select p_tag_name tag_name, p_tag_prnt tag_prnt, p_tag_description tag_description, p_tag_autoexpr tag_autoexpr from dual) s
+    using (select p_tag_name tag_name, p_tag_prnt tag_prnt, p_tag_description tag_description, p_tag_autoexpr tag_autoexpr, p_tag_dependent tag_dependent from dual) s
     on (t.tag_name=s.tag_name)
     when matched then update set
       t.tag_description = s.tag_description,
       t.tag_autoexpr = s.tag_autoexpr,
+      t.tag_dependent = s.tag_dependent,
       t.tag_modified = systimestamp
-    when not matched then insert (t.tag_name, t.tag_prnt, t.tag_description, t.tag_autoexpr)
+    when not matched then insert (t.tag_name, t.tag_prnt, t.tag_description, t.tag_autoexpr, t.tag_dependent)
     values
-    (s.tag_name, s.tag_prnt, s.tag_description, s.tag_autoexpr);
+    (s.tag_name, s.tag_prnt, s.tag_description, s.tag_autoexpr, s.tag_dependent);
 
   end;
 
@@ -171,7 +173,7 @@ where s.sql_id = :sqlid and (s.sql_text = f.file_id or s.sql_text_approx = f.fil
   begin
     --coremod_log.log('coreobj_sql_tags.tag_sql: '||p_tag_names||' -- ' || p_sql_id);
 
-    for i in (select * from opas_ot_sql_tags where tag_name = p_tag_name and tag_name not like '%!Copy!' and tag_autoexpr not like '%1=2%')
+    for i in (select * from opas_ot_sql_tags where tag_name = p_tag_name and tag_name not like '%!Copy!' and tag_autoexpr not like '%1=2%' order by tag_dependent)
     loop
       open l_crsr for
         q'[select sql_id from opas_ot_sql_descriptions s, opas_files f where (s.sql_text = f.file_id or s.sql_text_approx = f.file_id) and (]'||i.tag_autoexpr||')';
@@ -224,7 +226,7 @@ where s.sql_id = :sqlid and (s.sql_text = f.file_id or s.sql_text_approx = f.fil
   begin
     --coremod_log.log('coreobj_sql_tags.tag_sql: '||p_tag_names||' -- ' || p_sql_id);
 
-    for i in (select * from opas_ot_sql_tags where tag_name = p_tag_name and tag_name not like '%!Copy!' and tag_name not like '%1=2%')
+    for i in (select * from opas_ot_sql_tags where tag_name = p_tag_name and tag_name not like '%!Copy!' and tag_name not like '%1=2%' order by tag_dependent)
     loop
       open l_crsr for
         q'[select sql_id from opas_ot_sql_descriptions s, opas_files f where (s.sql_text = f.file_id or s.sql_text_approx = f.file_id) and (]'||p_expr||')';

@@ -5,8 +5,18 @@ package body coreobj_asha_cube is
 
   function get_object_status_to_display (p_obj_id          opas_objects.obj_id%type) return varchar2
   is
+    l_status varchar2(100);
   begin
-    return 'TBD';
+      select 'Cube: '||acube.status||'; Ranges: '||ranges.range_status
+      into l_status
+      from (select status from OPAS_OT_ASHACUBE where ASHACUBE_ID = p_obj_id) acube,
+           (select listagg(status || ':' || cnt) within group(order by status) range_status
+              from (select status, count(1) cnt from OPAS_OT_ASHACUBE_RANGES ra, OPAS_OT_ASHACUBE_REF refs
+                     where refs.ASHARANGE_ID = ra.ASHARANGE_ID and refs.ASHACUBE_ID = p_obj_id group by status)) ranges;
+
+    return l_status;
+  exception
+    when no_data_found then return 'No data found';
   end;
 
   procedure add   (p_obj_id       out opas_objects.obj_id%type,
@@ -45,13 +55,13 @@ package body coreobj_asha_cube is
   is
   begin
 
-    delete from opas_ot_ashacube_ash
+    delete from opas_ot_ashacube_ash r
      where asharange_id in (select asharange_id from opas_ot_ashacube_ref where ashacube_id = p_obj_id)
-       and not exists (select 1 from opas_ot_ashacube_ref where ashacube_id != p_obj_id);
+       and not exists (select 1 from opas_ot_ashacube_ref i where i.ASHARANGE_ID = r.ASHARANGE_ID and ashacube_id != p_obj_id);
 
-    delete from opas_ot_ashacube_ranges
+    delete from opas_ot_ashacube_ranges r
      where asharange_id in (select asharange_id from opas_ot_ashacube_ref where ashacube_id = p_obj_id)
-       and not exists (select 1 from opas_ot_ashacube_ref where ashacube_id != p_obj_id);
+       and not exists (select 1 from opas_ot_ashacube_ref i where i.ASHARANGE_ID = r.ASHARANGE_ID and ashacube_id != p_obj_id);
 
     delete from opas_ot_ashacube_ref  where ashacube_id = p_obj_id;
     delete from opas_ot_ashacube where ashacube_id = p_obj_id;
@@ -63,8 +73,9 @@ package body coreobj_asha_cube is
   is
   begin
     delete from opas_ot_ashacube_ranges d
-     where created + NUMTODSINTERVAL(COREMOD_API.getconf(P_KEY => 'ASHARANGE', P_MODULE => 'OPASCORE'), 'DAY') > systimestamp
-       and not exists (select 1 from opas_ot_ashacube_ref r where r.asharange_id = d.asharange_id);
+     where created + NUMTODSINTERVAL(COREMOD_API.getconf(P_KEY => 'ASHARANGE', P_MODULE => 'OPASCORE'), 'DAY') < systimestamp
+       and not exists (select 1 from opas_ot_ashacube_ref r where r.asharange_id = d.asharange_id)
+       and PRESERVE_POLICY = 'N';
     commit;
   end;
 

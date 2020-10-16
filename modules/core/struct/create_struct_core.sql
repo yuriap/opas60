@@ -235,6 +235,15 @@ DROP TABLE OPAS_DBL_TMP_SQLPTCHHST;
 CREATE GLOBAL TEMPORARY TABLE OPAS_DBL_TMP_SQLPTCHHST 
 ON COMMIT DELETE ROWS as
 select * from DBA_REGISTRY_SQLPATCH where 1=2;
+
+alter table opas_dbl_tmp_sqlptchhst add VERSION VARCHAR2(20);
+alter table opas_dbl_tmp_sqlptchhst add BUNDLE_SERIES             VARCHAR2(30);
+alter table opas_dbl_tmp_sqlptchhst add BUNDLE_ID                 NUMBER ;
+
+alter table OPAS_DB_LINK_SQLPTCHHST add VERSION VARCHAR2(20);
+alter table OPAS_DB_LINK_SQLPTCHHST add BUNDLE_SERIES             VARCHAR2(30);
+alter table OPAS_DB_LINK_SQLPTCHHST add BUNDLE_ID                 NUMBER ;
+
 ----
                                                 
 DROP TABLE OPAS_DB_LINK_AWRSNAPS;
@@ -253,7 +262,6 @@ DROP TABLE OPAS_DBL_TMP_AWRSNAPS;
 CREATE GLOBAL TEMPORARY TABLE OPAS_DBL_TMP_AWRSNAPS 
 ON COMMIT PRESERVE ROWS as
 select * from DBA_HIST_SNAPSHOT where 1=2;
-
 
 
 CREATE GLOBAL TEMPORARY TABLE OPAS_DBL_TMP_METRICS
@@ -500,7 +508,8 @@ create table opas_log (
   created             timestamp      default systimestamp,
   msg                 varchar2(4000),
   tq_id               number                                         references opas_task_queue(tq_id) on delete cascade,
-  msg_long            clob
+  msg_long            clob,
+  module_name         varchar2(100) default 'DEFAULT'
 );
 
 create index idx_opas_task_logtske on opas_log(tq_id);

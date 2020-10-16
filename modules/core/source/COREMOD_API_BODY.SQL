@@ -22,7 +22,11 @@ package body COREMOD_API as
   -- lock handle
   g_handle varchar2(512);
 
+  g_last_sql_rowcount number;
+
   function getMODNAME return varchar2 is begin return gMODNAME; end;
+
+  function get_last_rowcount return number is begin return g_last_sql_rowcount; end;
 
   procedure register(p_modname opas_modules.MODNAME%type,
                      p_moddescr opas_modules.MODDESCR%type default null,
@@ -272,14 +276,18 @@ package body COREMOD_API as
     l_status OPAS_DB_LINKS.status%type;
     a number;
   begin
-    select ora_db_link, status into l_dblink, l_status from V$OPAS_DB_LINKS where db_link_name=upper(p_db_link_name);
-    if l_status = dblSUSPENDED then raise_application_error(-20999, 'DB Link: '||p_db_link_name||' is suspended');end if;
-    begin
-      execute immediate 'select 1 from dual@'||l_dblink into a;
-    exception
-      when others then drop_dblink(p_db_link_name, p_suspend => true);
-      raise;
-    end;
+    if upper(p_db_link_name) <> gLocalDBLink then
+        select ora_db_link, status into l_dblink, l_status from V$OPAS_DB_LINKS where db_link_name=upper(p_db_link_name);
+        if l_status = dblSUSPENDED then raise_application_error(-20999, 'DB Link: '||p_db_link_name||' is suspended');end if;
+        begin
+          execute immediate 'select 1 from dual@'||l_dblink into a;
+        exception
+          when others then drop_dblink(p_db_link_name, p_suspend => true);
+          raise;
+        end;
+    else
+      null;
+    end if;
   end;
 
   function get_ora_dblink(p_db_link_name varchar2) return varchar2
@@ -415,13 +423,13 @@ package body COREMOD_API as
         l_sql := replace(l_sql,'<DBID>','');
       end if;
 
-      if p_timestamp_col is not null and p_timestamp_col in ('TS', 'LTS', 'TSTZ') then
+      if p_timestamp_col is not null and p_timestamp_col in ('TS', 'LTS', 'TSTZ','TSUTC') then
         l_sql := replace(l_sql,'<TSCOL>',p_timestamp_col||',');
         l_sql := replace(l_sql,'<TSFNC>',case p_timestamp_col
                                            when 'TS' then 'cast(systimestamp as timestamp)'
                                            when 'LTS' then 'localtimestamp'
                                            when 'TSTZ' then 'systimestamp'
-                                           when 'TSUTC' then 'sys_extract_utc(systimestamp)' end||',');
+                                           when 'TSUTC' then 'sys_extract_utc(systimestamp)' else null end||',');
       else
         l_sql := replace(l_sql,'<TSCOL>',null);
         l_sql := replace(l_sql,'<TSFNC>',null);
@@ -454,14 +462,16 @@ package body COREMOD_API as
 
       coremod_log.log('COREMOD_API.load_tmp_data:'||chr(10)||l_sql,'DEBUG');
       execute immediate l_sql;
+
+      g_last_sql_rowcount := sql%rowcount;
   exception
       when others then
-        coremod_tasks.log('Error in COREMOD_API.load_tmp_data loading p_src_table_name: '||p_trg_table_name||':'||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE||chr(10)||l_sql);
+        coremod_tasks.log('Error in COREMOD_API.load_tmp_data loading p_db_link_name, p_src_table_name: '||p_db_link_name||', '||p_trg_table_name||':'||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE||chr(10)||l_sql);
   end;
 
   procedure update_dblink_db_info(p_db_link_name varchar2)
   is
-    --l_sql           varchar2(32765);
+    l_sql           varchar2(32765);
     l_data_point_ts timestamp := systimestamp;
     l_dbid          OPAS_DB_LINKS.dbid%type;
     l_previous_upd  OPAS_DB_LINKS.DATA_UPDATED%type;
@@ -474,15 +484,16 @@ package body COREMOD_API as
     l_sql_get_snaps varchar2(4000)
       := q'[select min_snap, dbid from (select min(snap_id) min_snap, min(dbid) dbid from dba_hist_snapshot<DBLINK> where dbid = (select dbid from v$database<DBLINK>) and end_interval_time > systimestamp - 1)]';
     l_sql_get_v4metrics varchar2(4000)
-      := q'[insert into opas_dbl_tmp_metrics (GROUP_ID, METRIC_ID) select unique group_id, metric_id from v$sysmetric_history<DBLINK>]';
+      := q'[insert into opas_dbl_tmp_metrics (GROUP_ID, METRIC_ID) select unique group_id, metric_id from gv$sysmetric_history<DBLINK>]';
     l_sql_get_awr_metric varchar2(4000)
       := q'[insert into opas_dbl_tmp_metrics (GROUP_ID, METRIC_ID) select unique group_id, metric_id from dba_hist_sysmetric_history<DBLINK> h where h.snap_id > :l_snap and h.dbid = :l_dbid and h.instance_number > 0]';
   begin
-    COREMOD_TASKS.log('Updating database dossier for "'||p_db_link_name||'"');
+    COREMOD_TASKS.log('COREMOD_API.update_dblink_db_info: Updating database dossier for "'||p_db_link_name||'" ...');
 
     test_dblink(p_db_link_name);
-
-    execute immediate replace(l_sql_get_snaps,'<DBLINK>',COREMOD_API.get_dblink_for_query(p_db_link_name)) into l_snap, l_dbid;
+    l_sql := replace(l_sql_get_snaps,'<DBLINK>',COREMOD_API.get_dblink_for_query(p_db_link_name));
+    execute immediate l_sql into l_snap, l_dbid;
+    l_sql := null;
 
     select DATA_UPDATED into l_previous_upd from OPAS_DB_LINKS where DB_LINK_NAME = upper(p_db_link_name);
     update OPAS_DB_LINKS set DATA_UPDATED = systimestamp+10 where DB_LINK_NAME = upper(p_db_link_name);
@@ -493,11 +504,17 @@ package body COREMOD_API as
 
     l_version := COREMOD_UTILS.get_remote_full_oracle_version(P_DBLINK => p_db_link_name);
 
-    execute immediate replace(l_sql_get_v4metrics,'<DBLINK>',COREMOD_API.get_dblink_for_query(p_db_link_name));
+    l_sql := replace(l_sql_get_v4metrics,'<DBLINK>',COREMOD_API.get_dblink_for_query(p_db_link_name));
+    execute immediate l_sql;
+    l_sql := null;
+
     select TWO_NUMBERS(GROUP_ID, METRIC_ID)  bulk collect into l_v$_metrics from opas_dbl_tmp_metrics;
     delete from opas_dbl_tmp_metrics;
 
-    execute immediate replace(l_sql_get_awr_metric,'<DBLINK>',COREMOD_API.get_dblink_for_query(p_db_link_name)) using l_snap, l_dbid;
+    l_sql := replace(l_sql_get_awr_metric,'<DBLINK>',COREMOD_API.get_dblink_for_query(p_db_link_name));
+    execute immediate l_sql using l_snap, l_dbid;
+    l_sql := null;
+
     select TWO_NUMBERS(GROUP_ID, METRIC_ID)  bulk collect into l_awr_metrics from opas_dbl_tmp_metrics;
     delete from opas_dbl_tmp_metrics;
 
@@ -661,10 +678,12 @@ order by 1, 2,3
       )
       when not matched then insert (
         dblink, install_id, patch_id, patch_uid, patch_type, action, status, action_time, description, logfile, ru_logfile, flags, patch_descriptor, patch_directory,
-        source_version, source_build_description, source_build_timestamp, target_version, target_build_description, target_build_timestamp)
+        source_version, source_build_description, source_build_timestamp, target_version, target_build_description, target_build_timestamp,
+        VERSION,BUNDLE_SERIES,BUNDLE_ID)
       VALUES (
         p_db_link_name, s.install_id, s.patch_id, s.patch_uid, s.patch_type, s.action, s.status, s.action_time, s.description, s.logfile, s.ru_logfile, s.flags, s.patch_descriptor, s.patch_directory,
-        s.source_version, s.source_build_description, s.source_build_timestamp, s.target_version, s.target_build_description, s.target_build_timestamp);
+        s.source_version, s.source_build_description, s.source_build_timestamp, s.target_version, s.target_build_description, s.target_build_timestamp,
+        s.VERSION,s.BUNDLE_SERIES,s.BUNDLE_ID);
 
     if sql%rowcount > 0 then
       null; --TODO alert new sql patch
@@ -672,8 +691,13 @@ order by 1, 2,3
 
     update OPAS_DB_LINKS set DATA_UPDATED = systimestamp, current_version=l_version where DB_LINK_NAME = upper(p_db_link_name);
     commit;
+    COREMOD_TASKS.log('COREMOD_API.update_dblink_db_info: Update database dossier for "'||p_db_link_name||'" finished.');
   exception
-    when others then rollback;
+    when others then
+      coremod_tasks.log('Error COREMOD_API.update_dblink_db_info('||p_db_link_name||'): '||sqlerrm);
+      coremod_tasks.log('Error COREMOD_API.update_dblink_db_info('||p_db_link_name||') error stack: '||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      if l_sql is not null then coremod_tasks.log('Error COREMOD_API.update_dblink_db_info('||p_db_link_name||'): '||l_sql); end if;
+      rollback;
       update OPAS_DB_LINKS set DATA_UPDATED = l_previous_upd where DB_LINK_NAME = upper(p_db_link_name);
       commit;
       raise;
@@ -686,12 +710,14 @@ order by 1, 2,3
     l_nt_id      opas_notification.ID%type;
     l_next_date  timestamp;
   begin
-    for i in (select * from OPAS_DB_LINKS where status=dblCREATED and 1=2) loop
+    --coremod_log.log('DB Link data update job COREMOD_API.update_dblink_data start.');
+    for i in (select * from OPAS_DB_LINKS where status=dblCREATED) loop
       DBMS_SCHEDULER.EVALUATE_CALENDAR_STRING(
           calendar_string    => i.UPDATE_SCHED,
           start_date         => nvl(i.DATA_UPDATED,i.CREATED),
-          return_date_after  => null,
+          return_date_after  => nvl(i.DATA_UPDATED,i.CREATED),
           next_run_date      => l_next_date);
+      --coremod_log.log('DB Link data update job COREMOD_API.update_dblink_data: '||i.DB_LINK_NAME||' '||to_char(nvl(i.DATA_UPDATED,i.CREATED),'YYYY/MM/DD HH24:MI:SS')||' '||to_char(l_next_date,'YYYY/MM/DD HH24:MI:SS'));
       if l_next_date < systimestamp then
         l_tq_id:=COREMOD_TASKS.prep_execute_task (  P_TASKNAME => L_TASKNAME) ;
         COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => 'B1', p_varchar_par => upper(i.DB_LINK_NAME));

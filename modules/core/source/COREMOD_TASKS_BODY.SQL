@@ -12,14 +12,26 @@ package body coremod_tasks as
 
   function get_curr_tq_id return opas_task_queue.tq_id%type is begin return gTQ_ID; end;
 
-  procedure log(p_msg opas_log.msg%type, p_tq_id opas_task_queue.tq_id%type default null)
+  procedure log(p_msg opas_log.msg%type, p_tq_id opas_task_queue.tq_id%type default null, p_module varchar2 default 'DEFAULT')
   is
     PRAGMA AUTONOMOUS_TRANSACTION;
   begin
     if length(p_msg)<=4000 then
-      insert into opas_log (created, msg, tq_id) values (default, p_msg, nvl(p_tq_id,gTQ_ID));
+      insert into opas_log (created, msg, tq_id, module_name) values (default, p_msg, nvl(p_tq_id,gTQ_ID), p_module);
     else
-      insert into opas_log (created, msg_long, tq_id) values (default, p_msg, nvl(p_tq_id,gTQ_ID));
+      insert into opas_log (created, msg_long, tq_id, module_name) values (default, p_msg, nvl(p_tq_id,gTQ_ID), p_module);
+    end if;
+    commit;
+  end;
+
+  procedure log(p_msg opas_log.MSG_LONG%type, p_tq_id opas_task_queue.tq_id%type default null, p_module varchar2 default 'DEFAULT')
+  is
+    PRAGMA AUTONOMOUS_TRANSACTION;
+  begin
+    if length(p_msg)<=4000 then
+      insert into opas_log (created, msg, tq_id, module_name) values (default, p_msg, nvl(p_tq_id,gTQ_ID), p_module);
+    else
+      insert into opas_log (created, msg_long, tq_id, module_name) values (default, p_msg, nvl(p_tq_id,gTQ_ID), p_module);
     end if;
     commit;
   end;
@@ -362,6 +374,29 @@ package body coremod_tasks as
       P_TIMEOUT => p_timeout,
       P_RELEASE_ON_COMMIT => true);
     commit;
+  end;
+
+  function is_task_finish(p_tq_id opas_task_queue.tq_id%type) return boolean
+  is
+    l_status          opas_task_queue.status%type;
+  begin
+    loop
+      select STATUS into l_STATUS from opas_task_queue where tq_id = p_tq_id;
+      exit when l_STATUS not in (gtqQUEUED,gtqSTARTED);
+      dbms_lock.sleep(10);
+    end loop;
+
+    COREMOD_API.lock_resource(
+      P_RESOURCE_NAME => 'OPASTASK'||p_tq_id,
+      P_MODE => 6,
+      P_TIMEOUT => 1,
+      P_RELEASE_ON_COMMIT => true);
+    commit;
+    return true;
+  exception
+    when others then
+      rollback;
+      return false; --still running
   end;
 
   procedure execute_task(p_tq_id opas_task_queue.tq_id%type)

@@ -115,6 +115,10 @@ PACKAGE COREOBJ_API AS
   function get_all_jparam(p_obj_id           opas_objects.obj_id%type) return t_params;
   procedure store_jparams(p_obj_id           opas_objects.obj_id%type);
 
+  --set json whole param
+  procedure set_jparam(p_obj_id           opas_objects.obj_id%type,
+                       p_pname            varchar2,
+                       p_json             clob);
 END COREOBJ_API;
 /
 

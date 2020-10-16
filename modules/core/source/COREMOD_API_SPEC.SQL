@@ -66,6 +66,7 @@ package COREMOD_API as
                                p_key_pref varchar2 default 'TABCOLLIST',
                                p_filter varchar2 default null,
                                p_timestamp_col varchar2 default null) return varchar2;
+   function get_last_rowcount return number;
 
    function get_dblink_user(p_dblink varchar2) return varchar2;
 

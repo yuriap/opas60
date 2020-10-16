@@ -4,8 +4,8 @@ CREATE OR REPLACE
 package COREMOD_LOG is
   -- INFO
   -- DEBUG
-  procedure log(p_msg clob, p_loglevel varchar2 default 'INFO');
-  procedure log(p_msg varchar2, p_loglevel varchar2 default 'INFO');
+  procedure log(p_msg clob, p_loglevel varchar2 default 'INFO', p_module varchar2 default 'DEFAULT');
+  procedure log(p_msg varchar2, p_loglevel varchar2 default 'INFO', p_module varchar2 default 'DEFAULT');
 
   procedure cleanup_logs;
 

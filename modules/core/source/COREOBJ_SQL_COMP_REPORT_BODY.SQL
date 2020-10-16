@@ -750,7 +750,7 @@ if g_Debug then coremod_log.log('p_file_id: '||p_file_id|| '; l_output.count: '|
     l_idx         pls_integer;
   begin
     p_max_length := 0;
-    for i in (SELECT line_number, payload
+    for i in (SELECT rownum line_number, payload
                 FROM V$OPAS_FILE_CONTENTBYROW
                where file_id=p_file_id
                order by line_number)

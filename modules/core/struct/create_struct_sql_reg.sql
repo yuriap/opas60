@@ -21,7 +21,8 @@ tag_prnt            varchar2(128)                                    references 
 tag_description     varchar2(4000),
 tag_autoexpr        varchar2(4000),
 tag_created         timestamp default systimestamp,
-tag_modified        timestamp
+tag_modified        timestamp,
+tag_dependent       number default 0 -- no dpenedencies, 0 < dependent, will be ordered by this column during calculation
 );
 
 create index idx_opas_ot_sql_prnt_tag  on opas_ot_sql_tags(tag_prnt);
@@ -1438,7 +1439,7 @@ create table opas_ot_sqlcatch (
  check_interval                    number,
  status                            varchar2(10),
  tq_id                             number,
- sql_exec_def                      number,
+ sql_exec_def                      number
  primary key (obj_id)
 );
 

@@ -48,15 +48,20 @@ grant select on gv_$sql_monitor to &localscheme.;
 grant select on gv_$sql_workarea to &localscheme.;
 grant select on gv_$sql_optimizer_env to &localscheme.;
 grant select on gv_$sql_plan_statistics_all to &localscheme.;
+grant select on gv_$sysmetric_history to &localscheme.;  
 grant select on v_$metricname to &localscheme.;
 grant select on v_$event_name to &localscheme.;
 grant select on v$event_name to &localscheme.; --cloud
+grant select on gv_$sesstat to &localscheme.;
+
 --
 grant select on dba_hist_database_instance to &localscheme.;
 grant select on dba_hist_reports to &localscheme.;
 grant select on dba_hist_reports_details to &localscheme.;
 grant select on dba_hist_sqltext to &localscheme.;
 grant select on dba_hist_snapshot to &localscheme.;
+grant select on dba_hist_sysmetric_history to &localscheme.;
+v$sysmetric_history
 --
 grant select on dba_data_files to &localscheme.;
 grant select on dba_objects to &localscheme.;

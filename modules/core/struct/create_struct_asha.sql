@@ -1,3 +1,5 @@
+drop table opas_ot_ashacube_stats;
+drop table opas_ot_ashacube_metrics;
 drop table opas_ot_ashacube_ash purge;
 drop table opas_ot_ashacube_ref purge;
 drop table opas_ot_ashacube_ranges purge;
@@ -16,7 +18,7 @@ modified                     timestamp
 create table opas_ot_ashacube_ranges (
 asharange_id                 number                                           generated always as identity primary key,
 dblink                       varchar2(128)                                    references opas_db_links (db_link_name),
-SAMPLE_TP                    VARCHAR2(1 BYTE) check (SAMPLE_TP in ('V','A','S','VA')), --V GV$ASH, A DBA_HIST_ASH, VA - combined, S - Samples of GV$SESS
+SAMPLE_TP                    VARCHAR2(2 BYTE) check (SAMPLE_TP in ('V','A','S','VA')), --V GV$ASH, A DBA_HIST_ASH, VA - combined, S - Samples of GV$SESS
 START_TIME_UTC               TIMESTAMP(0),
 END_TIME_UTC                 TIMESTAMP(0),
 DBID                         NUMBER, -- $LOCAL$ with some unlocal DBID comes from AWR dump
@@ -26,10 +28,12 @@ MAX_SNAP_ID                  NUMBER,
 STATUS                       VARCHAR2(10),
 created                      timestamp default systimestamp,
 modified                     timestamp,
-preserve_policy              varchar2(1)  default 'N' not null check (preserve_policy in ('Y','N'))
+preserve_policy              varchar2(1)  default 'N' not null check (preserve_policy in ('Y','N')),
+tq_id                        number                                          references opas_task_queue(tq_id) on delete set null
 );
 
 create index idx_opas_ot_ashac_rdbl   on opas_ot_ashacube_ranges(dblink);
+create index idx_opas_ot_ashac_tq   on opas_ot_ashacube_ranges(tq_id);
 
 create table opas_ot_ashacube_ref (
  ashacube_id                  number                                 not null  references opas_ot_ashacube(ashacube_id) on delete cascade,
@@ -40,7 +44,7 @@ create table opas_ot_ashacube_ref (
 create table opas_ot_ashacube_ash (
 asharange_id                 number                                           references opas_ot_ashacube_ranges (asharange_id) on delete cascade,
 DBLINK                       varchar2(128)                                    references opas_db_links (db_link_name),
-SAMPLE_TP                    VARCHAR2(1 BYTE) check (SAMPLE_TP in ('V','A','S')), --V GV$ASH, A DBA_HIST_ASH, S - Samples of GV$SESS
+SAMPLE_TP                    VARCHAR2(2 BYTE) check (SAMPLE_TP in ('V','A','S','VA')), --V GV$ASH, A DBA_HIST_ASH, S - Samples of GV$SESS
 SNAP_ID                      NUMBER,
 --DBID                         NUMBER, -- $LOCAL$ with some unlocal DBID comes from AWR dump
 INSTANCE_NUMBER              NUMBER,
@@ -170,12 +174,68 @@ ROW STORE COMPRESS ADVANCED
 PCTFREE 0;
 
 create index idx_opas_ot_ashac_ar   on opas_ot_ashacube_ash(asharange_id) local;
-create index idx_opas_ot_ashac_dbl  on opas_ot_ashacube_ash(dblink) local;
+create index idx_opas_ot_ashac_dbl  on opas_ot_ashacube_ash(dblink) local;•
 
 drop table opas_ot_tmp_gv$ash;
 create global temporary table opas_ot_tmp_gv$ash ON COMMIT DELETE ROWS as select * from opas_ot_ashacube_ash where 1=2;
+alter table opas_ot_tmp_gv$ash add inst_id number;
 
 drop table opas_ot_tmp_gv$session;
 create global temporary table opas_ot_tmp_gv$session ON COMMIT DELETE ROWS as select * from gv$session where 1=2;
 alter table opas_ot_tmp_gv$session drop column ts;
 alter table opas_ot_tmp_gv$session add lts timestamp;
+alter table opas_ot_tmp_gv$session add TSUTC timestamp;
+alter table opas_ot_tmp_gv$session add TSTZ timestamp with time zone;
+alter table opas_ot_tmp_gv$session add TS timestamp;
+
+--===============================================================
+
+create table opas_ot_ashacube_metrics
+PARTITION BY LIST (DBLINK) AUTOMATIC
+SUBPARTITION BY range (end_time_utc)
+(
+   PARTITION part_local values ('$LOCAL$')
+      (
+         SUBPARTITION spart_local_max values LESS THAN (maxvalue)
+      )
+)
+ROW STORE COMPRESS ADVANCED
+PCTFREE 0
+as
+select cast(null as number) asharange_id, cast(null as varchar2(128)) DBLINK, inst_id, begin_time begin_time_utc, end_time end_time_utc, group_id, metric_id, value from gv$sysmetric_history where 1=2;
+
+alter table opas_ot_ashacube_metrics add constraint fk_asha_m2r foreign key (asharange_id) references opas_ot_ashacube_ranges (asharange_id) on delete cascade;
+alter table opas_ot_ashacube_metrics add constraint fk_asha_m2dbl foreign key (DBLINK) references opas_db_links (db_link_name);
+
+create index idx_opas_ot_asham_ar   on opas_ot_ashacube_metrics(asharange_id) local;
+create index idx_opas_ot_asham_dbl  on opas_ot_ashacube_metrics(dblink) local;
+
+--===============================================================
+
+create table opas_ot_ashacube_stats
+PARTITION BY LIST (DBLINK) AUTOMATIC
+SUBPARTITION BY range (ts_utc)
+(
+   PARTITION part_local values ('$LOCAL$')
+      (
+         SUBPARTITION spart_local_max values LESS THAN (maxvalue)
+      )
+)
+ROW STORE COMPRESS ADVANCED
+PCTFREE 0
+as
+select cast(null as number) asharange_id, cast(null as varchar2(128)) DBLINK, localtimestamp ts_utc,  inst_id, sid, statistic#, value from gv$sesstat where 1=2;
+
+alter table opas_ot_ashacube_stats add constraint fk_asha_s2r foreign key (asharange_id) references opas_ot_ashacube_ranges (asharange_id) on delete cascade;
+alter table opas_ot_ashacube_stats add constraint fk_asha_s2dbl foreign key (DBLINK) references opas_db_links (db_link_name);
+
+create index idx_opas_ot_ashas_ar   on opas_ot_ashacube_stats(asharange_id) local;
+create index idx_opas_ot_ashas_dbl  on opas_ot_ashacube_stats(dblink) local;
+
+drop table opas_ot_tmp_gv$stats;
+create global temporary table opas_ot_tmp_gv$stats; ON COMMIT DELETE ROWS as select * from opas_ot_ashacube_stats where 1=2;
+
+--===============================================================
+drop table opas_ot_tmp_gv$ash_info;
+create global temporary table opas_ot_tmp_gv$ash_info on commit preserve rows as
+select inst_id, oldest_sample_time from GV$ASH_INFO;
