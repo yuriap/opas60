@@ -419,8 +419,9 @@ package body COREOBJ_SQL_COMP_REPORT is
     END;
     function get_plan_line_number(p_line varchar2, p_default number default null) return number
     is
+      l_line varchar2(4000) := replace(replace(p_line,'->'),'-&gt;');
     begin
-      return to_number(ltrim(trim(substr(p_line,2,instr(p_line,'|',2)-2)),'*') DEFAULT p_default ON CONVERSION ERROR);
+      return to_number(ltrim(trim(substr(l_line,2,instr(l_line,'|',2)-2)),'*') DEFAULT p_default ON CONVERSION ERROR);
     end;
   begin
 

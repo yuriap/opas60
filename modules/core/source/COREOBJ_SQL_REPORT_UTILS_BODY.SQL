@@ -327,18 +327,19 @@ order by 1,2]','<sql_data_point_id>',p_sql_data_point_id), --'
   begin
 
     l_k:=1;
-    for i in (select rownum rn, SQLMON_ID, SQL_EXEC_ID, SQL_EXEC_START from (
-                      select m.SQLMON_ID, m.SQL_EXEC_ID, m.SQL_EXEC_START
+    for i in (select rownum rn, SQLMON_ID, SQL_EXEC_ID, SQL_EXEC_START, LAST_REFRESH_TIME from (
+                      select m.SQLMON_ID, m.SQL_EXEC_ID, m.SQL_EXEC_START, m.LAST_REFRESH_TIME
                         from opas_ot_sql_sqlmon_ref r, opas_ot_sql_sqlmon m
                        where r.sqlmon_id = m.sqlmon_id
                          and r.sql_data_point_id = p_sql_data_point_id
                          and m.sql_mon_report is not null
                          and m.source = COREOBJ_SQL_UTILS.srcV$
-               order by sql_exec_start desc))
+               order by sql_exec_start desc, LAST_REFRESH_TIME desc))
     loop
       p_output(l_k) := HTF.LISTITEM(cattributes=>'class="awr"',
                                ctext=>HTF.ANCHOR (curl=>'#sqlmonhst'||i.SQLMON_ID,
-                                                  ctext=>i.rn ||'. SQL_EXEC_ID: '||i.SQL_EXEC_ID||' SQL_EXEC_START: '||to_char(i.SQL_EXEC_START,defDataTimeFullFmt),
+                                                  ctext=>i.rn ||'. SQL_EXEC_ID: '||i.SQL_EXEC_ID||' SQL_EXEC_START: '||to_char(i.SQL_EXEC_START,defDataTimeFullFmt)
+                                                                                                ||' LAST_REFRESH_TIME: '||to_char(i.LAST_REFRESH_TIME,defDataTimeFullFmt),
                                                   cattributes=>'class="awr"' --'
                                                   )
                               );
@@ -347,19 +348,19 @@ order by 1,2]','<sql_data_point_id>',p_sql_data_point_id), --'
     p_output(p_output.count+1):=HTF.BR;
     p_output(p_output.count+1):=HTF.BR;
 
-    for i in (select rownum rn, sql_mon_report, SQLMON_ID, SQL_EXEC_ID, SQL_EXEC_START
-                from (select m.sql_mon_report, m.SQLMON_ID, m.SQL_EXEC_ID, m.SQL_EXEC_START
+    for i in (select rownum rn, sql_mon_report, SQLMON_ID, SQL_EXEC_ID, SQL_EXEC_START, LAST_REFRESH_TIME
+                from (select m.sql_mon_report, m.SQLMON_ID, m.SQL_EXEC_ID, m.SQL_EXEC_START, m.LAST_REFRESH_TIME
                         from opas_ot_sql_sqlmon_ref r, opas_ot_sql_sqlmon m
                        where r.sqlmon_id = m.sqlmon_id
                          and r.sql_data_point_id = p_sql_data_point_id
                          and m.sql_mon_report is not null
                          and m.source = COREOBJ_SQL_UTILS.srcV$
-               order by sql_exec_start desc)) loop
+               order by sql_exec_start desc, LAST_REFRESH_TIME desc)) loop
       COREMOD_FILE_UTILS.get_locator(i.sql_mon_report, l_text);
       if l_text = 'SQL Monitoring Report' then l_text := l_text || ' (empty)'; end if;
 
       COREMOD_REPORT_UTILS.convert_to_html_table (
-        P_TEXT => i.rn ||'. SQL_EXEC_ID: '||i.SQL_EXEC_ID||'; SQL_EXEC_START: '||to_char(i.SQL_EXEC_START,defDataTimeFullFmt)||chr(10)||l_text,
+        P_TEXT => i.rn ||'. SQL_EXEC_ID: '||i.SQL_EXEC_ID||'; SQL_EXEC_START: '||to_char(i.SQL_EXEC_START,defDataTimeFullFmt)||' LAST_REFRESH_TIME: '||to_char(i.LAST_REFRESH_TIME,defDataTimeFullFmt)||chr(10)||l_text,
         P_INPUT => p_output,
         P_T_HEADER => '#FIRST_LINE#',
         P_WIDTH => 0, --auto width

@@ -28,7 +28,7 @@ prompt APPLICATION 600 - Oracle Performance Analytic Suite
 -- Application Export:
 --   Application:     600
 --   Name:            Oracle Performance Analytic Suite
---   Date and Time:   17:49 Thursday October 15, 2020
+--   Date and Time:   11:39 Tuesday October 20, 2020
 --   Exported By:     OPAS60DADM
 --   Flashback:       0
 --   Export Type:     Application Export
@@ -132,7 +132,7 @@ wwv_flow_api.create_flow(
 ,p_substitution_string_06=>'APP_GRID_DT_FMT_TZ_FULL'
 ,p_substitution_value_06=>'YYYY-MM-DD HH24:MI:SS.ff9 TZH:TZM'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20201015174932'
+,p_last_upd_yyyymmddhh24miss=>'20201019161633'
 ,p_file_prefix => nvl(wwv_flow_application_install.get_static_app_file_prefix,'')
 ,p_files_version=>3
 ,p_ui_type_name => null
@@ -55048,7 +55048,7 @@ wwv_flow_api.create_page(
 ,p_step_template=>wwv_flow_api.id(58924046682993504)
 ,p_page_template_options=>'#DEFAULT#'
 ,p_last_updated_by=>'OPAS60DADM'
-,p_last_upd_yyyymmddhh24miss=>'20200924113920'
+,p_last_upd_yyyymmddhh24miss=>'20201019161633'
 );
 wwv_flow_api.create_page_plug(
  p_id=>wwv_flow_api.id(3125913210647009)
@@ -55974,13 +55974,14 @@ wwv_flow_api.create_page_item(
 ,p_display_as=>'NATIVE_POPUP_LOV'
 ,p_lov=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'SELECT',
-'   ''DBLINK: ''|| d.DBLINK || ''; SQL_EXEC_START: '' || to_char(d.SQL_EXEC_START,:APP_GRID_DT_FMT) || ''; STATUS: '' || d.STATUS || ''(''||d.SQLMON_ID||'')'' d,',
+'   ''DBLINK: ''|| d.DBLINK || ''; SQL_EXEC_START: '' || to_char(d.SQL_EXEC_START,:APP_GRID_DT_FMT) || ''; LAST_REFRESH_TIME: '' || to_char(d.LAST_REFRESH_TIME,:APP_GRID_DT_FMT) || ''; STATUS: '' || d.STATUS || ''(''||d.SQLMON_ID||'')'' d,',
 '    d.SQLMON_ID r',
 'FROM',
 '    OPAS_OT_SQL_SQLMON_REF r,',
 '    OPAS_OT_SQL_SQLMON d',
 'where r.sql_data_point_id = :P8000_DP1',
-'and r.SQLMON_ID = d.SQLMON_ID and d.SQL_MON_REPORT is not null;'))
+'and r.SQLMON_ID = d.SQLMON_ID and d.SQL_MON_REPORT is not null',
+'order by d.SQL_EXEC_START desc, d.LAST_REFRESH_TIME desc;'))
 ,p_cSize=>30
 ,p_field_template=>wwv_flow_api.id(59011729453993944)
 ,p_item_template_options=>'#DEFAULT#'
@@ -56000,14 +56001,14 @@ wwv_flow_api.create_page_item(
 ,p_display_as=>'NATIVE_POPUP_LOV'
 ,p_lov=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'SELECT',
-'    ''DBLINK: ''|| d.DBLINK || ''; SQL_EXEC_START: '' || to_char(d.SQL_EXEC_START,:APP_GRID_DT_FMT) || ''; STATUS: '' || d.STATUS || ''(''||d.SQLMON_ID||'')'' d,',
+'   ''DBLINK: ''|| d.DBLINK || ''; SQL_EXEC_START: '' || to_char(d.SQL_EXEC_START,:APP_GRID_DT_FMT) || ''; LAST_REFRESH_TIME: '' || to_char(d.LAST_REFRESH_TIME,:APP_GRID_DT_FMT) || ''; STATUS: '' || d.STATUS || ''(''||d.SQLMON_ID||'')'' d,',
 '    d.SQLMON_ID r',
 'FROM',
 '    OPAS_OT_SQL_SQLMON_REF r,',
 '    OPAS_OT_SQL_SQLMON d',
 'where r.sql_data_point_id = :P8000_DP2',
 'and r.SQLMON_ID = d.SQLMON_ID and d.SQL_MON_REPORT is not null',
-';'))
+'order by d.SQL_EXEC_START desc, d.LAST_REFRESH_TIME desc;'))
 ,p_cSize=>30
 ,p_begin_on_new_line=>'N'
 ,p_field_template=>wwv_flow_api.id(59011729453993944)
@@ -56137,7 +56138,7 @@ wwv_flow_api.create_page_item(
 ,p_prompt=>'SQL #1'
 ,p_display_as=>'NATIVE_POPUP_LOV'
 ,p_lov=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'select sql_id ||'' ''|| COREOBJ_SQL_SEARCH.get_shorten_sql_text_for_html_expose(t.file_contentc,256) d,',
+'select sql_id ||'' ''|| COREOBJ_SQL_SEARCH.get_shorten_sql_text_for_html_expose(t.file_contentc,512,p_replace_spec=>''N'') d,',
 '       sql_id r',
 '  from opas_ot_sql_descriptions s, ',
 '       opas_files t',
@@ -56162,7 +56163,7 @@ wwv_flow_api.create_page_item(
 ,p_prompt=>'SQL #2'
 ,p_display_as=>'NATIVE_POPUP_LOV'
 ,p_lov=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'select sql_id ||'' ''|| COREOBJ_SQL_SEARCH.get_shorten_sql_text_for_html_expose(t.file_contentc,256) d,',
+'select sql_id ||'' ''|| COREOBJ_SQL_SEARCH.get_shorten_sql_text_for_html_expose(t.file_contentc,512,p_replace_spec=>''N'') d,',
 '       sql_id r',
 '  from opas_ot_sql_descriptions s, ',
 '       opas_files t',

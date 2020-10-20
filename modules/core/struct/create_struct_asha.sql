@@ -238,4 +238,4 @@ create global temporary table opas_ot_tmp_gv$stats; ON COMMIT DELETE ROWS as sel
 --===============================================================
 drop table opas_ot_tmp_gv$ash_info;
 create global temporary table opas_ot_tmp_gv$ash_info on commit preserve rows as
-select inst_id, oldest_sample_time from GV$ASH_INFO;
+select inst_id, oldest_sample_time, oldest_sample_time oldest_sample_time_utc from GV$ASH_INFO where 1=2;
