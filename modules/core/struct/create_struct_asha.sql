@@ -174,7 +174,7 @@ ROW STORE COMPRESS ADVANCED
 PCTFREE 0;
 
 create index idx_opas_ot_ashac_ar   on opas_ot_ashacube_ash(asharange_id) local;
-create index idx_opas_ot_ashac_dbl  on opas_ot_ashacube_ash(dblink) local;•
+create index idx_opas_ot_ashac_dbl  on opas_ot_ashacube_ash(dblink) local;
 
 drop table opas_ot_tmp_gv$ash;
 create global temporary table opas_ot_tmp_gv$ash ON COMMIT DELETE ROWS as select * from opas_ot_ashacube_ash where 1=2;
@@ -233,7 +233,7 @@ create index idx_opas_ot_ashas_ar   on opas_ot_ashacube_stats(asharange_id) loca
 create index idx_opas_ot_ashas_dbl  on opas_ot_ashacube_stats(dblink) local;
 
 drop table opas_ot_tmp_gv$stats;
-create global temporary table opas_ot_tmp_gv$stats; ON COMMIT DELETE ROWS as select * from opas_ot_ashacube_stats where 1=2;
+create global temporary table opas_ot_tmp_gv$stats ON COMMIT DELETE ROWS as select * from opas_ot_ashacube_stats where 1=2;
 
 --===============================================================
 drop table opas_ot_tmp_gv$ash_info;

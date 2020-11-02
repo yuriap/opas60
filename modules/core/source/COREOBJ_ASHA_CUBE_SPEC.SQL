@@ -22,6 +22,8 @@ package coreobj_asha_cube is
 
   procedure cleanup_ranges;
 
+  procedure archive_data_to_subpartition(p_dblink opas_db_links.db_link_name%type);
+
 end coreobj_asha_cube;
 /
 

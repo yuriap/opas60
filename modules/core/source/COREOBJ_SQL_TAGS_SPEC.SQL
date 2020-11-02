@@ -16,7 +16,8 @@ package coreobj_sql_tags is
                     p_sql_id    opas_ot_sql_descriptions.sql_id%type);
 
   function  tags(p_sql_id opas_ot_sql_descriptions.sql_id%type,
-                 p_for_apex_ctrl varchar2 default 'N') return varchar2;
+                 p_for_apex_ctrl varchar2 default 'N',
+                 p_html_fomatted varchar2 default 'N') return varchar2;
   procedure auto_tag_sql(p_sql_id    opas_ot_sql_descriptions.sql_id%type);
 
   procedure remove_tag_from_sqls(p_tag_name opas_ot_sql_tags.tag_name%type,

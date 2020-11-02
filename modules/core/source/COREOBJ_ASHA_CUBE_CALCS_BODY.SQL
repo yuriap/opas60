@@ -14,8 +14,6 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
   gASH_Available        varchar2(1) := 'N';
 
   gTargetTZ             varchar2(10);
-  --gTargetMinASHTS       timestamp; -- with time zone;
-  --gTargetMinASHTS_UTC   timestamp;
   gTargetIncarnation    number;
   gTargetDBID           number;
   gTargetCurrTS_TZ      timestamp with time zone;
@@ -243,18 +241,10 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
       q'[select extract(TIMEZONE_HOUR from systimestamp)||':'||extract(TIMEZONE_MINUTE from systimestamp),]' ||
       q'[(select incarnation# from v$database_incarnation]' || COREMOD_API.get_dblink_for_query(p_dblink) || q'[ where status='CURRENT']'
       || q'[), systimestamp, cast(systimestamp as timestamp), sys_extract_utc(systimestamp) from dual]'||COREMOD_API.get_dblink_for_query(p_dblink);
-      --q'[select TZ_OFFSET(dbtimezone), to_timestamp_tz(to_char(oldest_sample_time,'YYYYMMDDHH24MISS.FF3')||' '||TZ_OFFSET(dbtimezone),'YYYYMMDDHH24MISS.FF3 TZH:TZM') from V$ASH_INFO]'||COREMOD_API.get_dblink_for_query(p_dblink);
-    --llog('COREOBJ_ASHA_CUBE_CALCS.get_remote_data: sql "'|| l_sql ||'"');
+
     execute immediate l_sql into gTargetTZ, /*gTargetMinASHTS,*/ gTargetIncarnation, gTargetCurrTS_TZ, gTargetCurrTS, gTargetCurrTS_UTC;
 
     init_ash_info(p_dblink);
-    /*
-    if gTargetMinASHTS is not null then
-      gTargetMinASHTS_UTC := sys_extract_utc(to_timestamp_tz(to_char(gTargetMinASHTS,'YYYYMMDDHH24MISS')|| ' ' || gTargetTZ ,'YYYYMMDDHH24MISS TZH:TZM'));
-    else
-      gTargetMinASHTS_UTC := null;
-    end if;
-    */
   end;
 
   procedure get_remote_curr_ts(p_dblink opas_db_links.db_link_name%type)
@@ -305,7 +295,6 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
   begin
 
     gTargetTZ         := null;
-    --gTargetMinASHTS   := null;  gTargetMinASHTS_UTC := null;
     gTargetIncarnation:= null;
     gTargetDBID       := null;
     gTargetCurrTS_TZ  := null;
@@ -320,15 +309,11 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
     select dbid into gTargetDBID from OPAS_DB_LINKS where DB_LINK_NAME = COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK);
 
     llog('COREOBJ_ASHA_CUBE_CALCS.init_execution_context: gTargetTZ "'||gTargetTZ||'"');
-    --llog('COREOBJ_ASHA_CUBE_CALCS.init_execution_context: gTargetMinASHTS "'||to_char(gTargetMinASHTS,'YYYY-MM-DD HH24:MI:SS.FF3')||'"');
-    --llog('COREOBJ_ASHA_CUBE_CALCS.init_execution_context: gTargetMinASHTS_UTC "'||to_char(gTargetMinASHTS_UTC,'YYYY-MM-DD HH24:MI:SS.FF3')||'"');
     llog('COREOBJ_ASHA_CUBE_CALCS.init_execution_context: gTargetCurrTS_TZ "'||to_char(gTargetCurrTS_TZ,'YYYY-MM-DD HH24:MI:SS.FF3 TZH:TZM')||'"');
     llog('COREOBJ_ASHA_CUBE_CALCS.init_execution_context: gTargetCurrTS "'||to_char(gTargetCurrTS,'YYYY-MM-DD HH24:MI:SS.FF3')||'"');
     llog('COREOBJ_ASHA_CUBE_CALCS.init_execution_context: gTargetCurrTS_UTC "'||to_char(gTargetCurrTS_UTC,'YYYY-MM-DD HH24:MI:SS.FF3')||'"');
     llog('COREOBJ_ASHA_CUBE_CALCS.init_execution_context: gTargetIncarnation "'||gTargetIncarnation||'"');
     llog('COREOBJ_ASHA_CUBE_CALCS.init_execution_context: gTargetDBID "'||gTargetDBID||'"');
-    --llog('COREOBJ_ASHA_CUBE_CALCS.init_execution_context: gTargetSNAP_START "'||gTargetSNAP_START||'"');
-    --llog('COREOBJ_ASHA_CUBE_CALCS.init_execution_context: gTargetSNAP_END "'||gTargetSNAP_END||'"');
   end;
 
   procedure set_range_status(p_asharange_id opas_ot_ashacube_ranges.asharange_id%type,
@@ -425,19 +410,12 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
     llog('COREOBJ_ASHA_CUBE_CALCS.load_metrics('|| p_asharange_id ||'): metrics added: '||p_rows);
   end;
 
-  procedure get_granule(--p_type varchar2,
-                        --p_asharange_id    opas_ot_ashacube_ranges.asharange_id%type,
-                       p_granula crsr_granules%rowtype,
-                       p_current_range   boolean--,
-                       -- p_start_dt_trgtz  timestamp default null,
-                       -- p_end_dts_trgtz   timestamp default null
-                        )
+  procedure get_granule(p_granula crsr_granules%rowtype,
+                        p_current_range   boolean)
   is
     p_asharange_id    opas_ot_ashacube_ranges.asharange_id%type;
 
-    --l_iter number := 0;
     l_range opas_ot_ashacube_ranges%rowtype;
-    --l_is_data4insert boolean := true;
     l_old_status     OPAS_OT_ASHACUBE_RANGES.STATUS%type;
 
     l_unable_to_lock exception;
@@ -455,8 +433,6 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
     p_asharange_id := p_granula.asharange_id;
     llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): Begin.', gLogLevelInfo);
     llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): p_granula "'|| p_granula.granula_type ||'"', gLogLevelInfo);
-    --llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): p_start_dt_trgtz "'|| to_char(p_start_dt_trgtz,'YYYY/MM/DD HH24:MI:SS.FF9') ||'"', gLogLevelInfo);
-    --llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): p_end_dts_trgtz "'|| to_char(p_end_dts_trgtz,'YYYY/MM/DD HH24:MI:SS.FF9') ||'"', gLogLevelInfo);
     llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): p_current_range "'|| COREMOD_UTILS.bool2str(p_current_range) ||'"', gLogLevelInfo);
 
     if p_current_range and p_granula.granula_type <> gtGV$ASH then
@@ -465,10 +441,8 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
 
     select * into l_range from opas_ot_ashacube_ranges where asharange_id = p_asharange_id;
 
-    --l_start_dt := coalesce(p_start_dt_trgtz, from_utc_to_target_tz(l_range.START_TIME_UTC));
     l_start_dt := from_utc_to_target_tz(p_granula.START_TIME_UTC);
     l_start_range_dt := l_start_dt;
-    --l_end_dt   := coalesce(p_end_dts_trgtz, from_utc_to_target_tz(l_range.END_TIME_UTC));
     l_end_dt   :=from_utc_to_target_tz(p_granula.END_TIME_UTC);
     l_end_range_dt := l_end_dt;
 
@@ -496,7 +470,6 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
                          p_start_dt => l_start_dt,
                          p_end_dt => l_end_dt);
 
-    --l_iter := l_iter + 1; --for logging
     if p_current_range then
       get_remote_curr_ts(COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK));
       l_end_dt := gTargetCurrTS;
@@ -554,22 +527,7 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
                   from opas_ot_tmp_gv$ash_info;
 
                 llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): AWR start: l_awr_filter: '||l_awr_filter);
-/*
-llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): AWR SQL Text: '||
-                COREMOD_API.get_tmp_load_query (
-                  P_DB_LINK_NAME => COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK),
-                  P_SRC_TABLE_NAME_R => 'DBA_HIST_ACTIVE_SESS_HISTORY',
-                  P_SRC_TABLE_NAME => 'DBA_HIST_ACTIVE_SESS_HISTORY',
-                  P_TRG_TABLE_NAME => 'OPAS_OT_TMP_GV$ASH',
-                  P_SUFF => 'HIST_ASH',
-                  p_key_pref => 'LOCTABCOLS',
-                  P_DBID => gTargetDBID,
-                  P_FILTER => q'[sample_time between to_timestamp(']' || to_char(l_start_dt,'YYYYMMDDHH24MISS') || q'[','YYYYMMDDHH24MISS') and to_timestamp(']' || to_char(l_end_dt,'YYYYMMDDHH24MISS') || q'[','YYYYMMDDHH24MISS')]'
-                              || ' and instance_number>0 and snap_id between ' || gTargetSNAP_START || ' and ' || gTargetSNAP_END
-                              || l_awr_filter
-                  )
-, gLogLevelInfo);
-*/
+
                 COREMOD_API.load_tmp_data (
                   P_DB_LINK_NAME => COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK),
                   P_SRC_TABLE_NAME_R => 'DBA_HIST_ACTIVE_SESS_HISTORY',
@@ -591,21 +549,11 @@ llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): AWR SQL Text:
                 llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): AWR finish: '||COREMOD_API.get_last_rowcount|| ' loaded. ', gLogLevelInfo);
               else
                 llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): AWR No data found');
-                --l_is_data4insert := false;
               end if;
             end;
           else
             null;
         end case;
-    /*
-        l_sql := replace(l_sql_gm,'<DTFLT>',q'[end_time >= to_date(']' || to_char(l_start_dt,'YYYYMMDDHH24MISS') || q'[','YYYYMMDDHH24MISS') and end_time < to_date(']' || to_char(l_end_dt,'YYYYMMDDHH24MISS') || q'[','YYYYMMDDHH24MISS')]');
-
-
-        llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): metric sql: '||chr(10)||l_sql);
-        execute immediate l_sql using p_asharange_id, COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK), gTargetTZ, gTargetTZ, gTargetDBID, gTargetSNAP_START, gTargetSNAP_END;
-        l_rows := sql%rowcount;
-        llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): metrics added: '||l_rows);
-        */
 
         if COREOBJ_ASHA_CUBE_CALCS.gp(pMetricList) is not null then
           load_metrics(p_asharange_id, l_start_dt, l_end_dt, l_rows);
@@ -635,12 +583,6 @@ llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): AWR SQL Text:
             from OPAS_OT_TMP_GV$ASH
             where sample_time >= l_start_dt and sample_time < l_end_dt;
             l_rows := l_rows + sql%rowcount;
-            commit;
---            set_range_status(p_asharange_id, csInProgress, case when l_rows>0 then csReady else csEmpty end, COREMOD_TASKS.get_curr_tq_id);
---        else
---            commit;
---            set_range_status(p_asharange_id, csInProgress, l_old_status, COREMOD_TASKS.get_curr_tq_id);
-       -- end if;
 
         if p_current_range then
             get_remote_curr_ts(COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK));
@@ -677,9 +619,7 @@ llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): AWR SQL Text:
 
     --target TZ
     l_start_dt           timestamp;
-    --l_start_range_dt_utc timestamp;
     l_end_dt             timestamp;
-    --l_end_range_dt_utc   timestamp;
   begin
     COREMOD_LOG.Start_SQL_GATHER_STAT('COREOBJ_ASHA_CUBE_CALCS.SAMPLE_DATA_FOR_GRANULE.GATHER_SQL_STAT');
     COREMOD_LOG.Start_SQL_TRACE('COREOBJ_ASHA_CUBE_CALCS.SAMPLE_DATA_FOR_GRANULE.SQL_TRACE');
@@ -698,7 +638,6 @@ llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): AWR SQL Text:
 
     init_execution_context(L_ASHACUBE_ID);
 
-    --get_remote_curr_ts(COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK));
     llog('COREOBJ_ASHA_CUBE_CALCS.sample_data_for_granule('|| p_asharange_id ||'): gTargetCurrTS "'||to_char(gTargetCurrTS,'YYYY-MM-DD HH24:MI:SS.FF3')||'"');
     llog('COREOBJ_ASHA_CUBE_CALCS.sample_data_for_granule('|| p_asharange_id ||'): gTargetCurrTS_UTC "'||to_char(gTargetCurrTS_UTC,'YYYY-MM-DD HH24:MI:SS.FF3')||'"');
     llog('COREOBJ_ASHA_CUBE_CALCS.sample_data_for_granule('|| p_asharange_id ||'): SYS_EXTRACT_UTC(systimestamp) "'||to_char(SYS_EXTRACT_UTC(systimestamp),'YYYY-MM-DD HH24:MI:SS.FF3')||'"');
@@ -706,9 +645,7 @@ llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): AWR SQL Text:
     llog('COREOBJ_ASHA_CUBE_CALCS.sample_stat_for_granule('|| p_asharange_id ||') l_range.END_TIME_UTC "'||to_char(l_range.END_TIME_UTC,'YYYY-MM-DD HH24:MI:SS.FF3')||'"');
 
     l_start_dt := from_utc_to_target_tz(l_range.START_TIME_UTC);
-    --l_start_range_dt_utc := l_range.START_TIME_UTC;
     l_end_dt   := from_utc_to_target_tz(l_range.END_TIME_UTC);
-    --l_end_range_dt_utc := l_range.END_TIME_UTC;
 
     llog('COREOBJ_ASHA_CUBE_CALCS.sample_stat_for_granule('|| p_asharange_id ||'): l_start_dt "'|| to_char(l_start_dt,'YYYY/MM/DD HH24:MI:SS.FF9') ||'"');
     llog('COREOBJ_ASHA_CUBE_CALCS.sample_stat_for_granule('|| p_asharange_id ||'): l_end_dt "'|| to_char(l_end_dt,'YYYY/MM/DD HH24:MI:SS.FF9') ||'"');
@@ -760,8 +697,6 @@ llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): AWR SQL Text:
 
       delete from OPAS_OT_TMP_GV$SESSION;
 
-      --l_start_dt := l_range.START_TIME_UTC;
-
       l_start_time := DBMS_UTILITY.GET_TIME;
       loop
         --sampling
@@ -774,9 +709,6 @@ llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): AWR SQL Text:
           --llog('COREOBJ_ASHA_CUBE_CALCS.sample_data_for_granule('|| p_asharange_id ||') slept: '||l_sleep_time);
         end if;
         l_iter := l_iter + 1; --for logging
-        --if mod(l_iter,10) = 0 then
-        --  get_remote_curr_ts(COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK));
-        --end if;
 
         if mod(l_iter,60) = 0 then
           --llog('COREOBJ_ASHA_CUBE_CALCS.sample_data_for_granule('|| p_asharange_id ||') l_start_range_dt_utc "'||to_char(l_start_range_dt_utc,'YYYY-MM-DD HH24:MI:SS.FF3')||'"');
@@ -784,10 +716,7 @@ llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): AWR SQL Text:
           execute immediate l_sql2 using p_asharange_id, l_range.DBLINK, l_range.START_TIME_UTC, l_range.END_TIME_UTC;
           l_rows := l_rows + sql%rowcount;
           delete from OPAS_OT_TMP_GV$SESSION;
-          --l_tmp := sql%rowcount;
           llog('COREOBJ_ASHA_CUBE_CALCS.sample_data_for_granule('|| p_asharange_id ||') deleted from OPAS_OT_TMP_GV$SESSION: '|| sql%rowcount);
-
-          --l_end_dt   := SYS_EXTRACT_UTC(systimestamp);
 
           l_end_dt   := from_utc_to_target_tz(SYS_EXTRACT_UTC(systimestamp));
           llog('COREOBJ_ASHA_CUBE_CALCS.sample_data_for_granule('|| p_asharange_id ||') l_start_dt "'||to_char(l_start_dt,'YYYY-MM-DD HH24:MI:SS.FF3')||'"');
@@ -835,42 +764,23 @@ llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): AWR SQL Text:
     l_sleep_time        number;
     l_sql1               varchar2(32765);
     l_sql2               varchar2(32765);
-
-    --targte TZ
-    --l_start_dt       timestamp;
-    --l_start_range_dt timestamp;
-    --l_end_dt         timestamp;
-    --l_end_range_dt   timestamp;
   begin
     COREMOD_LOG.Start_SQL_GATHER_STAT('COREOBJ_ASHA_CUBE_CALCS.SAMPLE_STAT_FOR_GRANULE.GATHER_SQL_STAT');
     COREMOD_LOG.Start_SQL_TRACE('COREOBJ_ASHA_CUBE_CALCS.SAMPLE_STAT_FOR_GRANULE.SQL_TRACE');
 
     llog('COREOBJ_ASHA_CUBE_CALCS.sample_stat_for_granule('|| p_asharange_id ||'): start', gLogLevelInfo);
-    --set_range_status(p_asharange_id, csInQueue, csInProgress, COREMOD_TASKS.get_curr_tq_id);
 
     select * into l_range from opas_ot_ashacube_ranges
-     where asharange_id = p_asharange_id
-       --and tq_id = COREMOD_TASKS.get_curr_tq_id
-       --for update skip locked
-       ;
+     where asharange_id = p_asharange_id ;
 
     select ASHACUBE_ID into L_ASHACUBE_ID from OPAS_OT_ASHACUBE_REF where ASHARANGE_ID = p_asharange_id;
 
     init_execution_context(L_ASHACUBE_ID);
 
-    --get_remote_curr_ts(COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK));
     llog('COREOBJ_ASHA_CUBE_CALCS.sample_stat_for_granule('|| p_asharange_id ||') gTargetCurrTS_UTC "'||to_char(gTargetCurrTS_UTC,'YYYY-MM-DD HH24:MI:SS.FF3')||'"');
     llog('COREOBJ_ASHA_CUBE_CALCS.sample_stat_for_granule('|| p_asharange_id ||') SYS_EXTRACT_UTC(systimestamp) "'||to_char(SYS_EXTRACT_UTC(systimestamp),'YYYY-MM-DD HH24:MI:SS.FF3')||'"');
     llog('COREOBJ_ASHA_CUBE_CALCS.sample_stat_for_granule('|| p_asharange_id ||') l_range.START_TIME_UTC "'||to_char(l_range.START_TIME_UTC,'YYYY-MM-DD HH24:MI:SS')||'"');
     llog('COREOBJ_ASHA_CUBE_CALCS.sample_stat_for_granule('|| p_asharange_id ||') l_range.END_TIME_UTC "'||to_char(l_range.END_TIME_UTC,'YYYY-MM-DD HH24:MI:SS.FF3')||'"');
-
-    --l_start_dt := from_utc_to_target_tz(l_range.START_TIME_UTC);
-    --l_start_range_dt := l_start_dt;
-    --l_end_dt   := from_utc_to_target_tz(l_range.END_TIME_UTC);
-    --l_end_range_dt := l_end_dt;
-
-    --llog('COREOBJ_ASHA_CUBE_CALCS.sample_stat_for_granule('|| p_asharange_id ||'): l_start_range_dt "'|| to_char(l_start_range_dt,'YYYY/MM/DD HH24:MI:SS.FF9') ||'"');
-    --llog('COREOBJ_ASHA_CUBE_CALCS.sample_stat_for_granule('|| p_asharange_id ||'): l_end_range_dt "'|| to_char(l_end_range_dt,'YYYY/MM/DD HH24:MI:SS.FF9') ||'"');
 
     if gTargetCurrTS_UTC >= l_range.START_TIME_UTC - INTERVAL '70' SECOND and gTargetCurrTS_UTC < l_range.END_TIME_UTC + INTERVAL '10' SECOND then
 
@@ -908,17 +818,8 @@ llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): AWR SQL Text:
           --llog('COREOBJ_ASHA_CUBE_CALCS.sample_stat_for_granule('|| p_asharange_id ||') slept: '||l_sleep_time);
         end if;
         l_iter := l_iter + 1; --for logging
-        --if mod(l_iter,10) = 0 then
-        --  get_remote_curr_ts(COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK));
-        --end if;
 
         if mod(l_iter,60) = 0 then
-        --  execute immediate l_sql2 using p_asharange_id, l_range.DBLINK, l_range.START_TIME_UTC, l_range.END_TIME_UTC;
-        --  l_rows := l_rows + sql%rowcount;
-        --  delete from OPAS_OT_TMP_GV$ASH;
-        --  commit;
-          --llog('COREOBJ_ASHA_CUBE_CALCS.sample_stat_for_granule('|| p_asharange_id ||') SYS_EXTRACT_UTC(systimestamp) "'||to_char(SYS_EXTRACT_UTC(systimestamp),'YYYY-MM-DD HH24:MI:SS.FF3')||'"');
-          --llog('COREOBJ_ASHA_CUBE_CALCS.sample_stat_for_granule('|| p_asharange_id ||') l_range.END_TIME_UTC "'||to_char(l_range.END_TIME_UTC,'YYYY-MM-DD HH24:MI:SS.FF3')||'"');
           llog('COREOBJ_ASHA_CUBE_CALCS.sample_stat_for_granule('|| p_asharange_id ||') l_iter "'||l_iter||'"');
         end if;
 
@@ -933,7 +834,6 @@ llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): AWR SQL Text:
     l_rows := l_rows + sql%rowcount;
 
     commit;
-    --set_range_status(p_asharange_id, csInProgress, case when l_rows>0 then csReady else csEmpty end, COREMOD_TASKS.get_curr_tq_id);
     llog('COREOBJ_ASHA_CUBE_CALCS.sample_stat_for_granule('|| p_asharange_id ||'): l_rows; l_iter: "' ||l_rows|| '"; "' || l_iter || '"', gLogLevelInfo);
 
     COREMOD_LOG.Stop_SQL_GATHER_STAT('COREOBJ_ASHA_CUBE_CALCS.SAMPLE_STAT_FOR_GRANULE.GATHER_SQL_STAT');
@@ -1033,45 +933,11 @@ llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): AWR SQL Text:
         llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): l_cycles: "'|| l_cycles ||'"');
         llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): target edition: "'|| case when gASH_Available = 'Y' then 'Enterprise' else 'Standard' end ||'"');
         --================================================================================================
-/*
-        set_lock(COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK));
 
-        open crsr_granules (p_obj_id, COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK), trunc(gTargetMinASHTS_UTC,'MI'), gTargetCurrTS_UTC);
-        fetch crsr_granules bulk collect into l_granules;
-        close crsr_granules;
-
-        llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): granuls to prepare: "'|| l_granules.count ||'"');
-
-        for i in 1..l_granules.count loop
-          llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): preparing l_granules(i).start_granula_dt: "'||to_char(l_granules(i).start_granula_dt,'YYYY/MM/DD HH24:MI')||'"');
-          llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): preparing l_granules(i).end_granula_dt: "'||to_char(l_granules(i).end_granula_dt,'YYYY/MM/DD HH24:MI')||'"');
-          if gTargetMinASHTS is not null or -- enterprise edition
-             gTargetMinASHTS is null and l_granules(i).end_granula_dt >= gTargetCurrTS_UTC --standard edition, only for future time ranges
-          then
-            if l_granules(i).asharange_id is null then
-                INSERT INTO opas_ot_ashacube_ranges (
-                  dblink, sample_tp, start_time_utc, end_time_utc, incarnation#, status, created, DBID)
-                VALUES (
-                  COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK),
-                  case when gTargetMinASHTS is null then gtSamplGV$SESS else null end,
-                  l_granules(i).start_granula_dt, l_granules(i).end_granula_dt, gTargetIncarnation, csNew, systimestamp, gTargetDBID
-                ) returning asharange_id into l_granules(i).asharange_id;
-                --llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data: new granula: "'|| l_granules(i).asharange_id ||'"');
-            end if;
-          end if;
-          if l_granules(i).ashacube_id is null and l_granules(i).asharange_id is not null then
-            INSERT INTO OPAS_OT_ASHACUBE_REF ( ASHACUBE_ID, ASHARANGE_ID) VALUES (p_obj_id, l_granules(i).asharange_id);
-            --llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data granula: linked: "'|| l_granules(i).asharange_id ||'"');
-          end if;
-        end loop;
-*/
         open crsr_granules (p_obj_id, COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK),/*trunc(gTargetMinASHTS_UTC,'MI'),*/ gTargetCurrTS_UTC);
         fetch crsr_granules bulk collect into l_granules;
         close crsr_granules;
-/*
-        commit;
-        COREMOD_API.release_resource;
-*/
+
         update OPAS_OT_ASHACUBE set STATUS = csInProgress, MODIFIED = systimestamp where ASHACUBE_ID = p_obj_id;-- and STATUS = csNEW;
         commit;
         --================================================================================================
@@ -1107,75 +973,23 @@ llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): AWR SQL Text:
             get_remote_curr_ts(COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK));
 
             if gASH_Available = 'Y' then -- enterprise edition
-             --and (gTargetCurrTS_UTC > l_granules(i).END_TIME_UTC) then
-              /*
-              execute immediate q'[select cast(to_timestamp_tz(']' || to_char(l_granules(i).start_granula_dt,'YYYYMMDDHH24MISS')||' 00:00' || q'[','YYYYMMDDHH24MISS TZH:TZM') at time zone ']' ||gTargetTZ|| q'[' as timestamp) from dual]'
-                into l_start_time_trg_tz;
-              execute immediate q'[select cast(to_timestamp_tz(']' || to_char(l_granules(i).end_granula_dt,'YYYYMMDDHH24MISS')||' 00:00' || q'[','YYYYMMDDHH24MISS TZH:TZM') at time zone ']' ||gTargetTZ|| q'[' as timestamp) from dual]'
-                into l_end_time_trg_tz;
-              */
 
               l_start_time_trg_tz := from_utc_to_target_tz(l_granules(i).start_granula_dt);
               l_end_time_trg_tz   := from_utc_to_target_tz(l_granules(i).end_granula_dt);
 
               llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): l_start_time_trg_tz: "'|| l_start_time_trg_tz ||'"');
               llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): l_end_time_trg_tz: "'|| l_end_time_trg_tz ||'"');
-
+--granule status!!!
               if gTargetCurrTS >= l_end_time_trg_tz then
                 get_granule(/*gtGV$ASH,*/ l_granules(i)/*.asharange_id*/, false);
-                /*
-                if l_granules(i).src = gtGV$ASH then
-                  llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): V$ASH granula');
-                  get_granule(gtGV$ASH, l_granules(i).asharange_id, false);
-                elsif l_granules(i).src = gtDBA_HIST_ASH then
-                  llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): AWR granula');
-                  get_granule(gtDBA_HIST_ASH, l_granules(i).asharange_id, false);
-                else
-                  llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): unknown granula');
-                end if;
-                */
-                /*
-                if gTargetMinASHTS <= l_start_time_trg_tz then
-                  llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): full V$ASH granula');
-                  get_granule(gtGV$ASH, l_granules(i).asharange_id, false);
-                elsif gTargetMinASHTS >= l_start_time_trg_tz and gTargetMinASHTS <= l_end_time_trg_tz then
-                  llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): partial V$ASH granula');
-                  get_granule(gtGV$ASH, l_granules(i).asharange_id, false);
-                end if;
-
-                if gTargetMinASHTS >= l_start_time_trg_tz and gTargetMinASHTS <= l_end_time_trg_tz then
-                  --l_awr_boundary:=l_granules(i);
-                  --l_awr_boundary.start_time_utc := l_start_time_trg_tz;
-                  l_middle_asharange_id := l_granules(i).asharange_id;
-                  l_middle_time_trg_tz := l_start_time_trg_tz;
-                elsif gTargetMinASHTS >= l_start_time_trg_tz then
-                  if l_middle_asharange_id is not null then
-                    llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): partial V$ASH granula adding AWR ASH');
-                    get_granule(gtDBA_HIST_ASH, l_middle_asharange_id, false, l_middle_time_trg_tz, gTargetMinASHTS);
-                    l_middle_asharange_id := null;
-                  end if;
-                  llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): full AWR granula');
-                  get_granule(gtDBA_HIST_ASH, l_granules(i).asharange_id, false);
-                end if;
-                */
               else
-/*
-                loop
-                  dbms_lock.sleep(30);
-                  get_remote_curr_ts(COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK));
-                  llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data: waiting gTargetCurrTS > l_end_time_trg_tz: '||to_char(gTargetCurrTS,'YYYY/MM/DD HH24:MI:SS') ||' < '||to_char(l_end_time_trg_tz,'YYYY/MM/DD HH24:MI:SS'));
-                  exit when gTargetCurrTS > l_end_time_trg_tz;
-                end loop;
-*/
                 llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): full V$ASH granula for current time start');
                 get_granule(/*gtGV$ASH,*/ l_granules(i)/*.asharange_id*/, true);
                 llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): full V$ASH granula for current time finish');
               end if;
 
             elsif gASH_Available = 'N' /*standard edition, sampling*/ or COREOBJ_ASHA_CUBE_CALCS.gp(pGETSTATS) = 'Y' then
---!!!!!!!!!!!!!! metrics !!!!!!!!!!!!!!!!!
               --=====================================================================
-              --llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data: sampling V$SESS granula: '||l_granules(i).asharange_id);
 
               if gTargetCurrTS_UTC <= l_granules(i).START_TIME_UTC - INTERVAL '60' SECOND then
                 llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): waiting to start sampling tasks', gLogLevelInfo);
@@ -1228,8 +1042,6 @@ llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): AWR SQL Text:
         end loop;
         if l_tq_id_tab2.count > 0 then l_tq_id_tab.delete; l_tq_id_tab := l_tq_id_tab2; end if;
         llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): to wait tasks: "'||l_tq_id_tab2.count||'"', gLogLevelInfo);
-        --exit when l_tq_id_tab2.count = 0;
-        --dbms_lock.sleep(10);
 
         get_remote_curr_ts(COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK));
 
@@ -1245,20 +1057,7 @@ llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): AWR SQL Text:
     end loop;
 
     store_params(p_obj_id);
-/*
-    llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): entering waiting child tasks mode: l_tq_id_tab.count: '||l_tq_id_tab.count);
-    dbms_lock.sleep(10);
-    loop
-      l_tq_id_tab2.delete;
-      for i in 1..l_tq_id_tab.count loop
-        if not COREMOD_TASKS.is_task_finish(P_TQ_ID => l_tq_id_tab(i)) then l_tq_id_tab2.extend; l_tq_id_tab2(l_tq_id_tab2.count) := l_tq_id_tab(i); end if;
-      end loop;
-      if l_tq_id_tab2.count > 0 then l_tq_id_tab.delete; l_tq_id_tab := l_tq_id_tab2; end if;
-      llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): to wait tasks: "'||l_tq_id_tab2.count||'"');
-      exit when l_tq_id_tab2.count = 0;
-      dbms_lock.sleep(10);
-    end loop;
-*/
+
     select
            sum(decode(r.STATUS,csInProgress,1,0)),
            sum(decode(r.STATUS,csReady,1,0))

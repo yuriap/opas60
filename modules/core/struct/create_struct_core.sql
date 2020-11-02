@@ -675,3 +675,33 @@ from
 	created timestamp default systimestamp
    );
 
+
+create or replace function get_part_name(p_table_name varchar2, p_part_name_like varchar2) return varchar2
+is
+  l_hv varchar2(4000);
+begin
+  for i in ( select partition_name, high_value from user_tab_partitions where table_name = p_table_name )
+  loop
+    execute immediate 'select cast(:hv as  varchar2(4000)) from dual' into l_hv using i.high_value;
+    if l_hv like p_part_name_like then
+      return i.partition_name;
+    end if;
+  end loop;
+  return null;
+end;
+/
+
+create or replace function get_subpart_name(p_table_name varchar2, p_part_name varchar2, p_subpart_name_like varchar2) return varchar2
+is
+  l_hv varchar2(4000);
+begin
+  for i in ( select subpartition_name, high_value from user_tab_subpartitions where table_name = p_table_name and partition_name=p_part_name)
+  loop
+    execute immediate 'select cast(:hv as  varchar2(4000)) from dual' into l_hv using i.high_value;
+    if l_hv like p_subpart_name_like then
+      return i.subpartition_name;
+    end if;
+  end loop;
+  return null;
+end;
+/

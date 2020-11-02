@@ -72,7 +72,8 @@ package body coreobj_sql_tags is
   end;
 
   function  tags(p_sql_id opas_ot_sql_descriptions.sql_id%type,
-                 p_for_apex_ctrl varchar2 default 'N') return varchar2
+                 p_for_apex_ctrl varchar2 default 'N',
+                 p_html_fomatted varchar2 default 'N') return varchar2
   is
     l_tags varchar2(32765);
   begin
@@ -80,10 +81,14 @@ package body coreobj_sql_tags is
       if p_for_apex_ctrl = 'Y' then
         l_tags := l_tags || i.tag ||':';
       else
-        l_tags := l_tags || i.tag ||'; ';
+        if p_html_fomatted = 'N' then
+          l_tags := l_tags || i.tag ||'; ';
+        else
+          l_tags := l_tags || replace(i.tag,' ','&nbsp;')||';<br>';
+        end if;
       end if;
     end loop;
-    l_tags := rtrim(rtrim(l_tags,':'),'; ');
+    l_tags := rtrim(rtrim(rtrim(l_tags,':'),'; '),'<br>');
     return substr(l_tags, 1, 4000);
   end;
 

@@ -197,8 +197,8 @@ package body COREOBJ_SQL_CATCHER is
   procedure task_catcher     (p_obj_id            opas_objects.obj_id%type)
   is
     l_sql_load varchar2(32765) := q'[
-      insert into opas_ot_tmp_sqlcatch_sqls (sql_id, sql_text, ACTUAL_EXECS)
-      select sql_id, substr(sql_text,1,4000), sum(EXECUTIONS)
+      insert into opas_ot_tmp_sqlcatch_sqls (sql_id, sql_text, ACTUAL_EXECS, actual_eo_fetch)
+      select sql_id, substr(sql_text,1,4000), sum(EXECUTIONS), sum(END_OF_FETCH_COUNT)
         from gv$sql<DBLINK>
        where sql_id in (<FILTER>)
          and rownum <= :p_row_limit
@@ -257,7 +257,7 @@ package body COREOBJ_SQL_CATCHER is
         using opas_ot_tmp_sqlcatch_sqls s
         on (t.OBJ_ID = p_obj_id and t.SQL_ID = s.SQL_ID)
         when matched then update set
-          t.actual_execs = s.ACTUAL_EXECS
+          t.actual_execs = s.ACTUAL_EXECS + s.actual_eo_fetch
           where t.status in (ssqltNew)
         when not matched then
         INSERT (obj_id, sql_id, status, execs_num_to_init, sql_text, actual_execs, PICKED)
