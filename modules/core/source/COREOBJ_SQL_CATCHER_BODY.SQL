@@ -257,7 +257,9 @@ package body COREOBJ_SQL_CATCHER is
         using opas_ot_tmp_sqlcatch_sqls s
         on (t.OBJ_ID = p_obj_id and t.SQL_ID = s.SQL_ID)
         when matched then update set
-          t.actual_execs = s.ACTUAL_EXECS + s.actual_eo_fetch
+          t.actual_execs = case when nvl(gp(parCatchAfter),pvFirstExec) = pvFirstExec then s.ACTUAL_EXECS
+                                when gp(parCatchAfter) = pvNextExec then s.ACTUAL_EXECS + s.actual_eo_fetch
+                                else s.ACTUAL_EXECS end
           where t.status in (ssqltNew)
         when not matched then
         INSERT (obj_id, sql_id, status, execs_num_to_init, sql_text, actual_execs, PICKED)

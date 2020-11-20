@@ -300,6 +300,13 @@ PACKAGE BODY COREOBJ_API AS
 --coremod_log.log('add_jparam:'||p_pname||':'||p_value);
   end;
 
+  procedure remove_param(p_obj_id           opas_objects.obj_id%type,
+                         p_pname            varchar2)
+  is
+  begin
+    delete from opas_object_pars where obj_id = p_obj_id and par_name = p_pname;
+  end;
+
   procedure store_jparams(p_obj_id           opas_objects.obj_id%type)
   is
     l_indx varchar2(100);
@@ -380,13 +387,14 @@ PACKAGE BODY COREOBJ_API AS
 
   procedure get_jparam(p_obj_id           opas_objects.obj_id%type,
                        p_pname      varchar2,
-                       p_value  out varchar2)
+                       p_value  out varchar2,
+                       p_default    varchar2 default null)
   is
   begin
     if COREOBJ_API.gParams.exists(p_pname) then
       p_value := COREOBJ_API.gParams(p_pname);
     else
-      p_value := null;
+      p_value := p_default;
     end if;
 --coremod_log.log('get_jparam:'||p_pname||':'||p_value);
   end;
@@ -397,6 +405,7 @@ PACKAGE BODY COREOBJ_API AS
     extract_jparams(p_obj_id);
     return gParams;
   end;
+
 begin
   for i in (select * from opas_object_types) loop
     g_ot_icons(i.ot_id) := i.ot_icon;

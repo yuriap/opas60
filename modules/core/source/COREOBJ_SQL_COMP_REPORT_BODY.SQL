@@ -705,6 +705,7 @@ package body COREOBJ_SQL_COMP_REPORT is
     pr('LIO/ROW:                '||r_stats1.LIO_PER_ROW,         r_stats2.LIO_PER_ROW,         round(100*((r_stats2.LIO_PER_ROW-r_stats1.LIO_PER_ROW)                  /(case when r_stats1.LIO_PER_ROW=0 then case when r_stats2.LIO_PER_ROW=0 then 1 else r_stats2.LIO_PER_ROW end else r_stats1.LIO_PER_ROW end)),2)||'%');
     pr('PIO/ROW:                '||r_stats1.IO_PER_ROW,          r_stats2.IO_PER_ROW,          round(100*((r_stats2.IO_PER_ROW-r_stats1.IO_PER_ROW)                    /(case when r_stats1.IO_PER_ROW=0 then case when r_stats2.IO_PER_ROW=0 then 1 else r_stats2.IO_PER_ROW end else r_stats1.IO_PER_ROW end)),2)||'%');
     pr('CPU/ROW:                '||r_stats1.CPU_PER_ROW,         r_stats2.CPU_PER_ROW,         round(100*((r_stats2.CPU_PER_ROW-r_stats1.CPU_PER_ROW)                  /(case when r_stats1.CPU_PER_ROW=0 then case when r_stats2.CPU_PER_ROW=0 then 1 else r_stats2.CPU_PER_ROW end else r_stats1.CPU_PER_ROW end)),2)||'%');
+    pr('ROWS/SEC:               '||r_stats1.rows_per_sec,        r_stats2.rows_per_sec,        round(100*((r_stats2.rows_per_sec-r_stats1.rows_per_sec)                /(case when r_stats1.rows_per_sec=0 then case when r_stats2.rows_per_sec=0 then 1 else r_stats2.rows_per_sec end else r_stats1.rows_per_sec end)),2)||'%');
     pr('AVG IO (MS):            '||r_stats1.awg_IO_tim,          r_stats2.awg_IO_tim,          round(100*((r_stats2.awg_IO_tim-r_stats1.awg_IO_tim)                    /(case when r_stats1.awg_IO_tim=0 then case when r_stats2.awg_IO_tim=0 then 1 else r_stats2.awg_IO_tim end else r_stats1.awg_IO_tim end)),2)||'%');
 --    pr('IOWT/EXEC(MS)5ms:       '||r_stats1.io_wait_pe_5ms,      'IOWT/EXEC(MS)5ms:  '||r_stats2.io_wait_pe_5ms,      round(100*((r_stats2.io_wait_pe_5ms-r_stats1.io_wait_pe_5ms)            /(case when r_stats1.io_wait_pe_5ms=0 then case when r_stats2.io_wait_pe_5ms=0 then 1 else r_stats2.io_wait_pe_5ms end else r_stats1.io_wait_pe_5ms end)),2)||'%');
 --    pr('IOWAIT(SEC)5ms:         '||r_stats1.io_wait_5ms,         'IOWAIT(SEC)5ms:    '||r_stats2.io_wait_5ms,         round(100*((r_stats2.io_wait_5ms-r_stats1.io_wait_5ms)                  /(case when r_stats1.io_wait_5ms=0 then case when r_stats2.io_wait_5ms=0 then 1 else r_stats2.io_wait_5ms end else r_stats1.io_wait_5ms end)),2)||'%');
@@ -1090,6 +1091,7 @@ if g_Debug then coremod_log.log('p_file_id: '||p_file_id|| '; l_output.count: '|
         ,round(sum(DISK_READS_DELTA)/decode(sum(ROWS_PROCESSED_DELTA),0,null,sum(ROWS_PROCESSED_DELTA)),3) IO_PER_ROW
         ,round(sum(CPU_TIME_DELTA)/decode(sum(ROWS_PROCESSED_DELTA),0,null,sum(ROWS_PROCESSED_DELTA)),3) CPU_PER_ROW
         ,round(sum(s.IOWAIT_DELTA)/decode(sum(s.PHYSICAL_READ_REQUESTS_DELTA)+sum(s.PHYSICAL_WRITE_REQUESTS_DELTA), null, decode(sum(DISK_READS_DELTA),0,1,sum(DISK_READS_DELTA)),0,decode(sum(DISK_READS_DELTA),0,1,sum(DISK_READS_DELTA)), sum(s.PHYSICAL_READ_REQUESTS_DELTA)+sum(s.PHYSICAL_WRITE_REQUESTS_DELTA))/1000,3) as awg_IO_tim
+        ,round(sum(ROWS_PROCESSED_DELTA)/case when sum(s.ELAPSED_TIME_DELTA)=0 then null else (sum(s.ELAPSED_TIME_DELTA)/1e6) end, 3) rows_per_sec
         --,(sum(s.PHYSICAL_READ_REQUESTS_DELTA)+sum(s.PHYSICAL_WRITE_REQUESTS_DELTA))*0.005 as io_wait_5ms
         --,round((sum(s.PHYSICAL_READ_REQUESTS_DELTA)+sum(s.PHYSICAL_WRITE_REQUESTS_DELTA))/decode(sum(s.EXECUTIONS_DELTA), null, decode(sum(DISK_READS_DELTA),0,1,sum(DISK_READS_DELTA)),0,decode(sum(DISK_READS_DELTA),0,1,sum(DISK_READS_DELTA)), sum(s.EXECUTIONS_DELTA))*5) io_wait_pe_5ms
       from opas_ot_sql_awr_sqlstat s
@@ -1133,6 +1135,7 @@ if g_Debug then coremod_log.log('p_file_id: '||p_file_id|| '; l_output.count: '|
         ,round(sum(DISK_READS_DELTA)/decode(sum(ROWS_PROCESSED_DELTA),0,null,sum(ROWS_PROCESSED_DELTA)),3) IO_PER_ROW
         ,round(sum(CPU_TIME_DELTA)/decode(sum(ROWS_PROCESSED_DELTA),0,null,sum(ROWS_PROCESSED_DELTA)),3) CPU_PER_ROW
         ,round(sum(s.IOWAIT_DELTA)/decode(sum(s.PHYSICAL_READ_REQUESTS_DELTA)+sum(s.PHYSICAL_WRITE_REQUESTS_DELTA), null, decode(sum(DISK_READS_DELTA),0,1,sum(DISK_READS_DELTA)),0,decode(sum(DISK_READS_DELTA),0,1,sum(DISK_READS_DELTA)), sum(s.PHYSICAL_READ_REQUESTS_DELTA)+sum(s.PHYSICAL_WRITE_REQUESTS_DELTA))/1000,3) as awg_IO_tim
+        ,round(sum(ROWS_PROCESSED_DELTA)/case when sum(s.ELAPSED_TIME_DELTA)=0 then null else (sum(s.ELAPSED_TIME_DELTA)/1e6) end, 3) rows_per_sec
         --,(sum(s.PHYSICAL_READ_REQUESTS_DELTA)+sum(s.PHYSICAL_WRITE_REQUESTS_DELTA))*0.005 as io_wait_5ms
         --,round((sum(s.PHYSICAL_READ_REQUESTS_DELTA)+sum(s.PHYSICAL_WRITE_REQUESTS_DELTA))/decode(sum(s.EXECUTIONS_DELTA), null, decode(sum(DISK_READS_DELTA),0,1,sum(DISK_READS_DELTA)),0,decode(sum(DISK_READS_DELTA),0,1,sum(DISK_READS_DELTA)), sum(s.EXECUTIONS_DELTA))*5) io_wait_pe_5ms
       from opas_ot_sql_awr_sqlstat s
@@ -1201,6 +1204,7 @@ if g_Debug then coremod_log.log('p_file_id: '||p_file_id|| '; l_output.count: '|
       ,round(sum(DISK_READS)/decode(sum(ROWS_PROCESSED),0,null,sum(ROWS_PROCESSED)),3) IO_PER_ROW
       ,round(sum(CPU_TIME)/decode(sum(ROWS_PROCESSED),0,null,sum(ROWS_PROCESSED)),3) CPU_PER_ROW
       ,round(sum(s.USER_IO_WAIT_TIME)/decode(sum(s.PHYSICAL_READ_REQUESTS)+sum(s.PHYSICAL_WRITE_REQUESTS), null, decode(sum(DISK_READS),0,1,sum(DISK_READS)),0,decode(sum(DISK_READS),0,1,sum(DISK_READS)), sum(s.PHYSICAL_READ_REQUESTS)+sum(s.PHYSICAL_WRITE_REQUESTS))/1000,3) as awg_IO_tim
+      ,round(sum(ROWS_PROCESSED)/case when sum(s.ELAPSED_TIME)=0 then null else (sum(s.ELAPSED_TIME)/1e6) end, 3) rows_per_sec
       --,(sum(s.PHYSICAL_READ_REQUESTS)+sum(s.PHYSICAL_WRITE_REQUESTS))*0.005 as io_wait_5ms
       --,round((sum(s.PHYSICAL_READ_REQUESTS)+sum(s.PHYSICAL_WRITE_REQUESTS))/decode(sum(s.EXECUTIONS), null, decode(sum(DISK_READS),0,1,sum(DISK_READS)),0,decode(sum(DISK_READS),0,1,sum(DISK_READS)), sum(s.EXECUTIONS))*5) io_wait_pe_5ms
     from OPAS_OT_SQL_VSQL s
@@ -1243,6 +1247,7 @@ if g_Debug then coremod_log.log('p_file_id: '||p_file_id|| '; l_output.count: '|
       ,round(sum(DISK_READS)/decode(sum(ROWS_PROCESSED),0,null,sum(ROWS_PROCESSED)),3) IO_PER_ROW
       ,round(sum(CPU_TIME)/decode(sum(ROWS_PROCESSED),0,null,sum(ROWS_PROCESSED)),3) CPU_PER_ROW
       ,round(sum(s.USER_IO_WAIT_TIME)/decode(sum(s.PHYSICAL_READ_REQUESTS)+sum(s.PHYSICAL_WRITE_REQUESTS), null, decode(sum(DISK_READS),0,1,sum(DISK_READS)),0,decode(sum(DISK_READS),0,1,sum(DISK_READS)), sum(s.PHYSICAL_READ_REQUESTS)+sum(s.PHYSICAL_WRITE_REQUESTS))/1000,3) as awg_IO_tim
+      ,round(sum(ROWS_PROCESSED)/case when sum(s.ELAPSED_TIME)=0 then null else (sum(s.ELAPSED_TIME)/1e6) end,3) rows_per_sec
       --,(sum(s.PHYSICAL_READ_REQUESTS)+sum(s.PHYSICAL_WRITE_REQUESTS))*0.005 as io_wait_5ms
       --,round((sum(s.PHYSICAL_READ_REQUESTS)+sum(s.PHYSICAL_WRITE_REQUESTS))/decode(sum(s.EXECUTIONS), null, decode(sum(DISK_READS),0,1,sum(DISK_READS)),0,decode(sum(DISK_READS),0,1,sum(DISK_READS)), sum(s.EXECUTIONS))*5) io_wait_pe_5ms
     from OPAS_OT_SQL_VSQL s

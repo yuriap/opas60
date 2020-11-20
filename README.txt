@@ -1,8 +1,12 @@
 Oracle Performance Analytic Suite and Performance Data Management System
-Version 6.5 PROD
+Version 6.7 PROD
 
 Release notes:
 ==============
+
+Version 6.7.0 2020-Nov-20
+-------------------------
+ASHA Cube Analyzer
 
 Version 6.6.0 2020-Aug-19
 -------------------------

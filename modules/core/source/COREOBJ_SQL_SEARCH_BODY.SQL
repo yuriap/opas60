@@ -6,7 +6,7 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
   gCurrentSession opas_ot_sql_searches.session_id%type;
   gSearchMode varchar2(1);
 
-  function get_shorten_sql_text(p_sql_id varchar2, p_length number default 0) return varchar2 deterministic
+  function get_shorten_sql_text(p_sql_id varchar2, p_length number default 0, p_show_tail number default 1) return varchar2 deterministic
   is
     PRAGMA UDF;
     l_res varchar2(4000);
@@ -18,12 +18,12 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
       where s.sql_id=p_sql_id
         and nvl(s.sql_text,s.sql_text_approx) = t.file_id(+))
     loop
-      l_res := get_shorten_sql_text_for_html_expose(i.file_contentc, p_length, 'N');
+      l_res := get_shorten_sql_text_for_html_expose(i.file_contentc, p_length, 'N', p_show_tail);
     end loop;
     return l_res;
   end;
 
-  function get_shorten_sql_text_for_html_expose(p_sql_text clob, p_length number default 0, p_replace_spec varchar2 default 'Y') return clob deterministic
+  function get_shorten_sql_text_for_html_expose(p_sql_text clob, p_length number default 0, p_replace_spec varchar2 default 'Y', p_show_tail number default 1) return clob deterministic
   is
     PRAGMA UDF;
     l_res clob;
@@ -34,7 +34,11 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
     end if;
     l_res :=case when p_length = 0 then p_sql_text
                  when dbms_lob.getlength(p_sql_text) <= p_length then p_sql_text
-                 else substr(p_sql_text,1,round(p_length*2/3)-5)||' ... '||substr(p_sql_text,-1*round(p_length*2/3)) end;
+                 else
+                   case when p_show_tail = 1 then substr(p_sql_text,1,round(p_length*2/3)-5)||' ... '||substr(p_sql_text,-1*round(p_length*2/3))
+                        else substr(p_sql_text,1,p_length-3)||'...'
+                   end
+                 end;
     if p_replace_spec = 'Y' then
       return replace(replace(replace(l_res,'  ','&nbsp;'),chr(13)||chr(10),'<br>'),chr(10),'<br>');
     else

@@ -81,7 +81,8 @@ PACKAGE BODY COREMOD_APPSTATE AS
   end;
 
   procedure get_jparam(p_pname      varchar2,
-                       p_value  out varchar2)
+                       p_value  out varchar2,
+                       p_default    varchar2 default null)
   is
   begin
     extract_jparams();
@@ -89,20 +90,21 @@ PACKAGE BODY COREMOD_APPSTATE AS
     if gParams.exists(p_pname) then
       p_value := gParams(p_pname);
     else
-      p_value := null;
+      p_value := p_default;
     end if;
 --coremod_log.log('get_jparam:'||p_pname||':'||p_value);
   end;
 
   procedure get_jparam_m(p_pname      varchar2,
-                         p_value  out varchar2)
+                         p_value  out varchar2,
+                         p_default    varchar2 default null)
   is
   begin
 
     if gParams.exists(p_pname) then
       p_value := gParams(p_pname);
     else
-      p_value := null;
+      p_value := p_default;
     end if;
 --coremod_log.log('get_jparam:'||p_pname||':'||p_value);
   end;

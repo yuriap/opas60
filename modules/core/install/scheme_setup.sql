@@ -53,6 +53,7 @@ grant select on v_$metricname to &localscheme.;
 grant select on v_$event_name to &localscheme.;
 grant select on v$event_name to &localscheme.; --cloud
 grant select on gv_$sesstat to &localscheme.;
+grant select on GV_$ASH_INFO to &localscheme.;
 
 --
 grant select on dba_hist_database_instance to &localscheme.;

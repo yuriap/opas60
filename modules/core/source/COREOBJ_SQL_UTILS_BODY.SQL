@@ -741,7 +741,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
         io_cell_offload_eligible_bytes, io_cell_offload_returned_bytes)
       values (
         opas_ot_sq_sqlmon_id.currval,
-        user#, username, module, action, service_name, null /*client_identifier*/, null /*client_info*/,
+        user#, username, module, action, service_name, client_identifier, null /*client_info*/,
         program, null /*plsql_entry_object_id*/, null /*plsql_entry_subprogram_id*/, null /*plsql_object_id*/, null /*plsql_subprogram_id*/,
         null /*dbop_exec_id*/, null /*dbop_name*/, null /*process_name*/, null /*sql_text*/, is_full_sqltext, sql_plan_hash_value, sql_full_plan_hash_value,
         null /*exact_matching_signature*/, null /*force_matching_signature*/, null /*px_is_cross_instance*/, null /*px_maxdop*/, null /*px_maxdop_instances*/,
@@ -758,7 +758,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       WHEN op = 'L' and 1=2 THEN
       INTO opas_ot_sql_sqlmon_ref ( sql_data_point_id, sqlmon_id)
       values( p_data.sql_data_point_id, sqlmon_id)
-    select x.*, x1.*, x2.*--, XMLCast(xmlquery('$p/report/sql_monitor_report/target/sql_fulltext' passing xmltype(x.report) as "p" RETURNING CONTENT) as varchar2(2000)) sql_text
+    select x.*, x0.*, x1.*, x2.*--, XMLCast(xmlquery('$p/report/sql_monitor_report/target/sql_fulltext' passing xmltype(x.report) as "p" RETURNING CONTENT) as varchar2(2000)) sql_text
     from ( SELECT 'I' op, t.*, null sqlmon_id, d.report
              FROM opas_ot_tmp_dba_hist_reports t, opas_ot_tmp_dba_hist_rep_xml d
             where not exists (select 1 from opas_ot_sql_sqlmon i
@@ -773,6 +773,10 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
               and p.dblink = p_data.dblink and p.sql_id = p_data.sql_id and p.source = srcHST
               and not exists (select 1 from opas_ot_sql_sqlmon_ref i where sql_data_point_id = p_data.sql_data_point_id and i.sqlmon_id=p.sqlmon_id)
               and t.report_id=d.report_id(+)) x,
+              xmltable('/report_repository_summary/sql'
+                  PASSING xmlparse(document x.report_summary) COLUMNS
+                 client_identifier path 'client_id'
+                 )(+) x0,
            xmltable('/report/sql_monitor_report/target'
                   PASSING xmlparse(document x.report) COLUMNS
                   STATUS path 'status'

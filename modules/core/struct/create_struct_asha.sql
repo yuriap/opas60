@@ -41,6 +41,14 @@ create table opas_ot_ashacube_ref (
  primary key (ashacube_id, asharange_id)
 ) organization index;
 
+create table opas_ot_ashacube_ash_wcs (
+asharange_id                 number                                           references opas_ot_ashacube_ranges (asharange_id) on delete cascade,
+WAIT_CLASS                   VARCHAR2(64 BYTE),
+num_of_samples               number
+);
+
+create index idx_opas_ot_ashawcs_ar   on opas_ot_ashacube_ash_wcs(asharange_id);
+
 create table opas_ot_ashacube_ash (
 asharange_id                 number                                           references opas_ot_ashacube_ranges (asharange_id) on delete cascade,
 DBLINK                       varchar2(128)                                    references opas_db_links (db_link_name),

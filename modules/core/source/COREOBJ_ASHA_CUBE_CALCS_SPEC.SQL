@@ -53,6 +53,8 @@ PACKAGE COREOBJ_ASHA_CUBE_CALCS AS
   procedure set_cube_preserve(p_obj_id  opas_objects.obj_id%type, p_preserve boolean default true);
   procedure set_range_preserve(p_asharange_id opas_ot_ashacube_ranges.asharange_id%type, p_preserve boolean default true);
 
+  procedure cancel_all_jobs(p_obj_id  opas_objects.obj_id%type);
+
 END COREOBJ_ASHA_CUBE_CALCS;
 /
 

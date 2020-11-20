@@ -26,8 +26,10 @@ PACKAGE COREOBJ_API AS
   g_ot_api           t_string_indexed_tbl;
   g_ot_create_page   t_string_indexed_tbl;
 
-  type t_params is table of varchar2(4000) index by varchar2(100);
+  type t_params is table of varchar2(4000) index by varchar2(256);
   gParams t_params;
+
+  --type tParamsSet is table of COREOBJ_API.t_params index by varchar2(256);
 
   jsParamName            constant opas_object_pars.par_name%type := 'OPASSYSJSPAR';
 
@@ -110,8 +112,9 @@ PACKAGE COREOBJ_API AS
                       p_value      varchar2);
   procedure extract_jparams(p_obj_id           opas_objects.obj_id%type);
   procedure get_jparam(p_obj_id           opas_objects.obj_id%type,
-                      p_pname      varchar2,
-                      p_value  out varchar2);
+                       p_pname      varchar2,
+                       p_value  out varchar2,
+                       p_default    varchar2 default null);
   function get_all_jparam(p_obj_id           opas_objects.obj_id%type) return t_params;
   procedure store_jparams(p_obj_id           opas_objects.obj_id%type);
 
@@ -119,6 +122,9 @@ PACKAGE COREOBJ_API AS
   procedure set_jparam(p_obj_id           opas_objects.obj_id%type,
                        p_pname            varchar2,
                        p_json             clob);
+
+  procedure remove_param(p_obj_id           opas_objects.obj_id%type,
+                         p_pname            varchar2);
 END COREOBJ_API;
 /
 

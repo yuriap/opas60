@@ -339,7 +339,8 @@ order by 1,2]','<sql_data_point_id>',p_sql_data_point_id), --'
       p_output(l_k) := HTF.LISTITEM(cattributes=>'class="awr"',
                                ctext=>HTF.ANCHOR (curl=>'#sqlmonhst'||i.SQLMON_ID,
                                                   ctext=>i.rn ||'. SQL_EXEC_ID: '||i.SQL_EXEC_ID||' SQL_EXEC_START: '||to_char(i.SQL_EXEC_START,defDataTimeFullFmt)
-                                                                                                ||' LAST_REFRESH_TIME: '||to_char(i.LAST_REFRESH_TIME,defDataTimeFullFmt),
+                                                                                                ||' LAST_REFRESH_TIME: '||to_char(i.LAST_REFRESH_TIME,defDataTimeFullFmt)
+                                                                                                ||' ('||i.SQLMON_ID||')',
                                                   cattributes=>'class="awr"' --'
                                                   )
                               );
@@ -360,7 +361,7 @@ order by 1,2]','<sql_data_point_id>',p_sql_data_point_id), --'
       if l_text = 'SQL Monitoring Report' then l_text := l_text || ' (empty)'; end if;
 
       COREMOD_REPORT_UTILS.convert_to_html_table (
-        P_TEXT => i.rn ||'. SQL_EXEC_ID: '||i.SQL_EXEC_ID||'; SQL_EXEC_START: '||to_char(i.SQL_EXEC_START,defDataTimeFullFmt)||' LAST_REFRESH_TIME: '||to_char(i.LAST_REFRESH_TIME,defDataTimeFullFmt)||chr(10)||l_text,
+        P_TEXT => i.rn ||'. SQL_EXEC_ID: '||i.SQL_EXEC_ID||'; SQL_EXEC_START: '||to_char(i.SQL_EXEC_START,defDataTimeFullFmt)||' LAST_REFRESH_TIME: '||to_char(i.LAST_REFRESH_TIME,defDataTimeFullFmt)||' ('||i.SQLMON_ID||')'||chr(10)||l_text,
         P_INPUT => p_output,
         P_T_HEADER => '#FIRST_LINE#',
         P_WIDTH => 0, --auto width

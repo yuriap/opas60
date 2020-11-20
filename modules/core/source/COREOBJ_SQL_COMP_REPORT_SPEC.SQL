@@ -92,7 +92,8 @@ package COREOBJ_SQL_COMP_REPORT is
     lio_per_row          NUMBER,
     io_per_row           NUMBER,
     cpu_per_row          NUMBER,
-    awg_io_tim           NUMBER
+    awg_io_tim           NUMBER,
+    rows_per_sec         number
     --io_wait_5ms          NUMBER,
     --io_wait_pe_5ms       NUMBER
     );

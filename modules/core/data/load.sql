@@ -72,7 +72,7 @@ INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) 
 delete from opas_object_pages where ot_id=300;
 INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (3000,         300,   'CREATE',     'Create ASHA Cube');
 INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (3000,         300,   'OPEN',       'Parameters of ASHA Cube');
-INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (3001,         300,   'PREVIEW',    'Show ASHA Cube');
+INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (3003,         300,   'PREVIEW',    'Show ASHA Cube');
 
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','FILE_MIMETYPE','TXT'                     ,'Text file'   ,null,null,null,10);
 INSERT INTO opas_dictionary (modname,dic_name,val,display_val,sparse1,sparse2,sparse3,dic_ordr) VALUES ('&MODNM.','FILE_MIMETYPE','TEXT/HTML'               ,'HTML file'   ,null,null,null,20);

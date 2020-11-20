@@ -21,8 +21,11 @@ package coreobj_asha_cube is
   function get_object_status_to_display (p_obj_id          opas_objects.obj_id%type) return varchar2;
 
   procedure cleanup_ranges;
-
+/*
   procedure archive_data_to_subpartition(p_dblink opas_db_links.db_link_name%type);
+*/
+  function create_subpart_name (p_dblink opas_db_links.db_link_name%type,
+                                p_max_date date) return varchar2;
 
 end coreobj_asha_cube;
 /

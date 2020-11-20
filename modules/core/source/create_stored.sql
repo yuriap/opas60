@@ -47,6 +47,9 @@ show errors
 @@COREOBJ_ASHA_CUBE_CALCS_SPEC.SQL
 show errors
 
+@@COREOBJ_ASHA_CUBE_REPORTS_SPEC.SQL
+show errors
+
 @@COREOBJ_ATTACHMENTS_SPEC.SQL
 show errors
 
@@ -141,6 +144,9 @@ show errors
 show errors
 
 @@COREOBJ_ASHA_CUBE_CALCS_BODY.SQL
+show errors
+
+@@COREOBJ_ASHA_CUBE_REPORTS_BODY.SQL
 show errors
 
 @@COREOBJ_ATTACHMENTS_BODY.SQL
