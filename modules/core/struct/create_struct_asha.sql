@@ -25,7 +25,7 @@ DBID                         NUMBER, -- $LOCAL$ with some unlocal DBID comes fro
 incarnation#                 number,
 MIN_SNAP_ID                  NUMBER,
 MAX_SNAP_ID                  NUMBER,
-STATUS                       VARCHAR2(10),
+STATUS                       VARCHAR2(10), --ASH gathering status
 created                      timestamp default systimestamp,
 modified                     timestamp,
 preserve_policy              varchar2(1)  default 'N' not null check (preserve_policy in ('Y','N')),
@@ -197,6 +197,12 @@ alter table opas_ot_tmp_gv$session add TSTZ timestamp with time zone;
 alter table opas_ot_tmp_gv$session add TS timestamp;
 
 --===============================================================
+drop table opas_ot_ashacube_metrics_list;
+create table opas_ot_ashacube_metrics_list
+as
+select cast(null as number) asharange_id, group_id, metric_id, cast(null as varchar2(10)) metric_status from gv$sysmetric_history where 1=2;
+alter table opas_ot_ashacube_metrics_list add constraint fk_asha_ml2r foreign key (asharange_id) references opas_ot_ashacube_ranges (asharange_id) on delete cascade;
+create index idx_opas_ot_ashaml_ar   on opas_ot_ashacube_metrics_list(asharange_id);
 
 create table opas_ot_ashacube_metrics
 PARTITION BY LIST (DBLINK) AUTOMATIC

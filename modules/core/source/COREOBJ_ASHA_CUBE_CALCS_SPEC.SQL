@@ -7,7 +7,9 @@ PACKAGE COREOBJ_ASHA_CUBE_CALCS AS
   pDBLINK         constant varchar2(100) := 'ASHAB_DBLINK';
   pSTARTDT        constant varchar2(100) := 'ASHAB_STARTDT';
   pENDDT          constant varchar2(100) := 'ASHAB_ENDDT';
-  pGETSTATS       constant varchar2(100) := 'ASHAB_GETSTATS'; --v$sesstat
+  pGETSTATS       constant varchar2(100) := 'ASHAB_GETSTATS'; --v$sysstat
+  pGETSEESTATS    constant varchar2(100) := 'ASHAB_GETSESSSTATS'; --v$sesstat
+  pSTATSLIST      constant varchar2(100) := 'ASHAB_STATSLIST';
   pMetricList     constant varchar2(100) := 'ASHAB_METRICLST';
 
   pDTFMT          constant varchar2(100) := 'ASHAB_DTFMT';
@@ -18,6 +20,7 @@ PACKAGE COREOBJ_ASHA_CUBE_CALCS AS
   csReady         constant varchar2(100) := 'READY';
   csInProgress    constant varchar2(100) := 'INPROGRESS';
   csEmpty         constant varchar2(100) := 'EMPTY';
+  csPartial       constant varchar2(100) := 'PARTIAL';
 
   --granule type V GV$ASH, A DBA_HIST_ASH, S - Samples of GV$SESS
   gtGV$ASH        constant varchar2(100) := 'V';
@@ -49,6 +52,7 @@ PACKAGE COREOBJ_ASHA_CUBE_CALCS AS
   procedure sample_data_for_granule(p_asharange_id opas_ot_ashacube_ranges.asharange_id%type);
 
   function show_remote_date_context(p_dblink opas_db_links.db_link_name%type) return varchar2;
+  function get_remote_ts_utc(p_dblink opas_db_links.db_link_name%type) return timestamp;
 
   procedure set_cube_preserve(p_obj_id  opas_objects.obj_id%type, p_preserve boolean default true);
   procedure set_range_preserve(p_asharange_id opas_ot_ashacube_ranges.asharange_id%type, p_preserve boolean default true);

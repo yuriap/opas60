@@ -356,9 +356,9 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
       from gv$sql<DBLINK> d where (inst_id, child_number, sql_id) in
         (select inst_id, child_number, sql_id from (select inst_id, child_number, sql_id, row_number()over(partition by sql_id order by child_number) rn from gv$sql<DBLINK> where sql_id in (<SQL_ID_LIST>)) where rn = 1)]' || chr(10); --'
 
-    l_v_sql varchar2(32765) := q'[select /*+ qb_name(OPAS60) */ unique sql_id from gv$sql<DBLINK> d where 1=1 ]' || chr(10); --'
+    l_v_sql varchar2(32765) := q'[select /*+ qb_name(OPAS60)  driving_site(d) */ unique sql_id from gv$sql<DBLINK> d where 1=1 ]' || chr(10); --'
 
-    l_awr_sql varchar2(32765) := q'[select /*+ qb_name(OPAS60) */ unique sql_id from dba_hist_sqltext<DBLINK> d where d.DBID = <DBID>]' || chr(10); --'
+    l_awr_sql varchar2(32765) := q'[select /*+ qb_name(OPAS60) driving_site(d) */ unique sql_id from dba_hist_sqltext<DBLINK> d where d.DBID = <DBID>]' || chr(10); --'
 
     l_awr2_sql varchar2(32765) := q'[insert /*+ qb_name(OPAS60) */ into opas_ot_sql_search_results
         (session_id,    search_source, sql_id, sql_text_external, created_by,  first_discovered, first_discovered_at, txt_score)

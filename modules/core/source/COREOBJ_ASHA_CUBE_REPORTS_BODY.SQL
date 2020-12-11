@@ -5,33 +5,25 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_REPORTS AS
 
   g_LogLevel varchar2(10):='INFO';
 
-  gTimeLineQry varchar2(32765) := q'[
-rng_dt as   (SELECT min(rng.start_time_utc) start_dt, max(rng.end_time_utc) end_dt
-               FROM opas_ot_ashacube_ref refs INNER JOIN opas_ot_ashacube_ranges rng ON refs.asharange_id = rng.asharange_id
-              where refs.ashacube_id = :P3003_CUBE_ID),
-rng_ids as  (SELECT rng.asharange_id, rng.start_time_utc, rng.end_time_utc
-               FROM opas_ot_ashacube_ref refs INNER JOIN opas_ot_ashacube_ranges rng ON refs.asharange_id = rng.asharange_id
-              where refs.ashacube_id = :P3003_CUBE_ID),
-timeline as (select rownum pnt, trunc(start_dt + (level - 1) * <TIMEXPR>, '<TRUNC>') tim
-               from rng_dt connect by start_dt + (level - 1) * <TIMEXPR> <= end_dt),
-flt_timeline as (select min(pnt) mi_pnt, max(pnt) ma_pnt, min(tim) mi_tim, max(tim) ma_tim from timeline t where t.pnt between <STARTPOINT> and <ENDPOINT>),
-stats_unranged as
-            (select c.*
-               from OPAS_OT_ASHACUBE_ASH c, rng_ids
-              where c.asharange_id = rng_ids.asharange_id),
-stats_ranged as
-            (select c.*
-               from OPAS_OT_ASHACUBE_ASH c, rng_ids, flt_timeline  ft
-              where c.asharange_id = rng_ids.asharange_id and c.SAMPLE_TIME_UTC between ft.mi_tim and ft.ma_tim)]';
 --  gFiltereTimeLine varchar2(32765) := q'[
 --flt_timeline as (select min(pnt) mi_pnt, max(pnt) ma_pnt, min(tim) mi_tim, max(tim) ma_tim from timeline t where t.pnt between <STARTPOINT> and <ENDPOINT>)]';
 
   g_CUBE_ID    varchar2(30) := 'P3003_CUBE_ID';
   g_GRPBY      varchar2(30) := 'P3003_GRPBY';
   g_WAITCLASS  varchar2(30) := 'WAITCLASS';
+  g_INST_ID    varchar2(30) := 'INST_ID';
   g_STARTPOINT varchar2(30) := 'P3003_LEFT_MARGIN';
   g_ENDPOINT   varchar2(30) := 'P3003_RIGHT_MARGIN';
   g_FILTER     varchar2(30) := 'P3003_FILTER';
+  g_INCLUDING_TAGS     varchar2(30) := 'P3003_INCLUDING_TAGS';
+  g_EXCLUDING_TAGS     varchar2(30) := 'P3003_EXCLUDING_TAGS';
+  g_DBLINK     varchar2(30) := 'P3003_DBLINK';
+  g_METRIC1    varchar2(30) := 'P3003_METRIC1';
+  g_METRIC2    varchar2(30) := 'P3003_METRIC2';
+  g_METRIC3    varchar2(30) := 'P3003_METRIC3';
+  g_AGG1       varchar2(30) := 'P3003_AGG1';
+  g_AGG2       varchar2(30) := 'P3003_AGG2';
+  g_AGG3       varchar2(30) := 'P3003_AGG3';
 
   gParams COREOBJ_API.t_params;
 
@@ -186,8 +178,76 @@ stats_ranged as
     p_paramset_name := gParamsSet.first;
   end;
 
+  function get_base_query(p_include_tags number default 1,
+                          p_include_metrics number default 0,
+                          p_include_stats number default 0) return varchar2
+  is
+    l_tag_include_query varchar2(32765) := q'[
+including_sqls as
+  (select /*+ materialize */ sql_id
+     from OPAS_OT_SQL_SQL2TAGS,
+         (select tag_name from OPAS_OT_SQL_TAGS start with tag_name in (select /*+ cardinality(x 1) */ column_value from table(coreobj_sql_tags.parse_tag_list(:P3003_INCLUDING_TAGS)) x )
+         connect by prior tag_name = tag_prnt)including_tags
+    where tag=tag_name)]';
+    l_tag_exclude_query varchar2(32765) := q'[
+excluding_sqls as
+  (select /*+ materialize */ sql_id
+     from OPAS_OT_SQL_SQL2TAGS,
+         (select tag_name from OPAS_OT_SQL_TAGS start with tag_name in (select /*+ cardinality(x 1) */ column_value from table(coreobj_sql_tags.parse_tag_list(:P3003_EXCLUDING_TAGS)) x )
+         connect by prior tag_name = tag_prnt) excluding_tags
+    where tag=tag_name)]';
+    l_main_queries varchar2(32765) := q'[
+rng_dt as   (SELECT /*+ gather_plan_statistics */ min(rng.start_time_utc) start_dt, max(rng.end_time_utc) end_dt
+               FROM opas_ot_ashacube_ref refs INNER JOIN opas_ot_ashacube_ranges rng ON refs.asharange_id = rng.asharange_id
+              where refs.ashacube_id = :P3003_CUBE_ID),
+rng_ids as  (SELECT rng.asharange_id, rng.start_time_utc, rng.end_time_utc
+               FROM opas_ot_ashacube_ref refs INNER JOIN opas_ot_ashacube_ranges rng ON refs.asharange_id = rng.asharange_id
+              where refs.ashacube_id = :P3003_CUBE_ID),
+timeline as (select rownum pnt, trunc(start_dt + (level - 1) * <TIMEXPR>, '<TRUNC>') tim
+               from rng_dt connect by start_dt + (level - 1) * <TIMEXPR> <= end_dt),
+flt_timeline as (select min(pnt) mi_pnt, max(pnt) ma_pnt, min(tim) mi_tim, max(tim) ma_tim from timeline t where t.pnt between <STARTPOINT> and <ENDPOINT>),
+stats_unranged as
+            (select c.*
+               from OPAS_OT_ASHACUBE_ASH c, rng_ids
+              where c.asharange_id = rng_ids.asharange_id
+                and DBLINK = :P3003_DBLINK),
+stats_ranged as
+            (select /*+ use_nl(c) */ c.*
+               from OPAS_OT_ASHACUBE_ASH c, rng_ids, flt_timeline  ft
+              where c.asharange_id = rng_ids.asharange_id and c.SAMPLE_TIME_UTC between ft.mi_tim and ft.ma_tim and DBLINK = :P3003_DBLINK)]';
+l_metrics_queries varchar2(32765) := q'[
+metrics_ranged as
+            (select /*+ use_nl(c) */ c.*, <METRICT_AGG>(value)over() whole_agg
+               from OPAS_OT_ASHACUBE_METRICS c, rng_ids, flt_timeline  ft
+              where c.asharange_id = rng_ids.asharange_id and c.END_TIME_UTC between ft.mi_tim and ft.ma_tim and DBLINK = :P3003_DBLINK and INST_ID=<INST_ID>)]';
+l_stats_queries varchar2(32765) := q'[
+stat_ranged as
+            (select /*+ use_nl(c) */ c.TS_UTC, c.INST_ID, c.SID, n.display_name, c.VALUE
+               from OPAS_OT_ASHACUBE_STATS c, rng_ids, flt_timeline  ft, OPAS_DB_STATISTICS n
+              where c.statistic# = n.statistic# and c.asharange_id = rng_ids.asharange_id and c.TS_UTC between ft.mi_tim and ft.ma_tim
+                and c.DBLINK = :P3003_DBLINK and c.INST_ID=<INST_ID>
+                and n.DBLINK = :P3003_DBLINK)]';
+  begin
+    if p_include_tags = 1 and (nvl(get_param(g_INCLUDING_TAGS),'NOTAG') != 'NOTAG' or nvl(get_param(g_EXCLUDING_TAGS),'NOTAG') != 'NOTAG') then
+      if nvl(get_param(g_INCLUDING_TAGS),'NOTAG') != 'NOTAG' then
+        l_main_queries := l_tag_include_query || ',' || l_main_queries;
+      end if;
+      if nvl(get_param(g_EXCLUDING_TAGS),'NOTAG') != 'NOTAG' then
+        l_main_queries := l_tag_exclude_query || ',' || l_main_queries;
+      end if;
+    end if;
+    if p_include_metrics = 1 then
+      l_main_queries := l_main_queries || ',' || l_metrics_queries;
+    end if;
+    if p_include_stats = 1 then
+      l_main_queries := l_main_queries || ',' || l_stats_queries;
+    end if;
+    return q'[with ]' || l_main_queries;
+  end;
+
   procedure preprocess_qry(p_query in out varchar2)
   is
+    l_flt varchar2(32765);
   begin
     case
       when upper(get_param(g_GRPBY)) = 'MI' then
@@ -207,14 +267,23 @@ stats_ranged as
       p_query := replace(p_query,'<WAITCLASS>', q'[wait_class = ']'||nvl(get_param(g_WAITCLASS),'Application')||q'[']');
     end case;
 
-    case
-      when upper(get_param(g_FILTER)) is not null then
-        p_query := replace(p_query,'<FILTER>', get_param(g_FILTER));
+    if get_param(g_FILTER) is not null or nvl(get_param(g_INCLUDING_TAGS),'NOTAG') != 'NOTAG' or nvl(get_param(g_EXCLUDING_TAGS),'NOTAG') != 'NOTAG' then
+      if get_param(g_FILTER) is not null then
+        l_flt := '(' || get_param(g_FILTER) || ') and';
+      end if;
+      if nvl(get_param(g_INCLUDING_TAGS),'NOTAG') != 'NOTAG' then
+        l_flt := l_flt || '  sql_id in (select sql_id from including_sqls) and';
+      end if;
+      if nvl(get_param(g_EXCLUDING_TAGS),'NOTAG') != 'NOTAG' then
+        l_flt := l_flt || '  sql_id not in (select sql_id from excluding_sqls)';
+      end if;
+      p_query := replace(p_query,'<FILTER>', rtrim(l_flt,' and'));
     else
       p_query := replace(p_query,'<FILTER>', q'[ 1=1 ]');
-    end case;
+    end if;
 
     p_query := replace(replace(p_query,'<STARTPOINT>',nvl(get_param(g_STARTPOINT),'1')),'<ENDPOINT>',nvl(get_param(g_ENDPOINT),'0'));
+    p_query := replace(p_query,'<INST_ID>',nvl(get_param(g_INST_ID),'1'));
 
   end;
 
@@ -226,28 +295,38 @@ stats_ranged as
     set_param(g_STARTPOINT, v(g_STARTPOINT));
     set_param(g_ENDPOINT, v(g_ENDPOINT));
     set_param(g_FILTER, v(g_FILTER));
+    set_param(g_INCLUDING_TAGS, v(g_INCLUDING_TAGS));
+    set_param(g_EXCLUDING_TAGS, v(g_EXCLUDING_TAGS));
+    set_param(g_DBLINK, v(g_DBLINK));
+    set_param(g_METRIC1, v(g_METRIC1));
+    set_param(g_METRIC2, v(g_METRIC2));
+    set_param(g_METRIC3, v(g_METRIC3));
+    set_param(g_AGG1, v(g_AGG1));
+    set_param(g_AGG2, v(g_AGG2));
+    set_param(g_AGG3, v(g_AGG3));
+
   end;
 
   function data_exists(p_wait_class varchar2) return boolean is
-    l_sql varchar2(32765) :=
-      q'[with ]' || gTimeLineQry ||
-           --q'[,]'|| gFiltereTimeLine ||
-      q'[ select count(1)
+    l_sql varchar2(32765);
+    l_result number;
+  begin
+    set_param(g_WAITCLASS, p_wait_class);
+    read_item_parameters;
+
+    l_sql := get_base_query(p_include_tags => 0) ||
+      q'[ select /*+ qb_name(data_exists) */ count(1)
             from dual
            where exists (select 1
                            from OPAS_OT_ASHACUBE_ASH_WCS c, rng_ids, flt_timeline t
                           where c.asharange_id = rng_ids.asharange_id and <WAITCLASS>
                             and (t.mi_tim between rng_ids.start_time_utc and rng_ids.end_time_utc
                               or t.ma_tim between rng_ids.start_time_utc and rng_ids.end_time_utc))]';
-    l_result number;
-  begin
-    set_param(g_WAITCLASS, p_wait_class);
-    read_item_parameters;
 
     preprocess_qry(l_sql);
     --log(l_sql);
     --log(get_param(g_CUBE_ID));
-    execute immediate l_sql into l_result using to_number(get_param(g_CUBE_ID)), to_number(get_param(g_CUBE_ID));
+    execute immediate l_sql into l_result using to_number(get_param(g_CUBE_ID)), to_number(get_param(g_CUBE_ID)), get_param(g_DBLINK), get_param(g_DBLINK);
     return l_result>0;
   exception
     when others then raise_application_error(-20000, l_sql||chr(10)||sqlerrm);
@@ -255,30 +334,50 @@ stats_ranged as
 
   function get_number_of_time_points(p_obj_id opas_objects.obj_id%type) return number
   is
-    l_sql varchar2(32765) :=
-      q'[with ]' || gTimeLineQry || q'[ select count(1) from timeline]';
+    l_sql varchar2(32765);
     l_result number;
   begin
     read_item_parameters;
+
+    l_sql := get_base_query(p_include_tags => 0) || q'[ select /*+ qb_name(number_of_time_points) */ count(1) from timeline]';
+
     preprocess_qry(l_sql);
 
     --log(l_sql);
     --log(p_obj_id);
 
-    execute immediate l_sql into l_result using p_obj_id, p_obj_id;
+    execute immediate l_sql into l_result using p_obj_id, p_obj_id, get_param(g_DBLINK), get_param(g_DBLINK);
     return l_result;
   exception
-    when others then raise_application_error(-20000, l_sql||chr(10)||sqlerrm);
+    when others then raise_application_error(-20000, sqlerrm||chr(10)||l_sql);
   end;
 
   function get_main_diag_raw_data_qry(p_filtered varchar2 default 'Y') return varchar2
   is
-    l_sql varchar2(32765) :=
-      q'[with ]' || gTimeLineQry || q'[ select * from stats_ranged ]' || case when p_filtered = 'Y' then q'[ where (<FILTER>)]' else null end;
+    l_sql varchar2(32765);
     l_result number;
   begin
     read_item_parameters;
+
+    l_sql := get_base_query || q'[ select /*+ qb_name(main_diag_raw_data) */ * from stats_ranged ]' || case when p_filtered = 'Y' then q'[ where (<FILTER>)]' else null end;
+
     preprocess_qry(l_sql);
+    return l_sql;
+  exception
+    when others then raise_application_error(-20000, l_sql||chr(10)||sqlerrm);
+  end;
+
+  function get_main_diag_stats_qry return varchar2
+  is
+    l_sql varchar2(32765);
+    l_result number;
+  begin
+    read_item_parameters;
+
+    l_sql := get_base_query(p_include_stats => 1) || q'[ select /*+ qb_name(main_diag_stats_data) */ * from stat_ranged ]';
+
+    preprocess_qry(l_sql);
+    --log(l_sql);
     return l_sql;
   exception
     when others then raise_application_error(-20000, l_sql||chr(10)||sqlerrm);
@@ -286,86 +385,74 @@ stats_ranged as
 
   function get_main_diag_timeline_qry(p_wait_class varchar2) return varchar2
   is
-    l_sql varchar2(32765) :=
-      q'[with ]' || gTimeLineQry ||
-           --q'[,]'|| gFiltereTimeLine ||
-q'[,stats as    (select trunc(sample_time_utc,'<TRUNC>') tim, count(1) sec
-               from stats_ranged
-              where <WAITCLASS> and (<FILTER>)
-              group by trunc(sample_time_utc,'<TRUNC>')),
-tot as      (select count(1) sec
-               from stats_ranged
-              where (<FILTER>))
-select TO_CHAR(t.tim,'YYYY/MM/DD HH24:MI:SS') sample_time,
-       nvl(s.sec,0) sec,
-       dbms_xplan.format_number(nvl(sum(s.sec)over(),0))||'; '||nvl(round(100*sum(s.sec)over()/(select sec from tot),2),0)||'%' hint
-from timeline t,
-     stats s
-where t.tim = s.tim(+)
-  --and t.pnt between <STARTPOINT> and <ENDPOINT> - 1
-  order by t.tim]';
+    l_sql varchar2(32765);
   BEGIN
-    l_sql  :=
-      q'[with ]' || gTimeLineQry ||
-           --q'[,]'|| gFiltereTimeLine ||
-q'[, stats as (select trunc(sample_time_utc,'<TRUNC>') tim, count(1) sec
+    set_param(g_WAITCLASS, p_wait_class);
+    read_item_parameters;
+
+    l_sql  := get_base_query ||
+q'[,
+   stats as (select trunc(sample_time_utc,'<TRUNC>') tim, count(1) sec
                from stats_unranged
               where (<FILTER>)
               group by trunc(sample_time_utc,'<TRUNC>'))
-select TO_CHAR(t.tim,'YYYY/MM/DD HH24:MI:SS') sample_time,
-       --nvl(s.sec,0) sec
+select /*+ qb_name(main_diag_timeline) */ TO_CHAR(t.tim,'YYYY/MM/DD HH24:MI:SS') sample_time,
        case when (t.pnt between <STARTPOINT> and <ENDPOINT> - 1) then 1 else 0 end sec
 from timeline t,
      stats s
 where t.tim = s.tim(+)
   and t.pnt between <STARTPOINT> and <ENDPOINT> - 1
   order by t.tim]';
-    set_param(g_WAITCLASS, p_wait_class);
-    read_item_parameters;
 
     preprocess_qry(l_sql);
     --log(l_sql);
-    RETURN l_sql;
+    RETURN l_sql||' deprecated!';
   END get_main_diag_timeline_qry;
 
   function get_main_diag_timeline_remainder_qry return varchar2
   is
-    l_sql varchar2(32765) :=
-      q'[with ]' || gTimeLineQry ||
-           --q'[,]'|| gFiltereTimeLine ||
-q'[, stats as (select trunc(sample_time_utc,'<TRUNC>') tim, count(1) sec
+    l_sql varchar2(32765);
+  BEGIN
+    read_item_parameters;
+
+    l_sql := get_base_query ||
+q'[,
+   stats as (select trunc(sample_time_utc,'<TRUNC>') tim, count(1) sec
                from stats_unranged
               where (<FILTER>)
               group by trunc(sample_time_utc,'<TRUNC>'))
-select TO_CHAR(t.tim,'YYYY/MM/DD HH24:MI:SS') sample_time,
-       --nvl(s.sec,0) sec
+select /*+ qb_name(main_diag_timeline_remainder) */ TO_CHAR(t.tim,'YYYY/MM/DD HH24:MI:SS') sample_time,
        case when (t.pnt < <STARTPOINT> or t.pnt > <ENDPOINT>+1) then 1 else 0 end sec
 from timeline t,
      stats s
 where t.tim = s.tim(+)
   and (t.pnt < <STARTPOINT> or t.pnt > <ENDPOINT>+1)
   order by t.tim]';
-  BEGIN
-    read_item_parameters;
 
     preprocess_qry(l_sql);
-    log(l_sql);
-    RETURN l_sql;
+    --log(l_sql);
+    RETURN l_sql||' deprecated!';
   END get_main_diag_timeline_remainder_qry;
 
   function get_main_diag_qry(p_wait_class varchar2) return varchar2
   is
-    l_sql varchar2(32765) :=
-      q'[with ]' || gTimeLineQry ||
-           --q'[,]'|| gFiltereTimeLine ||
-q'[,stats as    (select trunc(sample_time_utc,'<TRUNC>') tim, count(1) sec
+    l_sql varchar2(32765);
+  BEGIN
+    set_param(g_WAITCLASS, p_wait_class);
+    read_item_parameters;
+
+    l_sql := get_base_query ||
+q'[,
+stats_all as (select /*+ result_cache */ trunc(sample_time_utc,'<TRUNC>') tim, wait_class, count(1) sec
                from stats_ranged
-              where <WAITCLASS> and (<FILTER>)
-              group by trunc(sample_time_utc,'<TRUNC>')),
-tot as      (select count(1) sec
-               from stats_ranged
-              where (<FILTER>))
-select TO_CHAR(t.tim,'YYYY/MM/DD HH24:MI:SS') sample_time,
+              where (<FILTER>)
+              group by trunc(sample_time_utc,'<TRUNC>'), wait_class),
+stats as    (select tim, sec
+               from stats_all
+              where <WAITCLASS>),
+tot as      (select sum(sec) sec
+               from stats_all)
+select /*+ qb_name(main_diag) */ TO_CHAR(t.tim,'YYYY/MM/DD HH24:MI:SS') sample_time,
        nvl(s.sec,0) sec,
        dbms_xplan.format_number(nvl(sum(s.sec)over(),0))||'; '||nvl(round(100*sum(s.sec)over()/(select sec from tot),2),0)||'%' hint
 from timeline t,
@@ -373,9 +460,6 @@ from timeline t,
 where t.tim = s.tim(+)
   and t.pnt between <STARTPOINT> and <ENDPOINT> - 1
   order by t.tim]';
-  BEGIN
-    set_param(g_WAITCLASS, p_wait_class);
-    read_item_parameters;
 
     preprocess_qry(l_sql);
     --log(l_sql);
@@ -384,21 +468,23 @@ where t.tim = s.tim(+)
 
   function get_main_diag_remainder_qry return varchar2
   is
-    l_sql varchar2(32765) :=
-      q'[with ]' || gTimeLineQry ||
-           --q'[,]'|| gFiltereTimeLine ||
-q'[, stats as    (select trunc(sample_time_utc,'<TRUNC>') tim, sum(case when (<FILTER>) then 0 else 1 end) sec
+    l_sql varchar2(32765);
+  BEGIN
+    read_item_parameters;
+
+    l_sql := get_base_query ||
+q'[,
+   stats as (select trunc(sample_time_utc,'<TRUNC>') tim, count(1) sec
                from stats_ranged
+              where not (<FILTER>)
               group by trunc(sample_time_utc,'<TRUNC>'))
-select TO_CHAR(t.tim,'YYYY/MM/DD HH24:MI:SS') sample_time,
+select /*+ qb_name(main_diag_remainder) */ TO_CHAR(t.tim,'YYYY/MM/DD HH24:MI:SS') sample_time,
        nvl(s.sec,0) sec
 from timeline t,
      stats s
 where t.tim = s.tim(+)
   and t.pnt between <STARTPOINT> and <ENDPOINT> - 1
   order by t.tim]';
-  BEGIN
-    read_item_parameters;
 
     preprocess_qry(l_sql);
 
@@ -407,9 +493,12 @@ where t.tim = s.tim(+)
 
   function get_event_summ_qry(p_filtered varchar2 default 'N') return varchar2
   is
-    l_sql varchar2(32765) :=
-      q'[with ]' || gTimeLineQry ||
-           --q'[,]'|| gFiltereTimeLine ||
+    l_sql varchar2(32765);
+  BEGIN
+
+    read_item_parameters;
+
+l_sql := get_base_query ||
 case when nvl(p_filtered,'N') = 'N' then
 q'[,
 stats as    (select nvl(wait_class,'CPU') wait_class, count(1) sec
@@ -418,11 +507,17 @@ stats as    (select nvl(wait_class,'CPU') wait_class, count(1) sec
               group by nvl(wait_class,'CPU'))]'
 else
 q'[,
-stats as    (select case when (<FILTER>) then nvl(wait_class,'CPU') else 'Remainder' end wait_class, count(1) sec
+stats as    (select nvl(wait_class,'CPU') wait_class, count(1) sec
                from stats_ranged
-              group by case when (<FILTER>) then nvl(wait_class,'CPU') else 'Remainder' end)]'
+              where (<FILTER>)
+              group by nvl(wait_class,'CPU')
+             union all
+             select 'Remainder' wait_class, count(1) sec
+               from stats_ranged
+              where not (<FILTER>))]'
 end ||
-q'[select wait_class||' '||round(100*sec/sum(sec)over(),2)||'%' wait_class, sec, wait_class wait_class1, 'Event class' ser,
+q'[
+select /*+ qb_name(event_summ) */ wait_class||' '||round(100*sec/sum(sec)over(),2)||'%' wait_class, sec, wait_class wait_class1, 'Event class' ser,
 case
   when wait_class='CPU' then '#00FF00'
   when wait_class='User I/O' then '#0000FF'
@@ -440,9 +535,6 @@ case
   when wait_class='Remainder' then '#8A8A8A'
 end colors
 from stats order by 2 desc]';
-  BEGIN
-
-    read_item_parameters;
 
     preprocess_qry(l_sql);
     --log(l_sql);
@@ -453,19 +545,20 @@ from stats order by 2 desc]';
 
   function get_top_events_qry return varchar2
   is
-    l_sql varchar2(32765) :=
-      q'[with ]' || gTimeLineQry ||
-           --q'[,]'|| gFiltereTimeLine ||
-q'[,nm as (select /*+ result_cache */ name, display_name||'('||name||')' display_name from v$event_name where name != display_name),
+    l_sql varchar2(32765);
+  BEGIN
+    read_item_parameters;
+
+    l_sql := get_base_query ||
+q'[,
+nm as (select /*+ result_cache */ name, display_name||'('||name||')' display_name from v$event_name where name != display_name),
 stats as    (select nvl(event,'CPU') event, count(1) sec
                from stats_ranged
               where (<FILTER>)
               group by nvl(event,'CPU'))
-select coalesce((select display_name from nm where name=event),event)||' ('||round(100*sec/tot,2)||'%)' event, sec
+select /*+ qb_name(top_events) */ coalesce((select display_name from nm where name=event),event)||' ('||round(100*sec/tot,2)||'%)' event, sec
 from (select event,sec,sum(sec)over() tot from stats s order by 2 desc) s
 where rownum<=10]';
-  BEGIN
-    read_item_parameters;
 
     preprocess_qry(l_sql);
 
@@ -474,18 +567,19 @@ where rownum<=10]';
 
   function get_top_modules_qry return varchar2
   is
-    l_sql varchar2(32765) :=
-      q'[with ]' || gTimeLineQry ||
-           --q'[,]'|| gFiltereTimeLine ||
-q'[,stats as    (select 'MODULE:' || nvl(module, 'N/A') || '; ACTION:' || nvl(ACTION, 'N/A') mod_act, count(1) sec
+    l_sql varchar2(32765);
+  BEGIN
+    read_item_parameters;
+
+    l_sql := get_base_query ||
+q'[
+,stats as    (select 'MODULE:' || nvl(module, 'N/A') || '; ACTION:' || nvl(ACTION, 'N/A') mod_act, count(1) sec
                from stats_ranged
               where (<FILTER>)
               group by 'MODULE:' || nvl(module, 'N/A') || '; ACTION:' || nvl(ACTION, 'N/A'))
-select mod_act || '(' || round(100 * sec / tot, 2) || '%)' mod_act, sec
+select /*+ qb_name(top_modules) */ mod_act || '(' || round(100 * sec / tot, 2) || '%)' mod_act, sec
 from (select mod_act, sec, sum(sec)over() tot from stats s order by 2 desc) s
 where rownum<=10]';
-  BEGIN
-    read_item_parameters;
 
     preprocess_qry(l_sql);
 
@@ -494,15 +588,19 @@ where rownum<=10]';
 
   function get_top_segments_qry return varchar2
   is
-    l_sql varchar2(32765) :=
-      q'[with ]' || gTimeLineQry ||
-           --q'[,]'|| gFiltereTimeLine ||
-q'[,stats as    (select dblink, CURRENT_OBJ#, count(1) sec
+    l_sql varchar2(32765);
+  BEGIN
+    read_item_parameters;
+
+    l_sql := get_base_query ||
+q'[,
+stats as    (select dblink, CURRENT_OBJ#, count(1) sec
                from stats_ranged
               where (<FILTER>)
                 and CURRENT_OBJ# > 0
               group by dblink, CURRENT_OBJ#)
-select 'Obj=' || CURRENT_OBJ# || ' ' || (select object_name
+select /*+ qb_name(top_segments) */
+                                   'Obj=' || CURRENT_OBJ# || ' ' || (select object_name
                               from OPAS_OT_DBG_OBJECTS   o,
                                    OPAS_OT_DBG_DATAPOINT p,
                                    OPAS_OT_DBG_MONITOR   m
@@ -512,8 +610,6 @@ select 'Obj=' || CURRENT_OBJ# || ' ' || (select object_name
                                and m.DBLINK = s.dblink)  || '(' || round(100 * sec / tot, 2) || '%)' segment, sec
 from (select dblink, CURRENT_OBJ#, sec, sum(sec)over() tot from stats s order by 3 desc) s
 where rownum<=10]';
-  BEGIN
-    read_item_parameters;
 
     preprocess_qry(l_sql);
 
@@ -521,24 +617,25 @@ where rownum<=10]';
   end;
   function get_top_sessions_qry return varchar2
   is
-    l_sql varchar2(32765) :=
-      q'[with ]' || gTimeLineQry ||
-           --q'[,]'|| gFiltereTimeLine ||
-q'[,stats as    (select 'SID: '||SESSION_ID||','||SESSION_SERIAL#||',@'||INSTANCE_NUMBER ||'USR/OS:'||nvl(USERNAME,to_char(USER_ID)) || nvl(OSUSER,'N/A') ||
+    l_sql varchar2(32765);
+  BEGIN
+    read_item_parameters;
+
+    l_sql := get_base_query ||
+q'[,
+stats as    (select 'SID: '||SESSION_ID||','||SESSION_SERIAL#||',@'||INSTANCE_NUMBER ||'; USR/OS:'||nvl(USERNAME,to_char(USER_ID)) || nvl(OSUSER,'N/A') ||
                         '; P/M/M/A:' || nvl(PROGRAM, 'N/A') || nvl(MACHINE, 'N/A') || nvl(module, 'N/A') || '/' || nvl(ACTION, 'N/A') ||
                         '; ECID/TERM:'|| nvl(ECID, 'N/A') || nvl(TERMINAL, 'N/A')
                         sess_id
                         , count(1) sec
                from stats_ranged
               where (<FILTER>)
-              group by 'SID: '||SESSION_ID||','||SESSION_SERIAL#||',@'||INSTANCE_NUMBER ||'USR/OS:'||nvl(USERNAME,to_char(USER_ID)) || nvl(OSUSER,'N/A') ||
+              group by 'SID: '||SESSION_ID||','||SESSION_SERIAL#||',@'||INSTANCE_NUMBER ||'; USR/OS:'||nvl(USERNAME,to_char(USER_ID)) || nvl(OSUSER,'N/A') ||
                         '; P/M/M/A:' || nvl(PROGRAM, 'N/A') || nvl(MACHINE, 'N/A') || nvl(module, 'N/A') || '/' || nvl(ACTION, 'N/A') ||
                         '; ECID/TERM:'|| nvl(ECID, 'N/A') || nvl(TERMINAL, 'N/A'))
-select sess_id || '(' || round(100 * sec / tot, 2) || '%)' sess_id, sec
+select /*+ qb_name(top_sessions) */ sess_id || '(' || round(100 * sec / tot, 2) || '%)' sess_id, sec
 from (select sess_id, sec, sum(sec)over() tot from stats s order by 2 desc) s
 where rownum<=10]';
-  BEGIN
-    read_item_parameters;
 
     preprocess_qry(l_sql);
 
@@ -546,18 +643,19 @@ where rownum<=10]';
   end;
   function get_top_by_sql_id_qry(p_col varchar2) return varchar2
   is
-    l_sql varchar2(32765) :=
-      q'[with ]' || gTimeLineQry ||
-           --q'[,]'|| gFiltereTimeLine ||
-q'[,stats as (select nvl(sql_id,'N/A') sql_id, ]' || p_col || q'[ sec
+    l_sql varchar2(32765);
+  BEGIN
+    read_item_parameters;
+
+    l_sql := get_base_query ||
+q'[,
+stats as (select nvl(sql_id,'N/A') sql_id, ]' || p_col || q'[ sec
                from stats_ranged
               where (<FILTER>)
               group by nvl(sql_id,'N/A'))
-select sql_id || ' (' || dbms_xplan.format_number(sec) || ') '||COREOBJ_SQL_SEARCH.get_shorten_sql_text(sql_id,60,0) sql_id, sec
+select /*+ qb_name(top_by_sql_id) */ sql_id || ' (' || dbms_xplan.format_number(sec) || ') '||COREOBJ_SQL_SEARCH.get_shorten_sql_text(sql_id,60,0) sql_id, sec, sql_id real_sql_id
 from (select sql_id, sec, sum(sec)over() tot from stats s where sec > 0 order by 2 desc) s
 where rownum<=10]';
-  BEGIN
-    read_item_parameters;
 
     preprocess_qry(l_sql);
 
@@ -566,9 +664,13 @@ where rownum<=10]';
 
   function get_sql_timeline_qry(p_top_n number) return varchar2
   is
-    l_sql varchar2(32765) :=
-      q'[with ]' || gTimeLineQry ||
-q'[,top_sqls as (select nvl(sql_id,'N/A') sql_id, count(1) sec
+    l_sql varchar2(32765);
+  BEGIN
+    read_item_parameters;
+
+    l_sql := get_base_query ||
+q'[,
+top_sqls as (select nvl(sql_id,'N/A') sql_id, count(1) sec
                from stats_ranged
               where (<FILTER>)
               group by nvl(sql_id,'N/A')
@@ -581,9 +683,8 @@ q'[,top_sqls as (select nvl(sql_id,'N/A') sql_id, count(1) sec
                from (select x.* from stats_ranged x where (<FILTER>)) y, top_N_sqls z
               where nvl(y.sql_id,'N/A') = z.sql_id
               group by trunc(sample_time_utc,'<TRUNC>'), y.sql_id, z.sql_id_ext)
-select time_mark, sql_id_ext|| ' ' ||COREOBJ_SQL_SEARCH.get_shorten_sql_text(sql_id,60,0) sql_id, 1 val from stats s]'; -- order by 1,2
-  BEGIN
-    read_item_parameters;
+select /*+ qb_name(timeline) */ time_mark, sql_id_ext|| ' ' ||COREOBJ_SQL_SEARCH.get_shorten_sql_text(sql_id,60,0) sql_id, 1 val, sql_id real_sql_id from stats s]';
+
     l_sql := replace(l_sql,'<TOPN>',nvl(p_top_n,20));
     preprocess_qry(l_sql);
 
@@ -592,11 +693,15 @@ select time_mark, sql_id_ext|| ' ' ||COREOBJ_SQL_SEARCH.get_shorten_sql_text(sql
 
   function get_sql_blocker_analyzer_qry return varchar2
   is
-    l_sql varchar2(32765) :=
-      q'[with ]' || gTimeLineQry || q'[
-select
+    l_sql varchar2(32765);
+  BEGIN
+    read_item_parameters;
+
+    l_sql := get_base_query || q'[
+select /*+ qb_name(blocker_analyzer) */
     session_id, session_serial#, INSTANCE_NUMBER inst_id, event, sql_id, module, action,
     case when blocking_session is not null then blocking_session||';'||blocking_session_serial#||';'||blocking_inst_id else null end blocking_session,
+    session_id||';'||session_serial#||';'||INSTANCE_NUMBER blocked_session,
     cnt, blocker_id, min_ts, max_ts, wait_class
 from (
 select
@@ -645,12 +750,90 @@ select
                           CURRENT_OBJ#, CURRENT_FILE#, CURRENT_BLOCK#, CURRENT_ROW#, wait_class) x1) x2
  where cnt / tot > 0.001) order by min_ts
 ]';
-  BEGIN
-    read_item_parameters;
-    preprocess_qry(l_sql);
 
+    preprocess_qry(l_sql);
+    --log(l_sql);
     RETURN l_sql;
   end;
+
+  function get_metric_qry(p_inst_id number, p_agg_item varchar2, p_metric_item varchar2) return varchar2
+  is
+    l_sql varchar2(32765);
+    l_metric varchar2(100);
+  BEGIN
+    set_param(g_INST_ID, p_inst_id);
+    read_item_parameters;
+
+    l_sql := get_base_query(p_include_metrics => 1) ||
+q'[,
+stats_all as (select /*+ result_cache */ trunc(END_TIME_UTC,'<TRUNC>') tim, <METRICT_AGG>(value) sec, METRIC_ID,  GROUP_ID, whole_agg
+               from metrics_ranged
+              where GROUP_ID=<GROUP_ID> and METRIC_ID=<METRIC_ID>
+              group by trunc(END_TIME_UTC,'<TRUNC>'), METRIC_ID,  GROUP_ID, whole_agg)
+select /*+ qb_name(metric_qry) */ TO_CHAR(t.tim,'YYYY/MM/DD HH24:MI:SS') end_time,
+       round(sec, 3) val
+from timeline t,
+     stats_all s
+where t.tim = s.tim(+)
+  and t.pnt between <STARTPOINT> and <ENDPOINT> - 1
+  order by t.tim]';
+--(select metric_name||' Group: '||group_name || ' ('||upper('<METRICT_AGG>')||'('||trim(dbms_xplan.format_number(s.whole_agg))||'))' from OPAS_DB_METRICS i where i.metric_id=s.metric_id and i.group_id=s.group_id) series_name
+    l_metric := get_param(p_metric_item);
+    if l_metric = 'N/A' then l_metric := null; end if;
+
+    l_sql := replace(replace(l_sql,'<GROUP_ID>',nvl(substr(l_metric,1,instr(l_metric,'~')-1),'1')),
+                                   '<METRIC_ID>',nvl(substr(l_metric,instr(l_metric,'~')+1),'1'));
+    l_sql := replace(l_sql,'<METRICT_AGG>',nvl(get_param(p_agg_item),'avg'));
+
+    preprocess_qry(l_sql);
+
+    --log(l_sql);
+    RETURN l_sql;
+  END get_metric_qry;
+
+  function get_metric_data_exists(p_inst_id number, p_agg_item varchar2, p_metric_item varchar2) return boolean
+  is
+    l_sql varchar2(32765);
+    l_metric varchar2(100);
+    l_res number;
+  BEGIN
+    set_param(g_INST_ID, p_inst_id);
+    read_item_parameters;
+
+    l_sql := get_base_query(p_include_metrics => 1) ||
+q'[
+select count(1) from dual where exists (select 1 from metrics_ranged where GROUP_ID=<GROUP_ID> and METRIC_ID=<METRIC_ID>)]';
+
+    l_metric := get_param(p_metric_item);
+    if l_metric = 'N/A' then l_metric := null; end if;
+
+    l_sql := replace(replace(l_sql,'<GROUP_ID>',nvl(substr(l_metric,1,instr(l_metric,'~')-1),'1')),
+                                   '<METRIC_ID>',nvl(substr(l_metric,instr(l_metric,'~')+1),'1'));
+    l_sql := replace(l_sql,'<METRICT_AGG>',nvl(get_param(p_agg_item),'avg'));
+
+    preprocess_qry(l_sql);
+
+    log(l_sql);
+    execute immediate l_sql into l_res using get_param(g_CUBE_ID), get_param(g_CUBE_ID), get_param(g_DBLINK), get_param(g_DBLINK), get_param(g_DBLINK);
+    return l_res = 1;
+  END get_metric_data_exists;
+/*
+metrics_ranged as
+            (select /+ use_nl(c)  c.*
+               from OPAS_OT_ASHACUBE_METRICS c, rng_ids, flt_timeline  ft
+              where c.asharange_id = rng_ids.asharange_id and c.END_TIME_UTC between ft.mi_tim and ft.ma_tim and DBLINK = :P3003_DBLINK)
+
+select TO_CHAR(end_time,'YYYY/MM/DD HH24:MI:SS') end_time,round(value, 3) val,
+      (select metric_name||' Group: '||group_name name
+         from asha_cube_metrics_dic i where i.metric_id=o.metric_id and group_id=:P3003_METRIC_GROUP) series_name
+  from asha_cube_metrics o
+ where sess_id = :P3003_SESS_ID and (case when :P3003_SYSM_STATUS = 'Y' then to_number(:P3003_SYSM_95PCT_ADJ) else 1e20 end > value)
+   and metric_id = :P3003_METRIC_ID
+   and group_id  = :P3003_METRIC_GROUP
+   and aggfnc    = :P3003_METRIC_AGG
+   and inst_id   = 1
+ order by end_time;
+*/
 END COREOBJ_ASHA_CUBE_REPORTS;
 /
 

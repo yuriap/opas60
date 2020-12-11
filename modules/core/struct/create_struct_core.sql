@@ -291,6 +291,12 @@ GROUP_ID    NUMBER,
 METRIC_ID   NUMBER,
 constraint  FK_METR2VERS foreign key (GROUP_ID, METRIC_ID) references OPAS_DB_METRICS(GROUP_ID, METRIC_ID));
 
+create table opas_db_statistics
+as
+select statistic#, display_name from v$statname where 1=2;
+alter table opas_db_statistics add DBLINK VARCHAR2(128 BYTE);
+                                                
+create index idx_opas_db_stats_dblink on opas_db_statistics(dblink);
 ---------------------------------------------------------------------------------------------
 -- file storage
 ---------------------------------------------------------------------------------------------
@@ -705,3 +711,14 @@ begin
   return null;
 end;
 /
+
+---------------------------------------------------------------------------------------------
+-- OPAS Home Page Briefs
+---------------------------------------------------------------------------------------------
+create table opas_homepage_briefs (
+br_id           number                                           generated always as identity primary key,
+name            varchar2(100)                           not null,
+qry_text        varchar2(512)                           not null,
+created         timestamp,
+ordr            number
+);

@@ -13,6 +13,7 @@ PACKAGE COREOBJ_ASHA_CUBE_REPORTS AS
 
   function get_event_summ_qry(p_filtered varchar2 default 'N') return varchar2;
   function get_main_diag_raw_data_qry(p_filtered varchar2 default 'Y') return varchar2;
+  function get_main_diag_stats_qry return varchar2;
 
   function get_top_events_qry return varchar2;
   function get_top_modules_qry return varchar2;
@@ -23,6 +24,9 @@ PACKAGE COREOBJ_ASHA_CUBE_REPORTS AS
 
   function get_top_by_sql_id_qry(p_col varchar2) return varchar2;
   function get_sql_blocker_analyzer_qry return varchar2;
+
+  function get_metric_qry(p_inst_id number, p_agg_item varchar2, p_metric_item varchar2) return varchar2;
+  function get_metric_data_exists(p_inst_id number, p_agg_item varchar2, p_metric_item varchar2) return boolean;
 
   function data_exists(p_wait_class varchar2) return boolean;
   function get_number_of_time_points(p_obj_id opas_objects.obj_id%type) return number;

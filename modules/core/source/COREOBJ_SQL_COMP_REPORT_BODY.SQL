@@ -552,7 +552,7 @@ package body COREOBJ_SQL_COMP_REPORT is
 
         end loop;
       end loop;
-      l_text_rowcnt := l_text_rowcnt + i - l_num_rows - 3;
+      l_text_rowcnt := l_text_rowcnt + i - l_num_rows + 2;
     else
       for i in 1..l_text_rowcnt loop
         p1.extend;

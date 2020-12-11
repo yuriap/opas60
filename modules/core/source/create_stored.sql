@@ -20,6 +20,9 @@ show errors
 @@COREMOD_FILE_UTILS_SPEC.SQL
 show errors
 
+@@COREMOD_HOME_PAGE_SPEC.SQL
+show errors
+
 @@COREMOD_LOG_SPEC.SQL
 show errors
 
@@ -117,6 +120,9 @@ show errors
 show errors
 
 @@COREMOD_FILE_UTILS_BODY.SQL
+show errors
+
+@@COREMOD_HOME_PAGE_BODY.SQL
 show errors
 
 @@COREMOD_LOG_BODY.SQL

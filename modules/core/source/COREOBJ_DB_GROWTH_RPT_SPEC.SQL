@@ -46,6 +46,8 @@ package COREOBJ_DB_GROWTH_RPT is
                                       p_avg_delta    out number,
                                       p_out_of_space out timestamp);
 
+  function home_page_brief(p_dbg_id opas_ot_dbg_monitor.dbg_id%type) return varchar2;
+
 end COREOBJ_DB_GROWTH_RPT;
 /
 

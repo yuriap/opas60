@@ -12,6 +12,10 @@ package coreobj_sql_tags is
   procedure remove(p_tag_name opas_ot_sql_tags.tag_name%type,
                    p_tag_type opas_ot_sql_sql2tags.tag_type%type default '%');
 
+  procedure add_tag_to_sqls(p_sql_id    opas_ot_sql_descriptions.sql_id%type,
+                            p_tag_name opas_ot_sql_tags.tag_name%type,
+                            p_tag_type opas_ot_sql_sql2tags.tag_type%type default 'A');
+
   procedure tag_sql(p_tag_names varchar2,
                     p_sql_id    opas_ot_sql_descriptions.sql_id%type);
 
