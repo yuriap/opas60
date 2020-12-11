@@ -813,7 +813,7 @@ select count(1) from dual where exists (select 1 from metrics_ranged where GROUP
 
     preprocess_qry(l_sql);
 
-    log(l_sql);
+    --log(l_sql);
     execute immediate l_sql into l_res using get_param(g_CUBE_ID), get_param(g_CUBE_ID), get_param(g_DBLINK), get_param(g_DBLINK), get_param(g_DBLINK);
     return l_res = 1;
   END get_metric_data_exists;
