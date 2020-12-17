@@ -493,7 +493,8 @@ create table opas_task_queue (
   sid                 number,
   serial#             number,
   inst_id             number,
-  job_name            varchar2(128)
+  job_name            varchar2(128),
+  task_priority       varchar2(10)
 );
 
 create index idx_opas_task_exec_tsk on opas_task_queue(taskname);

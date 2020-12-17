@@ -1465,5 +1465,6 @@ create global temporary table opas_ot_tmp_sqlcatch_sqls (
  sql_id                            varchar2(13 byte), 
  actual_execs                      number,
  actual_eo_fetch                   number,
- sql_text                          varchar2(4000)
+ sql_text                          varchar2(4000),
+ last_active                       date
 ) on commit preserve rows;

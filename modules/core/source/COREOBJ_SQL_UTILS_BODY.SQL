@@ -251,6 +251,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     l_sql clob;
     l_file_id opas_files.file_id%type;
     l_rows number := 1;
+    l_sql_approx varchar2(4000);
   begin
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQL_TEXT);
 
@@ -277,15 +278,47 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
           when no_data_found then l_sql := '<NO_DATA_FOUND>';
         end;
       end if;
-      if l_sql != '<NO_DATA_FOUND>' then
+coremod_tasks.log('p_data.sql_id: '||p_data.sql_id);
+      if l_sql = '<NO_DATA_FOUND>' or
+         upper(l_sql) like 'ALTER TABLE%' and length(l_sql)<40
+      then
+coremod_tasks.log('l_sql: '||l_sql);
+coremod_tasks.log('l_sql: '||p_data.SQL_DATA_POINT_ID);
+        for i in (select /*+ leading(d r o s) use_nl(r) use_nl(s) use_nl(o) */ SQL_TEXT
+                    from OPAS_OT_SQLCATCH_SQLS s,
+                         OPAS_OT_SQL_DATA d,
+                         OPAS_OT_SQL_DATA_POINT_REF r,
+                         OPAS_OBJECTS o
+                   where s.sql_id = d.sql_id
+                     and s.OBJ_ID = o.OBJ_PRNT
+                     and d.SQL_DATA_POINT_ID = r.SQL_DATA_POINT_ID
+                     and d.SQL_DATA_POINT_ID = p_data.SQL_DATA_POINT_ID
+                     and o.OBJ_ID = r.OBJ_ID)
+        loop
+          l_sql_approx := i.SQL_TEXT;
+          l_sql := '<NO_DATA_FOUND>';
+coremod_tasks.log('l_sql_approx: '||l_sql_approx);
+        end loop;
+      end if;
+
+      if l_sql != '<NO_DATA_FOUND>' or
+         l_sql = '<NO_DATA_FOUND>' and l_sql_approx is not null --or upper(l_sql) like 'ALTER TABLE%' and length(l_sql)<40 and l_sql_approx is not null
+      then
         l_file_id := COREMOD_FILE_UTILS.create_file(P_MODNAME => COREMOD_API.gMODNAME,
                                                     P_FILE_TYPE => 'SQL Text',
                                                     P_FILE_NAME => i.sql_id,
                                                     P_MIMETYPE  => COREMOD_FILE_UTILS.mtTEXT,
                                                     P_OWNER     => i.created_by);
-        COREMOD_FILE_UTILS.store_content(l_file_id,l_sql);
+        if l_sql != '<NO_DATA_FOUND>' then
+          COREMOD_FILE_UTILS.store_content(l_file_id,l_sql);
+        else
+          COREMOD_FILE_UTILS.store_content(l_file_id,l_sql_approx);
+        end if;
+coremod_tasks.log('l_file_id: '||l_file_id);
+
         update opas_ot_sql_descriptions set
-          sql_text            = l_file_id,
+          sql_text            = case when l_sql_approx is null then l_file_id else null end,
+          SQL_TEXT_APPROX     = case when l_sql_approx is not null then l_file_id else null end,
           first_discovered    = nvl(first_discovered,systimestamp),
           FIRST_DISCOVERED_AT = nvl(p_data.dblink,FIRST_DISCOVERED_AT)
         where sql_id = p_data.sql_id;

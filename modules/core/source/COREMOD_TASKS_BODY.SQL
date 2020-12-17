@@ -106,13 +106,13 @@ package body coremod_tasks as
     when not matched then insert (tq_id,par_name,list_par) values (s.id, s.nm, s.val);
   end;
 
-  procedure queue_task(p_tq_id opas_task_queue.tq_id%type, p_start_time date default null)
+  procedure queue_task(p_tq_id opas_task_queue.tq_id%type, p_start_time date default null, p_priority varchar2 default null)
   is
     l_task_name opas_task_queue.taskname%type;
     l_job_name  opas_task_queue.job_name%type;
   begin
     if p_start_time is null then
-      update opas_task_queue set status=gtqQUEUED, queued=systimestamp where tq_id = p_tq_id and status=gtqNEW returning taskname into l_task_name;
+      update opas_task_queue set status=gtqQUEUED, queued=systimestamp, task_priority = p_priority where tq_id = p_tq_id and status=gtqNEW returning taskname into l_task_name;
       if sql%rowcount<1 then
         raise_application_error(-20000,'Unable to change task status ID, Status: '||p_tq_id||', '||gtqQUEUED);
       end if;
@@ -121,7 +121,7 @@ package body coremod_tasks as
 
       l_job_name := gJOBNMPREF||'_'||upper(l_task_name)||'_'||DBMS_RANDOM.STRING('X',6);
 
-      update opas_task_queue set status=gtqSCHEDULED, queued=systimestamp, job_name = l_job_name where tq_id = p_tq_id and status=gtqNEW;
+      update opas_task_queue set status=gtqSCHEDULED, queued=systimestamp, job_name = l_job_name, task_priority = p_priority where tq_id = p_tq_id and status=gtqNEW;
       if sql%rowcount<1 then
         raise_application_error(-20000,'Unable to change task status ID, Status: '||p_tq_id||', '||gtqQUEUED);
       end if;
@@ -215,12 +215,10 @@ package body coremod_tasks as
     for i in (select priority_levels.lvl task_priority, count(j.job_name) cnt
                 from (select decode(level,1,tpHIGH,2,tpNORM,3,tpLOW,4,tpINTERNAL) lvl from dual connect by level <=4) priority_levels,
                      USER_SCHEDULER_RUNNING_JOBS j,
-                     opas_task_queue tq,
-                     opas_task t
-               where priority_levels.lvl = t.task_priority(+)
-                 and j.job_name(+) like gJOBNMPREF||'%'
-                 and j.job_name(+) = tq.job_name
-                 and tq.taskname(+) = t.taskname
+                     (select tq.job_name, nvl(tq.task_priority,t.task_priority) task_priority from opas_task_queue tq, opas_task t where tq.taskname = t.taskname) ttq
+               where priority_levels.lvl = ttq.task_priority
+                 and j.job_name(+) like 'OPASTASK%'
+                 and j.job_name(+) = ttq.job_name
                group by priority_levels.lvl)
     loop
       if i.task_priority = tpINTERNAL then
@@ -237,7 +235,7 @@ package body coremod_tasks as
         from opas_task_queue tq, opas_task t
        where status=gtqQUEUED
          and tq.taskname = t.taskname
-         and t.task_priority = i.task_priority
+         and nvl(tq.task_priority, t.task_priority) = i.task_priority
          for update skip locked order by queued;
 
       for i in 1..least(l_freeslots,l_tasks.count) loop

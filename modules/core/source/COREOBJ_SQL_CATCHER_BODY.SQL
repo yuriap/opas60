@@ -197,8 +197,8 @@ package body COREOBJ_SQL_CATCHER is
   procedure task_catcher     (p_obj_id            opas_objects.obj_id%type)
   is
     l_sql_load varchar2(32765) := q'[
-      insert into opas_ot_tmp_sqlcatch_sqls (sql_id, sql_text, ACTUAL_EXECS, actual_eo_fetch)
-      select sql_id, substr(sql_text,1,4000), sum(EXECUTIONS), sum(END_OF_FETCH_COUNT)
+      insert into opas_ot_tmp_sqlcatch_sqls (sql_id, sql_text, ACTUAL_EXECS, actual_eo_fetch, last_active)
+      select sql_id, substr(sql_text,1,4000), sum(EXECUTIONS), sum(END_OF_FETCH_COUNT), max(LAST_ACTIVE_TIME)
         from gv$sql<DBLINK>
        where sql_id in (<FILTER>)
          and rownum <= :p_row_limit
@@ -225,7 +225,7 @@ package body COREOBJ_SQL_CATCHER is
       delete from opas_ot_tmp_sqlcatch_sqls;
       l_sql := replace(replace(l_sql_load,'<FILTER>',l_ctchr.SEARCH_CONDITION),'<DBLINK>',COREMOD_API.get_dblink_for_query(l_ctchr.srcdb));
       execute immediate l_sql using l_ctchr.sql_num_limit;
-
+--coremod_tasks.log('load_sqls l_sql: '||l_sql);
       commit;
       if l_ctchr.check_interval > 60 and COREMOD_API.get_dblink_for_query(l_ctchr.srcdb) is not null then
         execute immediate 'ALTER SESSION CLOSE DATABASE LINK '||l_ctchr.srcdb;
@@ -259,6 +259,7 @@ package body COREOBJ_SQL_CATCHER is
         when matched then update set
           t.actual_execs = case when nvl(gp(parCatchAfter),pvFirstExec) = pvFirstExec then s.ACTUAL_EXECS
                                 when gp(parCatchAfter) = pvNextExec then s.ACTUAL_EXECS + s.actual_eo_fetch
+                                when upper(s.sql_text) like 'ALTER TABLE%' and s.last_active<sysdate - 10/24/60/60 then s.ACTUAL_EXECS + 1
                                 else s.ACTUAL_EXECS end
           where t.status in (ssqltNew)
         when not matched then
@@ -266,6 +267,7 @@ package body COREOBJ_SQL_CATCHER is
         VALUES (p_obj_id, s.sql_id, ssqltNew,
                 case when nvl(gp(parCatchAfter),pvFirstExec) = pvFirstExec then l_ctchr.sql_exec_def
                      when gp(parCatchAfter) = pvNextExec then s.ACTUAL_EXECS + 1
+                     when upper(s.sql_text) like 'ALTER TABLE%' and s.last_active<sysdate - 10/24/60/60 then s.ACTUAL_EXECS + 1
                      else l_ctchr.sql_exec_def end,
                 s.sql_text, s.ACTUAL_EXECS, systimestamp);
         l_cnt1 := l_cnt1 + sql%rowcount;
@@ -292,7 +294,10 @@ package body COREOBJ_SQL_CATCHER is
         end if;
 
         if l_ctchr.status in (stActive) then
-          for i in (select obj_id,sql_id from opas_ot_sqlcatch_sqls where status=ssqltReady and obj_id = p_obj_id)
+          for i in (select obj_id,sql_id, sql_text from opas_ot_sqlcatch_sqls
+                     where (status=ssqltReady or status=ssqltNew and upper(sql_text) like 'ALTER TABLE%'
+                           )
+                       and obj_id = p_obj_id)
           loop
             coreobj_sql.add(p_obj_id => l_obj_id,
                             p_obj_prnt => p_obj_id,
@@ -301,13 +306,19 @@ package body COREOBJ_SQL_CATCHER is
                             p_descr => 'SQL Catcher',
                             p_sql_id => i.sql_id,
                             p_db_link => l_ctchr.srcdb,
-                            p_prnt_dp => null);
+                            p_prnt_dp => null,
+                            p_priority => case when upper(i.sql_text) like 'ALTER TABLE%' then coremod_tasks.tpHIGH else null end);
 
             update opas_ot_sqlcatch_sqls set status=ssqltCollected where obj_id=i.obj_id and sql_id=i.sql_id;
             commit;
             dbms_lock.sleep(1);
           end loop;
         end if;
+        --load sqls
+        --for i in () loop
+        --load
+        --  null;
+        --end loop;
       end if;
 
       coremod_api.end_longops_section(p_sofar => round((dbms_utility.get_time - l_start_tim)/100),

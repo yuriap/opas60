@@ -4,7 +4,8 @@ CREATE OR REPLACE
 PACKAGE BODY COREOBJ_SQL AS
 
   procedure queue_discover_sql(p_sql_data_point    opas_ot_sql_data%rowtype,
-                               p_notifyme         boolean default false)
+                               p_notifyme         boolean default false,
+                               p_priority         varchar2 default null)
   is
     L_TASKNAME   OPAS_TASK.TASKNAME%type := case when p_sql_data_point.prnt_data_point_id is null then 'OPAS_SQL_DISCOVER' else 'OPAS_SQL_DISCOVER_REC' end;
     l_tq_id      OPAS_TASK_QUEUE.tq_id%type;
@@ -44,7 +45,7 @@ PACKAGE BODY COREOBJ_SQL AS
         COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => COREMOD_TASKS.parNotifyMe, p_num_par => l_nt_id);
       end if;
 
-      COREMOD_TASKS.queue_task ( p_tq_id => l_tq_id ) ;
+      COREMOD_TASKS.queue_task ( p_tq_id => l_tq_id, p_priority => queue_discover_sql.p_priority ) ;
 
       update opas_ot_sql_data set tq_id = l_tq_id, gathering_status = sdoInQueue where sql_data_point_id = p_sql_data_point.sql_data_point_id;
 
@@ -87,7 +88,8 @@ PACKAGE BODY COREOBJ_SQL AS
                    p_sql_id           opas_ot_sql_descriptions.sql_id%type,
                    p_db_link          opas_db_links.db_link_name%type,
                    p_prnt_dp          opas_ot_sql_data.prnt_data_point_id%type default null,
-                   p_notifyme         boolean default false)
+                   p_notifyme         boolean default false,
+                   p_priority         varchar2 default null)
   AS
     l_sql_exists number;
     l_sql_data_point    opas_ot_sql_data%rowtype;
@@ -114,7 +116,7 @@ PACKAGE BODY COREOBJ_SQL AS
              ( obj_id,  sql_data_point_id)
       VALUES ( P_OBJ_ID, l_sql_data_point.sql_data_point_id);
 
-    queue_discover_sql(l_sql_data_point, p_notifyme);
+    queue_discover_sql(l_sql_data_point, p_notifyme, p_priority);
   END add;
 
   procedure remove  (p_obj_id    opas_objects.obj_id%type,
