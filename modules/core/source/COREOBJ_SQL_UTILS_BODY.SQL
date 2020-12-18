@@ -278,12 +278,12 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
           when no_data_found then l_sql := '<NO_DATA_FOUND>';
         end;
       end if;
-coremod_tasks.log('p_data.sql_id: '||p_data.sql_id);
-      if l_sql = '<NO_DATA_FOUND>' or
+--coremod_tasks.log('p_data.sql_id: '||p_data.sql_id);
+      if l_sql = '<NO_DATA_FOUND>' or  l_sql is null or
          upper(l_sql) like 'ALTER TABLE%' and length(l_sql)<40
       then
-coremod_tasks.log('l_sql: '||l_sql);
-coremod_tasks.log('l_sql: '||p_data.SQL_DATA_POINT_ID);
+--coremod_tasks.log('l_sql: '||l_sql);
+--coremod_tasks.log('l_sql: '||p_data.SQL_DATA_POINT_ID);
         for i in (select /*+ leading(d r o s) use_nl(r) use_nl(s) use_nl(o) */ SQL_TEXT
                     from OPAS_OT_SQLCATCH_SQLS s,
                          OPAS_OT_SQL_DATA d,
@@ -297,7 +297,7 @@ coremod_tasks.log('l_sql: '||p_data.SQL_DATA_POINT_ID);
         loop
           l_sql_approx := i.SQL_TEXT;
           l_sql := '<NO_DATA_FOUND>';
-coremod_tasks.log('l_sql_approx: '||l_sql_approx);
+--coremod_tasks.log('l_sql_approx: '||l_sql_approx);
         end loop;
       end if;
 
@@ -314,7 +314,7 @@ coremod_tasks.log('l_sql_approx: '||l_sql_approx);
         else
           COREMOD_FILE_UTILS.store_content(l_file_id,l_sql_approx);
         end if;
-coremod_tasks.log('l_file_id: '||l_file_id);
+--coremod_tasks.log('l_file_id: '||l_file_id);
 
         update opas_ot_sql_descriptions set
           sql_text            = case when l_sql_approx is null then l_file_id else null end,

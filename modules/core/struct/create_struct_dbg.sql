@@ -435,7 +435,7 @@ select x.*,
         ) x ) y where delta <> 0;
 */
 
-
+----
 CREATE OR REPLACE force VIEW V$OPAS_DBG_SELECTED_OBJECTS_V3 AS
 select /*+ leading(p o dp s) use_hash(o) use_hash(s) use_hash(dp) swap_join_inputs(dp) */ 
        dp.dbgdp_id,dp.snapped,
@@ -482,7 +482,7 @@ select /*+ leading(p o dp s) use_hash(o) use_hash(s) use_hash(dp) swap_join_inpu
            )
          ); 
 
-
+--!
 CREATE OR REPLACE force VIEW V$OPAS_DBG_SELECTED_OBJECTS_V3P AS
 select /*+ leading(dp o s) use_hash(o) use_hash(s) */
        dp.dbgdp_id,dp.snapped,
@@ -535,7 +535,7 @@ select /*+ leading(dp o s) use_hash(o) use_hash(s) */
    and dp.dbgdp_id = s.dbgdp_id
    and dp.dbg_id = o.dbg_id;
 
-
+--!
 CREATE OR REPLACE force VIEW V$OPAS_DBG_SELECTED_OBJECTS_V3PG1 AS
 select /*+ leading(dp o s) use_hash(o) use_hash(s) */
        dp.dbgdp_id,dp.snapped,
@@ -587,7 +587,7 @@ select /*+ leading(dp o s) use_hash(o) use_hash(s) */
    and dp.dbgdp_id = s.dbgdp_id
    and dp.dbg_id = o.dbg_id
 ;
-
+--!
 CREATE OR REPLACE force VIEW V$OPAS_DBG_SELECTED_OBJECTS_V3PG2 AS
 select /*+ leading(dp o s) use_hash(o) use_hash(s) */
        dp.dbgdp_id,dp.snapped,
@@ -639,7 +639,7 @@ select /*+ leading(dp o s) use_hash(o) use_hash(s) */
    and dp.dbgdp_id = s.dbgdp_id
    and dp.dbg_id = o.dbg_id;
 
-
+----
 CREATE OR REPLACE force VIEW V$OPAS_DBG_SELECTED_OBJECTS_V3PG AS
 select /*+ leading(dp o s) use_hash(o) use_hash(s) */ 
        dp.dbgdp_id,dp.snapped,
@@ -689,18 +689,18 @@ select /*+ leading(dp o s) use_hash(o) use_hash(s) */
  where s.dbgobj_id = o.dbgobj_id
    and dp.dbgdp_id = s.dbgdp_id
    and dp.dbg_id = o.dbg_id;
-   
+--!  
 create or replace force view v$opas_dbg_selected_objects_delta as
-select filtered_total, 
-       COREMOD_REPORT_UTILS.to_hr_num(filtered_total) filtered_total_h,
+select filtered_total,
+       COREMOD_REPORT_UTILS.to_hr_sz(filtered_total) filtered_total_h,
        filtered_delta,
-       COREMOD_REPORT_UTILS.to_hr_num(filtered_delta) filtered_delta_h
+       COREMOD_REPORT_UTILS.to_hr_sz(filtered_delta) filtered_delta_h
 from (
-select   
+select
      sum(case when dbgdp_id = dbgso_end_snap then size_bytes else 0 end) filtered_total,
      sum(size_bytes) filtered_delta
   from (select dbgdp_id, dbgso_start_snap, dbgso_end_snap,
-               case when dbgdp_id = dbgso_start_snap then -1 else 1 end * size_bytes size_bytes
+                 case when dbgdp_id = dbgso_start_snap then -1 else 1 end * size_bytes size_bytes
           from (select dbgdp_id, snapped, sum(size_bytes) size_bytes, dbgso_start_snap, dbgso_end_snap
                   from v$opas_dbg_selected_objects_v3p dat1,
                        opas_ot_dbg_report_pars          pars
@@ -708,22 +708,23 @@ select
                  group by dbgdp_id, snapped, dbgso_start_snap, dbgso_end_snap)))
  where filtered_delta is not null;
 
+--!
 create or replace force view v$opas_dbg_total_delta as
 select tot_occupied,
-       COREMOD_REPORT_UTILS.to_hr_num(tot_occupied) tot_occupied_h,
+       COREMOD_REPORT_UTILS.to_hr_sz(tot_occupied) tot_occupied_h,
        tot_occupied_sch,
-       COREMOD_REPORT_UTILS.to_hr_num(tot_occupied_sch) tot_occupied_sch_h,
+       COREMOD_REPORT_UTILS.to_hr_sz(tot_occupied_sch) tot_occupied_sch_h,
        tot_occupied_delta,
-       COREMOD_REPORT_UTILS.to_hr_num(tot_occupied_delta) tot_occupied_delta_h,
+       COREMOD_REPORT_UTILS.to_hr_sz(tot_occupied_delta) tot_occupied_delta_h,
        tot_occupied_sch_delta,
-       COREMOD_REPORT_UTILS.to_hr_num(tot_occupied_sch_delta) tot_occupied_sch_delta_h       
+       COREMOD_REPORT_UTILS.to_hr_sz(tot_occupied_sch_delta) tot_occupied_sch_delta_h
   from (select tot_occupied,
                tot_occupied_sch,
-               case when dbgso_start_snap is not null 
+               case when dbgso_start_snap is not null
                  then tot_occupied - lag(tot_occupied) over(order by dbgdp_id)
                  else tot_occupied
                  end tot_occupied_delta,
-               case when dbgso_start_snap is not null 
+               case when dbgso_start_snap is not null
                  then tot_occupied_sch - lag(tot_occupied_sch) over(order by dbgdp_id)
                  else tot_occupied_sch
                  end tot_occupied_sch_delta
@@ -733,7 +734,7 @@ select tot_occupied,
                  where dbgdp_id in (dbgso_start_snap, dbgso_end_snap) and pars.apex_sess = V('SESSION')
                  group by dbgdp_id, dbgso_start_snap, dbgso_end_snap))
  where tot_occupied_delta is not null;
-
+--!
 create or replace force view v$opas_dbg_sel_objects_det_delta as
 with
   pars as (select * from opas_ot_dbg_report_pars pars where apex_sess = V('SESSION')),
@@ -741,11 +742,11 @@ with
   dat2 as (select /*+ materialize */ d2.* from v$opas_dbg_selected_objects_v3pg2 d2)
 select
   parent_table, sub_object,
-  seg_delta,    COREMOD_REPORT_UTILS.to_hr_num(seg_delta) seg_delta_h, 
-  sum(seg_delta) over () tot_seg_delta, COREMOD_REPORT_UTILS.to_hr_num(sum(seg_delta) over ()) tot_seg_delta_h,
-  seg_total,    COREMOD_REPORT_UTILS.to_hr_num(seg_total) seg_total_h,
-  parent_delta, COREMOD_REPORT_UTILS.to_hr_num(parent_delta) parent_delta_h,
-  parent_total, COREMOD_REPORT_UTILS.to_hr_num(parent_total) parent_total_h,
+  seg_delta,    COREMOD_REPORT_UTILS.to_hr_sz(seg_delta) seg_delta_h,
+  sum(seg_delta) over () tot_seg_delta, COREMOD_REPORT_UTILS.to_hr_sz(sum(seg_delta) over ()) tot_seg_delta_h,
+  seg_total,    COREMOD_REPORT_UTILS.to_hr_sz(seg_total) seg_total_h,
+  parent_delta, COREMOD_REPORT_UTILS.to_hr_sz(parent_delta) parent_delta_h,
+  parent_total, COREMOD_REPORT_UTILS.to_hr_sz(parent_total) parent_total_h,
   DENSE_RANK() OVER (order by parent_delta desc, parent_table) rn1,
   row_number() OVER (partition by parent_table order by seg_delta desc) rn2
 from (
@@ -775,10 +776,9 @@ select *
                    decode(dat1.subobject_name,dat2.subobject_name,1,0)=1
                   )
            )
-) where seg_delta > 0)
-;
+) where seg_delta > 0);
 
-
+--!
 create or replace force view v$opas_dbg_sel_objects_det_delta_n as
 with
   pars as (select * from opas_ot_dbg_report_pars pars where apex_sess = V('SESSION')),
@@ -786,11 +786,11 @@ with
   dat2 as (select /*+ materialize */ d2.* from v$opas_dbg_selected_objects_v3pg2 d2)
 select
   parent_table, sub_object,
-  seg_delta,    COREMOD_REPORT_UTILS.to_hr_num(seg_delta) seg_delta_h,
-  sum(seg_delta) over () tot_seg_delta, COREMOD_REPORT_UTILS.to_hr_num(sum(seg_delta) over ()) tot_seg_delta_h,
-  seg_total,    COREMOD_REPORT_UTILS.to_hr_num(seg_total) seg_total_h,
-  parent_delta, COREMOD_REPORT_UTILS.to_hr_num(parent_delta) parent_delta_h,
-  parent_total, COREMOD_REPORT_UTILS.to_hr_num(parent_total) parent_total_h,
+  seg_delta,    COREMOD_REPORT_UTILS.to_hr_sz(seg_delta) seg_delta_h,
+  sum(seg_delta) over () tot_seg_delta, COREMOD_REPORT_UTILS.to_hr_sz(sum(seg_delta) over ()) tot_seg_delta_h,
+  seg_total,    COREMOD_REPORT_UTILS.to_hr_sz(seg_total) seg_total_h,
+  parent_delta, COREMOD_REPORT_UTILS.to_hr_sz(parent_delta) parent_delta_h,
+  parent_total, COREMOD_REPORT_UTILS.to_hr_sz(parent_total) parent_total_h,
   --DENSE_RANK() OVER (order by parent_delta desc, parent_table) rn1,
   row_number() OVER (order by seg_delta ) rn1
 from (
@@ -820,6 +820,5 @@ select *
                    decode(dat1.subobject_name,dat2.subobject_name,1,0)=1
                   )
            )
-) where seg_delta < 0 )
-;
+) where seg_delta < 0 );
 

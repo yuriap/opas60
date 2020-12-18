@@ -12,6 +12,7 @@ PACKAGE COREMOD_REPORT_UTILS AS
   type t_available_sections is table of number index by varchar2(100);
 
   function to_hr_num (p_number number) return varchar2;
+  function to_hr_sz  (p_number number) return varchar2;
 
   function tptformat( p_num in number,
                       p_stype in varchar2 default 'STAT',
