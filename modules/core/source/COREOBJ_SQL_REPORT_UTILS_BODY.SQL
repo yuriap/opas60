@@ -1205,10 +1205,11 @@ order by s.snap_id, topn]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt
   plan_hash_value PLAN_HASH, FULL_PLAN_HASH_VALUE FULL_PLAN__HASH, PLAN_LINE_ID ID, PLAN_OPERATION ||' '|| PLAN_OPTIONS "Row source", EVENT, SAMPLES*10 "Time",
   round(100 * SAMPLES / sum(SAMPLES) over(partition by plan_hash_value), 2) "Time, %",
   round(100 * sum(SAMPLES) over(partition by PLAN_LINE_ID, plan_hash_value) / sum(SAMPLES) over(partition by plan_hash_value), 2) "Time by ID, %",
-  obj "Object", tbs "Tablespace"
+  obj "Object", tbs "Tablespace", PGA_ALLOCATED "Max PGA", TEMP_SPACE_ALLOCATED "Max Temp"
 from
 (select sql_plan_hash_value plan_hash_value, SQL_FULL_PLAN_HASH_VALUE FULL_PLAN_HASH_VALUE, SQL_PLAN_LINE_ID PLAN_LINE_ID,
-        SQL_PLAN_OPERATION PLAN_OPERATION, SQL_PLAN_OPTIONS PLAN_OPTIONS, EVENT, sum(SAMPLES) SAMPLES, obj, tbs
+        SQL_PLAN_OPERATION PLAN_OPERATION, SQL_PLAN_OPTIONS PLAN_OPTIONS, EVENT, sum(SAMPLES) SAMPLES, obj, tbs,
+        max(PGA_ALLOCATED) PGA_ALLOCATED, max(TEMP_SPACE_ALLOCATED) TEMP_SPACE_ALLOCATED
 from OPAS_OT_SQL_AWR_ASH_PLST s,
      OPAS_DB_LINK_AWRSNAPS sn,
      OPAS_OT_SQL_DATA dp
@@ -1233,11 +1234,12 @@ order by plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data_poin
   plan_hash_value PLAN_HASH, FULL_PLAN_HASH_VALUE FULL_PLAN__HASH, PLAN_LINE_ID ID, PLAN_OPERATION ||' '|| PLAN_OPTIONS "Row source", EVENT, SAMPLES*10 "Time",
   round(100 * SAMPLES / sum(SAMPLES) over(partition by plan_hash_value), 2) "Time, %",
   round(100 * sum(SAMPLES) over(partition by PLAN_LINE_ID, plan_hash_value) / sum(SAMPLES) over(partition by plan_hash_value), 2) "Time by ID, %",
-  obj "Object", tbs "Tablespace"
+  obj "Object", tbs "Tablespace", PGA_ALLOCATED "Max PGA", TEMP_SPACE_ALLOCATED "Max Temp"
 from
 (select s.snap_id snap, to_char(sn.end_interval_time,'<defDTFullFmt>') end_interval_time,
         sql_plan_hash_value plan_hash_value, SQL_FULL_PLAN_HASH_VALUE FULL_PLAN_HASH_VALUE, SQL_PLAN_LINE_ID PLAN_LINE_ID,
-        SQL_PLAN_OPERATION PLAN_OPERATION, SQL_PLAN_OPTIONS PLAN_OPTIONS, EVENT, sum(SAMPLES) SAMPLES, obj, tbs
+        SQL_PLAN_OPERATION PLAN_OPERATION, SQL_PLAN_OPTIONS PLAN_OPTIONS, EVENT, sum(SAMPLES) SAMPLES, obj, tbs,
+        max(PGA_ALLOCATED) PGA_ALLOCATED, max(TEMP_SPACE_ALLOCATED) TEMP_SPACE_ALLOCATED
 from OPAS_OT_SQL_AWR_ASH_PLST s,
      OPAS_DB_LINK_AWRSNAPS sn,
      OPAS_OT_SQL_DATA dp

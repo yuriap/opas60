@@ -1334,7 +1334,7 @@ CREATE GLOBAL TEMPORARY TABLE OPAS_OT_TMP_AWR_ASH_OBJS
    (OBJECT_ID NUMBER, 
 	SUBPROGRAM_ID NUMBER, 
 	OWNER VARCHAR2(128 BYTE), 
-	OBJECT_TYPE VARCHAR2(13 BYTE), 
+	OBJECT_TYPE VARCHAR2(128 BYTE), 
 	OBJECT_NAME VARCHAR2(128 BYTE), 
 	PROCEDURE_NAME VARCHAR2(128 BYTE)
    ) ON COMMIT DELETE ROWS ;
@@ -1399,7 +1399,9 @@ create table opas_ot_sql_awr_ash_plst
 	dblink varchar2(128 byte) not null enable,
     obj                 varchar2(256), 
     tbs                 varchar2(30),
-	incarnation#        number
+	incarnation#        number,
+	pga_allocated        number, 
+	temp_space_allocated number	
    ) 
 row store compress advanced logging;
 

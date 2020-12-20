@@ -278,12 +278,10 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
           when no_data_found then l_sql := '<NO_DATA_FOUND>';
         end;
       end if;
---coremod_tasks.log('p_data.sql_id: '||p_data.sql_id);
-      if l_sql = '<NO_DATA_FOUND>' or  l_sql is null or
+
+      if l_sql = '<NO_DATA_FOUND>' or l_sql is null or
          upper(l_sql) like 'ALTER TABLE%' and length(l_sql)<40
       then
---coremod_tasks.log('l_sql: '||l_sql);
---coremod_tasks.log('l_sql: '||p_data.SQL_DATA_POINT_ID);
         for i in (select /*+ leading(d r o s) use_nl(r) use_nl(s) use_nl(o) */ SQL_TEXT
                     from OPAS_OT_SQLCATCH_SQLS s,
                          OPAS_OT_SQL_DATA d,
@@ -297,7 +295,6 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
         loop
           l_sql_approx := i.SQL_TEXT;
           l_sql := '<NO_DATA_FOUND>';
---coremod_tasks.log('l_sql_approx: '||l_sql_approx);
         end loop;
       end if;
 
@@ -314,7 +311,6 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
         else
           COREMOD_FILE_UTILS.store_content(l_file_id,l_sql_approx);
         end if;
---coremod_tasks.log('l_file_id: '||l_file_id);
 
         update opas_ot_sql_descriptions set
           sql_text            = case when l_sql_approx is null then l_file_id else null end,
@@ -1595,9 +1591,10 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
              CURRENT_OBJ#,CURRENT_FILE#]';
 
     l_sql := replace(l_sql,'<INST_LST>', p_awr_params.INSTANCE_LIST_C);
-
+--coremod_tasks.log('load_awr_sqlash: l_sql '||l_sql);
     execute immediate l_sql using p_data.sql_id, p_awr_params.DBID, p_awr_params.SNAP_START, p_awr_params.SNAP_END;
     --l_rows := sql%rowcount;
+--coremod_tasks.log('load_awr_sqlash: sql%rowcount '||sql%rowcount);
 
     for i in (select plsql_entry_object_id, plsql_entry_subprogram_id from opas_ot_tmp_dbh_ash where plsql_entry_object_id is not null union
               select PLSQL_OBJECT_ID, PLSQL_SUBPROGRAM_ID from opas_ot_tmp_dbh_ash where PLSQL_OBJECT_ID is not null) loop
@@ -1649,7 +1646,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
      order by cnt desc
     ) where rownum<=10;
     l_rows0 := sql%rowcount;
-
+--coremod_tasks.log('load_awr_sqlash: l_rows0 '||l_rows0);
     merge into opas_ot_sql_awr_ash_summ t
       using (
         select x2.*,
@@ -1697,7 +1694,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
         p_awr_params.INCARNATION#
       );
     l_rows1 := sql%rowcount;
-
+--coremod_tasks.log('load_awr_sqlash: l_rows1 '||l_rows1);
     merge into opas_ot_sql_awr_ash_plst t
       using (select
                x.*,
@@ -1707,7 +1704,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
         select sql_id,dbid, snap_id, INSTANCE_NUMBER, sql_plan_hash_value,sql_full_plan_hash_value,
                sql_plan_line_id, sql_plan_operation,sql_plan_options, nvl(event, 'CPU') event,
                CURRENT_OBJ#,CURRENT_FILE#,
-               sum(cnt) samples
+               sum(cnt) samples, max(PGA_ALLOCATED) PGA_ALLOCATED, max(TEMP_SPACE_ALLOCATED) TEMP_SPACE_ALLOCATED
           from opas_ot_tmp_dbh_ash
          group by sql_id,dbid, snap_id, INSTANCE_NUMBER, sql_plan_hash_value,sql_full_plan_hash_value,
                   sql_plan_line_id, sql_plan_operation, sql_plan_options, nvl(event, 'CPU'),
@@ -1727,13 +1724,13 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
         )
       when not matched then insert (
         sql_id, DBID, SNAP_ID, SQL_PLAN_HASH_VALUE, SQL_FULL_PLAN_HASH_VALUE, SQL_PLAN_LINE_ID, SQL_PLAN_OPERATION,
-        SQL_PLAN_OPTIONS, EVENT, SAMPLES, DBLINK, INSTANCE_NUMBER, OBJ, TBS, INCARNATION#
+        SQL_PLAN_OPTIONS, EVENT, SAMPLES, DBLINK, INSTANCE_NUMBER, OBJ, TBS, INCARNATION#, PGA_ALLOCATED, TEMP_SPACE_ALLOCATED
       ) values (
         s.sql_id, s.DBID, s.SNAP_ID, s.SQL_PLAN_HASH_VALUE, s.SQL_FULL_PLAN_HASH_VALUE, s.SQL_PLAN_LINE_ID, s.SQL_PLAN_OPERATION,
-        s.SQL_PLAN_OPTIONS, s.EVENT, s.SAMPLES, p_data.dblink, s.INSTANCE_NUMBER, s.OBJ, s.TBS, p_awr_params.INCARNATION#
+        s.SQL_PLAN_OPTIONS, s.EVENT, s.SAMPLES, p_data.dblink, s.INSTANCE_NUMBER, s.OBJ, s.TBS, p_awr_params.INCARNATION#, s.PGA_ALLOCATED, s.TEMP_SPACE_ALLOCATED
       );
     l_rows2 := sql%rowcount;
-
+--coremod_tasks.log('load_awr_sqlash: l_rows2'||l_rows2);
     finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_PLSQLSRC, p_rows_processed => l_rows1);
     finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_ASHINVOKER, p_rows_processed => l_rows1);
     finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_ASHPLSTATS, p_rows_processed => l_rows2+l_rows0);

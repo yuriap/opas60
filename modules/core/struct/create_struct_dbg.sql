@@ -10,6 +10,13 @@ alter table opas_ot_dbg_monitor add constraint fk_dbg_mon_obj foreign key (dbg_i
 create index idx_opas_ot_dbg_monitor_dbl   on opas_ot_dbg_monitor(dblink);
 create index idx_opas_ot_dbg_monitor_sch   on opas_ot_dbg_monitor(schedule);
 
+create table opas_ot_dbg_integration (
+dbg_id          number                                  not null references opas_ot_dbg_monitor (dbg_id) on delete cascade,
+remote_schema   varchar2(128)                           not null,
+proj_id         number                                  not null,
+new_start_date  date
+);
+
 create table opas_ot_dbg_monitor_al_cfg (
 alert_id        number                                           generated always as identity primary key,
 dbg_id          number                                  not null references opas_ot_dbg_monitor (dbg_id) on delete cascade,
