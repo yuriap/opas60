@@ -5,24 +5,26 @@ package body coreobj_sql_tags is
 
   gTagListTable tableofstrings;
 
-  procedure add(p_tag_name opas_ot_sql_tags.tag_name%type,
-                p_tag_prnt opas_ot_sql_tags.tag_prnt%type,
+  procedure add(p_tag_name        opas_ot_sql_tags.tag_name%type,
+                p_tag_prnt        opas_ot_sql_tags.tag_prnt%type,
                 p_tag_description opas_ot_sql_tags.tag_description%type,
-                p_tag_autoexpr opas_ot_sql_tags.tag_autoexpr%type,
-                p_tag_dependent opas_ot_sql_tags.tag_dependent%type)
+                p_tag_autoexpr    opas_ot_sql_tags.tag_autoexpr%type,
+                p_tag_dependent   opas_ot_sql_tags.tag_dependent%type,
+                p_table_name      opas_ot_sql_tags.TABLE_NAME%type)
   is
   begin
     merge into opas_ot_sql_tags t
-    using (select p_tag_name tag_name, p_tag_prnt tag_prnt, p_tag_description tag_description, p_tag_autoexpr tag_autoexpr, p_tag_dependent tag_dependent from dual) s
+    using (select p_tag_name tag_name, p_tag_prnt tag_prnt, p_tag_description tag_description, p_tag_autoexpr tag_autoexpr, p_tag_dependent tag_dependent, p_table_name TABLE_NAME from dual) s
     on (t.tag_name=s.tag_name)
     when matched then update set
       t.tag_description = s.tag_description,
       t.tag_autoexpr = s.tag_autoexpr,
       t.tag_dependent = s.tag_dependent,
-      t.tag_modified = systimestamp
-    when not matched then insert (t.tag_name, t.tag_prnt, t.tag_description, t.tag_autoexpr, t.tag_dependent)
+      t.tag_modified = systimestamp,
+      t.TABLE_NAME = s.TABLE_NAME
+    when not matched then insert (t.tag_name, t.tag_prnt, t.tag_description, t.tag_autoexpr, t.tag_dependent, t.TABLE_NAME)
     values
-    (s.tag_name, s.tag_prnt, s.tag_description, s.tag_autoexpr, s.tag_dependent);
+    (s.tag_name, s.tag_prnt, s.tag_description, s.tag_autoexpr, s.tag_dependent, s.TABLE_NAME);
 
   end;
 

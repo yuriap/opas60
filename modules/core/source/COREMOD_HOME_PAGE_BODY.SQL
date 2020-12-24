@@ -28,7 +28,7 @@ PACKAGE BODY COREMOD_HOME_PAGE AS
   END drop_brief;
 
   function sql_qry_brief return varchar2 AS
-    l_sql varchar2(32765) := q'[select ordr||'. '||name name, message, rn+(1000*ordr) ordr from (<QRY>) order by rn+(1000*ordr)]';
+    l_sql varchar2(32765) := q'[select ordr||'. '||name name, message, rn+(1000*ordr) ordr, limit from (<QRY>) order by rn+(1000*ordr)]';
     l_inner_sql varchar2(32765);
     l_brief varchar2(32765);
   BEGIN

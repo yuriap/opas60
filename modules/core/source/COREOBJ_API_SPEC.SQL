@@ -18,6 +18,7 @@ PACKAGE COREOBJ_API AS
   otSIMPLE_DB_MONITOR         constant number := 600;
   otSQL_Catcher               constant number := 700;
   otSQL_COMPARISON            constant number := 800;
+  otSQL_FORECAST_REPORT       constant number := 900;	
 
 
   type t_string_indexed_tbl is table of varchar2(4000) index by pls_integer;

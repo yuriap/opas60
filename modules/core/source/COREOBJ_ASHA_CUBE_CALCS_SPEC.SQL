@@ -13,6 +13,7 @@ PACKAGE COREOBJ_ASHA_CUBE_CALCS AS
   pMetricList     constant varchar2(100) := 'ASHAB_METRICLST';
 
   pDTFMT          constant varchar2(100) := 'ASHAB_DTFMT';
+  pNotifyMe       constant varchar2(100) := 'ASHAB_NOTIFY';
 
   --cube/range status
   csNEW           constant varchar2(100) := 'NEW';

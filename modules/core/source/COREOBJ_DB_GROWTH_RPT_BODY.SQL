@@ -432,14 +432,17 @@ package body COREOBJ_DB_GROWTH_RPT is
   function home_page_brief(p_dbg_id opas_ot_dbg_monitor.dbg_id%type) return varchar2
   is
   begin
-    return replace(q'[select rownum rn, '<NAME>' name, x.msg message, <ORDR> ordr from (
-    select to_char(trunc(tim,'mi'),'YYYY-Mon-DD HH24:MI') || ': Total:' || COREMOD_REPORT_UTILS.to_hr_num(val) || '; Delta:' || COREMOD_REPORT_UTILS.to_hr_num(delta) msg
-    from (select tim, val, val - lag(val)over(order by tim) delta from
-(select dp.snapped tim, sum(tot_occupied) val
-  from OPAS_OT_DBG_TS_SIZES t, opas_ot_dbg_datapoint dp
+    return replace(q'[select rownum rn, '<NAME>' name, x.msg message, <ORDR> ordr, limit from (
+    select to_char(trunc(tim,'mi'),'YYYY-Mon-DD HH24:MI') || ': Total:' || COREMOD_REPORT_UTILS.to_hr_num(val) || '; Delta:' || COREMOD_REPORT_UTILS.to_hr_num(delta) msg,
+           case when ALERT_LIMIT is not null and delta > ALERT_LIMIT then 1 else 0 end limit
+    from (select tim, val, val - lag(val)over(order by tim) delta, ALERT_LIMIT from
+(select dp.snapped tim, sum(SEG_OCCUPIED) val, max(al.ALERT_LIMIT) ALERT_LIMIT
+  from OPAS_OT_DBG_TS_SIZES t, opas_ot_dbg_datapoint dp, OPAS_OT_DBG_MONITOR_AL_CFG al
   where t.dbgdp_id = dp.dbgdp_id
     and dp.SNAPPED > sysdate - 30
     and dp.dbg_id = <DBG_ID>
+    and dp.dbg_id = al.dbg_id(+)
+    and al.ALERT_TYPE(+) = 'DELTALIMIT'
  group by dp.dbgdp_id, dp.snapped)) where delta is not null
  order by tim desc) x where rownum<=7]','<DBG_ID>', p_dbg_id);
   end;

@@ -89,6 +89,9 @@ show errors
 @@COREOBJ_SQL_COMP_REPORT_SPEC.SQL
 show errors
 
+@@COREOBJ_SQL_FORECAST_SPEC.SQL
+show errors
+
 @@COREOBJ_SQL_REPORT_UTILS_SPEC.SQL
 show errors
 
@@ -189,6 +192,9 @@ show errors
 show errors
 
 @@COREOBJ_SQL_COMP_REPORT_BODY.SQL
+show errors
+
+@@COREOBJ_SQL_FORECAST_BODY.SQL
 show errors
 
 @@COREOBJ_SQL_REPORT_UTILS_BODY.SQL

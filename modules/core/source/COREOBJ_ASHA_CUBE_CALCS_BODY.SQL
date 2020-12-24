@@ -1124,9 +1124,15 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
     --type tab_tq_id      is table of  OPAS_TASK_QUEUE.tq_id%type;
     l_tq_id_tab         tab_tq_id := tab_tq_id();
     l_tq_id_tab2        tab_tq_id := tab_tq_id();
+
+    --l_tq_id      OPAS_TASK_QUEUE.tq_id%type;
+    l_nt_id             opas_notification.ID%type;
+    l_obj_name          opas_objects.obj_name%type;
   begin
     COREMOD_LOG.Start_SQL_GATHER_STAT('COREOBJ_ASHA_CUBE_CALCS.GET_ASHA_DATA.GATHER_SQL_STAT');
     COREMOD_LOG.Start_SQL_TRACE('COREOBJ_ASHA_CUBE_CALCS.GET_ASHA_DATA.SQL_TRACE');
+
+    select obj_name into l_obj_name from opas_objects where obj_id=p_obj_id;
 
     store_tasks(p_obj_id); --store itself
 
@@ -1206,6 +1212,25 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
                   l_tq_id_tab.extend;
                   l_tq_id_tab(l_tq_id_tab.count):=COREMOD_TASKS.prep_execute_task (  P_TASKNAME => 'OPAS_ASHA_GRNLSMPL') ;
                   COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id_tab(l_tq_id_tab.count), p_name => 'B1', p_num_par => l_granules(i).asharange_id);
+
+                  if COREOBJ_ASHA_CUBE_CALCS.gp(pNotifyMe) is not null then
+                    COREMOD_ALERTS.add_notification (
+                            nt_id => l_nt_id,
+                            NT_TEXT => 'ASH Cube sampling finished for "'||l_obj_name|| '" with '||COREMOD_ALERTS.ntPlaceHolder,
+                            --NT_LINK => COREMOD_ALERTS.create_url(), 'f?p='||v('APP_ID')||':1401:<APP_SESSION>::::APP_OBJ_ID,APP_PREV_PAGE:'||l_obj_id||',10',
+                            NT_TYPE_ID => COREMOD_ALERTS.nttTaskfinished,
+                            --NT_COLOR => NT_COLOR, --default
+                            NT_USERNAME => COREOBJ_ASHA_CUBE_CALCS.gp(pNotifyMe),
+                            --NT_NO_BROWSER_NOTIF_FLAG => NT_NO_BROWSER_NOTIF_FLAG, default
+                            NT_ACTIVATE => 0) ;
+                    COREMOD_ALERTS.set_url (
+                              NT_ID => l_nt_id,
+                              P_OBJ_ID => p_obj_id,
+                              p_page_id => 3003,
+                              P_PREV_PAGE => 10) ;
+                    COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id_tab(l_tq_id_tab.count), p_name => COREMOD_TASKS.parNotifyMe, p_num_par => l_nt_id);
+                  end if;
+
                   COREMOD_TASKS.queue_task ( p_tq_id => l_tq_id_tab(l_tq_id_tab.count) ) ;
                   commit;
                   llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): sampling V$SESSION granula queued: '||l_granules(i).asharange_id, gLogLevelInfo);
@@ -1218,6 +1243,25 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
                   l_tq_id_tab.extend;
                   l_tq_id_tab(l_tq_id_tab.count):=COREMOD_TASKS.prep_execute_task (  P_TASKNAME => 'OPAS_ASHA_STATSMPL') ;
                   COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id_tab(l_tq_id_tab.count), p_name => 'B1', p_num_par => l_granules(i).asharange_id);
+
+                  if COREOBJ_ASHA_CUBE_CALCS.gp(pNotifyMe) is not null then
+                    COREMOD_ALERTS.add_notification (
+                            nt_id => l_nt_id,
+                            NT_TEXT => 'ASH Cube statistics sampling finished for "'||l_obj_name|| '" with '||COREMOD_ALERTS.ntPlaceHolder,
+                            --NT_LINK => COREMOD_ALERTS.create_url(), 'f?p='||v('APP_ID')||':1401:<APP_SESSION>::::APP_OBJ_ID,APP_PREV_PAGE:'||l_obj_id||',10',
+                            NT_TYPE_ID => COREMOD_ALERTS.nttTaskfinished,
+                            --NT_COLOR => NT_COLOR, --default
+                            NT_USERNAME => COREOBJ_ASHA_CUBE_CALCS.gp(pNotifyMe),
+                            --NT_NO_BROWSER_NOTIF_FLAG => NT_NO_BROWSER_NOTIF_FLAG, default
+                            NT_ACTIVATE => 0) ;
+                    COREMOD_ALERTS.set_url (
+                              NT_ID => l_nt_id,
+                              P_OBJ_ID => p_obj_id,
+                              p_page_id => 3003,
+                              P_PREV_PAGE => 10) ;
+                    COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id_tab(l_tq_id_tab.count), p_name => COREMOD_TASKS.parNotifyMe, p_num_par => l_nt_id);
+                  end if;
+
                   COREMOD_TASKS.queue_task ( p_tq_id => l_tq_id_tab(l_tq_id_tab.count) ) ;
                   commit;
                   llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): sampling V$SESSTAT granula queued: '||l_granules(i).asharange_id, gLogLevelInfo);

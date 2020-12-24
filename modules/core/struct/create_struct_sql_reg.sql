@@ -24,6 +24,7 @@ tag_created         timestamp default systimestamp,
 tag_modified        timestamp,
 tag_dependent       number default 0 -- no dpenedencies, 0 < dependent, will be ordered by this column during calculation
 );
+alter table OPAS_OT_SQL_TAGS add table_name varchar2(128);
 
 create index idx_opas_ot_sql_prnt_tag  on opas_ot_sql_tags(tag_prnt);
 
@@ -1470,3 +1471,28 @@ create global temporary table opas_ot_tmp_sqlcatch_sqls (
  sql_text                          varchar2(4000),
  last_active                       date
 ) on commit preserve rows;
+
+--=========================================================================================
+
+create table opas_ot_sql_forecast_report (
+ obj_id                            number                                 not null  references opas_objects(obj_id) on delete cascade,
+ table_name                        varchar2(128),
+ folder_id                         number                                           references opas_objects(obj_id) on delete set null,
+ column_name                       varchar2(128)
+);
+
+create index idx_opas_sql_fc_obj  on opas_ot_sql_forecast_report(obj_id);
+create index idx_opas_sql_fc_fldr  on opas_ot_sql_forecast_report(folder_id);
+
+create table opas_ot_sql_forecast_stat (
+ obj_id                            number                                 not null  references opas_objects(obj_id) on delete cascade,
+ table_name                        varchar2(128),
+ num_rows                          number
+);
+
+CREATE TABLE OBJECT_MODEL_STAT 
+   (	TS TIMESTAMP (6) WITH TIME ZONE, 
+	TABLE_NAME CHAR(9 BYTE), 
+	ATTR_ID NUMBER(20,0) NOT NULL ENABLE, 
+	QUANTITY NUMBER
+   ) ;

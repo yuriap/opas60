@@ -45,9 +45,10 @@ insert into OPAS_OBJECT_TYPES (OT_ID,OT_NAME,OT_DESCR,OT_ICON, OT_API_PKG) value
 insert into OPAS_OBJECT_TYPES (OT_ID,OT_NAME,OT_DESCR,OT_ICON, OT_API_PKG) values (500,'DB Growth Monitor' ,'Application "DB Growth Monitor" data'     ,'fa-combo-chart'                      ,'COREOBJ_DB_GROWTH');
 insert into OPAS_OBJECT_TYPES (OT_ID,OT_NAME,OT_DESCR,OT_ICON, OT_API_PKG) values (600,'Simple DB Monitor' ,'Simple Database monitor to measure scalar metric' ,'fa-eyedropper'               ,'COREOBJ_DB_MONITOR');
 
-insert into OPAS_OBJECT_TYPES (OT_ID,OT_NAME,OT_DESCR,OT_ICON, OT_API_PKG) values (700,'SQL Catcher'       ,'SQL Catcher to automatically collect SQL data' ,'fa-indent'                    ,'COREOBJ_SQL_CATCHER');
+insert into OPAS_OBJECT_TYPES (OT_ID,OT_NAME,OT_DESCR,OT_ICON, OT_API_PKG) values (700,'SQL Catcher'       ,'SQL Catcher to automatically collect SQL data' ,'fa-indent'                      ,'COREOBJ_SQL_CATCHER');
 --
-insert into OPAS_OBJECT_TYPES (OT_ID,OT_NAME,OT_DESCR,OT_ICON, OT_API_PKG) values (800,'SQL Comparison'    ,'SQL Comparison analytic tool'             ,'fa-balance-scale'                  ,'COREOBJ_SQL_COMP_REPORT');
+insert into OPAS_OBJECT_TYPES (OT_ID,OT_NAME,OT_DESCR,OT_ICON, OT_API_PKG) values (800,'SQL Comparison'    ,'SQL Comparison analytic tool'             ,'fa-balance-scale'                    ,'COREOBJ_SQL_COMP_REPORT');
+insert into OPAS_OBJECT_TYPES (OT_ID,OT_NAME,OT_DESCR,OT_ICON, OT_API_PKG) values (900,'SQL Forecast Report' ,'Tagged SQLs report for forecasting'       ,'fa-road'                             ,'COREOBJ_SQL_FORECAST');
 
 
 INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (1000,         100,   'CREATE',     'Create Folder');
@@ -68,6 +69,8 @@ INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) 
 INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (7000,         700,   'OPEN',       'Show SQL Catcher');
 INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (8000,         800,   'CREATE',     'Register new SQL Comparison');
 INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (8000,         800,   'OPEN',       'Show SQL Comparison');
+INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (9000,         900,   'CREATE',     'SQL Forecast Report');
+INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (9000,         900,   'OPEN',       'SQL Forecast Report');
 --
 delete from opas_object_pages where ot_id=300;
 INSERT INTO opas_object_pages (ot_app_page, ot_id, ot_page_type, ot_page_descr) VALUES (3000,         300,   'CREATE',     'Create ASHA Cube');
