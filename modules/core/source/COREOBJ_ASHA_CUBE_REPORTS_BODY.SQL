@@ -702,7 +702,9 @@ select /*+ qb_name(blocker_analyzer) */
     session_id, session_serial#, INSTANCE_NUMBER inst_id, event, sql_id, module, action,
     case when blocking_session is not null then blocking_session||';'||blocking_session_serial#||';'||blocking_inst_id else null end blocking_session,
     session_id||';'||session_serial#||';'||INSTANCE_NUMBER blocked_session,
-    cnt, blocker_id, min_ts, max_ts, wait_class
+    cnt, blocker_id, min_ts, max_ts, wait_class,
+    case when blocking_session is not null then blocking_session||'A'||blocking_session_serial#||'A'||blocking_inst_id else null end blocking_session_lnk,
+    session_id||'A'||session_serial#||'A'||INSTANCE_NUMBER blocked_session_lnk
 from (
 select
  session_id, session_serial#, INSTANCE_NUMBER, event || case

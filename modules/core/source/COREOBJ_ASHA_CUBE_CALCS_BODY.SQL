@@ -309,7 +309,9 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
     commit;
     --llog('COREOBJ_ASHA_CUBE_CALCS.show_remote_date_context: gTargetCurrTS_TZ "'|| to_char(gTargetCurrTS_TZ,'YYYY-MM-DD HH24:MI:SS.FF3 TZH:TZM') ||'"');
     --llog('COREOBJ_ASHA_CUBE_CALCS.show_remote_date_context: gTargetMinASHTS "'|| to_char(gTargetMinASHTS,'YYYY-MM-DD HH24:MI:SS') ||'"');
-    execute immediate 'ALTER SESSION CLOSE DATABASE LINK '||p_dblink;
+    if p_dblink <> COREMOD_API.gLocalDBLink then
+      execute immediate 'ALTER SESSION CLOSE DATABASE LINK '||p_dblink;
+    end if;
 
     select listagg('Node '||inst_id||': '||to_char(oldest_sample_time_utc,'YYYY-MM-DD HH24:MI:SS'), '; ')within group (order by inst_id)
     into l_min_ashs
@@ -722,9 +724,13 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
                                      where ash.wait_class=cls.wait_class
                                        and asharange_id = p_asharange_id
                                        and DBLINK=COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK)
-                                       and SAMPLE_TIME_UTC between l_start_range_dt and l_end_range_dt)) s
+                                       and sample_time between l_start_range_dt and l_end_range_dt)) s
     on (t.ASHARANGE_ID = s.ASHARANGE_ID and t.WAIT_CLASS = s.WAIT_CLASS)
     when not matched then insert (asharange_id, WAIT_CLASS, NUM_OF_SAMPLES) values (s.asharange_id, s.WAIT_CLASS, s.NUM_OF_SAMPLES);
+
+    --llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): 2 merge into OPAS_OT_ASHACUBE_ASH_WCS "'|| sql%rowcount ||'"');
+    --llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): 2 l_start_range_dt "'|| to_char(l_start_range_dt,'YYYY/MM/DD HH24:MI:SS.FF9') ||'"');
+    --llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): 2 l_end_range_dt "'|| to_char(l_end_range_dt,'YYYY/MM/DD HH24:MI:SS.FF9') ||'"');
 
     commit;
     if l_old_status is null then
