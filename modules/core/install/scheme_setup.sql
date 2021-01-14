@@ -26,6 +26,7 @@ grant execute on dbms_log to &localscheme.;
 grant execute on dbms_sqltune to &localscheme.;
 grant execute on dbms_workload_repository to &localscheme.;
 grant execute on dbms_xplan to &localscheme.;
+grant execute on sys.dbms_sqltune_util0 to &localscheme.;
 
 --APEX 18.1 uploading files
 grant update on apex_180100.WWV_FLOW_TEMP_FILES to &localscheme.;
@@ -54,8 +55,7 @@ grant select on v_$event_name to &localscheme.;
 grant select on v$event_name to &localscheme.; --cloud
 grant select on gv_$sesstat to &localscheme.;
 grant select on GV_$ASH_INFO to &localscheme.;
-grant select on v_$database_incarnation to &localscheme.;
-
+grant select on v_$metricname to &localscheme.;
 --
 grant select on dba_hist_database_instance to &localscheme.;
 grant select on dba_hist_reports to &localscheme.;

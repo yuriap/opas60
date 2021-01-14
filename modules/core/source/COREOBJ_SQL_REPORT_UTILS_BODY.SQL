@@ -1714,21 +1714,25 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
       into l_sql_data_point
       from OPAS_OT_SQL_DATA_POINT_REF r, OPAS_OT_SQL_DATA d
      where r.obj_id=p_obj_id and r.sql_data_point_id=d.sql_data_point_id;
-
+/*
     l_file_id := COREMOD_FILE_UTILS.create_tmp_4downl(
       P_FILE_NAME => 'opas60_sqldp_'||l_sql_data_point.sql_id||'.html',
       P_MIMETYPE => COREMOD_FILE_UTILS.mtHTML);
-
+*/
     for i in (select column_value from table(COREOBJ_SQL_REPORT_UTILS.print_report_html(p_obj_id, p_section_list)))
     loop
       l_text := l_text || i.column_value || chr(10);
     end loop;
-
+/*
     COREMOD_FILE_UTILS.store_content (
        P_FILE_ID => l_file_id,
        P_CONTENT => l_text) ;
 
     coremod_file_utils.clob2blob_prep(p_file_id => l_file_id);
+*/
+    l_file_id := COREMOD_FILE_UTILS.prepare_file_4download(P_FILE_NAME => 'opas60_sqldp_'||l_sql_data_point.sql_id||'.html',
+                                                           P_FILE_MIME_TYPE => COREMOD_FILE_UTILS.mtHTML,
+                                                           P_FILE_CONTENT => l_text);
 
     COREMOD_LOG.Stop_SQL_TRACE('COREOBJ_SQL_REPORT_UTILS.PREPARE_REPORT_4DOWNLOAD.SQL_TRACE');
     COREMOD_LOG.Stop_SQL_GATHER_STAT('COREOBJ_SQL_REPORT_UTILS.PREPARE_REPORT_4DOWNLOAD.GATHER_SQL_STAT');

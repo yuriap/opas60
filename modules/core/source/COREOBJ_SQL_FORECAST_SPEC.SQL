@@ -26,6 +26,7 @@ PACKAGE COREOBJ_SQL_FORECAST AS
                            p_attr             OPAS_OT_SQL_FORECAST_REPORT.TABLE_NAME%type);
 
   procedure add_all_tabs_to_stat(p_obj_id           OPAS_OT_SQL_FORECAST_REPORT.obj_id%type);
+  procedure add_all_tabs_from_stat(p_obj_id           OPAS_OT_SQL_FORECAST_REPORT.obj_id%type);
 
 END COREOBJ_SQL_FORECAST;
 /

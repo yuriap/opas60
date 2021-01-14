@@ -154,6 +154,32 @@ q'[
 end;
 /
 
+declare
+  l_file_id number;
+  l_file    varchar2(32765);
+begin
+  l_file := 
+q'[
+@../modules/core/files/create_patch_profile_template_sqlbin.sql
+]';
+   l_file_id := COREMOD_FILE_UTILS.create_file(
+     P_MODNAME => COREMOD_API.gMODNAME,
+     P_FILE_TYPE => 'PLSQL',
+     P_FILE_NAME => 'create_patch_profile_template_sqlbin.sql',
+     P_MIMETYPE => COREMOD_FILE_UTILS.mtTEXT,
+     P_OWNER => 'PUBLIC');
+   COREMOD_FILE_UTILS.store_content (  
+     P_FILE_ID => l_file_id,
+     P_CONTENT => l_file);  
+  MERGE INTO opas_config t 
+    using (select '&MODNM.' modname,'INTERNAL' cgroup,'SQLPROFILERTEMPL' ckey,l_file_id cvalue,'SQL Profile and SQL Patch template for single query' descr from dual) s
+	on (t.modname=s.modname and t.cgroup=s.cgroup and t.ckey=s.ckey)
+	when matched then update set
+	  t.cvalue=s.cvalue,
+	  t.descr=s.descr
+	when not matched then insert (t.modname,t.cgroup,t.ckey,t.cvalue,t.descr) VALUES (s.modname,s.cgroup,s.ckey,s.cvalue,s.descr);	 
+end;
+/
 
 ----
 INSERT INTO opas_groups2apexusr ( group_id, modname, apex_user) VALUES ( 0, 'OPASCORE', 'OPAS60ADM');

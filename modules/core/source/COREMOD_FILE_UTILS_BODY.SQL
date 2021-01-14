@@ -75,7 +75,7 @@ PACKAGE BODY COREMOD_FILE_UTILS AS
     select file_contentc, nvl(file_contentb,empty_blob()), blob_prepared
       into   m_c1, m_b1, l_last_prep
       from   opas_files
-     where  file_id = p_file_id and file_mimetype in (mtTEXT, mtHTML) for update wait 60;
+     where  file_id = p_file_id and file_mimetype in (mtTEXT, mtHTML, mtPLAINTEXT) for update wait 60;
 
     if l_last_prep is null then
       DBMS_LOB.CONVERTTOBLOB(
@@ -148,6 +148,33 @@ PACKAGE BODY COREMOD_FILE_UTILS AS
                                              p_owner => 'PUBLIC');
     return l_file;
   end;
+
+  function prepare_file_4download(p_file_name varchar2,
+                                  p_file_mime_type varchar2,
+                                  p_file_content clob) return opas_files.file_id%type
+  is
+    l_file_id    opas_files.file_id%type;
+  begin
+
+    COREMOD_LOG.Start_SQL_GATHER_STAT('COREMOD_FILE_UTILS.PREPARE_FILE_4DOWNLOAD.GATHER_SQL_STAT');
+    COREMOD_LOG.Start_SQL_TRACE('COREMOD_FILE_UTILS.PREPARE_FILE_4DOWNLOAD.SQL_TRACE');
+
+    l_file_id := COREMOD_FILE_UTILS.create_tmp_4downl(
+      P_FILE_NAME => p_file_name,
+      P_MIMETYPE =>  p_file_mime_type);
+
+    COREMOD_FILE_UTILS.store_content (
+       P_FILE_ID => l_file_id,
+       P_CONTENT => p_file_content) ;
+
+    coremod_file_utils.clob2blob_prep(p_file_id => l_file_id);
+
+    COREMOD_LOG.Stop_SQL_TRACE('COREMOD_FILE_UTILS.PREPARE_FILE_4DOWNLOAD.SQL_TRACE');
+    COREMOD_LOG.Stop_SQL_GATHER_STAT('COREMOD_FILE_UTILS.PREPARE_FILE_4DOWNLOAD.GATHER_SQL_STAT');
+
+    return l_file_id;
+  end;
+
   -------------------------------------------------------------------
   function create_file(p_modname   opas_files.modname%type,
                        p_file_type opas_files.file_type%type,

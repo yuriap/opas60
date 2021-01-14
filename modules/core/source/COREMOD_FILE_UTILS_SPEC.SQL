@@ -5,6 +5,7 @@ PACKAGE COREMOD_FILE_UTILS AS
 
   --Mime Types
   mtTEXT      constant varchar2(100) := 'TXT';
+  mtPLAINTEXT constant varchar2(100) := 'TEXT/PLAIN';
   mtHTML      constant varchar2(100) := 'TEXT/HTML';
   --mtBIN       constant varchar2(100) := 'BIN';
   mtAPPBIN    constant varchar2(100) := 'APPLICATION/OCTET-STREAM';
@@ -22,6 +23,9 @@ PACKAGE COREMOD_FILE_UTILS AS
                        p_mimetype  opas_files.file_mimetype%type
                       ) return     opas_files.file_id%type;
 
+  function prepare_file_4download(p_file_name varchar2,
+                                  p_file_mime_type varchar2,
+                                  p_file_content clob) return opas_files.file_id%type;
   --File Operatios
   function create_file(p_modname   opas_files.modname%type,
                        p_file_type opas_files.file_type%type,

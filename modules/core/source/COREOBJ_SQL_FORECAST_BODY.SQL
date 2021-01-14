@@ -35,10 +35,11 @@ PACKAGE BODY COREOBJ_SQL_FORECAST AS
                                p_folders          varchar2)
   is
   begin
+    delete from opas_ot_sql_forecast_report where obj_id = p_obj_id and table_name = p_table_name;
     for i in (select column_value folder_id from table(coreobj_sql_tags.parse_tag_list(p_folders))) loop
       INSERT INTO opas_ot_sql_forecast_report
-                (obj_id, table_name, folder_id, column_name)
-         VALUES (p_obj_id, p_table_name, i.folder_id, null);
+                (obj_id, table_name, folder_id)
+         VALUES (p_obj_id, p_table_name, i.folder_id);
     end loop;
   end;
 
@@ -104,6 +105,15 @@ PACKAGE BODY COREOBJ_SQL_FORECAST AS
       on (t.OBJ_ID = s.OBJ_ID and t.TABLE_NAME = s.TABLE_NAME)
       when not matched then INSERT (obj_id,table_name,num_rows) VALUES (s.obj_id,s.table_name,s.num_rows);
     end loop;
+  end;
+
+  procedure add_all_tabs_from_stat(p_obj_id           OPAS_OT_SQL_FORECAST_REPORT.obj_id%type)
+  is
+  begin
+      merge into OPAS_OT_SQL_FORECAST_REPORT t
+      using (select obj_id, TABLE_NAME from OPAS_OT_SQL_FORECAST_STAT where obj_id = p_obj_id) s
+      on (t.OBJ_ID = s.OBJ_ID and t.TABLE_NAME = s.TABLE_NAME)
+      when not matched then INSERT (obj_id,table_name) VALUES (s.obj_id,s.table_name);
   end;
 END COREOBJ_SQL_FORECAST;
 /

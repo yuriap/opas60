@@ -1477,8 +1477,8 @@ create global temporary table opas_ot_tmp_sqlcatch_sqls (
 create table opas_ot_sql_forecast_report (
  obj_id                            number                                 not null  references opas_objects(obj_id) on delete cascade,
  table_name                        varchar2(128),
- folder_id                         number                                           references opas_objects(obj_id) on delete set null,
- column_name                       varchar2(128)
+ folder_id                         number                                           references opas_objects(obj_id) on delete set null--,
+ --column_name                       varchar2(128)
 );
 
 create index idx_opas_sql_fc_obj  on opas_ot_sql_forecast_report(obj_id);
@@ -1487,8 +1487,21 @@ create index idx_opas_sql_fc_fldr  on opas_ot_sql_forecast_report(folder_id);
 create table opas_ot_sql_forecast_stat (
  obj_id                            number                                 not null  references opas_objects(obj_id) on delete cascade,
  table_name                        varchar2(128),
- num_rows                          number
+ num_rows                          number,
+ growth_coeff                      number  -- for cases where no previous data exists
 );
+
+create index idx_opas_sql_fcs_obj  on opas_ot_sql_forecast_stat(obj_id);
+
+create table opas_ot_sql_fcst_report_synth (
+ obj_id                            number                                 not null  references opas_objects(obj_id) on delete cascade,
+ tag_name                          varchar2(128)                                    references opas_ot_sql_tags(tag_name),
+ exec_time                         number,  --exec time in seconds for cases where no previous data exists
+ description                       varchar2(4000)
+);
+
+create index idx_opas_sql_fcts_obj  on opas_ot_sql_fcst_report_synth(obj_id);
+create index idx_opas_sql_fcts_tag  on opas_ot_sql_fcst_report_synth(tag_name);
 
 CREATE TABLE OBJECT_MODEL_STAT 
    (	TS TIMESTAMP (6) WITH TIME ZONE, 
