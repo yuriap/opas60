@@ -9,11 +9,11 @@ package body coreobj_asha_cube is
   is
     l_status varchar2(100);
   begin
-      select 'Cube: '||acube.status||'; Ranges: '||ranges.range_status
+      select 'C: '||acube.status||'; R: '||ranges.range_status || '; '|| to_char(START_TIME_UTC,'YYYY/Mon/DD HH24:MI') || '-' ||to_char(END_TIME_UTC,'YYYY/Mon/DD HH24:MI')
       into l_status
       from (select status from OPAS_OT_ASHACUBE where ASHACUBE_ID = p_obj_id) acube,
-           (select listagg(status || ':' || cnt, '; ') within group(order by status) range_status
-              from (select status, count(1) cnt from OPAS_OT_ASHACUBE_RANGES ra, OPAS_OT_ASHACUBE_REF refs
+           (select listagg(status || ':' || cnt, '; ') within group(order by status) range_status, min(START_TIME_UTC) START_TIME_UTC, max(END_TIME_UTC) END_TIME_UTC
+              from (select status, count(1) cnt, min(START_TIME_UTC) START_TIME_UTC, max(END_TIME_UTC) END_TIME_UTC from OPAS_OT_ASHACUBE_RANGES ra, OPAS_OT_ASHACUBE_REF refs
                      where refs.ASHARANGE_ID = ra.ASHARANGE_ID and refs.ASHACUBE_ID = p_obj_id group by status)) ranges;
 
     return l_status;

@@ -746,7 +746,7 @@ select
                        min(sample_time) min_ts,
                        max(sample_time) max_ts
                   from (select * from stats_ranged where (<FILTER>)) x
-                 where wait_class in ( 'Application', 'Concurrency')
+                 where wait_class in ( 'Application', 'Concurrency', 'Other')
                  group by dblink, session_id, session_serial#, INSTANCE_NUMBER, sql_id, module, action,
                           blocking_session, blocking_session_serial#, blocking_inst_id, event,
                           CURRENT_OBJ#, CURRENT_FILE#, CURRENT_BLOCK#, CURRENT_ROW#, wait_class) x1) x2
