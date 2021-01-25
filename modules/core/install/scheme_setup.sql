@@ -89,6 +89,8 @@ grant select on dba_nested_tables to &localscheme.;
 grant select on dba_clusters to &localscheme.;
 grant select on dba_xml_tables to &localscheme.;
 grant select on dba_recyclebin to &localscheme.;
+grant select on dba_scheduler_running_jobs to &localscheme.;
+
 grant select on user_segments to &localscheme.;
 grant select on user_objects to &localscheme.;
 grant select on user_tables to &localscheme.;
@@ -99,7 +101,6 @@ grant select on user_lob_subpartitions to &localscheme.;
 grant select on user_nested_tables to &localscheme.;
 grant select on user_clusters to &localscheme.;
 grant select on user_xml_tables to &localscheme.;
-
 
 define job_class_name=JC_&namepref.
 

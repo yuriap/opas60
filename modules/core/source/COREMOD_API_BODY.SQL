@@ -350,7 +350,7 @@ package body COREMOD_API as
                 l_sql := q'[select listagg(column_name,',') within group (order by column_name) from
                                     (select column_name from dba_tab_cols]' || get_dblink_for_query(p_db_link_name) || q'[ where table_name=upper(:p_tab_name) and owner='SYS'
                                      intersect
-                                     select column_name from user_tab_cols where table_name=upper(:p_tab_name) and DATA_TYPE not in ('XMLTYPE','LONG'))]';
+                                     select column_name from dba_tab_cols where table_name=upper(:p_tab_name) and DATA_TYPE not in ('XMLTYPE','LONG'))]';
                 execute immediate l_sql into l_res using ltrim(p_key, 'LOCTABCOLS_'), p_local_tab;
 
               exception

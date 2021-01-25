@@ -131,7 +131,7 @@ PACKAGE BODY COREOBJ_SQL AS
     if p_cascade = 'Y' then
       remove_dp(l_sql_data_point_id);
     end if;
-    COREOBJ_API.remove(p_obj_id);
+    COREOBJ_API.remove(p_obj_id, p_cascade);
   END remove;
 
   procedure remove_dp(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type)

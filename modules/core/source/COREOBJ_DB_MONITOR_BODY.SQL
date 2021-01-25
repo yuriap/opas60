@@ -192,7 +192,7 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
     if l_dbm.schedule is null then
       l_status := 'No schedule';
     else
-      select status||'; at '||to_char(start_date,'HH24:MI') into l_status from OPAS_SCHEDULER where sch_id=l_dbm.schedule;
+      select status||'; at '||to_char(start_date,'HH24:MI') || ' ('||l_dbm.DBLINK||')' into l_status from OPAS_SCHEDULER where sch_id=l_dbm.schedule;
     end if;
 
     return l_status;

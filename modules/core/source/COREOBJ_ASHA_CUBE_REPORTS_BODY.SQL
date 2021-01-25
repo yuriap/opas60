@@ -207,12 +207,12 @@ timeline as (select rownum pnt, trunc(start_dt + (level - 1) * <TIMEXPR>, '<TRUN
                from rng_dt connect by start_dt + (level - 1) * <TIMEXPR> <= end_dt),
 flt_timeline as (select min(pnt) mi_pnt, max(pnt) ma_pnt, min(tim) mi_tim, max(tim) ma_tim from timeline t where t.pnt between <STARTPOINT> and <ENDPOINT>),
 stats_unranged as
-            (select c.*
+            (select c.*, case when SAMPLE_TP = 'A' then 10 else 1 end tp_time
                from OPAS_OT_ASHACUBE_ASH c, rng_ids
               where c.asharange_id = rng_ids.asharange_id
                 and DBLINK = :P3003_DBLINK),
 stats_ranged as
-            (select /*+ use_nl(c) */ c.*
+            (select /*+ use_nl(c) */ c.*, case when SAMPLE_TP = 'A' then 10 else 1 end tp_time
                from OPAS_OT_ASHACUBE_ASH c, rng_ids, flt_timeline  ft
               where c.asharange_id = rng_ids.asharange_id and c.SAMPLE_TIME_UTC between ft.mi_tim and ft.ma_tim and DBLINK = :P3003_DBLINK)]';
 l_metrics_queries varchar2(32765) := q'[
@@ -392,7 +392,7 @@ stat_ranged as
 
     l_sql  := get_base_query ||
 q'[,
-   stats as (select trunc(sample_time_utc,'<TRUNC>') tim, count(1) sec
+   stats as (select trunc(sample_time_utc,'<TRUNC>') tim, /*count(1)*/ sum(tp_time) sec
                from stats_unranged
               where (<FILTER>)
               group by trunc(sample_time_utc,'<TRUNC>'))
@@ -417,7 +417,7 @@ where t.tim = s.tim(+)
 
     l_sql := get_base_query ||
 q'[,
-   stats as (select trunc(sample_time_utc,'<TRUNC>') tim, count(1) sec
+   stats as (select trunc(sample_time_utc,'<TRUNC>') tim, /*count(1)*/ sum(tp_time) sec
                from stats_unranged
               where (<FILTER>)
               group by trunc(sample_time_utc,'<TRUNC>'))
@@ -443,7 +443,7 @@ where t.tim = s.tim(+)
 
     l_sql := get_base_query ||
 q'[,
-stats_all as (select /*+ result_cache */ trunc(sample_time_utc,'<TRUNC>') tim, wait_class, count(1) sec
+stats_all as (select /*+ result_cache */ trunc(sample_time_utc,'<TRUNC>') tim, wait_class, /*count(1)*/ sum(tp_time) sec
                from stats_ranged
               where (<FILTER>)
               group by trunc(sample_time_utc,'<TRUNC>'), wait_class),
@@ -474,7 +474,7 @@ where t.tim = s.tim(+)
 
     l_sql := get_base_query ||
 q'[,
-   stats as (select trunc(sample_time_utc,'<TRUNC>') tim, count(1) sec
+   stats as (select trunc(sample_time_utc,'<TRUNC>') tim, /*count(1)*/ sum(tp_time) sec
                from stats_ranged
               where not (<FILTER>)
               group by trunc(sample_time_utc,'<TRUNC>'))
@@ -501,13 +501,13 @@ where t.tim = s.tim(+)
 l_sql := get_base_query ||
 case when nvl(p_filtered,'N') = 'N' then
 q'[,
-stats as    (select nvl(wait_class,'CPU') wait_class, count(1) sec
+stats as    (select nvl(wait_class,'CPU') wait_class, /*count(1)*/ sum(tp_time) sec
                from stats_ranged
               where (<FILTER>)
               group by nvl(wait_class,'CPU'))]'
 else
 q'[,
-stats as    (select nvl(wait_class,'CPU') wait_class, count(1) sec
+stats as    (select nvl(wait_class,'CPU') wait_class, /*count(1)*/ sum(tp_time) sec
                from stats_ranged
               where (<FILTER>)
               group by nvl(wait_class,'CPU')
@@ -552,7 +552,7 @@ from stats order by 2 desc]';
     l_sql := get_base_query ||
 q'[,
 nm as (select /*+ result_cache */ name, display_name||'('||name||')' display_name from v$event_name where name != display_name),
-stats as    (select nvl(event,'CPU') event, count(1) sec
+stats as    (select nvl(event,'CPU') event, /*count(1)*/ sum(tp_time) sec
                from stats_ranged
               where (<FILTER>)
               group by nvl(event,'CPU'))
@@ -573,7 +573,7 @@ where rownum<=10]';
 
     l_sql := get_base_query ||
 q'[
-,stats as    (select 'MODULE:' || nvl(module, 'N/A') || '; ACTION:' || nvl(ACTION, 'N/A') mod_act, count(1) sec
+,stats as    (select 'MODULE:' || nvl(module, 'N/A') || '; ACTION:' || nvl(ACTION, 'N/A') mod_act, /*count(1)*/ sum(tp_time) sec
                from stats_ranged
               where (<FILTER>)
               group by 'MODULE:' || nvl(module, 'N/A') || '; ACTION:' || nvl(ACTION, 'N/A'))
@@ -594,7 +594,7 @@ where rownum<=10]';
 
     l_sql := get_base_query ||
 q'[,
-stats as    (select dblink, CURRENT_OBJ#, count(1) sec
+stats as    (select dblink, CURRENT_OBJ#, /*count(1)*/ sum(tp_time) sec
                from stats_ranged
               where (<FILTER>)
                 and CURRENT_OBJ# > 0
@@ -633,12 +633,12 @@ stats as    (select 'SID: '||SESSION_ID||','||SESSION_SERIAL#||',@'||INSTANCE_NU
               group by 'SID: '||SESSION_ID||','||SESSION_SERIAL#||',@'||INSTANCE_NUMBER ||'; USR/OS:'||nvl(USERNAME,to_char(USER_ID)) || nvl(OSUSER,'N/A') ||
                         '; P/M/M/A:' || nvl(PROGRAM, 'N/A') || nvl(MACHINE, 'N/A') || nvl(module, 'N/A') || '/' || nvl(ACTION, 'N/A') ||
                         '; ECID/TERM:'|| nvl(ECID, 'N/A') || nvl(TERMINAL, 'N/A'))
-select /*+ qb_name(top_sessions) */ sess_id || '(' || round(100 * sec / tot, 2) || '%)' sess_id, sec
+select /*+ qb_name(top_sessions) */ substr(sess_id,1,245) || '(' || round(100 * sec / tot, 2) || '%)' sess_id, sec
 from (select sess_id, sec, sum(sec)over() tot from stats s order by 2 desc) s
 where rownum<=10]';
 
     preprocess_qry(l_sql);
-
+--log(l_sql);
     RETURN l_sql;
   end;
   function get_top_by_sql_id_qry(p_col varchar2) return varchar2
@@ -658,7 +658,7 @@ from (select sql_id, sec, sum(sec)over() tot from stats s where sec > 0 order by
 where rownum<=10]';
 
     preprocess_qry(l_sql);
-
+--log(l_sql);
     RETURN l_sql;
   end;
 
@@ -670,7 +670,7 @@ where rownum<=10]';
 
     l_sql := get_base_query ||
 q'[,
-top_sqls as (select nvl(sql_id,'N/A') sql_id, count(1) sec
+top_sqls as (select nvl(sql_id,'N/A') sql_id, /*count(1)*/ sum(tp_time) sec
                from stats_ranged
               where (<FILTER>)
               group by nvl(sql_id,'N/A')
@@ -679,7 +679,7 @@ top_sqls as (select nvl(sql_id,'N/A') sql_id, count(1) sec
                from top_sqls
               where rownum<=<TOPN>
               )
-  ,stats as (select trunc(sample_time_utc,'<TRUNC>') time_mark, y.sql_id, z.sql_id_ext, count(1) sec
+  ,stats as (select trunc(sample_time_utc,'<TRUNC>') time_mark, y.sql_id, z.sql_id_ext, /*count(1)*/ sum(tp_time) sec
                from (select x.* from stats_ranged x where (<FILTER>)) y, top_N_sqls z
               where nvl(y.sql_id,'N/A') = z.sql_id
               group by trunc(sample_time_utc,'<TRUNC>'), y.sql_id, z.sql_id_ext)
@@ -742,7 +742,8 @@ select
           from (select dblink, session_id, session_serial#, INSTANCE_NUMBER, sql_id, module, action,
                        blocking_session, blocking_session_serial#, blocking_inst_id, event,
                        CURRENT_OBJ#, CURRENT_FILE#, CURRENT_BLOCK#, CURRENT_ROW#, wait_class,
-                       count(1) cnt,
+                       --count(1) cnt,
+                       sum(tp_time) cnt,
                        min(sample_time) min_ts,
                        max(sample_time) max_ts
                   from (select * from stats_ranged where (<FILTER>)) x

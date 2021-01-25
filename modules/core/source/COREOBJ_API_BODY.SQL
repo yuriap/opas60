@@ -90,9 +90,18 @@ PACKAGE BODY COREOBJ_API AS
      WHERE obj_id = p_obj_id;
   end;
 
-  procedure remove(p_obj_id opas_objects.obj_id%type)
+  procedure remove(p_obj_id opas_objects.obj_id%type,
+                   p_cascade        varchar2 default 'N')
   is
   begin
+    COREOBJ_API.check_remove_ability(p_obj_id);
+
+    if p_cascade = 'Y' then
+      for i in (select * from OPAS_OBJECTS where OBJ_PRNT = p_obj_id) loop
+        execute immediate 'begin '||COREOBJ_API.g_ot_api(i.OBJ_OT)||'.remove(p_obj_id => :P_TO_REMOVE, p_cascade => ''Y''); end;' using i.OBJ_ID;
+      end loop;
+    end if;
+
     delete from opas_objects where obj_id = p_obj_id;
   end;
 

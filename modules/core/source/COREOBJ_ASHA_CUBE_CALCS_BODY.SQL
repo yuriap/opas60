@@ -30,7 +30,8 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
                           pc_dblink  OPAS_DB_LINKS.DB_LINK_NAME%type,
                           --pc_min_ash date,
                           pc_curr_dt date,
-                          pc_create_ranges number default 0)
+                          pc_create_ranges number default 0,
+                          pc_no_ash        number default 0)
     is
     with input_pars as (
             select START_TIME_UTC,
@@ -80,6 +81,7 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
                 and rng.ASHARANGE_ID = rf.ASHARANGE_ID(+) and rf.ashacube_id(+) = pc_obj_id
                 and rng.DBLINK(+) = pc_dblink
                 and (b.min_min_ash <= b.start_granula_dt or b.start_granula_dt < b.min_min_ash and b.min_min_ash <= b.end_granula_dt)
+                and pc_no_ash = 0
               union all
              select 1e6 + b.rn ordr,
                     'A' granula_type, b.eof_ash_nodes, b.min_ash, b.min_min_ash, b.max_min_ash, b.rn,
@@ -93,6 +95,20 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
                 and rng.ASHARANGE_ID = rf.ASHARANGE_ID(+) and rf.ashacube_id(+) = pc_obj_id
                 and rng.DBLINK(+) = pc_dblink
                 and (b.end_granula_dt <= b.min_min_ash or pc_create_ranges = 0 /*and b.start_granula_dt <= b.max_min_ash*/ and b.start_granula_dt <= b.max_min_ash)
+                and pc_no_ash = 0
+              union all
+             select b.rn ordr,
+                    'S' granula_type, b.eof_ash_nodes, b.min_ash, b.min_min_ash, b.max_min_ash, b.rn,
+                    b.start_granula_dt, nvl(b.min_ash, b.end_granula_dt),
+                    rng.*, rf.ashacube_id
+               from opas_ot_ashacube_ref rf,
+                    OPAS_OT_ASHACUBE_RANGES    rng,
+                    dt_boundaries              b
+              where b.start_granula_dt = rng.START_TIME_UTC(+)
+                and b.end_granula_dt = rng.END_TIME_UTC(+)
+                and rng.ASHARANGE_ID = rf.ASHARANGE_ID(+) and rf.ashacube_id(+) = pc_obj_id
+                and rng.DBLINK(+) = pc_dblink
+                and pc_no_ash = 1
               order by ordr, start_granula_dt desc;
 
     type t_granules is table of crsr_granules%rowtype;
@@ -816,7 +832,7 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
         final_blocking_instance, final_blocking_session, current_obj#, current_file#, current_block#, current_row#, consumer_group_id, xid,
         program, module, action, client_id, machine, port, ecid, terminal, tm_delta_time, tm_delta_cpu_time, tm_delta_db_time, delta_time,
         delta_read_io_requests, delta_write_io_requests, delta_read_io_bytes, delta_write_io_bytes, delta_interconnect_io_bytes, delta_read_mem_bytes,
-        pga_allocated, temp_space_allocated)
+        pga_allocated, temp_space_allocated, SAMPLE_TP)
       select
         :p_asharange_id, :DBLINK, null snap_id, inst_id,       TSTZ at time zone ']' || gTargetTZ || q'[', sys_extract_utc(TSTZ),
         SID, SERIAL#, TYPE,
@@ -827,7 +843,7 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
         final_blocking_instance, final_blocking_session, null current_obj#, null current_file#, null current_block#, null current_row#, null consumer_group_id, null xid,
         program, module, action, CLIENT_IDENTIFIER client_id, machine, port, ecid, terminal, null tm_delta_time, null tm_delta_cpu_time, null tm_delta_db_time, null delta_time,
         null delta_read_io_requests, null delta_write_io_requests, null delta_read_io_bytes, null delta_write_io_bytes, null delta_interconnect_io_bytes, null delta_read_mem_bytes,
-        null pga_allocated, null temp_space_allocated
+        null pga_allocated, null temp_space_allocated, 'S'
       from OPAS_OT_TMP_GV$SESSION where sys_extract_utc(TSTZ) >= :START_RANGE_UTC and sys_extract_utc(TSTZ) < :END_RANGE_UTC
        and not( upper(machine) like '%'||upper(SYS_CONTEXT ('USERENV', 'SERVER_HOST'))||'%' or
                 upper(program) like '%'||upper(SYS_CONTEXT ('USERENV', 'SERVER_HOST'))||'%' or
@@ -1032,7 +1048,8 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
 
       delete from OPAS_OT_ASHACUBE_REF where ASHACUBE_ID = p_obj_id;
 
-      open crsr_granules (p_obj_id, COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK), /*trunc(gTargetMinASHTS_UTC,'MI'),*/ gTargetCurrTS_UTC, 1 /*pc_create_ranges*/);
+      open crsr_granules (p_obj_id, COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK), /*trunc(gTargetMinASHTS_UTC,'MI'),*/ gTargetCurrTS_UTC, 1 /*pc_create_ranges*/,
+                         case when gASH_Available = 'Y' then 0 else 1 end /*pc_no_ash*/);
       fetch crsr_granules bulk collect into l_granules;
       close crsr_granules;
 
@@ -1153,7 +1170,8 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
         llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): target edition: "'|| case when gASH_Available = 'Y' then 'Enterprise' else 'Standard' end ||'"');
         --================================================================================================
 
-        open crsr_granules (p_obj_id, COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK),/*trunc(gTargetMinASHTS_UTC,'MI'),*/ gTargetCurrTS_UTC);
+        open crsr_granules (p_obj_id, COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK),/*trunc(gTargetMinASHTS_UTC,'MI'),*/ gTargetCurrTS_UTC, 0 /*pc_create_ranges*/,
+                            case when gASH_Available = 'Y' then 0 else 1 end /*pc_no_ash*/);
         fetch crsr_granules bulk collect into l_granules;
         close crsr_granules;
 
@@ -1284,26 +1302,27 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
               llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): Noting to sample: '||l_granules(i).asharange_id, gLogLevelInfo);
             end if;
 
-            if gTargetCurrTS <= l_start_time_trg_tz then
-              llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): waiting to start granula', gLogLevelInfo);
-              loop
-                get_remote_curr_ts(COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK));
-                llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): currently "'||gTargetCurrTS||'"');
-                exit when gTargetCurrTS > l_start_time_trg_tz;
-                dbms_lock.sleep(30);
-              end loop;
-            end if;
+            if gASH_Available = 'Y' then
+              if gTargetCurrTS <= l_start_time_trg_tz then
+                llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): waiting to start granula', gLogLevelInfo);
+                loop
+                  get_remote_curr_ts(COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK));
+                  llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): currently "'||gTargetCurrTS||'"');
+                  exit when gTargetCurrTS > l_start_time_trg_tz;
+                  dbms_lock.sleep(30);
+                end loop;
+              end if;
 
-            if gTargetCurrTS >= l_end_time_trg_tz then
-              llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): full V$ASH granula for past time start...');
-              get_granule(/*gtGV$ASH,*/ l_granules(i)/*.asharange_id*/, false);
-              llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): full V$ASH granula for past time finish...');
-            else
-              llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): full V$ASH granula for current time start...');
-              get_granule(/*gtGV$ASH,*/ l_granules(i)/*.asharange_id*/, true);
-              llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): full V$ASH granula for current time finish...');
+              if gTargetCurrTS >= l_end_time_trg_tz then
+                llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): full V$ASH granula for past time start...');
+                get_granule(/*gtGV$ASH,*/ l_granules(i)/*.asharange_id*/, false);
+                llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): full V$ASH granula for past time finish...');
+              else
+                llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): full V$ASH granula for current time start...');
+                get_granule(/*gtGV$ASH,*/ l_granules(i)/*.asharange_id*/, true);
+                llog('COREOBJ_ASHA_CUBE_CALCS.get_ash_data('||p_obj_id||'): full V$ASH granula for current time finish...');
+              end if;
             end if;
-
             l_lops_iter := l_lops_iter + 1;
             coremod_api.end_longops_section(p_sofar => l_lops_iter, p_lops_ind => l_lops_ind);
 
@@ -1320,7 +1339,8 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
 
         get_remote_curr_ts(COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK));
 
-        open crsr_granules (p_obj_id, COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK), /*trunc(gTargetMinASHTS_UTC,'MI'),*/ gTargetCurrTS_UTC);
+        open crsr_granules (p_obj_id, COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK), /*trunc(gTargetMinASHTS_UTC,'MI'),*/ gTargetCurrTS_UTC, 0 /*pc_create_ranges*/,
+                            case when gASH_Available = 'Y' then 0 else 1 end /*pc_no_ash*/);
         fetch crsr_granules bulk collect into l_granules1;
         close crsr_granules;
 

@@ -3,12 +3,14 @@
 CREATE OR REPLACE
 PACKAGE BODY COREMOD_SCHEDULER AS
 
+  g_JobNamePref varchar2(10):='OPAS_SCH_';
+
   function check_action(p_sch_id OPAS_SCHEDULER.SCH_ID%type, p_action varchar2) return boolean
   is
     l_scheduler V$OPAS_SCHEDULER%rowtype;
     l_res boolean := false;
   begin
-    select * into l_scheduler from OPAS_SCHEDULER where sch_id=p_sch_id;
+    select * into l_scheduler from V$OPAS_SCHEDULER where sch_id=p_sch_id;
     return getstatus(p_action, l_scheduler.status) is not null;
   exception
     when no_data_found then return false;
@@ -65,7 +67,8 @@ PACKAGE BODY COREMOD_SCHEDULER AS
 
   procedure set_parameters (p_sch_id      OPAS_SCHEDULER.SCH_ID%type,
                             p_schedule    OPAS_SCHEDULER.schedule%type,
-                            p_start_date  OPAS_SCHEDULER.start_date%type) AS
+                            p_start_date  OPAS_SCHEDULER.start_date%type,
+                            p_max_run_time OPAS_SCHEDULER.max_run_time%type default null) AS
   BEGIN
     if check_action(P_SCH_ID => p_sch_id, P_ACTION => scaSave) then
       update OPAS_SCHEDULER t set
@@ -73,7 +76,8 @@ PACKAGE BODY COREMOD_SCHEDULER AS
          t.schedule=p_schedule,
          t.last_changed = systimestamp,
          t.last_validated = null,
-         t.status = getstatus(scaSave, t.status)
+         t.status = getstatus(scaSave, t.status),
+         t.max_run_time = p_max_run_time
        where sch_id=p_sch_id;
 
       if sql%rowcount=1 then
@@ -144,7 +148,7 @@ PACKAGE BODY COREMOD_SCHEDULER AS
         end if;
 
         if l_params.job_name is null or l_cnt=0 then
-          l_params.job_name := 'OPAS_SCH_'||l_params.SCH_ID||'_'||DBMS_RANDOM.STRING('X',4);
+          l_params.job_name := g_JobNamePref||l_params.SCH_ID||'_'||DBMS_RANDOM.STRING('X',4);
           dbms_scheduler.create_job(job_name => l_params.job_name,
                                     job_type => 'PLSQL_BLOCK',
                                     job_action => 'begin COREMOD_SCHEDULER.run_job('||l_params.sch_id||'); end;',
@@ -234,6 +238,35 @@ PACKAGE BODY COREMOD_SCHEDULER AS
     else
       raise_application_error(-20000,'Unable to drop Scheduler configuration('|| p_sch_id ||'). Wrong status');
     end if;
+  end;
+
+  procedure create_runaway_job_monitor
+  is
+  begin
+    begin dbms_scheduler.drop_job(job_name => 'OPAS_RUNAWAY_MONITOR'); exception when others then COREMOD_LOG.log('Error dropping job OPAS_RUNAWAY_MONITOR: '||sqlerrm); end;
+          dbms_scheduler.create_job(job_name => 'OPAS_RUNAWAY_MONITOR',
+                                    job_type => 'PLSQL_BLOCK',
+                                    job_action => q'{begin COREMOD_SCHEDULER.runaway_job_monitor; end;}',
+                                    start_date => trunc(sysdate),
+                                    repeat_interval => 'freq=minutely; interval=10',
+                                    enabled => true,
+                                    auto_drop=> false);
+  end;
+
+  procedure runaway_job_monitor
+  is
+  begin
+    for i in (select j.job_name, i.sid||','||i.serial# ss
+                from user_scheduler_running_jobs j, gv$session i, OPAS_SCHEDULER s
+               where j.job_name like g_JobNamePref||'%'
+                 and elapsed_time > nvl(s.max_run_time,TO_DSINTERVAL(COREMOD_API.getconf(P_KEY => 'RUNAWAYDELAY', P_MODULE => 'OPASCORE')))
+                 and j.session_id=sid
+                 and j.running_instance=i.inst_id
+                 and i.status='ACTIVE'
+                 and s.JOB_NAME=j.JOB_NAME)
+    loop
+      begin execute immediate replace(q'[alter system kill session '<SS>' IMMEDIATE]','<SS>',i.ss); exception when others then dbms_output.put_line(i.job_name||': '||i.ss||': '||sqlerrm); end;
+    end loop;
   end;
 END COREMOD_SCHEDULER;
 /

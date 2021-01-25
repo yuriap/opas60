@@ -24,7 +24,8 @@ PACKAGE COREMOD_SCHEDULER AS
 
   procedure set_parameters (p_sch_id      OPAS_SCHEDULER.SCH_ID%type,
                             p_schedule    OPAS_SCHEDULER.schedule%type,
-                            p_start_date  OPAS_SCHEDULER.start_date%type);
+                            p_start_date  OPAS_SCHEDULER.start_date%type,
+                            p_max_run_time OPAS_SCHEDULER.max_run_time%type default null);
 
   procedure suspend_config (p_sch_id OPAS_SCHEDULER.SCH_ID%type);
   procedure activate_config(p_sch_id OPAS_SCHEDULER.SCH_ID%type);
@@ -36,6 +37,8 @@ PACKAGE COREMOD_SCHEDULER AS
   function getstatus(p_action varchar2, p_status varchar2) return varchar2;
   --top level call
   procedure run_job        (p_sch_id OPAS_SCHEDULER.SCH_ID%type);
+  procedure create_runaway_job_monitor ;
+  procedure runaway_job_monitor; --job
 
 END COREMOD_SCHEDULER;
 /

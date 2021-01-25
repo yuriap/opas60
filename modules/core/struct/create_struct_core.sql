@@ -45,7 +45,8 @@ last_changed    timestamp,
 last_validated  timestamp,
 job_name        varchar2(128),
 owner           varchar2(128)    default 'PUBLIC'       not null,
-status          varchar2(32)     default 'NEW'          not null
+status          varchar2(32)     default 'NEW'          not null,
+max_run_time    INTERVAL DAY (2) TO SECOND (0)
 );
 
 create or replace force view v$opas_scheduler as 

@@ -62,7 +62,8 @@ PACKAGE COREOBJ_API AS
                          p_obj_descr       opas_objects.obj_descr%type,
                          p_obj_owner       opas_objects.obj_owner%type default null);
 
-  procedure remove(p_obj_id opas_objects.obj_id%type);
+  procedure remove(p_obj_id opas_objects.obj_id%type,
+                   p_cascade        varchar2 default 'N');
 
   procedure copy  (p_src_obj_id       opas_objects.obj_id%type,
                    p_trg_obj_prnt     opas_objects.obj_prnt%type,

@@ -22,6 +22,9 @@ INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','RE
 INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','RETENTION','ASHARANGE',      8,'Retention time in days for non referenced ASHA Cube ranges.');
 INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','RETENTION','NOTIFICATIONS', 48,'Retention time in hours for non-viewed notifications.');
 
+INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','SCHEDULER','RUNAWAYDELAY', '+00 00:15:00','Max default scheduled job duration before forcebly stop it.');
+
+
 insert into opas_groups (group_id,group_name,group_descr) values (0, 'Administrators','Full set of rights');
 insert into opas_groups (group_id,group_name,group_descr) values (1, 'Reas-write users','All application functions');
 insert into opas_groups (group_id,group_name,group_descr) values (2, 'Read-only users','Read-only functions');

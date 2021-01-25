@@ -112,7 +112,7 @@ package body COREOBJ_SQL_CATCHER is
   is
     l_ctchr opas_ot_sqlcatch%rowtype;
   begin
-    COREOBJ_API.check_remove_ability(p_obj_id);
+    --COREOBJ_API.check_remove_ability(p_obj_id);
 
     select * into l_ctchr from opas_ot_sqlcatch where obj_id = p_obj_id;
     COREMOD_TASKS.cancel_task (  P_TQ_ID => l_ctchr.TQ_ID) ;
@@ -124,7 +124,7 @@ package body COREOBJ_SQL_CATCHER is
       end if;
       execute immediate 'begin '||i.ot_api_pkg||q'[.remove(p_obj_id => :p_obj_id, p_cascade => :p_cascade); end; ]' using i.obj_id, p_cascade;
     end loop;
-    COREOBJ_API.remove(p_obj_id);
+    COREOBJ_API.remove(p_obj_id, p_cascade);
   end;
 
   function get_object_status_to_display (p_obj_id          opas_objects.obj_id%type) return varchar2
