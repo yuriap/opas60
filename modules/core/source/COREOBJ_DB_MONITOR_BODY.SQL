@@ -185,7 +185,7 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
   function get_object_status_to_display (p_obj_id          opas_objects.obj_id%type) return varchar2
   is
     l_dbm OPAS_OT_DB_MONITOR%rowtype;
-    l_status varchar2(32);
+    l_status varchar2(256);
   begin
     select * into l_dbm from OPAS_OT_DB_MONITOR where metric_id = p_obj_id;
 
