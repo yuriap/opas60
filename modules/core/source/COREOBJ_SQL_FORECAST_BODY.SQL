@@ -20,8 +20,7 @@ PACKAGE BODY COREOBJ_SQL_FORECAST AS
   procedure remove  (p_obj_id         opas_objects.obj_id%type,
                      p_cascade        varchar2 default 'N') AS
   BEGIN
-    -- TODO: Implementation required for procedure COREOBJ_SQL_FORECAST.remove
-    NULL;
+    COREOBJ_API.remove(p_obj_id, p_cascade);
   END remove;
 
   function get_object_status_to_display (p_obj_id          opas_objects.obj_id%type) return varchar2 AS
@@ -115,6 +114,32 @@ PACKAGE BODY COREOBJ_SQL_FORECAST AS
       on (t.OBJ_ID = s.OBJ_ID and t.TABLE_NAME = s.TABLE_NAME)
       when not matched then INSERT (obj_id,table_name) VALUES (s.obj_id,s.table_name);
   end;
+
+  procedure create_forecast_on_catcher(p_obj_id       out opas_objects.obj_id%type,
+                                       p_catcher_id       opas_objects.obj_id%type)
+  is
+    l_prnt opas_objects.obj_prnt%type;
+    l_nm   opas_objects.OBJ_NAME%type;
+  begin
+    select obj_prnt, OBJ_NAME into l_prnt, l_nm from opas_objects where obj_id = p_catcher_id;
+
+    COREOBJ_SQL_FORECAST.add_all_tabs_to_stat (  P_OBJ_ID => p_catcher_id) ;
+
+    COREOBJ_SQL_FORECAST.add (  P_OBJ_ID => create_forecast_on_catcher.P_OBJ_ID,
+      P_OBJ_PRNT => l_prnt,
+      --P_MODNAME => P_MODNAME,
+      --P_OWNER => P_OWNER,
+      P_DESCR => 'Based on "'||l_nm||'"') ;
+
+    INSERT INTO opas_ot_sql_forecast_stat ( obj_id, table_name, num_rows, growth_coeff)
+    select create_forecast_on_catcher.P_OBJ_ID obj_id, table_name, num_rows, growth_coeff from opas_ot_sql_forecast_stat
+    where obj_id = p_catcher_id;
+
+    COREOBJ_SQL_FORECAST.add_all_tabs_from_stat(create_forecast_on_catcher.P_OBJ_ID);
+
+    update opas_ot_sql_forecast_report set folder_id=p_catcher_id where obj_id=create_forecast_on_catcher.P_OBJ_ID;
+  end;
+
 END COREOBJ_SQL_FORECAST;
 /
 
