@@ -190,7 +190,7 @@ alter table opas_ot_tmp_gv$ash add inst_id number;
 
 drop table opas_ot_tmp_gv$session;
 create global temporary table opas_ot_tmp_gv$session ON COMMIT DELETE ROWS as select * from gv$session where 1=2;
-alter table opas_ot_tmp_gv$session drop column ts;
+--alter table opas_ot_tmp_gv$session drop column ts;
 alter table opas_ot_tmp_gv$session add lts timestamp;
 alter table opas_ot_tmp_gv$session add TSUTC timestamp;
 alter table opas_ot_tmp_gv$session add TSTZ timestamp with time zone;

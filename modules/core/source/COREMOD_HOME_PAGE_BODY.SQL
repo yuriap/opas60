@@ -43,7 +43,7 @@ PACKAGE BODY COREMOD_HOME_PAGE AS
     end loop;
 
     if l_inner_sql is null then
-      l_inner_sql := q'[select 1 rn, 'Test name' name, 'Test message' message, 1 ordr from dual]';
+      l_inner_sql := q'[select 1 rn, 'Test name' name, 'Test message' message, 1 ordr, 0 limit from dual]';
     end if;
 
     RETURN replace(l_sql,'<QRY>',l_inner_sql);

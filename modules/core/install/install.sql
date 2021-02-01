@@ -10,6 +10,13 @@ conn sys/&localsys.@&localdb. as sysdba
 
 conn &localscheme./&localscheme.@&localdb.
 
+create or replace PACKAGE OPAS_CLOUD AS
+
+  gOPAS_CLOUD constant boolean := false;
+
+END OPAS_CLOUD;
+/
+
 @../modules/core/struct/create_struct.sql
 
 @../modules/core/source/create_stored.sql

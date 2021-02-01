@@ -61,7 +61,7 @@ snapped         timestamp
 ) 
 ROW STORE COMPRESS ADVANCED;
 
-create index idx_opas_ot_dbg_dbgm                 on opas_ot_dbg_datapoint(dbg_id, snapped); --???
+create index idx_opas_ot_dbg_dbgm                 on opas_ot_dbg_datapoint(dbg_id, snapped); 
 create index idx_opas_ot_dbg_dbgm2                on opas_ot_dbg_datapoint(dbg_id, dbgdp_id);
 
 create table opas_ot_dbg_ts_sizes (
@@ -143,8 +143,6 @@ PARTITION BY LIST (dbg_id)
 ROW STORE COMPRESS ADVANCED;
 --indexes ???
 
-create index IDX_DBGSZ_OBJ on OPAS_OT_DBG_SEG_SIZES(DBGOBJ_ID) local;
-
 ----------------------
 CREATE TABLE opas_ot_dbg_seg_sizes (
 dbg_id           number not null references opas_ot_dbg_monitor (dbg_id) on delete cascade,
@@ -162,6 +160,7 @@ SUBPARTITION BY range (dbgdp_id)
 ) ROW STORE COMPRESS ADVANCED;
 --indexes ???
 -- end partitioned --
+create index IDX_DBGSZ_OBJ on OPAS_OT_DBG_SEG_SIZES(DBGOBJ_ID) local;
 
 create global temporary table opas_ot_tmp_dbg_objects (
 owner            varchar2(128),

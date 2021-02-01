@@ -186,5 +186,7 @@ end;
 
 ----
 INSERT INTO opas_groups2apexusr ( group_id, modname, apex_user) VALUES ( 0, 'OPASCORE', 'OPAS60ADM');
+INSERT INTO opas_groups2apexusr ( group_id, modname, apex_user) VALUES ( 0, 'OPASCORE', upper('&namepref.'));
+
 
 commit;

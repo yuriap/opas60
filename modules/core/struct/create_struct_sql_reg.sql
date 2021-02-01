@@ -1329,7 +1329,7 @@ create global temporary table opas_ot_tmp_dbh_ash
 	CURRENT_OBJ# number,
 	CURRENT_FILE# number
    ) on commit delete rows ;
-;
+
 ---
 CREATE GLOBAL TEMPORARY TABLE OPAS_OT_TMP_AWR_ASH_OBJS 
    (OBJECT_ID NUMBER, 
@@ -1442,7 +1442,7 @@ create table opas_ot_sqlcatch (
  check_interval                    number,
  status                            varchar2(10),
  tq_id                             number,
- sql_exec_def                      number
+ sql_exec_def                      number,
  primary key (obj_id)
 );
 
