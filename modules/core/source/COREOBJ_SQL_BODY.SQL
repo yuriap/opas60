@@ -57,6 +57,34 @@ PACKAGE BODY COREOBJ_SQL AS
     end if;
   end;
 
+  procedure queue_discover_sql_review(p_sql_data_point    opas_ot_sql_data%rowtype,
+                                      p_priority         varchar2 default null,
+                                      p_start_time       date default null)
+  is
+    L_TASKNAME   OPAS_TASK.TASKNAME%type := 'OPAS_SQL_DISCOVERY_REVIEW';
+    l_tq_id      OPAS_TASK_QUEUE.tq_id%type;
+
+    l_status     opas_ot_sql_data.gathering_status%type;
+    l_sql_id     opas_ot_sql_data.sql_id%type;
+    l_owner      OPAS_OBJECTS.OBJ_OWNER%type;
+    l_obj_id     OPAS_OBJECTS.obj_id%type;
+    l_nt_id      opas_notification.ID%type;
+  begin
+    select gathering_status, sql_id into l_status, l_sql_id from opas_ot_sql_data where sql_data_point_id = p_sql_data_point.sql_data_point_id for update;
+
+    if l_status in (sdoNotStarted, sdoFAILED) then
+
+      l_tq_id:=COREMOD_TASKS.prep_execute_task (  P_TASKNAME => L_TASKNAME) ;
+      COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => 'B1', p_num_par => p_sql_data_point.sql_data_point_id);
+      COREMOD_TASKS.queue_task ( p_tq_id => l_tq_id, p_priority => queue_discover_sql_review.p_priority, p_start_time => queue_discover_sql_review.p_start_time) ;
+      update opas_ot_sql_data set tq_id = l_tq_id, gathering_status = sdoInQueue where sql_data_point_id = p_sql_data_point.sql_data_point_id;
+      COREOBJ_SQL_UTILS.init_section_statuses(p_sql_data_point.sql_data_point_id);
+
+    else
+      raise_application_error(-20000,'Inapropriate data object '|| p_sql_data_point.sql_data_point_id || ' status: '||l_status);
+    end if;
+  end;
+
   procedure add_sql_description(p_sql_id                     opas_ot_sql_descriptions.sql_id%type,
                                 p_created_by                 opas_ot_sql_descriptions.created_by%type,
                                 p_first_discovered           opas_ot_sql_descriptions.first_discovered%type,
@@ -91,7 +119,8 @@ PACKAGE BODY COREOBJ_SQL AS
                    p_prnt_dp          opas_ot_sql_data.prnt_data_point_id%type default null,
                    p_notifyme         boolean default false,
                    p_priority         varchar2 default null,
-                   p_start_time       date default null)
+                   p_start_time       date default null,
+                   p_task_name        varchar2 default null)
   AS
     l_sql_exists number;
     l_sql_data_point    opas_ot_sql_data%rowtype;
@@ -118,7 +147,11 @@ PACKAGE BODY COREOBJ_SQL AS
              ( obj_id,  sql_data_point_id)
       VALUES ( P_OBJ_ID, l_sql_data_point.sql_data_point_id);
 
-    queue_discover_sql(l_sql_data_point, p_notifyme, p_priority, p_start_time);
+    if p_task_name is null then
+      queue_discover_sql(l_sql_data_point, p_notifyme, p_priority, p_start_time);
+    elsif p_task_name = 'OPAS_SQL_DISCOVERY_REVIEW' then
+      queue_discover_sql_review(l_sql_data_point, p_priority, p_start_time);
+    end if;
   END add;
 
   procedure remove  (p_obj_id    opas_objects.obj_id%type,

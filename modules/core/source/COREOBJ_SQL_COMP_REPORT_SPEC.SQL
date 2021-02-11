@@ -140,6 +140,22 @@ package COREOBJ_SQL_COMP_REPORT is
   procedure setsectnum(p_num number);
   function getsectnum return number;
 
+  function getsqltext(p_sql_id varchar2,
+                      p_max_length out number) return COREMOD_REPORT_UTILS.t_output_lines;
+  procedure compare(p_txt1      COREMOD_REPORT_UTILS.t_output_lines,
+                    p_txt2      COREMOD_REPORT_UTILS.t_output_lines,
+                    p_flags     pls_integer,
+                    p_output    out COREMOD_REPORT_UTILS.t_output_lines,
+                    p_c1        out COREMOD_REPORT_UTILS.t_output_lines,
+                    p_c2        out COREMOD_REPORT_UTILS.t_output_lines,
+                    p_c3        out COREMOD_REPORT_UTILS.t_output_lines);
+  procedure read_plan_main(p_plan_id        opas_ot_sql_awr_plan_det.plan_id%type,
+                           p_section_name   varchar2,
+                           p_output     out COREMOD_REPORT_UTILS.t_output_lines,
+                           p_max_length out number);
+  procedure read_plan_ep(p_plan_id       opas_ot_sql_ep_plan_det.plan_id%type,
+                         p_output    out COREMOD_REPORT_UTILS.t_output_lines,
+                         p_max_length out number);
 end COREOBJ_SQL_COMP_REPORT;
 /
 

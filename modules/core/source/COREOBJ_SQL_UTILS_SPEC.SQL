@@ -42,6 +42,7 @@ PACKAGE COREOBJ_SQL_UTILS AS
 
   procedure discover_sql (p_sql_data_point_id         opas_ot_sql_data.sql_data_point_id%type);
   procedure discover_sql2(p_sql_data_point_id         opas_ot_sql_data.sql_data_point_id%type);
+  procedure discover_sql_review(p_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type);
 
   procedure is_section_ready(p_sql_data_point_id      opas_ot_sql_data.sql_data_point_id%type,
                              p_section_name           varchar2,
@@ -64,7 +65,9 @@ PACKAGE COREOBJ_SQL_UTILS AS
                    p_db_link          opas_db_links.db_link_name%type,
                    p_current_dir      varchar2,
                    p_gather_new       boolean,
-                   p_dirname      out varchar2);
+                   p_dirname      out varchar2,
+                   p_task_name        varchar2 default null,
+                   p_descr            opas_objects.obj_descr%type default null);
 
   procedure cancel_discover_sql (p_sql_data_point_id         opas_ot_sql_data.sql_data_point_id%type);
 

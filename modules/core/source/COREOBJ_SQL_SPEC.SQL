@@ -24,7 +24,8 @@ PACKAGE COREOBJ_SQL AS
                    p_prnt_dp          opas_ot_sql_data.prnt_data_point_id%type default null,
                    p_notifyme         boolean default false,
                    p_priority         varchar2 default null,
-                   p_start_time       date default null);
+                   p_start_time       date default null,
+                   p_task_name        varchar2 default null);
 
   --procedure queue_discover_sql(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type);
 

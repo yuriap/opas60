@@ -42,7 +42,7 @@ package body coreobj_sql_tags is
   is
   begin
     merge into opas_ot_sql_sql2tags t
-    using (select p_sql_id sql_id, p_tag_name tag from dual) s
+    using (select p_sql_id sql_id, tag_name tag from opas_ot_sql_tags where tag_name = p_tag_name) s
     on (s.sql_id = t.sql_id and s.tag = t.tag)
     when not matched then insert (t.sql_id, t.tag, t.tag_type) values (s.sql_id, s.tag, p_tag_type);
   end;

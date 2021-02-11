@@ -114,6 +114,14 @@ begin
 end;
 /
 
+begin
+  COREMOD_TASKS.create_task (  p_taskname  => 'OPAS_SQL_DISCOVERY_REVIEW',
+                               p_modname   => '&MODNM.',
+                               p_is_public => 'Y', 
+							   p_task_priority => COREMOD_TASKS.tpNORM,
+                               p_task_body => 'begin COREOBJ_SQL_UTILS.discover_sql_review (p_sql_data_point_id => <B1>) ; end;');
+end;
+/
 
 --for sql search
 begin
