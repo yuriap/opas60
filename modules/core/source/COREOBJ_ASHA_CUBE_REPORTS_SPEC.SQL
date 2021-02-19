@@ -15,10 +15,11 @@ PACKAGE COREOBJ_ASHA_CUBE_REPORTS AS
   function get_main_diag_raw_data_qry(p_filtered varchar2 default 'Y') return varchar2;
   function get_main_diag_stats_qry return varchar2;
 
-  function get_top_events_qry return varchar2;
+  function get_top_events_qry(p_event_class_item varchar2 default null) return varchar2;
   function get_top_modules_qry return varchar2;
   function get_top_segments_qry return varchar2;
   function get_top_sessions_qry return varchar2;
+  function get_wait_class_list_qry return varchar2;
 
   function get_sql_timeline_qry(p_top_n number) return varchar2;
 

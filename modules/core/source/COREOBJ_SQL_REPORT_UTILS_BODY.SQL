@@ -3,6 +3,18 @@
 CREATE OR REPLACE
 PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
 
+  poVal_TextWrapLines varchar2(100) := null;
+
+  procedure set_print_options(p_name varchar2, p_value varchar2)
+  is
+  begin
+    case p_name
+      when poTextWrapLines then poVal_TextWrapLines := p_value;
+    else
+      raise_application_error(-20000, 'Invalid print option: '||p_name);
+    end case;
+  end;
+
   function get_header_refresh_interval(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type) return number
   is
     l_refresh_interval number := 5;
@@ -86,8 +98,12 @@ PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
     for i in (select r.OBJ_ID, x.*,to_char(cast((x.END_GATHERING_DT-x.START_GATHERING_DT) AS INTERVAL DAY(2) TO SECOND(3))) dur,
                      (select listagg('<b>'||gathering_status||':</b> '||cnt,'; ') within group (order by gathering_status)
                         from (select gathering_status, count(1) cnt
-                                from OPAS_OT_SQL_DATA_SECT where sql_data_point_id = p_sql_data_point_id group by gathering_status)) sect_statuses
-                from opas_ot_sql_data x, OPAS_OT_SQL_DATA_POINT_REF r where x.sql_data_point_id = p_sql_data_point_id and x.sql_data_point_id = r.sql_data_point_id) loop
+                                from OPAS_OT_SQL_DATA_SECT where sql_data_point_id = p_sql_data_point_id group by gathering_status)) sect_statuses,
+                     o.OBJ_DESCR
+                from opas_ot_sql_data x, OPAS_OT_SQL_DATA_POINT_REF r, OPAS_OBJECTS o
+               where x.sql_data_point_id = p_sql_data_point_id
+                 and x.sql_data_point_id = r.sql_data_point_id
+                 and r.obj_id = o.obj_id) loop
 
       if p_mode = 0 then
         htp.p('<b>Gathering status:</b> '||i.gathering_status||'; ');
@@ -109,6 +125,9 @@ PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
         htp.p(
           nvl( COREOBJ_API.get_param_c(i.OBJ_ID, COREOBJ_SQL_UTILS.pnAllParsDispl, false),print_data_point_params(p_sql_data_point_id))
           );
+        if i.OBJ_DESCR is not null then
+         htp.p('<br><br><b>Description:</b> '||i.OBJ_DESCR);
+        end if;
       end if;
     end loop;
   end;
@@ -184,7 +203,11 @@ PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
         l_plhsh := coreobj_sql_comp_report.getparamforcaller_n(coreobj_sql_comp_report.pV$PLNHASH#2);
       end if;
     end if;
-    for i in (select * from OPAS_OT_SQL_VSQL
+    for i in (select s.*,
+                round(s.USER_IO_WAIT_TIME/decode(s.PHYSICAL_READ_REQUESTS+s.PHYSICAL_WRITE_REQUESTS, null, decode(DISK_READS,0,1,DISK_READS),
+                                                                                                        0, decode(DISK_READS,0,1,DISK_READS),
+                                                                                                           s.PHYSICAL_READ_REQUESTS+s.PHYSICAL_WRITE_REQUESTS)) avg_io_tim
+                from OPAS_OT_SQL_VSQL s
                where sql_data_point_id=p_sql_data_point_id
                  and inst_id=nvl(l_inst,inst_id)
                  and child_number=nvl(l_chld,child_number)
@@ -193,12 +216,12 @@ PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
       --p(' ');
       p('=====================================================================================================');
       p('SQL_ID='||i.sql_id||'; CHILD_NUMBER='||i.child_number||'; PLAN HASH: '||i.PLAN_HASH_VALUE||'; Opt Env Hash: '||i.OPTIMIZER_ENV_HASH_VALUE||';'||' INST_ID: '||i.inst_id);
-    p('FORCE_MATCHING_SIGN: '||i.force_matching_signature||'; OLD_HASH_VALUE: '||i.OLD_HASH_VALUE);
-    begin
-      select object_type||': '||owner||'.'||object_name into l_on from opas_ot_sql_vsql_objs s where s.object_id=i.program_id and s.CHILD_NUMBER = i.CHILD_NUMBER and s.sql_data_point_id = p_sql_data_point_id;
-      p(l_on||', line number: '||i.program_line#);
-      exception when no_data_found then null;
-    end;
+      p('FORCE_MATCHING_SIGN: '||i.force_matching_signature||'; OLD_HASH_VALUE: '||i.OLD_HASH_VALUE);
+      begin
+        select object_type||': '||owner||'.'||object_name into l_on from opas_ot_sql_vsql_objs s where s.object_id=i.program_id and s.CHILD_NUMBER = i.CHILD_NUMBER and s.sql_data_point_id = p_sql_data_point_id;
+        p(l_on||', line number: '||i.program_line#);
+        exception when no_data_found then null;
+      end;
       p('-----------------------------------------------------------------------------------------------------');
       p('Parsing Schema, Module, Action: '||nvl(i.parsing_schema_name,'<NULL>')||', '||nvl(i.module,'<NULL>')||', '||nvl(i.action,'<NULL>'));
       p('Load_time, First: '||i.first_load_time||', Last: '||i.last_load_time||', Active: '||to_char(i.last_active_time,defDataTimeFullFmt));
@@ -208,15 +231,18 @@ PACKAGE BODY COREOBJ_SQL_REPORT_UTILS AS
         p('IS_OBSOLETE, IS_BIND_SENSITIVE,IS_BIND_AWARE, IS_SHARABLE: '||nvl(i.IS_OBSOLETE,'<NULL>')||','||nvl(i.IS_BIND_SENSITIVE,'<NULL>')||','||nvl(i.IS_BIND_AWARE,'<NULL>')||','||nvl(i.is_shareable,'<NULL>'));
         p('SQL Profile, SQL Patch, SQL Plan BaseLine: '||nvl(i.sql_profile,'<NULL>')||','||nvl(i.sql_patch,'<NULL>')||','||nvl(i.sql_plan_baseline,'<NULL>'));
       $END
-    p('PX_SERVERS_EXECUTIONS: '||COREMOD_REPORT_UTILS.tptformat(i.PX_SERVERS_EXECUTIONS));
+      p('PX_SERVERS_EXECUTIONS: '||COREMOD_REPORT_UTILS.tptformat(i.PX_SERVERS_EXECUTIONS));
       p('PHY_READ_REQ, PHY_READ_BYTES: '||COREMOD_REPORT_UTILS.tptformat(i.physical_read_requests)||'; '||COREMOD_REPORT_UTILS.tptformat(i.physical_read_bytes));
-    p('PHY_WRI_REQ, PHY_WRI_BYTES: '||COREMOD_REPORT_UTILS.tptformat(i.physical_write_requests)||'; '||COREMOD_REPORT_UTILS.tptformat(i.physical_write_bytes));
+      p('PHY_WRI_REQ, PHY_WRI_BYTES: '||COREMOD_REPORT_UTILS.tptformat(i.physical_write_requests)||'; '||COREMOD_REPORT_UTILS.tptformat(i.physical_write_bytes));
       p('Calls: Parse, Exec, Fetch, Rows, EndOfFetch '||i.parse_calls||'; '||i.executions||'; '||i.fetches||'; '||i.ROWS_PROCESSED||'; '||i.end_of_fetch_count);
       p('CPU Time, Elapsed Time: '||COREMOD_REPORT_UTILS.tptformat(i.cpu_time,'TIME')||'; '||COREMOD_REPORT_UTILS.tptformat(i.elapsed_time,'TIME'));
       p('PIO, LIO, Direct WR: '||COREMOD_REPORT_UTILS.tptformat(i.disk_reads)||'; '||COREMOD_REPORT_UTILS.tptformat(i.buffer_gets)||'; '||COREMOD_REPORT_UTILS.tptformat(i.DIRECT_WRITES));
-    p('WAIT: APP, CONCURR, CLUSTER, USER_IO, PL/SQL, JAVA: '||COREMOD_REPORT_UTILS.tptformat(i.application_wait_time,'TIME')||'; '||COREMOD_REPORT_UTILS.tptformat(i.concurrency_wait_time,'TIME')||'; '||COREMOD_REPORT_UTILS.tptformat(i.cluster_wait_time,'TIME')||'; '||COREMOD_REPORT_UTILS.tptformat(i.user_io_wait_time,'TIME')||'; '||COREMOD_REPORT_UTILS.tptformat(i.PLSQL_EXEC_TIME,'TIME')||'; '||COREMOD_REPORT_UTILS.tptformat(i.JAVA_EXEC_TIME,'TIME'));
-    if i.disk_reads>0 then p('Awg IO time: '||COREMOD_REPORT_UTILS.tptformat(i.user_io_wait_time/i.disk_reads,'TIME'));end if;
-    if i.buffer_gets>0 then p('CPU sec/1M LIO: '||COREMOD_REPORT_UTILS.tptformat(i.cpu_time/i.buffer_gets));end if;
+      p('WAIT: APP, CONCURR, CLUSTER, USER_IO, PL/SQL, JAVA: '||COREMOD_REPORT_UTILS.tptformat(i.application_wait_time,'TIME')||'; '||COREMOD_REPORT_UTILS.tptformat(i.concurrency_wait_time,'TIME')||'; '||COREMOD_REPORT_UTILS.tptformat(i.cluster_wait_time,'TIME')||'; '||COREMOD_REPORT_UTILS.tptformat(i.user_io_wait_time,'TIME')||'; '||COREMOD_REPORT_UTILS.tptformat(i.PLSQL_EXEC_TIME,'TIME')||'; '||COREMOD_REPORT_UTILS.tptformat(i.JAVA_EXEC_TIME,'TIME'));
+      --if i.disk_reads>0 then p('Awg IO time: '||COREMOD_REPORT_UTILS.tptformat(i.user_io_wait_time/i.disk_reads,'TIME'));end if;
+      p('Awg IO time: '||COREMOD_REPORT_UTILS.tptformat(i.avg_io_tim,'TIME'));
+
+
+      if i.buffer_gets>0 then p('CPU sec/1M LIO: '||COREMOD_REPORT_UTILS.tptformat(i.cpu_time/i.buffer_gets));end if;
       p('-----------------------------------------------------------------------------------------------------');
       if i.executions>0 then
         p('LIO/Exec, PIO/Exec, CPU/EXEC, ROWS/EXEC, ELA/EXEC: '||COREMOD_REPORT_UTILS.tptformat(round(i.buffer_gets/i.executions,3))||'; '||
@@ -1327,10 +1353,16 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
   procedure print_sql_text_web(p_sql_id              opas_ot_sql_data.sql_id%type,
                                p_output          out COREMOD_REPORT_UTILS.t_output_lines)
   is
-    l_text     clob;
-    l_length   number;
+    l_text      clob;
+    l_length    number;
     l_file_id   opas_files.file_id%type;
     l_is_approx number;
+    l_line      varchar2(32765);
+    l_line_s    varchar2(32765);
+    l_pos       number;
+    l_line_length number := to_number(nvl(poVal_TextWrapLines,'100') default 100 on conversion error);
+    l_exit        boolean := false;
+    l_cnt         number := 0;
   begin
 
     p_output(1):='<code class="codeView">';
@@ -1345,7 +1377,30 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
                where file_id=l_file_id
                order by line_number)
     loop
-      l_text:=l_text||'<li id="L'||to_char(i.line_number)||'">'||apex_escape.html(i.payload) ||'</li>';
+      if poVal_TextWrapLines is not null then
+        l_line := i.payload;
+        if length(l_line)>l_line_length then
+          loop
+            l_line_s := substr(l_line,1,l_line_length);
+            l_exit := length(l_line_s)<l_line_length;
+            l_pos := instr(replace(replace(l_line_s,' ',','),'=',','),',',-1);
+            if length(l_line_s)=l_line_length and l_pos<>0 then
+              l_line_s := substr(l_line_s,1,l_pos);
+            end if;
+            l_text:=l_text||'<li id="L'||to_char(i.line_number)||'">'||apex_escape.html(l_line_s) ||'</li>';
+            l_cnt := l_cnt + 1;
+            l_exit := l_pos = 0 or l_cnt > 500;
+            l_line := substr(l_line,length(l_line_s));
+            exit when l_exit;
+          end loop;
+        else
+          l_text:=l_text||'<li id="L'||to_char(i.line_number)||'">'||apex_escape.html(l_line) ||'</li>';
+        end if;
+      else
+        --l_line := i.payload;
+        l_text:=l_text||'<li id="L'||to_char(i.line_number)||'">'||apex_escape.html(i.payload) ||'</li>';
+      end if;
+
     end loop;
 
     if l_is_approx = 1 then
@@ -1363,6 +1418,7 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
     p_output(1):=p_output(1)||'</ol>';
     p_output(1):=p_output(1)||'</code>';
 
+    poVal_TextWrapLines := null;
   end;
 
   procedure print_section_web(p_output COREMOD_REPORT_UTILS.t_output_lines)

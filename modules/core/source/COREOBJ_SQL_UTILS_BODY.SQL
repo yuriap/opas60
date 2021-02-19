@@ -318,13 +318,20 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
           first_discovered    = nvl(first_discovered,systimestamp),
           FIRST_DISCOVERED_AT = nvl(p_data.dblink,FIRST_DISCOVERED_AT)
         where sql_id = p_data.sql_id;
+
+        update (select s.* from OPAS_OT_SQL_DATA_SECT s, OPAS_OT_SQL_DATA dp
+         where s.section_name=COREOBJ_SQL_REPORT_UTILS.repsSQL_TEXT
+           and s.gathering_status=sstEmpty
+           and s.SQL_DATA_POINT_ID=dp.SQL_DATA_POINT_ID
+           and dp.sql_id=i.sql_id)
+           set gathering_status = sstReady;
         begin
           coreobj_sql_tags.auto_tag_sql(p_sql_id => p_data.sql_id);
         exception
           when others then coremod_tasks.log('Warning: coreobj_sql_tags.auto_tag_sql failed for '||p_data.sql_id||' with: '||SQLERRM);
         end;
       else
-        l_rows := 0;
+        if i.SQL_TEXT_APPROX is null then l_rows := 0; else l_rows := 1; end if;
       end if;
     end loop;
 

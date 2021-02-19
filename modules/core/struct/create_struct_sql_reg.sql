@@ -1488,7 +1488,8 @@ create table opas_ot_sql_forecast_stat (
  obj_id                            number                                 not null  references opas_objects(obj_id) on delete cascade,
  table_name                        varchar2(128),
  num_rows                          number,
- growth_coeff                      number  -- for cases where no previous data exists
+ growth_coeff                      number,  -- for cases where no previous data exists
+ gathered                          date
 );
 
 create index idx_opas_sql_fcs_obj  on opas_ot_sql_forecast_stat(obj_id);

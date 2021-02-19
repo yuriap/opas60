@@ -97,12 +97,13 @@ PACKAGE BODY COREOBJ_SQL_FORECAST AS
       and o.obj_id=r.obj_id
       and r.sql_data_point_id = sd.sql_data_point_id
       and sd.sql_id = d.sql_id
-      and d.sql_id = tags.sql_id)
+      and d.sql_id = tags.sql_id
+      and tags.table_name is not null)
     loop
       merge into OPAS_OT_SQL_FORECAST_STAT t
-      using (select p_obj_id obj_id, i.table_name TABLE_NAME, null NUM_ROWS from dual) s
+      using (select p_obj_id obj_id, i.table_name TABLE_NAME, null NUM_ROWS, sysdate GATHERED from dual) s
       on (t.OBJ_ID = s.OBJ_ID and t.TABLE_NAME = s.TABLE_NAME)
-      when not matched then INSERT (obj_id,table_name,num_rows) VALUES (s.obj_id,s.table_name,s.num_rows);
+      when not matched then INSERT (obj_id,table_name,num_rows,GATHERED) VALUES (s.obj_id,s.table_name,s.num_rows,s.GATHERED);
     end loop;
   end;
 
@@ -131,8 +132,8 @@ PACKAGE BODY COREOBJ_SQL_FORECAST AS
       --P_OWNER => P_OWNER,
       P_DESCR => 'Based on "'||l_nm||'"') ;
 
-    INSERT INTO opas_ot_sql_forecast_stat ( obj_id, table_name, num_rows, growth_coeff)
-    select create_forecast_on_catcher.P_OBJ_ID obj_id, table_name, num_rows, growth_coeff from opas_ot_sql_forecast_stat
+    INSERT INTO opas_ot_sql_forecast_stat ( obj_id, table_name, num_rows, growth_coeff, GATHERED)
+    select create_forecast_on_catcher.P_OBJ_ID obj_id, table_name, num_rows, growth_coeff, nvl(GATHERED, sysdate) GATHERED from opas_ot_sql_forecast_stat
     where obj_id = p_catcher_id;
 
     COREOBJ_SQL_FORECAST.add_all_tabs_from_stat(create_forecast_on_catcher.P_OBJ_ID);

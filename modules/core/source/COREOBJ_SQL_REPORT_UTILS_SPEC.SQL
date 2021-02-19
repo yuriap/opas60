@@ -35,9 +35,13 @@ PACKAGE COREOBJ_SQL_REPORT_UTILS AS
   gwWideSection1     constant number := 1400;
   gdHeaderRepeat     constant number := 30;
 
+  poTextWrapLines    constant varchar2(30) := 'WRAP';
+
   function  get_header_refresh_interval(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type) return number;
   procedure print_header(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
                          p_mode                 number default 0);
+
+  procedure set_print_options(p_name varchar2, p_value varchar2);
 
   procedure print_section_html(p_sql_data_point_id   opas_ot_sql_data.sql_data_point_id%type,
                                p_section_name varchar2,

@@ -24,6 +24,7 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_REPORTS AS
   g_AGG1       varchar2(30) := 'P3003_AGG1';
   g_AGG2       varchar2(30) := 'P3003_AGG2';
   g_AGG3       varchar2(30) := 'P3003_AGG3';
+  g_WAIT_CLASSES       varchar2(30) := 'P3003_WAIT_CLASSES';
 
   gParams COREOBJ_API.t_params;
 
@@ -304,7 +305,7 @@ stat_ranged as
     set_param(g_AGG1, v(g_AGG1));
     set_param(g_AGG2, v(g_AGG2));
     set_param(g_AGG3, v(g_AGG3));
-
+    set_param(g_WAIT_CLASSES, v(g_WAIT_CLASSES));
   end;
 
   function data_exists(p_wait_class varchar2) return boolean is
@@ -328,6 +329,27 @@ stat_ranged as
     --log(get_param(g_CUBE_ID));
     execute immediate l_sql into l_result using to_number(get_param(g_CUBE_ID)), to_number(get_param(g_CUBE_ID)), get_param(g_DBLINK), get_param(g_DBLINK);
     return l_result>0;
+  exception
+    when others then raise_application_error(-20000, l_sql||chr(10)||sqlerrm);
+  end;
+
+  function get_wait_class_list_qry return varchar2 is
+    l_sql varchar2(32765);
+    l_result number;
+  begin
+
+    read_item_parameters;
+
+    l_sql := get_base_query(p_include_tags => 0) ||
+      q'[ select /*+ qb_name(wait_class_list_qry) */ unique WAIT_CLASS d, WAIT_CLASS r
+                           from OPAS_OT_ASHACUBE_ASH_WCS c, rng_ids, flt_timeline t
+                          where c.asharange_id = rng_ids.asharange_id
+                            and (t.mi_tim between rng_ids.start_time_utc and rng_ids.end_time_utc
+                              or t.ma_tim between rng_ids.start_time_utc and rng_ids.end_time_utc)]';
+
+    preprocess_qry(l_sql);
+    --log(l_sql);
+    return l_sql;
   exception
     when others then raise_application_error(-20000, l_sql||chr(10)||sqlerrm);
   end;
@@ -543,7 +565,7 @@ from stats order by 2 desc]';
 
   end;
 
-  function get_top_events_qry return varchar2
+  function get_top_events_qry(p_event_class_item varchar2 default null) return varchar2
   is
     l_sql varchar2(32765);
   BEGIN
@@ -554,14 +576,25 @@ q'[,
 nm as (select /*+ result_cache */ name, display_name||'('||name||')' display_name from v$event_name where name != display_name),
 stats as    (select nvl(event,'CPU') event, /*count(1)*/ sum(tp_time) sec
                from stats_ranged
-              where (<FILTER>)
+              where (<FILTER>) <EVENTCLASS>
               group by nvl(event,'CPU'))
 select /*+ qb_name(top_events) */ coalesce((select display_name from nm where name=event),event)||' ('||round(100*sec/tot,2)||'%)' event, sec
 from (select event,sec,sum(sec)over() tot from stats s order by 2 desc) s
 where rownum<=10]';
 
-    preprocess_qry(l_sql);
 
+    if p_event_class_item is not null and p_event_class_item not in (g_WAIT_CLASSES) then
+      raise_application_error(-20000,'Unsupported item: '||p_event_class_item);
+    end if;
+
+    if p_event_class_item is null or instr(get_param(p_event_class_item),'NOCLASS')>0 then
+      l_sql :=  replace(l_sql,'<EVENTCLASS>','');
+    else
+      l_sql :=  replace(replace(l_sql,'<EVENTCLASS>',q'[and nvl(WAIT_CLASS,'CPU') in (select /*+ cardinality(x 1) qb_name(event_classes)*/ column_value from table(coreobj_sql_tags.parse_tag_list(:<ITEMNAME>)))]'),'<ITEMNAME>',p_event_class_item);
+    end if;
+
+    preprocess_qry(l_sql);
+    --log(l_sql);
     RETURN l_sql;
   end;
 
