@@ -497,27 +497,29 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                          p_obj_id opas_ot_sql_data_point_ref.obj_id%type)
   is
     l_sql        varchar2(32765);
-    l_rows       number;
+    l_rows       number := 0;
     l_report     clob;
     l_file_id    opas_files.file_id%type;
     l_drows      number;
   begin
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMONV$);
-
+--coremod_tasks.log('0: start');
     l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_SQLMON */ INTO opas_ot_tmp_gv$sql_monitor (<SRC_DB_COL_LICT>)
-              select <SRC_DB_COL_LICT> from gv$sql_monitor]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || q'[ where sql_id = :p_sql_id and rownum < :p_drows]';
+              select <SRC_DB_COL_LICT> from gv$sql_monitor]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || q'[ where sql_id = :p_sql_id]'; --and rownum < :p_drows]
     l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_GV_$SQL_MONITOR'));
 
     l_drows := nvl( COREOBJ_API.get_param_n(p_obj_id, pnSQLMONHSTRows, true), defSQLMONHSTRows);
 
     begin
-      execute immediate l_sql using p_data.sql_id, l_drows;
+      execute immediate l_sql using p_data.sql_id; --, l_drows;
 --coremod_tasks.log('1: '||sql%rowcount);
     exception
       when others then  execute immediate l_sql using p_data.sql_id, 20;
 --coremod_tasks.log('2: '||sql%rowcount);
     end;
 
+--insert into ttt_opas_ot_tmp_gv$sql_monitor select * from opas_ot_tmp_gv$sql_monitor;
+--coremod_tasks.log('1.1: '||sql%rowcount);
     l_sql := null;
 
     update opas_ot_tmp_gv$sql_monitor set sqlmon_id = opas_ot_sq_sqlmon_id.nextval;
@@ -537,7 +539,15 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
         con_name, ecid, null, null, inst_id, null,
         p_data.dblink
     from (
+    with sqls as (select /*+ materialize */ sql_id, sql_exec_id, sql_exec_start
+                    from (select x.*, rownum rn
+                            from (select sql_id, sql_exec_id, sql_exec_start
+                                    from opas_ot_tmp_gv$sql_monitor
+                                   group by sql_id, sql_exec_id, sql_exec_start
+                                   order by sql_exec_start desc, sql_exec_id desc) x)
+                   where rn<=l_drows)
     SELECT 'I' op, t.* FROM opas_ot_tmp_gv$sql_monitor t
+     where ( sql_id, sql_exec_id, sql_exec_start) in (select sql_id, sql_exec_id, sql_exec_start from sqls)
 --    where report_id = 0 --and status in ( 'EXECUTING', 'DONE (ERROR)')
 /*    union all
     SELECT 'I' op, t.* FROM opas_ot_tmp_gv$sql_monitor t
@@ -599,7 +609,15 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       WHEN op = 'L' and 1=2 THEN
       INTO opas_ot_sql_sqlmon_ref ( sql_data_point_id, sqlmon_id)
       values( p_data.sql_data_point_id, sqlmon_id)
+    with sqls as (select /*+ materialize */ sql_id, sql_exec_id, sql_exec_start
+                    from (select x.*, rownum rn
+                            from (select sql_id, sql_exec_id, sql_exec_start
+                                    from opas_ot_tmp_gv$sql_monitor
+                                   group by sql_id, sql_exec_id, sql_exec_start
+                                   order by sql_exec_start desc, sql_exec_id desc) x)
+                   where rn<=l_drows)
     SELECT 'I' op, t.*/*, sqlmon_id*/ FROM opas_ot_tmp_gv$sql_monitor t
+    where ( sql_id, sql_exec_id, sql_exec_start) in (select sql_id, sql_exec_id, sql_exec_start from sqls)
 --    where report_id = 0 --and status in ( 'EXECUTING', 'DONE (ERROR)')
 /*    union all
     SELECT 'I' op, t.* FROM opas_ot_tmp_gv$sql_monitor t
@@ -624,10 +642,16 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
 --      and not exists (select 1 from opas_ot_sql_sqlmon_ref i where sql_data_point_id = p_data.sql_data_point_id and i.sqlmon_id=p.sqlmon_id)
       ;
 --coremod_tasks.log('5: '||sql%rowcount);
-    select count(1) into l_rows from opas_ot_sql_sqlmon_ref where sql_data_point_id = p_data.sql_data_point_id;
+    --select count(1) into l_rows from opas_ot_sql_sqlmon_ref where sql_data_point_id = p_data.sql_data_point_id;
 
-    for i in (select m.* from opas_ot_sql_sqlmon_ref r, opas_ot_sql_sqlmon m where r.sqlmon_id = m.sqlmon_id and r.sql_data_point_id = p_data.sql_data_point_id and sql_mon_report is null) loop
+    for i in (select m.*, decode(SQL_TEXT, null, 0, 1) sql_text_avail, case when upper(PROCESS_NAME) like 'P%' then 'PSLAVE' else 'MAIN' end PROCESS_NAME
+                from opas_ot_sql_sqlmon_ref r, opas_ot_sql_sqlmon m, OPAS_OT_SQL_SQLMON_DATA d
+               where r.sqlmon_id = m.sqlmon_id and d.sqlmon_id = m.sqlmon_id and m.SOURCE=srcV$
+                 and r.sql_data_point_id = p_data.sql_data_point_id
+                 and sql_mon_report is null) loop
       begin
+        l_report := null;
+
         if p_data.dblink = COREMOD_API.gLocalDBLink then
           if i.report_id <> 0 then
             l_report := dbms_sqltune.report_sql_monitor
@@ -635,14 +659,16 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                            REPORT_ID => i.report_id,
                            report_level=>'ALL');
           else
-            l_report := dbms_sqltune.report_sql_monitor
-                          (sql_id=>p_data.sql_id,
-                           SESSION_ID => i.sid,
-                           SESSION_SERIAL=> i.session_serial#,
-                           SQL_EXEC_ID => i.sql_exec_id,
-                           INST_ID => i.instance_number,
-                           SQL_EXEC_START => i.sql_exec_start,
-                           report_level=>'ALL');
+            if i.sql_text_avail = 1 and i.PROCESS_NAME = 'MAIN' then
+              l_report := dbms_sqltune.report_sql_monitor
+                            (sql_id=>p_data.sql_id,
+                             SESSION_ID => i.sid,
+                             SESSION_SERIAL=> i.session_serial#,
+                             SQL_EXEC_ID => i.sql_exec_id,
+                             INST_ID => i.instance_number,
+                             SQL_EXEC_START => i.sql_exec_start,
+                             report_level=>'ALL');
+            end if;
           end if;
         else
           if i.report_id <> 0 then
@@ -652,10 +678,11 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                                                       ,'<REP_ID>',i.report_id),
                                            p_dblink => p_data.dblink,
                                            p_output => l_report);
-
+--coremod_tasks.log('i.report_id <> 0: '||i.report_id);
           else
-            COREMOD_UTILS.get_clob_remotelly(p_sql => replace(replace(replace(replace(replace(replace(
-              q'[begin l_out := dbms_sqltune.report_sql_monitor(sql_id=>'<SQL_ID>', SESSION_ID => <SID>, SESSION_SERIAL=> <SER>, SQL_EXEC_ID => <EID>, INST_ID => <IID>, SQL_EXEC_START => to_date('<SDT>','YYYYMMDDHH24MISS'), report_level=>'ALL'); end;]'
+            if i.sql_text_avail = 1 and i.PROCESS_NAME = 'MAIN' then
+              COREMOD_UTILS.get_clob_remotelly(p_sql => replace(replace(replace(replace(replace(replace(
+                q'[begin l_out := dbms_sqltune.report_sql_monitor(sql_id=>'<SQL_ID>', SESSION_ID => <SID>, SESSION_SERIAL=> <SER>, SQL_EXEC_ID => <EID>, INST_ID => <IID>, SQL_EXEC_START => to_date('<SDT>','YYYYMMDDHH24MISS'), report_level=>'ALL'); end;]'
                                                       ,'<SQL_ID>',p_data.sql_id)
                                                       ,'<SID>',i.sid)
                                                       ,'<SER>',i.session_serial#)
@@ -664,9 +691,11 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                                                       ,'<SDT>',to_char(i.sql_exec_start,'YYYYMMDDHH24MISS')),
                                            p_dblink => p_data.dblink,
                                            p_output => l_report);
+--coremod_tasks.log('i.sql_text_avail: '||i.sql_text_avail||' '||i.PROCESS_NAME||' '||i.sid||' '||i.session_serial#||' '||i.sql_exec_id);
+            end if;
           end if;
         end if;
-        if l_report not like 'SQL Monitoring Report' then
+        if l_report not like 'SQL Monitoring Report' and dbms_lob.getlength(l_report)>22 then
           l_file_id := COREMOD_FILE_UTILS.create_file(
             P_MODNAME => COREMOD_API.gMODNAME,
             P_FILE_TYPE => 'SQLMON',
@@ -677,14 +706,16 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
              P_FILE_ID => l_file_id,
              P_CONTENT => l_report) ;
 
-        update opas_ot_sql_sqlmon set sql_mon_report = l_file_id where sqlmon_id = i.sqlmon_id;
+          update opas_ot_sql_sqlmon set sql_mon_report = l_file_id where sqlmon_id = i.sqlmon_id;
+--coremod_tasks.log('set report: i.sqlmon_id:l_file_id'||i.sqlmon_id||' '||l_file_id);
+          l_rows := l_rows + 1;
         end if;
       exception
         when others then
           coremod_tasks.log('Error load_sql_mon ('||p_data.sql_data_point_id||') calling dbms_sqltune.report_sql_monitor: '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
       end;
     end loop;
-
+--coremod_tasks.log('end');
     finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMONV$, p_rows_processed => l_rows);
   exception
     when others then
@@ -992,10 +1023,14 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
          P_CONTENT => i.report) ;
 
       update opas_ot_sql_sqlmon set sql_mon_hst_report = l_file_id where sqlmon_id = i.sqlmon_id;
-
+--coremod_tasks.log('set report hst1: i.sqlmon_id:l_file_id'||i.sqlmon_id||' '||l_file_id);
     end loop;
 
-    for i in (select m.* from opas_ot_sql_sqlmon_ref r, opas_ot_sql_sqlmon m where r.sqlmon_id = m.sqlmon_id and r.sql_data_point_id = p_data.sql_data_point_id and sql_mon_report is null) loop
+    for i in (select m.* from opas_ot_sql_sqlmon_ref r, opas_ot_sql_sqlmon m
+               where r.sqlmon_id = m.sqlmon_id
+                 and r.sql_data_point_id = p_data.sql_data_point_id
+                 and sql_mon_report is null
+                 and nvl(report_id,0)<>0) loop
       begin
         COREMOD_UTILS.get_clob_remotelly(p_sql => replace(
             q'[begin l_out := DBMS_AUTO_REPORT.REPORT_REPOSITORY_DETAIL(RID => <REP_ID>, TYPE => 'text'); end;]'
@@ -1014,6 +1049,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
           P_CONTENT => l_report) ;
 
         update opas_ot_sql_sqlmon set sql_mon_report = l_file_id where sqlmon_id = i.sqlmon_id;
+--coremod_tasks.log('set report hst2: i.sqlmon_id:l_file_id'||i.sqlmon_id||' '||l_file_id);
       exception
         when others then
         coremod_tasks.log('Error load_sql_mon_hst ('||p_data.sql_data_point_id||'): calling DBMS_AUTO_REPORT.REPORT_REPOSITORY_DETAIL: '||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);

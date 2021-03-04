@@ -271,7 +271,7 @@ package body coremod_tasks as
   is
     l_job_name  opas_task_queue.job_name%type;
   begin
-    update opas_task_queue set status=gtqCanceled where tq_id = p_tq_id and status in (gtqNEW,gtqQUEUED,gtqSCHEDULED) returning job_name into l_job_name;
+    update opas_task_queue set status=gtqCanceled where tq_id = p_tq_id and status in (gtqNEW,gtqQUEUED,gtqSCHEDULED,gtqSTARTED) returning job_name into l_job_name;
     /*
     if sql%rowcount<1 then
       raise_application_error(-20000,'Unable to change task status ID, Status: '||p_tq_id||', '||gtqCanceled);
@@ -300,6 +300,7 @@ package body coremod_tasks as
       dbms_scheduler.stop_job(l_job_name, true);
     end if;
     log('Executed stop_task: '||p_tq_id||'; '||nvl(l_job_name,'N/A'));
+    cancel_task(p_tq_id);
   exception
      when others then
        log('Stop job error: '||l_job_name||':'||p_tq_id||chr(10)||sqlerrm);

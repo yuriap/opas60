@@ -314,7 +314,11 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
     end if;
 
     if gParams.exists('P1411_TAGS') and gParams('P1411_TAGS') is not null then
-      l_sql := l_sql || q'[ and d.sql_id in (select sql_id from opas_ot_sql_sql2tags where tag in (]' || coreobj_sql_tags.parse_tag_ist(p_tag_names => gParams('P1411_TAGS'),  p_delim => ',', p_enclosed => 'Y') || '))';
+      if gParams.exists('P1411_HIERARCHY') and gParams('P1411_HIERARCHY') = 'N' then
+        l_sql := l_sql || q'[ and d.sql_id in (select sql_id from opas_ot_sql_sql2tags where tag in (]' || coreobj_sql_tags.parse_tag_ist(p_tag_names => gParams('P1411_TAGS'),  p_delim => ',', p_enclosed => 'Y') || '))';
+      else
+        l_sql := l_sql || q'[ and d.sql_id in (select sql_id from opas_ot_sql_sql2tags where tag in (select tag_name from OPAS_OT_SQL_TAGS start with tag_name in (]' || coreobj_sql_tags.parse_tag_ist(p_tag_names => gParams('P1411_TAGS'),  p_delim => ',', p_enclosed => 'Y') || ') connect by prior tag_name = tag_prnt))';
+      end if;
     end if;
 
     if gParams.exists('P1411_CREATED_BY') and gParams('P1411_CREATED_BY') is not null then
@@ -324,7 +328,7 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
     -- the last one
     l_sql := l_sql || q'[ and rownum <= ]' || l_rows || chr(10);
 
-    coremod_log.log('COREOBJ_SQL_SEARCH.start_local_search: '||l_sql,'DEBUG');
+    coremod_log.log('COREOBJ_SQL_SEARCH.start_local_search: '||l_sql,'INFO');--'DEBUG');
 
     execute immediate l_sql using p_session_id, stInternal;
     l_rows_found := sql%rowcount;

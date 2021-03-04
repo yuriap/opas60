@@ -1390,8 +1390,8 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
             l_text:=l_text||'<li id="L'||to_char(i.line_number)||'">'||apex_escape.html(l_line_s) ||'</li>';
             l_cnt := l_cnt + 1;
             l_exit := l_pos = 0 or l_cnt > 500;
-            l_line := substr(l_line,length(l_line_s));
-            exit when l_exit;
+            l_line := rtrim(substr(l_line,length(l_line_s)+1));
+            exit when l_exit or l_line is null;
           end loop;
         else
           l_text:=l_text||'<li id="L'||to_char(i.line_number)||'">'||apex_escape.html(l_line) ||'</li>';
