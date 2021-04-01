@@ -741,6 +741,9 @@ if g_Debug then coremod_log.log('p_file_id: '||p_file_id|| '; l_output.count: '|
     l_output := getopastext(l_file_id,p_max_length);
 
     return l_output;
+
+  exception
+    when others then raise_application_error(-20000,'Unable to retrive SQL TEXT for sql_id=<'||p_sql_id||'>');
   end;
 
   function getsqlmonrep(p_file_id   opas_files.file_id%type,

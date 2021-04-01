@@ -102,6 +102,23 @@ grant select on user_nested_tables to &localscheme.;
 grant select on user_clusters to &localscheme.;
 grant select on user_xml_tables to &localscheme.;
 
+grant CREATE MINING MODEL to &localscheme.;
+
+create or replace procedure get_ext_exec_perm4java(p_user varchar2, p_server varchar2)
+is
+  keynum   NUMBER;
+BEGIN
+     sys.DBMS_JAVA.grant_permission(
+           grantee             => p_user,
+           permission_type     => 'SYS:java.net.SocketPermission',
+           permission_name     => p_server,
+           permission_action   => 'connect,resolve',
+           key                 => keynum);
+END;
+/
+
+grant execute on get_ext_exec_perm4java to &localscheme.;
+
 define job_class_name=JC_&namepref.
 
 begin

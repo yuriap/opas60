@@ -112,7 +112,9 @@ dbid                number,
 update_sched        varchar2(512),
 created             timestamp default systimestamp,
 data_updated        timestamp,
-current_version     VARCHAR2(100)
+current_version     VARCHAR2(100),
+dblink_mode         varchar2(10)     default 'NONE'        not null,
+ext_host            varchar2(1000)
 );
 
 create or replace force view v$opas_db_links as 
@@ -125,9 +127,13 @@ select db_link_name,
        case
          when db_link_name = '$LOCAL$' then 'LOCAL'
          else 
-           case when l.username is not null then db_link_name||' ('||l.username||'@'||l.host||')' else db_link_name||' (suspended)' end
+           case --when l.username is not null then db_link_name||' ('||l.username||'@'||l.host||')' 
+		        when o.status = 'CREATED' and o.dblink_mode = 'DBLINK' then db_link_name||' ('||l.username||'@'||l.host||')'
+		        when o.status = 'EXTENABLED' and o.dblink_mode = 'JAVASRV' then db_link_name||' ('||o.username||'@'||o.ext_host||') external'
+		        when o.status = 'SUSPENDED' then db_link_name||' (suspended)'
+		        else db_link_name||' ('||o.status||'; '||o.dblink_mode||')' end
          end display_name,
-       o.owner, o.status, o.is_public, o.dbid, o.update_sched, o.created, o.data_updated, o.current_version
+       o.owner, o.status, o.is_public, o.dbid, o.update_sched, o.created, o.data_updated, o.current_version, o.dblink_mode, o.ext_host
   from opas_db_links o, user_db_links l, gn
  where owner =
        decode(owner,
@@ -724,3 +730,54 @@ qry_text        varchar2(512)                           not null,
 created         timestamp,
 ordr            number
 );
+
+
+---------------------------------------------------------------------------------------------
+-- OPAS External SQL
+---------------------------------------------------------------------------------------------
+
+create table opas_extproc_queue (
+exec_id             number                                           primary key,
+db_link_name        varchar2(128),
+sql2exec            varchar2(4000),
+created             timestamp default systimestamp,
+started             timestamp,
+finished            timestamp,
+status              varchar2(100)    default 'NEW',
+tot_duration        number
+);
+
+create sequence seq_opas_extproc_queue maxvalue 1e9 cycle;
+
+create table opas_extproc_work_srv (
+work_id             number                                           primary key,
+db_link_name        varchar2(128),
+job_name            varchar2(128),
+started             timestamp,
+finished            timestamp,
+qry_executed        number,
+errmsgs             varchar2(4000)
+);
+
+create sequence seq_opas_extproc_work_srv maxvalue 2147483647 cycle;
+
+create table opas_extproc_queue_srv (
+task_id             number                                           primary key,
+priority            number, -- 0 high, 1 medium, 2 low
+db_link_name        varchar2(128),
+qry_type            varchar2(128),
+select_sql          varchar2(4000),
+load_sql            varchar2(4000),
+col_number          number,
+created             timestamp default systimestamp,
+started             timestamp,
+selected            timestamp,
+finished            timestamp,
+taken               timestamp,
+status              varchar2(100)    default 'NEW',
+exec_res            clob,
+errormsg            varchar2(4000),
+target_table        varchar2(128)
+);
+
+create sequence seq_opas_extproc_queue_srv maxvalue 2147483647 cycle;

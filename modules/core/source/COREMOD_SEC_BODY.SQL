@@ -73,13 +73,14 @@ package body COREMOD_SEC as
   is
     l_obj opas_objects%rowtype := COREOBJ_API.get_obj(p_obj_id);
   begin
-    return is_role_assigned('OPASCORE','Reas-write users') and (l_obj.obj_owner = V('APP_USER') or l_obj.obj_owner = 'PUBLIC');
+    return (is_role_assigned('OPASCORE','Reas-write users') and (l_obj.obj_owner = V('APP_USER') or l_obj.obj_owner = 'PUBLIC'));
   end;
 
   function can_remove(p_obj_id    opas_objects.obj_id%type) return boolean
   is
+    l_obj opas_objects%rowtype := COREOBJ_API.get_obj(p_obj_id);
   begin
-    return can_edit(p_obj_id);
+    return can_edit(p_obj_id) and l_obj.IS_READONLY = 'N';
   end;
 
   function can_remove_c(p_obj_id    opas_objects.obj_id%type) return varchar2

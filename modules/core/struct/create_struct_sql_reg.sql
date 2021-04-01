@@ -1515,3 +1515,16 @@ CREATE TABLE OBJECT_MODEL_STAT
  alter table OPAS_OT_SQL_ASH_IDENT modify PROGRAM varchar2(100);
  alter table OPAS_OT_SQL_SQLMON_DATA modify PROGRAM varchar2(100);
  alter table OPAS_OT_TMP_GV$SQL_MONITOR modify PROGRAM varchar2(100);
+ 
+ 
+--external exec
+create table opas_ot_tmp_sqlcatch_sqls_ext as
+SELECT
+  0 task_id,
+  sql_id,
+  actual_execs,
+  sql_text,
+  actual_eo_fetch,
+  last_active
+FROM
+  opas_ot_tmp_sqlcatch_sqls;

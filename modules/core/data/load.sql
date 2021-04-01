@@ -23,6 +23,18 @@ INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','RE
 INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','RETENTION','NOTIFICATIONS', 48,'Retention time in hours for non-viewed notifications.');
 
 INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','SCHEDULER','RUNAWAYDELAY', '+00 00:15:00','Max default scheduled job duration before forcebly stop it.');
+--external execution
+INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EXTERNAL','MAXEXTWORKERS', '5','Maximum number of simultaneously running worker jobs');
+INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EXTERNAL','EXTLOGGINGMODE',    'INFO','External execution server logging level. INFO|DEBUG');
+INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EXTERNAL','QRYPERWORKERSESS',    100,'Number of queries a worker can execute during one session');
+INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EXTERNAL','EXTEXECLOGRETENT',    1,'External server logs retention, hours');
+INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EXTERNAL','SRVINTERVAL',    'FREQ=SECONDLY; INTERVAL=5','Server coourdinator schedule');
+INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EXTERNAL','ALARMLOGININTERVAL',    30, 'Failed logins interval to alarm, minutes');
+INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EXTERNAL','WORKERAQCITERS',    1200,   'Max num of iteration of waiting for new query');
+INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EXTERNAL','WORKERAQCSLEEP',    0.1,    'Interval between iteration of waiting for new query');
+INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EXTERNAL','TIMOUTCREATED',    7200,    'Timeout of waiting result: after request created, seconds');
+INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EXTERNAL','TIMOUTSTARTED',    3600,    'Timeout of waiting result: after , seconds');
+
 
 
 insert into opas_groups (group_id,group_name,group_descr) values (0, 'Administrators','Full set of rights');

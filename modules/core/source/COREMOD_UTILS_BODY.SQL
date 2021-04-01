@@ -50,7 +50,7 @@ PACKAGE BODY COREMOD_UTILS AS
     return l_ts;
   end;
 
-  procedure execute_plsql_remotelly(p_sql varchar2, p_dblink varchar2, p_output out clob, p_is_output boolean default true)
+  procedure execute_plsql_remotelly_dblink(p_sql varchar2, p_dblink varchar2, p_output out clob, p_is_output boolean default true)
   is
     l_theCursor     integer;
     l_status        integer;
@@ -116,6 +116,16 @@ else q'[end;]' end;
   is
   begin
     execute_plsql_remotelly(p_sql, p_dblink, p_output, true);
+  end;
+
+  procedure execute_plsql_remotelly(p_sql varchar2, p_dblink varchar2, p_output out clob, p_is_output boolean default true)
+  is
+  begin
+    if COREMOD_EXTPROC.external_mode_dblink then
+      execute_plsql_remotelly_dblink(p_sql, p_dblink, p_output, p_is_output);
+    elsif COREMOD_EXTPROC.external_mode_sqlplus then
+      raise_application_error(-20000,'Unimplemented execute_plsql_remotelly for SQL*Plus');
+    end if;
   end;
 END COREMOD_UTILS;
 /

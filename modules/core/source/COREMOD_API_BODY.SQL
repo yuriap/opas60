@@ -135,26 +135,69 @@ package body COREMOD_API as
     when others then return null;
   end;
 
+  function external_mode return varchar2 is begin return COREMOD_API.getconf('EXTERNALMODE'); end;
+  function external_mode_dblink return boolean is begin return external_mode = gemDBLINK; end;
+  --function external_mode_sqlplus return boolean is begin return external_mode = gemSQLPLUS; end;
+  function external_mode_javasrv return boolean is begin return external_mode = gemJAVASRV; end;
+
+  function external_mode(p_db_link_name varchar2) return varchar2 RESULT_CACHE
+  is
+    l_dblink opas_db_links%rowtype;
+  begin
+    select * into l_dblink from opas_db_links where DB_LINK_NAME = upper(p_db_link_name);
+    return l_dblink.DBLINK_MODE;
+  end;
+  function external_mode_dblink(p_db_link_name varchar2) return boolean
+  is
+  begin
+    return external_mode(p_db_link_name) = gemDBLINK;
+  end;
+  function external_mode_javasrv(p_db_link_name varchar2) return boolean
+  is
+  begin
+    return external_mode(p_db_link_name) = gemJAVASRV;
+  end;
+
   procedure register_dblink(p_db_link_name varchar2,
                             p_owner varchar2,
                             p_is_public varchar2,
                             p_username varchar2,
                             p_password varchar2,
-                            p_connectstring varchar2)
+                            p_connectstring varchar2,
+                            p_DBLINK_MODE varchar2,
+                            p_ext_host varchar2)
   is
   begin
     insert into opas_db_links
-      (DB_LINK_NAME,OWNER,STATUS,is_public,username,password,connstr,UPDATE_SCHED)
+      (DB_LINK_NAME,OWNER,STATUS,is_public,username,password,connstr,UPDATE_SCHED,DBLINK_MODE,EXT_HOST)
     values
       (upper(p_db_link_name), upper(p_owner),
-       dblNEW, case when upper(p_owner)='PUBLIC' then 'Y' else case when p_is_public = 'Y' then 'Y' else 'N' end end, p_username,p_password,p_connectstring,'freq=monthly; interval=1;');
+       dblNEW, case when upper(p_owner)='PUBLIC' then 'Y' else case when p_is_public = 'Y' then 'Y' else 'N' end end, p_username,p_password,p_connectstring,'freq=monthly; interval=1;',
+       p_DBLINK_MODE, p_ext_host);
+  end;
+
+  procedure enable_dblink4ext(p_db_link_name varchar2, p_server varchar2)
+  is
+  begin
+      if p_server is null then
+        raise_application_error(-20000,'Server host must be specified.');
+      end if;
+      drop_dblink(p_db_link_name => upper(p_db_link_name), p_suspend => true);
+      sys.get_ext_exec_perm4java(sys_context('USERENV', 'CURRENT_USER'), p_server);
+      update opas_db_links set
+             STATUS = dblEXTENABLED,
+             DBLINK_MODE = gemJAVASRV,
+             EXT_HOST = p_server
+       where DB_LINK_NAME = upper(p_db_link_name);
   end;
 
   procedure edit_dblink    (p_db_link_name varchar2,
                             p_is_public varchar2,
                             p_username varchar2,
                             p_password varchar2,
-                            p_connectstring varchar2)
+                            p_connectstring varchar2,
+                            p_DBLINK_MODE varchar2,
+                            p_ext_host varchar2)
   is
     l_dblink opas_db_links%rowtype;
   begin
@@ -170,6 +213,13 @@ package body COREMOD_API as
              password = nvl(p_password,password),
              connstr = p_connectstring
        where DB_LINK_NAME = upper(p_db_link_name);
+    elsif nvl(p_DBLINK_MODE,'~^')<>nvl(l_dblink.DBLINK_MODE,'~^') or nvl(p_ext_host,'~^')<>nvl(l_dblink.EXT_HOST,'~^') then
+      update opas_db_links set
+             STATUS = dblMODIFIED,
+             DBLINK_MODE = p_DBLINK_MODE,
+             EXT_HOST = p_ext_host
+       where DB_LINK_NAME = upper(p_db_link_name);
+      drop_dblink(p_db_link_name => upper(p_db_link_name), p_suspend => true);
     end if;
 
     if l_dblink.is_public<>p_is_public and upper(l_dblink.owner)!='PUBLIC' then
@@ -188,8 +238,10 @@ package body COREMOD_API as
   begin
     if p_db_link_name=gDefaultSource then
       raise_application_error(-20000, gDefaultSource||' db link is not supposed to be created.');
-    else
-      select * into l_dblink from opas_db_links where DB_LINK_NAME = upper(p_db_link_name) for update nowait;
+    end if;
+
+    select * into l_dblink from opas_db_links where DB_LINK_NAME = upper(p_db_link_name) for update nowait;
+    if l_dblink.DBLINK_MODE = gemDBLINK then
       if p_recreate then
         declare
           l_domain varchar2(128);
@@ -222,6 +274,8 @@ package body COREMOD_API as
       COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => COREMOD_TASKS.parNotifyMe, p_num_par => l_nt_id);
       COREMOD_TASKS.queue_task ( p_tq_id => l_tq_id ) ;
       commit;
+    else
+      raise_application_error(-20000, 'DB Link is not in "'||gemDBLINK||'" Mode');
     end if;
   end;
 
@@ -230,28 +284,31 @@ package body COREMOD_API as
     l_domain     varchar2(128);
     l_cnt        number;
     l_nt_id      opas_notification.ID%type;
-    l_owner      opas_db_links.owner%type;
+    --l_owner      opas_db_links.owner%type;
+    l_dblink opas_db_links%rowtype;
   begin
     if p_db_link_name=gDefaultSource then
-      raise_application_error(-20000, gDefaultSource||' db link is not supposed to be created.');
+      raise_application_error(-20000, gDefaultSource||' db link is not supposed to be dropped.');
     else
-      select value into l_domain from v$parameter where name like '%domain%';
-      select count(1) into l_cnt from user_db_links where db_link = upper(case when l_domain is null then p_db_link_name else p_db_link_name ||'.'|| l_domain end);
-      if l_cnt>0 then
-        begin
-          if p_suspend then
-            update opas_db_links set STATUS=dblSUSPENDED where DB_LINK_NAME=upper(p_db_link_name) returning owner into l_owner;
-            COREMOD_ALERTS.add_notification (
+      select * into l_dblink from opas_db_links where DB_LINK_NAME = upper(p_db_link_name);
+      if l_dblink.STATUS<>dblSUSPENDED then
+        update opas_db_links set STATUS=dblSUSPENDED where DB_LINK_NAME=upper(p_db_link_name);
+        COREMOD_ALERTS.add_notification (
               nt_id =>      l_nt_id,
               NT_TEXT =>    'DB Link "'||upper(p_db_link_name)|| '" has been suspended.',
               --NT_LINK => COREMOD_ALERTS.create_url(), 'f?p='||v('APP_ID')||':1401:<APP_SESSION>::::APP_OBJ_ID,APP_PREV_PAGE:'||l_obj_id||',10',
               NT_TYPE_ID =>  COREMOD_ALERTS.nttMaintenance,
               NT_COLOR =>    COREMOD_ALERTS.ntcRed, --default
-              NT_USERNAME => l_owner
+              NT_USERNAME => l_dblink.owner
               --NT_NO_BROWSER_NOTIF_FLAG => NT_NO_BROWSER_NOTIF_FLAG, default
               --NT_ACTIVATE => 1
               ) ;
-          else
+      end if;
+      select value into l_domain from v$parameter where name like '%domain%';
+      select count(1) into l_cnt from user_db_links where db_link = upper(case when l_domain is null then p_db_link_name else p_db_link_name ||'.'|| l_domain end);
+      if l_cnt>0 then
+        begin
+          if not p_suspend then
             update opas_db_links set STATUS=dblTODELETE where DB_LINK_NAME=upper(p_db_link_name);
           end if;
           execute immediate 'drop database link ' || case when l_domain is null then p_db_link_name else p_db_link_name ||'.'|| l_domain end;
@@ -263,9 +320,10 @@ package body COREMOD_API as
             raise;
         end;
       end if;
-      if not p_suspend then
-        delete from opas_db_links where DB_LINK_NAME=upper(p_db_link_name);
-      end if;
+      -- do nothing so far to prevent data loss
+      --if not p_suspend then
+      --  delete from opas_db_links where DB_LINK_NAME=upper(p_db_link_name);
+      --end if;
       commit;
     end if;
   end;
@@ -275,16 +333,22 @@ package body COREMOD_API as
     l_dblink varchar2(512);
     l_status OPAS_DB_LINKS.status%type;
     a number;
+    l_mode   V$OPAS_DB_LINKS.DBLINK_MODE%type;
   begin
     if upper(p_db_link_name) <> gLocalDBLink then
-        select ora_db_link, status into l_dblink, l_status from V$OPAS_DB_LINKS where db_link_name=upper(p_db_link_name);
-        if l_status = dblSUSPENDED then raise_application_error(-20999, 'DB Link: '||p_db_link_name||' is suspended');end if;
+      select ora_db_link, status, DBLINK_MODE into l_dblink, l_status, l_mode from V$OPAS_DB_LINKS where db_link_name=upper(p_db_link_name);
+      if l_mode = gemDBLINK then
+        if l_status != dblCREATED then raise_application_error(-20999, 'DB Link: '||p_db_link_name||' is not '||dblCREATED);end if;
         begin
           execute immediate 'select 1 from dual@'||l_dblink into a;
         exception
           when others then drop_dblink(p_db_link_name, p_suspend => true);
           raise;
         end;
+      elsif l_mode = gemJAVASRV then
+        if l_status != dblEXTENABLED then raise_application_error(-20999, 'DB Link: '||p_db_link_name||' is not '||dblEXTENABLED);end if;
+        test_remote_db(upper(p_db_link_name));
+      end if;
     else
       null;
     end if;
@@ -294,10 +358,11 @@ package body COREMOD_API as
   is
     l_dblink V$OPAS_DB_LINKS.ora_db_link%type;
     l_status V$OPAS_DB_LINKS.STATUS%type;
+    l_mode   V$OPAS_DB_LINKS.DBLINK_MODE%type;
   begin
-    select ora_db_link, STATUS into l_dblink, l_status from V$OPAS_DB_LINKS where db_link_name=upper(p_db_link_name);
-    if l_status <> 'CREATED' then
-      raise_application_error(-20000,'The dblink '||p_db_link_name||' is in unusable state: '||l_status);
+    select ora_db_link, STATUS, DBLINK_MODE into l_dblink, l_status, l_mode from V$OPAS_DB_LINKS where db_link_name=upper(p_db_link_name);
+    if not(l_status = dblCREATED and l_mode = gemDBLINK) then
+      raise_application_error(-20000,'The dblink '||p_db_link_name||' is in unusable state/mode: '||l_status||'/'||l_mode);
     end if;
     return l_dblink;
   end;
@@ -305,7 +370,7 @@ package body COREMOD_API as
   function get_dblink_for_query(p_dblink varchar2) return varchar2
   is
   begin
-    return case when p_dblink <> '$LOCAL$' then '@'||COREMOD_API.get_ora_dblink(p_dblink) else null end;
+    return case when p_dblink <> '$LOCAL$' then '@'||get_ora_dblink(p_dblink) else null end;
   end;
 
   function get_dblink_user(p_dblink varchar2) return varchar2

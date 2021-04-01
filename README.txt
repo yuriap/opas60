@@ -4,6 +4,10 @@ Version 6.7 PROD
 Release notes:
 ==============
 
+Version 6.8.0 2021-Apr-01
+-------------------------
+Internal app server to access remote databases instead of DB Links
+
 Version 6.7.0 2020-Nov-20
 -------------------------
 ASHA Cube Analyzer

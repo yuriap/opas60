@@ -198,7 +198,7 @@ PACKAGE BODY COREMOD_SCHEDULER AS
           l_msg := substr(l_msg||': '||sqlerrm,1,4000);
           insert into opas_scheduler_validation (sch_id,status,message) values (p_sch_id,'ERROR',l_msg);
       end;
-
+      dbms_lock.sleep(0.01);
       update OPAS_SCHEDULER t set last_validated = systimestamp, t.status = getstatus(scaValidate, t.status) where sch_id=p_sch_id;
     else
       raise_application_error(-20000,'Unable to validate Scheduler configuration('|| p_sch_id ||'). Wrong status');

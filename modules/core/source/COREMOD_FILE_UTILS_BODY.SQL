@@ -290,7 +290,7 @@ PACKAGE BODY COREMOD_FILE_UTILS AS
     l_blob_len  INTEGER;
     l_blob      blob;
   BEGIN
-    coremod_log.log('COREMOD_FILE_UTILS.put_file_to_fs: '||p_filename||';'||p_dir,'DEBUG');
+    coremod_log.log('COREMOD_FILE_UTILS.put_file_to_fs(blob): '||p_filename||';'||p_dir,'DEBUG');
 
     if p_uncompress then
       l_blob := UTL_COMPRESS.LZ_UNCOMPRESS(src => p_blob);
@@ -321,6 +321,18 @@ PACKAGE BODY COREMOD_FILE_UTILS AS
         UTL_FILE.fclose(l_file);
       END IF;
       RAISE;
+  END;
+
+  procedure put_file_to_fs(p_clob clob, p_filename varchar2, p_dir varchar2)
+  is
+  BEGIN
+    coremod_log.log('COREMOD_FILE_UTILS.put_file_to_fs(clob): '||p_filename||';'||p_dir,'DEBUG');
+
+    DBMS_LOB.CLOB2FILE(
+      cl      => p_clob,
+      FLOCATION    => p_dir,
+      FNAME   => p_filename);
+
   END;
 
   procedure get_file_from_fs(p_file_id opas_files.file_id%type, p_filename varchar2, p_dir varchar2, p_compress boolean default false)

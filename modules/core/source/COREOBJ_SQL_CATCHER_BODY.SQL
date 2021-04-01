@@ -168,9 +168,8 @@ package body COREOBJ_SQL_CATCHER is
     select * into l_ctchr from opas_ot_sqlcatch where obj_id = p_obj_id;
     if l_ctchr.status in (stNew, stInactive) then
       activate_catcher(p_obj_id);
-    else
-      UPDATE opas_ot_sqlcatch SET status = stActiveCO WHERE obj_id = p_obj_id and status in (stActive, stPaused);
     end if;
+    UPDATE opas_ot_sqlcatch SET status = stActiveCO WHERE obj_id = p_obj_id and status in (stActive, stPaused);
   end;
 
   procedure pause_catcher (p_obj_id            opas_objects.obj_id%type)
@@ -196,13 +195,13 @@ package body COREOBJ_SQL_CATCHER is
 
   procedure task_catcher     (p_obj_id            opas_objects.obj_id%type)
   is
-    l_sql_load varchar2(32765) := q'[
-      insert into opas_ot_tmp_sqlcatch_sqls (sql_id, sql_text, ACTUAL_EXECS, actual_eo_fetch, last_active)
-      select sql_id, substr(sql_text,1,4000), sum(EXECUTIONS), sum(END_OF_FETCH_COUNT), max(LAST_ACTIVE_TIME)
-        from gv$sql<DBLINK>
+    l_sql_load varchar2(32765) := q'[gv$sql<DBLINK>
        where sql_id in (<FILTER>)
-         and rownum <= :p_row_limit
+         and rownum <= <LIMIT>
          group by sql_id, substr(sql_text,1,4000)]';
+    --l_head_dbl varchar2(1000):='insert into opas_ot_tmp_sqlcatch_sqls(sql_id, sql_text, ACTUAL_EXECS, actual_eo_fetch, last_active) select sql_id, substr(sql_text,1,4000), sum(EXECUTIONS), sum(END_OF_FETCH_COUNT), max(LAST_ACTIVE_TIME)';
+    --l_head_sqlp varchar2(1000):=q'<select q'~insert into opas_ot_tmp_sqlcatch_sqls_ext (exec_id, sql_id, sql_text, ACTUAL_EXECS, actual_eo_fetch, last_active)values(<EXECID>,'~'||sql_id||q'~',q'[~'||substr(sql_text,1,4000)||q'~]',~'||sum(EXECUTIONS)||q'~,~'||sum(END_OF_FETCH_COUNT)||q'~,to_date('~'||to_char(max(LAST_ACTIVE_TIME),'YYYY/MM/DD HH24:MI:SS')||q'~','YYYY/MM/DD HH24:MI:SS'));~'>';
+
     l_sql               varchar2(32765);
     l_ctchr             opas_ot_sqlcatch%rowtype;
     l_start_tim         number := dbms_utility.get_time;
@@ -221,15 +220,47 @@ package body COREOBJ_SQL_CATCHER is
     l_nt_id             opas_notification.ID%type;
 
     procedure load_sqls is
+      --l_exec_id number;
+      L_SELECT_LIST COREMOD_EXTPROC.t_columns;
+      l_task number;
     begin
       delete from opas_ot_tmp_sqlcatch_sqls;
-      l_sql := replace(replace(l_sql_load,'<FILTER>',l_ctchr.SEARCH_CONDITION),'<DBLINK>',COREMOD_API.get_dblink_for_query(l_ctchr.srcdb));
-      execute immediate l_sql using l_ctchr.sql_num_limit;
---coremod_tasks.log('load_sqls l_sql: '||l_sql);
-      commit;
-      if l_ctchr.check_interval > 60 and COREMOD_API.get_dblink_for_query(l_ctchr.srcdb) is not null then
-        execute immediate 'ALTER SESSION CLOSE DATABASE LINK '||l_ctchr.srcdb;
-      end if;
+      l_sql := replace(replace(l_sql_load,'<FILTER>',l_ctchr.SEARCH_CONDITION),'<LIMIT>',l_ctchr.sql_num_limit);
+      /*
+      L_SELECT_LIST('SQL_ID'):='SQL_ID';
+      L_SELECT_LIST('ACTUAL_EXECS'):='sum(EXECUTIONS)';
+      L_SELECT_LIST('SQL_TEXT'):='substr(sql_text,1,4000)';
+      L_SELECT_LIST('ACTUAL_EO_FETCH'):='sum(END_OF_FETCH_COUNT)';
+      L_SELECT_LIST('LAST_ACTIVE'):='max(LAST_ACTIVE_TIME)';
+
+      COREMOD_EXTPROC.load_external_data (
+        P_TARGET_TABLE => 'OPAS_OT_TMP_SQLCATCH_SQLS',
+        P_SELECT_LIST => L_SELECT_LIST,
+        P_SQL_BODY => l_sql,
+        P_DBLINK => l_ctchr.srcdb) ;
+      */
+      L_SELECT_LIST('SQL_ID'):='SQL_ID';
+      L_SELECT_LIST('ACTUAL_EXECS'):='sum(EXECUTIONS)';
+      L_SELECT_LIST('SQL_TEXT'):='substr(sql_text,1,4000)';
+      L_SELECT_LIST('ACTUAL_EO_FETCH'):='sum(END_OF_FETCH_COUNT)';
+      L_SELECT_LIST('LAST_ACTIVE'):='to_char(max(LAST_ACTIVE_TIME))';
+
+      COREMOD_EXTPROC.load_external_data (
+        P_TARGET_TABLE => 'OPAS_OT_TMP_SQLCATCH_SQLS_EXT',
+        P_SELECT_LIST => L_SELECT_LIST,
+        P_SQL_BODY => l_sql,
+        P_DBLINK => l_ctchr.srcdb,
+        p_priority => 0,
+        p_task_id => l_task) ;
+
+
+      COREMOD_EXTPROC.wait_result (  P_TASK_ID => l_task,
+                                     P_TIMEOUT => 120) ;
+
+      INSERT INTO opas_ot_tmp_sqlcatch_sqls (sql_id, actual_execs, sql_text, actual_eo_fetch, last_active)
+        select sql_id, actual_execs, sql_text, actual_eo_fetch, last_active from OPAS_OT_TMP_SQLCATCH_SQLS_EXT where task_id=l_task;
+
+      COREMOD_EXTPROC.set_task_taken (  P_TASK_ID => l_task) ;
     end;
 
   begin

@@ -656,16 +656,16 @@ where rownum<=10]';
 
     l_sql := get_base_query ||
 q'[,
-stats as    (select 'SID: '||SESSION_ID||','||SESSION_SERIAL#||',@'||INSTANCE_NUMBER ||'; USR/OS:'||nvl(USERNAME,to_char(USER_ID)) || nvl(OSUSER,'N/A') ||
-                        '; P/M/M/A:' || nvl(PROGRAM, 'N/A') || nvl(MACHINE, 'N/A') || nvl(module, 'N/A') || '/' || nvl(ACTION, 'N/A') ||
-                        '; ECID/TERM:'|| nvl(ECID, 'N/A') || nvl(TERMINAL, 'N/A')
+stats as    (select 'SID: '||SESSION_ID||','||SESSION_SERIAL#||',@'||INSTANCE_NUMBER ||'; USR/OS:'||nvl(USERNAME,to_char(USER_ID)) || '/' || nvl(OSUSER,'NA') ||
+                        '; P/M/M/A:' || nvl(PROGRAM, 'NA') || '/' || nvl(MACHINE, 'NA') || '/' || nvl(module, 'NA') || '/' || nvl(ACTION, 'NA') ||
+                        '; ECID/TERM:'|| nvl(ECID, 'NA') || nvl(TERMINAL, 'NA')
                         sess_id
                         , count(1) sec
                from stats_ranged
               where (<FILTER>)
-              group by 'SID: '||SESSION_ID||','||SESSION_SERIAL#||',@'||INSTANCE_NUMBER ||'; USR/OS:'||nvl(USERNAME,to_char(USER_ID)) || nvl(OSUSER,'N/A') ||
-                        '; P/M/M/A:' || nvl(PROGRAM, 'N/A') || nvl(MACHINE, 'N/A') || nvl(module, 'N/A') || '/' || nvl(ACTION, 'N/A') ||
-                        '; ECID/TERM:'|| nvl(ECID, 'N/A') || nvl(TERMINAL, 'N/A'))
+              group by 'SID: '||SESSION_ID||','||SESSION_SERIAL#||',@'||INSTANCE_NUMBER ||'; USR/OS:'||nvl(USERNAME,to_char(USER_ID)) || '/' || nvl(OSUSER,'NA') ||
+                        '; P/M/M/A:' || nvl(PROGRAM, 'NA') || '/' || nvl(MACHINE, 'NA') || '/' || nvl(module, 'NA') || '/' || nvl(ACTION, 'NA') ||
+                        '; ECID/TERM:'|| nvl(ECID, 'NA') || nvl(TERMINAL, 'NA'))
 select /*+ qb_name(top_sessions) */ substr(sess_id,1,245) || '(' || round(100 * sec / tot, 2) || '%)' sess_id, sec
 from (select sess_id, sec, sum(sec)over() tot from stats s order by 2 desc) s
 where rownum<=10]';

@@ -17,6 +17,9 @@ show errors
 @@COREMOD_DICT_SPEC.SQL
 show errors
 
+@@COREMOD_EXTPROC_SPEC.SQL
+show errors
+
 @@COREMOD_FILE_UTILS_SPEC.SQL
 show errors
 
@@ -123,6 +126,9 @@ show errors
 show errors
 
 @@COREMOD_DICT_BODY.SQL
+show errors
+
+@@COREMOD_EXTPROC_BODY.SQL
 show errors
 
 @@COREMOD_FILE_UTILS_BODY.SQL

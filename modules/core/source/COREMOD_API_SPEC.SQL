@@ -19,7 +19,12 @@ package COREMOD_API as
    dblMODIFIED   constant varchar2(32) := 'MODIFIED';
    dblCREATED    constant varchar2(32) := 'CREATED';
    dblSUSPENDED  constant varchar2(32) := 'SUSPENDED';
+   dblEXTENABLED constant varchar2(32) := 'EXTENABLED';
    dblTODELETE   constant varchar2(32) := 'TODELETE';
+
+  gemDBLINK  constant varchar2(10):='DBLINK';
+  --gemSQLPLUS constant varchar2(10):='SQLPLUS';
+  gemJAVASRV constant varchar2(10):='JAVASRV';
 
    procedure register(p_modname opas_modules.MODNAME%type,
                       p_moddescr opas_modules.MODDESCR%type default null,
@@ -36,18 +41,27 @@ package COREMOD_API as
                              p_is_public varchar2,
                              p_username varchar2,
                              p_password varchar2,
-                             p_connectstring varchar2);
+                             p_connectstring varchar2,
+                             p_DBLINK_MODE varchar2,
+                             p_ext_host varchar2);
    procedure edit_dblink    (p_db_link_name varchar2,
                              p_is_public varchar2,
                              p_username varchar2,
                              p_password varchar2,
-                             p_connectstring varchar2);
+                             p_connectstring varchar2,
+                             p_DBLINK_MODE varchar2,
+                             p_ext_host varchar2);
    procedure create_dblink(p_db_link_name varchar2, p_recreate boolean default false);
    procedure drop_dblink(p_db_link_name varchar2, p_suspend boolean default false);
    procedure test_dblink(p_db_link_name varchar2);
+   procedure enable_dblink4ext(p_db_link_name varchar2, p_server varchar2);
    function get_ora_dblink(p_db_link_name varchar2) return varchar2;
    function get_dblink_for_query(p_dblink varchar2) return varchar2;
    function get_ora_dblink_cache(p_db_link_name varchar2, p_key varchar2, p_local_tab varchar2 default null) return varchar2;
+
+  function external_mode(p_db_link_name varchar2) return varchar2 RESULT_CACHE;
+  function external_mode_dblink(p_db_link_name varchar2) return boolean;
+  function external_mode_javasrv(p_db_link_name varchar2) return boolean;
 
    procedure load_tmp_data(p_db_link_name varchar2,
                            p_src_table_name_r varchar2,

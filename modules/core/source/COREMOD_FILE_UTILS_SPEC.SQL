@@ -58,6 +58,7 @@ PACKAGE COREMOD_FILE_UTILS AS
 
   --FS
   procedure put_file_to_fs(p_blob blob, p_filename varchar2, p_dir varchar2, p_uncompress boolean default false);
+  procedure put_file_to_fs(p_clob clob, p_filename varchar2, p_dir varchar2);
   procedure get_file_from_fs(p_file_id opas_files.file_id%type, p_filename varchar2, p_dir varchar2, p_compress boolean default false);
   procedure remove_file_from_fs(p_filename varchar2, p_dir varchar2);
 
