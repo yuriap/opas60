@@ -114,7 +114,8 @@ created             timestamp default systimestamp,
 data_updated        timestamp,
 current_version     VARCHAR2(100),
 dblink_mode         varchar2(10)     default 'NONE'        not null,
-ext_host            varchar2(1000)
+ext_host            varchar2(1000),
+enabled             date
 );
 
 create or replace force view v$opas_db_links as 
@@ -771,13 +772,31 @@ load_sql            varchar2(4000),
 col_number          number,
 created             timestamp default systimestamp,
 started             timestamp,
-selected            timestamp,
+--selected            timestamp,
 finished            timestamp,
 taken               timestamp,
 status              varchar2(100)    default 'NEW',
 exec_res            clob,
 errormsg            varchar2(4000),
-target_table        varchar2(128)
+target_table        varchar2(128),
+rows_processed      number,
+duration            interval day to second generated always as (finished - started)
 );
 
 create sequence seq_opas_extproc_queue_srv maxvalue 2147483647 cycle;
+
+drop table opas_extproc_results;
+create table opas_extproc_results (
+task_id             number                                           not null  references opas_extproc_queue_srv(task_id) on delete cascade,
+r_ordr_num          number,
+r_io_type           varchar2(10) check (r_io_type in ('IN','OUT')),
+r_data_type         varchar2(128), 
+r_clob              clob,
+r_number            number,
+r_date              date,
+r_timestamp         timestamp,
+r_timestamp_tz      timestamp with time zone,
+r_varchar           varchar2(4000)
+);
+
+create index idx_opas_extproc_results on opas_extproc_results(task_id);

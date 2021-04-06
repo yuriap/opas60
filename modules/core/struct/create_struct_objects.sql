@@ -22,6 +22,19 @@ val             number) row store compress advanced;
 
 create index idx_opas_ot_db_monitor_vm   on opas_ot_db_monitor_vals_t(metric_id);
 
+drop table opas_ot_tmp_db_mon_vals_t;
+create global temporary table opas_ot_tmp_db_mon_vals_t (
+tim_tz          timestamp(6) WITH TIME ZONE,
+val             varchar2(4000));
+drop table opas_ot_tmp_db_mon_vals_t_ext;
+create table opas_ot_tmp_db_mon_vals_t_ext as
+SELECT
+  0 task_id,
+  tim_tz,
+  val
+FROM
+  opas_ot_tmp_db_mon_vals_t;
+
 create or replace view opas_ot_db_monitor_vals as
 SELECT
     metric_id,

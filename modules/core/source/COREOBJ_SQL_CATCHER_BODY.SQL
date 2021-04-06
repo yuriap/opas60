@@ -222,7 +222,7 @@ package body COREOBJ_SQL_CATCHER is
     procedure load_sqls is
       --l_exec_id number;
       L_SELECT_LIST COREMOD_EXTPROC.t_columns;
-      l_task number;
+      --l_task number;
     begin
       delete from opas_ot_tmp_sqlcatch_sqls;
       l_sql := replace(replace(l_sql_load,'<FILTER>',l_ctchr.SEARCH_CONDITION),'<LIMIT>',l_ctchr.sql_num_limit);
@@ -246,22 +246,23 @@ package body COREOBJ_SQL_CATCHER is
       L_SELECT_LIST('LAST_ACTIVE'):='to_char(max(LAST_ACTIVE_TIME))';
 
       COREMOD_EXTPROC.load_external_data (
-        P_TARGET_TABLE => 'OPAS_OT_TMP_SQLCATCH_SQLS_EXT',
+        P_TARGET_TABLE => 'OPAS_OT_TMP_SQLCATCH_SQLS',
         P_SELECT_LIST => L_SELECT_LIST,
         P_SQL_BODY => l_sql,
         P_DBLINK => l_ctchr.srcdb,
         p_priority => 0,
-        p_task_id => l_task) ;
+        P_TIMEOUT => 120) ;
+/*
+      if COREMOD_API.external_mode_javasrv(l_ctchr.srcdb) then
+        COREMOD_EXTPROC.wait_result (  P_TASK_ID => l_task,
+                                       P_TIMEOUT => 120) ;
 
+        INSERT INTO opas_ot_tmp_sqlcatch_sqls (sql_id, actual_execs, sql_text, actual_eo_fetch, last_active)
+          select sql_id, actual_execs, sql_text, actual_eo_fetch, last_active from OPAS_OT_TMP_SQLCATCH_SQLS_EXT where task_id=l_task;
 
-      COREMOD_EXTPROC.wait_result (  P_TASK_ID => l_task,
-                                     P_TIMEOUT => 120) ;
-
-      INSERT INTO opas_ot_tmp_sqlcatch_sqls (sql_id, actual_execs, sql_text, actual_eo_fetch, last_active)
-        select sql_id, actual_execs, sql_text, actual_eo_fetch, last_active from OPAS_OT_TMP_SQLCATCH_SQLS_EXT where task_id=l_task;
-
-      COREMOD_EXTPROC.set_task_taken (  P_TASK_ID => l_task) ;
-    end;
+        COREMOD_EXTPROC.set_task_taken (  P_TASK_ID => l_task) ;
+      end if;
+*/    end;
 
   begin
     select obj_owner, obj_name into l_owner, l_name from opas_objects where obj_id = p_obj_id;

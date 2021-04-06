@@ -59,6 +59,7 @@ package COREMOD_API as
    function get_dblink_for_query(p_dblink varchar2) return varchar2;
    function get_ora_dblink_cache(p_db_link_name varchar2, p_key varchar2, p_local_tab varchar2 default null) return varchar2;
 
+  function dblink_available(p_db_link_name varchar2, p_since date) return boolean RESULT_CACHE;
   function external_mode(p_db_link_name varchar2) return varchar2 RESULT_CACHE;
   function external_mode_dblink(p_db_link_name varchar2) return boolean;
   function external_mode_javasrv(p_db_link_name varchar2) return boolean;

@@ -75,24 +75,50 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
     l_metr  varchar2(100);
 
     l_timfmt varchar2(32) := COREMOD_ALERTS.gTSWTZFMT; --'YYYYMMDDHH24MISS.ff6 TZH:TZM';
+    L_SELECT_LIST COREMOD_EXTPROC.t_columns;
   BEGIN
     select * into l_mon from OPAS_OT_DB_MONITOR where METRIC_ID = p_metric_id;
 
-    if l_mon.CALL_TYPE = 'SQL' then
-      l_sql := replace(rtrim(l_mon.CALC_CODE,';'),'select<m> ',q'[SELECT TO_CHAR(SYSTIMESTAMP,']' || l_timfmt || q'[')||'|'||]');
-      l_sql := replace(l_sql,' from<m>',q'[ into l_out FROM]')||';';
-    elsif l_mon.CALL_TYPE = 'FUNC' then
-      l_sql := replace(q'[l_out:=to_char(systimestamp,']' || l_timfmt || q'[')||'|'||<FUNC>;]','<FUNC>',l_mon.CALC_CODE);
-    end if;
+    if COREMOD_API.external_mode_dblink(l_mon.DBLINK) or l_mon.DBLINK = '$LOCAL$' then
+      if l_mon.CALL_TYPE = 'SQL' then
+        l_sql := replace(rtrim(l_mon.CALC_CODE,';'),'select<m> ',q'[SELECT TO_CHAR(SYSTIMESTAMP,']' || l_timfmt || q'[')||'|'||]');
+        l_sql := replace(l_sql,' from<m>',q'[ into l_out FROM]')||';';
+      elsif l_mon.CALL_TYPE = 'FUNC' then
+        l_sql := replace(q'[l_out:=to_char(systimestamp,']' || l_timfmt || q'[')||'|'||<FUNC>;]','<FUNC>',l_mon.CALC_CODE);
+      end if;
 
-    if l_mon.DBLINK <> '$LOCAL$' then
-      COREMOD_UTILS.execute_plsql_remotelly(p_sql => l_sql,
-                                            p_dblink => l_mon.DBLINK,
-                                            p_output => l_out,
-                                            p_is_output => true);
+      if l_mon.DBLINK <> '$LOCAL$' then
+        COREMOD_UTILS.execute_plsql_remotelly(p_sql => l_sql,
+                                              p_dblink => l_mon.DBLINK,
+                                              p_output => l_out,
+                                              p_is_output => true);
+      else
+        l_sql := 'declare l_out clob; begin '||l_sql||' :out:=l_out; end;';
+        execute immediate l_sql using out l_out;
+      end if;
+
+    elsif COREMOD_API.external_mode_javasrv(l_mon.DBLINK) then
+      if l_mon.CALL_TYPE = 'SQL' then
+        l_sql := replace(rtrim(l_mon.CALC_CODE,';'),'select<m> ',q'[ (SELECT TO_CHAR(SYSTIMESTAMP) TS, ]');
+        l_sql := replace(l_sql,' from<m>',q'[ FROM]')||')';
+      elsif l_mon.CALL_TYPE = 'FUNC' then
+        l_sql := replace(q'[ (select to_char(systimestamp) ts, <FUNC> val from dual)]','<FUNC>',l_mon.CALC_CODE);
+      end if;
+
+      L_SELECT_LIST('TIM_TZ'):='TS';
+      L_SELECT_LIST('VAL'):='VAL';
+
+      COREMOD_EXTPROC.load_external_data (
+        P_TARGET_TABLE => 'OPAS_OT_TMP_DB_MON_VALS_T',
+        P_SELECT_LIST => L_SELECT_LIST,
+        P_SQL_BODY => l_sql,
+        P_DBLINK => l_mon.DBLINK,
+        p_priority => 0,
+        P_TIMEOUT => 120) ;
+
+     SELECT to_char(tim_tz,l_timfmt)||'|'||val into l_out FROM opas_ot_tmp_db_mon_vals_t;
     else
-      l_sql := 'declare l_out clob; begin '||l_sql||' :out:=l_out; end;';
-      execute immediate l_sql using out l_out;
+      raise_application_error(-20000,'Unsupported external execution mode for DB Link: '||l_mon.DBLINK);
     end if;
 
     l_ts   := substr(l_out,1,instr(l_out,'|')-1);

@@ -242,7 +242,7 @@ package body COREOBJ_DB_GROWTH is
     l_dbgm opas_ot_dbg_monitor%rowtype;
     l_view_prefix        varchar2(10);
     l_view_prefix_filter varchar2(10);
-    l_ora_dblink         varchar2(1000);
+    --l_ora_dblink         varchar2(1000);
     l_dblink_user        varchar2(128);
     l_owner_column       varchar2(128);
     l_owner_column2      varchar2(128);
@@ -253,6 +253,10 @@ package body COREOBJ_DB_GROWTH is
 
     l_sql       varchar2(32765);
     l_tblsp_list varchar2(1024);
+
+    l_qry_priority number := 3;
+    l_qry_timeout  number := 300; --sec
+    L_SELECT_LIST COREMOD_EXTPROC.t_columns;
     l_tblsp_sql varchar2(4000) := q'[insert into opas_ot_dbg_ts_sizes (dbgdp_id,
                   ts_name, tot_occupied, bin_occupied, tot_free, curr_available, ext_available, tot_occupied_sch, bin_occupied_sch)
     select :p_dbgdp_id,
@@ -332,7 +336,7 @@ package body COREOBJ_DB_GROWTH is
     function preprocess_sql(p_sql_tmpl varchar2, p_owner_column varchar2) return varchar2
     is
     begin
-      return replace(replace(replace(replace(replace(p_sql_tmpl,'<DBLINK>',l_ora_dblink),
+      return replace(replace(replace(replace(p_sql_tmpl,
                                                                 '<VIEWPREF>',l_view_prefix),
                                                                 '<VIEWPREF_FILTERS>',l_view_prefix_filter),
                                                                 '<OWNER_COLUMN>',p_owner_column),
@@ -376,50 +380,191 @@ package body COREOBJ_DB_GROWTH is
     end loop;
     l_owner_list := ltrim(l_owner_list,',');
 
-    l_ora_dblink := COREMOD_API.get_dblink_for_query(l_dbgm.dblink);
+    --l_ora_dblink := COREMOD_API.get_dblink_for_query(l_dbgm.dblink);
 
     insert into opas_ot_dbg_datapoint (dbg_id, snapped) values (l_dp_obj, systimestamp) returning dbgdp_id into p_dbgdp_id;
 
+    l_segment_sql := q'[( select <OWNER_COLUMN>, o.object_id, o.data_object_id, o.object_name, o.subobject_name, o.object_type, s.tablespace_name, o.created, s.bytes SIZE_BYTES, s.segment_type, null DBGOBJ_ID
+      from <VIEWPREF>_segments<DBLINK> s, <VIEWPREF>_objects<DBLINK> o, <VIEWPREF>_recyclebin<DBLINK> r
+     where s.segment_name(+)=o.object_name and r.object_name(+)=o.object_name and r.object_name is null
+       <VIEWPREF_FILTERS> and s.owner(+)=o.owner and r.owner(+)=o.owner and o.owner in (<OWNER_LIST>)
+       and decode(s.partition_name,o.subobject_name,1,0)=1
+       and o.object_type not in ('VIEW','SEQUENCE','FUNCTION','TYPE','TRIGGER','PACKAGE','PACKAGE BODY','PROCEDURE','JOB','RULE','SYNONYM','DATABASE LINK','SQL TRANSLATION PROFILE',
+       'TYPE BODY','CHAIN','PROGRAM','RULE SET','EVALUATION CONTEXT','MATERIALIZED VIEW')
+       and case
+             when o.object_type='LOB' and s.segment_type='LOBSEGMENT' then 1
+             when o.object_type='INDEX' and s.segment_type='LOBINDEX' then 1
+             when o.object_type='TABLE' and s.segment_type='NESTED TABLE' then 1
+             when o.object_type=s.segment_type then 1
+             else 0
+            end = 1)]';
+
     l_sql := preprocess_sql(l_segment_sql, l_owner_column);
-    execute immediate l_sql;
+    COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_DBG_OBJECTS',
+      P_SELECT_LIST => L_SELECT_LIST, --empty
+      P_SQL_BODY =>    l_sql,
+      P_DBLINK =>      l_dbgm.dblink,
+      P_PRIORITY =>    l_qry_priority,
+      P_TIMEOUT =>     l_qry_timeout) ;
+--    execute immediate l_sql;
+
+    l_table_sql := q'[(select <OWNER_COLUMN> owner,table_name,cluster_name,iot_name,iot_type
+    from <VIEWPREF>_tables<DBLINK> o <VIEWPREF_FILTERS> where o.owner in (<OWNER_LIST>)
+    )]';
 
     l_sql := preprocess_sql(l_table_sql, l_owner_column);
-    execute immediate l_sql;
+    COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_DBG_TABLES',
+      P_SELECT_LIST => L_SELECT_LIST, --empty
+      P_SQL_BODY =>    l_sql,
+      P_DBLINK =>      l_dbgm.dblink,
+      P_PRIORITY =>    l_qry_priority,
+      P_TIMEOUT =>     l_qry_timeout) ;
+    --execute immediate l_sql;
+
+    l_index_sql := q'[(select  <OWNER_COLUMN> owner, index_name, index_type, table_owner, table_name, table_type
+    from <VIEWPREF>_indexes<DBLINK> o
+    where segment_created in ('YES','N/A') and TEMPORARY = 'N' <VIEWPREF_FILTERS> and owner in (<OWNER_LIST>)
+    )]';
 
     l_sql := preprocess_sql(l_index_sql, l_owner_column);
-    execute immediate l_sql;
+    COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_DBG_INDEXES',
+      P_SELECT_LIST => L_SELECT_LIST, --empty
+      P_SQL_BODY =>    l_sql,
+      P_DBLINK =>      l_dbgm.dblink,
+      P_PRIORITY =>    l_qry_priority,
+      P_TIMEOUT =>     l_qry_timeout) ;
+    --execute immediate l_sql;
+
+    l_lob_sql := q'[(select  <OWNER_COLUMN> owner, table_name, column_name, segment_name, tablespace_name, index_name
+    from <VIEWPREF>_lobs<DBLINK> o where segment_created = 'YES' <VIEWPREF_FILTERS> and owner in (<OWNER_LIST>)
+    )]';
 
     l_sql := preprocess_sql(l_lob_sql, l_owner_column);
-    execute immediate l_sql;
+    COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_DBG_LOBS',
+      P_SELECT_LIST => L_SELECT_LIST, --empty
+      P_SQL_BODY =>    l_sql,
+      P_DBLINK =>      l_dbgm.dblink,
+      P_PRIORITY =>    l_qry_priority,
+      P_TIMEOUT =>     l_qry_timeout) ;
+    --execute immediate l_sql;
+
+    l_lob_ps1_sql := q'[( select <OWNER_COLUMN> TABLE_OWNER, table_name, column_name, lob_name,
+                                  partition_name part_name, null sub_part_name,
+                                  lob_partition_name lob_part_name, lob_indpart_name,
+                                  null LOB_SUBPART_NAME, null LOB_INDSUBPART_NAME, tablespace_name
+    from <VIEWPREF>_lob_partitions<DBLINK>
+    where segment_created = 'YES' <VIEWPREF_FILTERS> and table_owner in (<OWNER_LIST>)
+    )]';
 
     l_sql := preprocess_sql(l_lob_ps1_sql, l_owner_column2);
-    execute immediate l_sql;
+    COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_DBG_LOB_PS',
+      P_SELECT_LIST => L_SELECT_LIST, --empty
+      P_SQL_BODY =>    l_sql,
+      P_DBLINK =>      l_dbgm.dblink,
+      P_PRIORITY =>    l_qry_priority,
+      P_TIMEOUT =>     l_qry_timeout) ;
+    --execute immediate l_sql;
+
+    l_lob_ps2_sql := q'[( select <OWNER_COLUMN> TABLE_OWNER, table_name, column_name, lob_name,
+                                 null PART_NAME, subpartition_name sub_part_name,
+                                 lob_partition_name lob_part_name, null lob_indpart_name,
+                                 lob_subpartition_name lob_subpart_name, lob_indsubpart_name, tablespace_name
+    from <VIEWPREF>_lob_subpartitions<DBLINK>
+    where segment_created = 'YES' <VIEWPREF_FILTERS> and table_owner in (<OWNER_LIST>)
+    )]';
 
     l_sql := preprocess_sql(l_lob_ps2_sql, l_owner_column2);
-    execute immediate l_sql;
+    COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_DBG_LOB_PS',
+      P_SELECT_LIST => L_SELECT_LIST, --empty
+      P_SQL_BODY =>    l_sql,
+      P_DBLINK =>      l_dbgm.dblink,
+      P_PRIORITY =>    l_qry_priority,
+      P_TIMEOUT =>     l_qry_timeout) ;
+    --execute immediate l_sql;
+
+    l_nt_sql := q'[( select <OWNER_COLUMN> owner, table_name, parent_table_name, parent_table_column
+    from <VIEWPREF>_nested_tables<DBLINK> o <VIEWPREF_FILTERS> where owner in (<OWNER_LIST>)
+    )]';
 
     l_sql := preprocess_sql(l_nt_sql, l_owner_column);
-    execute immediate l_sql;
+    COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_DBG_NT',
+      P_SELECT_LIST => L_SELECT_LIST, --empty
+      P_SQL_BODY =>    l_sql,
+      P_DBLINK =>      l_dbgm.dblink,
+      P_PRIORITY =>    l_qry_priority,
+      P_TIMEOUT =>     l_qry_timeout) ;
+    --execute immediate l_sql;
+
+    l_cluster_sql := q'[( select <OWNER_COLUMN> owner, cluster_name, cluster_type
+    from <VIEWPREF>_clusters<DBLINK> o <VIEWPREF_FILTERS> where owner in (<OWNER_LIST>)
+    )]';
 
     l_sql := preprocess_sql(l_cluster_sql, l_owner_column);
-    execute immediate l_sql;
+    COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_DBG_CLUSTERS',
+      P_SELECT_LIST => L_SELECT_LIST, --empty
+      P_SQL_BODY =>    l_sql,
+      P_DBLINK =>      l_dbgm.dblink,
+      P_PRIORITY =>    l_qry_priority,
+      P_TIMEOUT =>     l_qry_timeout) ;
+    --execute immediate l_sql;
+
+    l_xmltbl_sql := q'[( select <OWNER_COLUMN> owner, table_name, xmlschema XMLSCHEMA_NAME, schema_owner, element_name, storage_type
+    from <VIEWPREF>_xml_tables<DBLINK> o <VIEWPREF_FILTERS> where owner in (<OWNER_LIST>)
+    )]';
 
     l_sql := preprocess_sql(l_xmltbl_sql, l_owner_column);
-    execute immediate l_sql;
+    COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_DBG_XML',
+      P_SELECT_LIST => L_SELECT_LIST, --empty
+      P_SQL_BODY =>    l_sql,
+      P_DBLINK =>      l_dbgm.dblink,
+      P_PRIORITY =>    l_qry_priority,
+      P_TIMEOUT =>     l_qry_timeout) ;
+    --execute immediate l_sql;
 
     begin
-      if l_dbgm.dblink = COREMOD_API.gLocalDBLink then
+    l_tblsp_sql := q'[(select <p_dbgdp_id> DBGDP_ID,
+           q3.tablespace_name ts_name, tot_occupied, bin_occupied, tot_free, curr_available, ext_available, tot_occupied_sch, bin_occupied_sch
+             from
+          (select tablespace_name,
+                  sum(bytes) tot_occupied,
+                  sum(case when r.object_name is not null then bytes else 0 end) bin_occupied,
+                  sum(case when s.owner in (<OWNER_LIST>) then bytes else 0 end) tot_occupied_sch,
+                  sum(case when s.owner in (<OWNER_LIST>) and r.object_name is not null then bytes else 0 end) bin_occupied_sch
+             from dba_segments<DBLINK> s, dba_recyclebin<DBLINK> r
+            where s.tablespace_name in (<TSLIST>)
+              and s.segment_name = r.object_name(+)
+              and s.tablespace_name = r.ts_name(+)
+              and s.owner = r.owner(+)
+            group by tablespace_name) q1,
+          (select tablespace_name, sum(bytes) tot_free
+             from dba_free_space<DBLINK>
+            where tablespace_name in (<TSLIST>)
+            group by tablespace_name) q2,
+          (select tablespace_name, sum(user_bytes) curr_available,
+                  sum(case when autoextensible = 'YES' then maxbytes else user_bytes end) ext_available
+             from dba_data_files<DBLINK>
+            where tablespace_name in (<TSLIST>)
+            group by tablespace_name) q3
+    where q2.tablespace_name(+)=q3.tablespace_name and q1.tablespace_name(+)=q3.tablespace_name)]';
+
+      /*if l_dbgm.dblink = COREMOD_API.gLocalDBLink then
         l_tblsp_sql:=replace(l_tblsp_sql,'<DBLINK>',null);
       else
         l_tblsp_sql:=replace(l_tblsp_sql,'<DBLINK>',l_ora_dblink);
-      end if;
+      end if;*/
 
       select listagg(''''||tablespace_name||'''',',')within group (order by tablespace_name)
         into l_tblsp_list
         from (select unique tablespace_name from opas_ot_tmp_dbg_objects where tablespace_name is not null);
 
-      l_sql := replace(replace(l_tblsp_sql, '<TSLIST>', l_tblsp_list),'<OWNER_LIST>',l_owner_list);
-      execute immediate l_sql using p_dbgdp_id;
+      l_sql := replace(replace(replace(l_tblsp_sql, '<TSLIST>', l_tblsp_list),'<OWNER_LIST>',l_owner_list),'<p_dbgdp_id>',p_dbgdp_id);
+      COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_DBG_TS_SIZES',
+        P_SELECT_LIST => L_SELECT_LIST, --empty
+        P_SQL_BODY =>    l_sql,
+        P_DBLINK =>      l_dbgm.dblink,
+        P_PRIORITY =>    l_qry_priority,
+        P_TIMEOUT =>     l_qry_timeout) ;
+        --execute immediate l_sql using p_dbgdp_id;
 
     exception
       when others then COREMOD_LOG.log(sqlerrm); COREMOD_LOG.log(l_sql); COREMOD_LOG.log(l_tblsp_list);

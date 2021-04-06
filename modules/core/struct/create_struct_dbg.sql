@@ -828,3 +828,127 @@ select *
            )
 ) where seg_delta < 0 );
 
+drop table opas_ot_tmp_dbg_objects_ext;
+create table opas_ot_tmp_dbg_objects_ext as
+SELECT
+  0 task_id,
+  owner,
+  object_id,
+  data_object_id,
+  object_name,
+  subobject_name,
+  object_type,
+  segment_type,
+  tablespace_name,
+  created,
+  size_bytes,
+  DBGOBJ_ID
+FROM
+  opas_ot_tmp_dbg_objects;
+  
+drop table opas_ot_tmp_dbg_tables_ext;
+create table opas_ot_tmp_dbg_tables_ext as
+SELECT
+  0 task_id,
+  owner,
+  table_name,
+  cluster_name,
+  iot_name,
+  iot_type
+FROM
+  opas_ot_tmp_dbg_tables; 
+  
+drop table OPAS_OT_TMP_DBG_INDEXES_ext;
+create table OPAS_OT_TMP_DBG_INDEXES_ext as
+SELECT
+  0 task_id,
+  owner,
+  index_name,
+  index_type,
+  table_owner,
+  table_name,
+  table_type
+FROM
+  opas_ot_tmp_dbg_indexes;
+  
+drop table OPAS_OT_TMP_DBG_LOBS_ext;
+create table OPAS_OT_TMP_DBG_LOBS_ext as
+SELECT
+  0 task_id,
+  owner,
+  table_name,
+  column_name,
+  segment_name,
+  tablespace_name,
+  index_name
+FROM
+  opas_ot_tmp_dbg_lobs;
+  
+drop table OPAS_OT_TMP_DBG_LOB_PS_ext;
+create table OPAS_OT_TMP_DBG_LOB_PS_ext as
+SELECT
+  0 task_id,
+  table_owner,
+  table_name,
+  column_name,
+  lob_name,
+  part_name,
+  sub_part_name,
+  lob_part_name,
+  lob_indpart_name,
+  lob_subpart_name,
+  lob_indsubpart_name,
+  tablespace_name
+FROM
+  opas_ot_tmp_dbg_lob_ps;
+  
+drop table OPAS_OT_TMP_DBG_NT_ext;
+create table OPAS_OT_TMP_DBG_NT_ext as
+SELECT
+  0 task_id,
+  owner,
+  table_name,
+  parent_table_name,
+  parent_table_column
+FROM
+  opas_ot_tmp_dbg_nt;
+  
+drop table OPAS_OT_TMP_DBG_CLUSTERS_ext;
+create table OPAS_OT_TMP_DBG_CLUSTERS_ext as
+SELECT
+  0 task_id,
+  owner,
+  cluster_name,
+  cluster_type
+FROM
+  opas_ot_tmp_dbg_clusters;
+  
+drop table OPAS_OT_TMP_DBG_XML_ext;
+create table OPAS_OT_TMP_DBG_XML_ext as
+SELECT
+  0 task_id,
+  owner,
+  table_name,
+  xmlschema_name,
+  schema_owner,
+  element_name,
+  storage_type
+FROM
+  opas_ot_tmp_dbg_xml;
+  
+drop table OPAS_OT_DBG_TS_SIZES_ext;
+create table OPAS_OT_DBG_TS_SIZES_ext as
+SELECT
+  0 task_id,
+  dbgdp_id,
+  ts_name,
+  tot_occupied,
+  bin_occupied,
+  seg_occupied,
+  tot_free,
+  curr_available,
+  ext_available,
+  tot_occupied_sch,
+  bin_occupied_sch
+FROM
+  opas_ot_dbg_ts_sizes where 1=2;

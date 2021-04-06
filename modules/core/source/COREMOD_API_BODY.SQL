@@ -150,12 +150,20 @@ package body COREMOD_API as
   function external_mode_dblink(p_db_link_name varchar2) return boolean
   is
   begin
-    return external_mode(p_db_link_name) = gemDBLINK;
+    return p_db_link_name = gLocalDBLink or external_mode(p_db_link_name) = gemDBLINK;
   end;
   function external_mode_javasrv(p_db_link_name varchar2) return boolean
   is
   begin
     return external_mode(p_db_link_name) = gemJAVASRV;
+  end;
+  function dblink_available(p_db_link_name varchar2, p_since date) return boolean RESULT_CACHE
+  is
+    l_dblink opas_db_links%rowtype;
+  begin
+    select * into l_dblink from opas_db_links where DB_LINK_NAME = upper(p_db_link_name);
+    return (l_dblink.DBLINK_MODE = gemDBLINK and l_dblink.STATUS = dblCREATED or
+            l_dblink.DBLINK_MODE = gemJAVASRV and l_dblink.STATUS = dblEXTENABLED) and l_dblink.ENABLED >= nvl(p_since,l_dblink.ENABLED);
   end;
 
   procedure register_dblink(p_db_link_name varchar2,
@@ -187,7 +195,8 @@ package body COREMOD_API as
       update opas_db_links set
              STATUS = dblEXTENABLED,
              DBLINK_MODE = gemJAVASRV,
-             EXT_HOST = p_server
+             EXT_HOST = p_server,
+             ENABLED = sysdate
        where DB_LINK_NAME = upper(p_db_link_name);
   end;
 
@@ -211,13 +220,15 @@ package body COREMOD_API as
              STATUS = dblMODIFIED,
              username = p_username,
              password = nvl(p_password,password),
-             connstr = p_connectstring
+             connstr = p_connectstring,
+             ENABLED = null
        where DB_LINK_NAME = upper(p_db_link_name);
     elsif nvl(p_DBLINK_MODE,'~^')<>nvl(l_dblink.DBLINK_MODE,'~^') or nvl(p_ext_host,'~^')<>nvl(l_dblink.EXT_HOST,'~^') then
       update opas_db_links set
              STATUS = dblMODIFIED,
              DBLINK_MODE = p_DBLINK_MODE,
-             EXT_HOST = p_ext_host
+             EXT_HOST = p_ext_host,
+             ENABLED = null
        where DB_LINK_NAME = upper(p_db_link_name);
       drop_dblink(p_db_link_name => upper(p_db_link_name), p_suspend => true);
     end if;
@@ -256,7 +267,7 @@ package body COREMOD_API as
         end;
       end if;
       execute immediate q'[CREATE DATABASE LINK ]'||l_dblink.db_link_name||q'[ CONNECT TO ]'||l_dblink.username||q'[ IDENTIFIED BY ]'||l_dblink.password||q'[ USING ']'||l_dblink.connstr||q'[']';
-      update opas_db_links set STATUS=dblCREATED where DB_LINK_NAME=upper(p_db_link_name);
+      update opas_db_links set STATUS=dblCREATED, ENABLED = sysdate where DB_LINK_NAME=upper(p_db_link_name);
       commit;
       --update_dblink_db_info(upper(p_db_link_name));
       l_tq_id:=COREMOD_TASKS.prep_execute_task (  P_TASKNAME => L_TASKNAME) ;
@@ -292,7 +303,7 @@ package body COREMOD_API as
     else
       select * into l_dblink from opas_db_links where DB_LINK_NAME = upper(p_db_link_name);
       if l_dblink.STATUS<>dblSUSPENDED then
-        update opas_db_links set STATUS=dblSUSPENDED where DB_LINK_NAME=upper(p_db_link_name);
+        update opas_db_links set STATUS=dblSUSPENDED, ENABLED = null where DB_LINK_NAME=upper(p_db_link_name);
         COREMOD_ALERTS.add_notification (
               nt_id =>      l_nt_id,
               NT_TEXT =>    'DB Link "'||upper(p_db_link_name)|| '" has been suspended.',
@@ -309,7 +320,7 @@ package body COREMOD_API as
       if l_cnt>0 then
         begin
           if not p_suspend then
-            update opas_db_links set STATUS=dblTODELETE where DB_LINK_NAME=upper(p_db_link_name);
+            update opas_db_links set STATUS=dblTODELETE, ENABLED = null where DB_LINK_NAME=upper(p_db_link_name);
           end if;
           execute immediate 'drop database link ' || case when l_domain is null then p_db_link_name else p_db_link_name ||'.'|| l_domain end;
         exception
@@ -546,8 +557,12 @@ package body COREMOD_API as
     l_v$_metrics  TABLEOF2NUM;
     l_awr_metrics TABLEOF2NUM;
 
+    l_qry_priority number := 3;
+    l_qry_timeout  number := 300; --sec
+    L_SELECT_LIST COREMOD_EXTPROC.t_columns;
+
     l_sql_get_snaps varchar2(4000)
-      := q'[select min_snap, dbid from (select min(snap_id) min_snap, min(dbid) dbid from dba_hist_snapshot<DBLINK> where dbid = (select dbid from v$database<DBLINK>) and end_interval_time > systimestamp - 1)]';
+      := q'[(select min_snap, dbid from (select min(snap_id) min_snap, min(dbid) dbid from dba_hist_snapshot<DBLINK> where dbid = (select dbid from v$database<DBLINK>) and end_interval_time > systimestamp - 1))]';
     l_sql_get_v4metrics varchar2(4000)
       := q'[insert into opas_dbl_tmp_metrics (GROUP_ID, METRIC_ID) select unique group_id, metric_id from gv$sysmetric_history<DBLINK>]';
     l_sql_get_awr_metric varchar2(4000)
@@ -555,16 +570,25 @@ package body COREMOD_API as
   begin
     COREMOD_TASKS.log('COREMOD_API.update_dblink_db_info: Updating database dossier for "'||p_db_link_name||'" ...');
 
-    test_dblink(p_db_link_name);
-    l_sql := replace(l_sql_get_snaps,'<DBLINK>',COREMOD_API.get_dblink_for_query(p_db_link_name));
-    execute immediate l_sql into l_snap, l_dbid;
+    --test_dblink(p_db_link_name);
+
+    COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_C_SNAPS',
+      P_SELECT_LIST => L_SELECT_LIST, --empty
+      P_SQL_BODY =>    l_sql_get_snaps,
+      P_DBLINK =>      p_db_link_name,
+      P_PRIORITY =>    l_qry_priority,
+      P_TIMEOUT =>     l_qry_timeout) ;
+
+    --l_sql := replace(l_sql_get_snaps,'<DBLINK>',COREMOD_API.get_dblink_for_query(p_db_link_name));
+    --execute immediate l_sql into l_snap, l_dbid;
+    SELECT min_snap, dbid into l_snap, l_dbid FROM opas_ot_tmp_c_snaps;
     l_sql := null;
 
     select DATA_UPDATED into l_previous_upd from OPAS_DB_LINKS where DB_LINK_NAME = upper(p_db_link_name);
     update OPAS_DB_LINKS set DATA_UPDATED = systimestamp+10 where DB_LINK_NAME = upper(p_db_link_name);
     commit;
-    if COREMOD_API.get_dblink_for_query(p_db_link_name) is not null then
-      execute immediate 'ALTER SESSION CLOSE DATABASE LINK '||p_db_link_name;
+    if COREMOD_API.external_mode_dblink(p_db_link_name) and COREMOD_API.get_dblink_for_query(p_db_link_name) is not null then
+      execute immediate 'ALTER SESSION CLOSE DATABASE LINK '||ltrim(COREMOD_API.get_dblink_for_query(p_db_link_name),'@');
     end if;
 
     l_version := COREMOD_UTILS.get_remote_full_oracle_version(P_DBLINK => p_db_link_name);
