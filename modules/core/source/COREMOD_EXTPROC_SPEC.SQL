@@ -15,7 +15,11 @@ PACKAGE COREMOD_EXTPROC AS
                                p_dblink        varchar2,
                                p_priority      number default 3,
                                p_timeout       number default 600,
-                               p_generate_only boolean default false);
+                               p_generate_only boolean default false,
+                               p_plsql_body    varchar2 default null,
+                               p_key_pref      varchar2 default null,
+                               p_src_table     varchar2 default null,
+                               p_timestamp_col varchar2 default null);
 
   procedure Cleanup_queue;
 
@@ -29,7 +33,7 @@ PACKAGE COREMOD_EXTPROC AS
   procedure report_connection_problem(p_work_id number, p_errormsg varchar2);
 
   procedure init_server_parameters(p_work_id number, p_username out varchar2, p_password out varchar2, p_connstr out varchar2, p_query_num out number, p_logging_mode out varchar2, p_batch_size out number);
-  procedure get_next_task(p_work_id number, p_task_id out number, p_qry_type out varchar2, p_qry1 out varchar2, p_qry2 out varchar2, p_num_cols out number, p_timeouted out number);
+  procedure get_next_task(p_work_id number, p_task_id out number, p_qry_type out varchar2, p_qry1 out varchar2, p_qry2 out varchar2, p_qry3 out varchar2, p_num_cols out number, p_timeouted out number);
   procedure set_task_finshed(p_task_id number, p_status varchar2, p_errormsg varchar2, p_rows_processed number/*, p_result clob default null*/);
   procedure set_task_taken(p_task_id number);
   procedure wait_result(p_task_id number, p_timeout number default 600);

@@ -197,14 +197,14 @@ else q'[end;]' end;
         COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task,
                                      P_IO_TYPE => 'OUT',
                                      P_ORDR_NUM => 1,
-                                     p_varchar2 => null) ;
+                                     p_clob => null) ;
       end if;
       COREMOD_EXTPROC.execute_plsql_task (  P_TASK_ID => l_task,
                                             P_TIMEOUT => 60) ;
       if p_is_output then
         COREMOD_EXTPROC.get_param (  P_TASK_ID => l_task,
                                      P_ORDR_NUM => 1,
-                                     p_varchar2 => l_output) ;
+                                     p_clob => l_output) ;
         p_output := l_output;
       end if;
     end if;

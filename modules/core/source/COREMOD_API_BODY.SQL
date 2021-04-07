@@ -401,6 +401,7 @@ package body COREMOD_API as
     l_res          opas_db_link_cache.value%type;
     l_last_updated opas_db_link_cache.last_updated%type;
     l_sql          varchar2(32765);
+    L_SELECT_LIST COREMOD_EXTPROC.t_columns;
 
     pragma autonomous_transaction;
   begin
@@ -409,6 +410,7 @@ package body COREMOD_API as
     exception
       when no_data_found then
         begin
+        if COREMOD_API.external_mode_dblink(p_db_link_name) then
           case
             when p_key like 'TABCOLLIST%' then
               begin
@@ -435,10 +437,64 @@ package body COREMOD_API as
           else
             raise_application_error(-20000,'Unsupported DB Link Cache Key: '||p_key);
           end case;
-          if l_res is not null then
-            INSERT INTO opas_db_link_cache ( dblink, key, value, last_updated ) VALUES (p_db_link_name, upper(p_key), l_res, systimestamp);
-          end if;
-          commit;
+        elsif COREMOD_API.external_mode_javasrv(p_db_link_name) then
+          case
+            when p_key like 'TABCOLLIST%' then
+              begin
+                --l_sql := q'[select listagg(column_name,',') within group (order by column_name) from
+                --                    (select column_name from dba_tab_cols]' || get_dblink_for_query(p_db_link_name) || q'[ where table_name=upper(:p_tab_name) and owner='SYS'
+                --                     intersect
+                --                     select column_name from dba_tab_cols where table_name=upper(:p_tab_name) and owner='SYS' and DATA_TYPE not in ('XMLTYPE','LONG'))]';
+                --execute immediate l_sql into l_res using ltrim(p_key, 'TABCOLLIST_'), ltrim(p_key, 'TABCOLLIST_');
+
+                COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_TAB_COLS',
+                  P_SELECT_LIST => L_SELECT_LIST, --empty
+                  P_SQL_BODY =>    replace(q'[select column_name from dba_tab_cols where table_name=upper('<p_tab_name>') and owner='SYS']','<p_tab_name>',ltrim(p_key, 'TABCOLLIST_')),
+                  P_DBLINK =>      p_db_link_name,
+                  P_PRIORITY =>    3,
+                  P_TIMEOUT =>     60) ;
+
+                select listagg(column_name,',') within group (order by column_name) into l_res from
+                  (select column_name from OPAS_OT_TMP_TAB_COLS
+                   intersect
+                   select column_name from dba_tab_cols where table_name=upper(ltrim(p_key, 'TABCOLLIST_')) and owner='SYS' and DATA_TYPE not in ('XMLTYPE','LONG'));
+
+              exception
+                when others then raise_application_error(-20000,'Unable to get DB Link Cache for Key|DB Link: '||p_key||'|'||p_db_link_name||chr(10)||' '||sqlerrm||chr(10)||l_sql);
+              end;
+            when p_key like 'LOCTABCOLS%' then
+              begin
+                --l_sql := q'[select listagg(column_name,',') within group (order by column_name) from
+                --                    (select column_name from dba_tab_cols]' || get_dblink_for_query(p_db_link_name) || q'[ where table_name=upper(:p_tab_name) and owner='SYS'
+                --                     intersect
+                --                     select column_name from dba_tab_cols where table_name=upper(:p_tab_name) and DATA_TYPE not in ('XMLTYPE','LONG'))]';
+                --execute immediate l_sql into l_res using ltrim(p_key, 'LOCTABCOLS_'), p_local_tab;
+
+                COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_TAB_COLS',
+                  P_SELECT_LIST => L_SELECT_LIST, --empty
+                  P_SQL_BODY =>    replace(q'[select column_name from dba_tab_cols where table_name=upper('<p_tab_name>') and owner='SYS']','<p_tab_name>',ltrim(p_key, 'LOCTABCOLS_')),
+                  P_DBLINK =>      p_db_link_name,
+                  P_PRIORITY =>    3,
+                  P_TIMEOUT =>     60) ;
+
+                select listagg(column_name,',') within group (order by column_name) into l_res from
+                  (select column_name from OPAS_OT_TMP_TAB_COLS
+                   intersect
+                   select column_name from dba_tab_cols where table_name=upper(p_local_tab) and DATA_TYPE not in ('XMLTYPE','LONG'));
+
+              exception
+                when others then raise_application_error(-20000,'Unable to get DB Link Cache for Key|Local Tab|DB Link: '||p_key||'|'||p_local_tab||'|'||p_db_link_name||chr(10)||' '||sqlerrm||chr(10)||l_sql);
+              end;
+          else
+            raise_application_error(-20000,'Unsupported DB Link Cache Key: '||p_key);
+          end case;
+        else
+          raise_application_error(-20000,'Unsupported external execution mode for DB Link (get_remote_full_oracle_version): '||p_db_link_name);
+        end if;
+        if l_res is not null then
+          INSERT INTO opas_db_link_cache ( dblink, key, value, last_updated ) VALUES (p_db_link_name, upper(p_key), l_res, systimestamp);
+        end if;
+        commit;
       end;
     end;
 
@@ -476,9 +532,12 @@ package body COREMOD_API as
                               p_timestamp_col varchar2 default null) return varchar2
   is
     l_sql           varchar2(32765);
-  begin
+  begin --load_tmp_data(p_db_link_name, 'V_$DATABASE',                'V$DATABASE',                 'opas_dbl_tmp_v$database','V$DB');
       l_sql :=q'[INSERT /*+ OPAS60_DBLINK_<SUFF> */ INTO <TRG_TABLE> (<TSCOL> <SRC_DB_COL_LICT>)
-              select <TSFNC> <SRC_DB_COL_LICT> from <SRC_TABLE>]' || COREMOD_API.get_dblink_for_query(p_db_link_name) || ' where (<FILTER>) <DBID>';
+              select <TSFNC> <SRC_DB_COL_LICT> from <SRC_TABLE>]' ||
+              COREMOD_API.get_dblink_for_query(p_db_link_name)
+              --'{DBLINK}'
+              || ' where (<FILTER>) <DBID>';
       if p_key_pref = 'TABCOLLIST' then
         l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_db_link_name,
                                                                                     P_KEY => replace(p_key_pref||'_<SRC_TABLE>','<SRC_TABLE>',p_src_table_name_r)));
@@ -524,22 +583,38 @@ package body COREMOD_API as
                           p_filter varchar2 default null)
   is
     l_sql           varchar2(32765);
+    L_SELECT_LIST   COREMOD_EXTPROC.t_columns;
   begin
+    if COREMOD_API.external_mode_dblink(p_db_link_name) then
+      l_sql := COREMOD_API.get_tmp_load_query(
+        P_DB_LINK_NAME => load_tmp_data.P_DB_LINK_NAME,
+        P_SRC_TABLE_NAME_R => load_tmp_data.P_SRC_TABLE_NAME_R,
+        P_SRC_TABLE_NAME => load_tmp_data.P_SRC_TABLE_NAME,
+        P_TRG_TABLE_NAME => load_tmp_data.P_TRG_TABLE_NAME,
+        P_SUFF => load_tmp_data.P_SUFF,
+        P_DBID => load_tmp_data.P_DBID,
+        P_KEY_PREF => load_tmp_data.P_KEY_PREF,
+        P_FILTER => load_tmp_data.P_FILTER);
 
-    l_sql := COREMOD_API.get_tmp_load_query(
-      P_DB_LINK_NAME => load_tmp_data.P_DB_LINK_NAME,
-      P_SRC_TABLE_NAME_R => load_tmp_data.P_SRC_TABLE_NAME_R,
-      P_SRC_TABLE_NAME => load_tmp_data.P_SRC_TABLE_NAME,
-      P_TRG_TABLE_NAME => load_tmp_data.P_TRG_TABLE_NAME,
-      P_SUFF => load_tmp_data.P_SUFF,
-      P_DBID => load_tmp_data.P_DBID,
-      P_KEY_PREF => load_tmp_data.P_KEY_PREF,
-      P_FILTER => load_tmp_data.P_FILTER);
-
-      coremod_log.log('COREMOD_API.load_tmp_data:'||chr(10)||l_sql,'DEBUG');
+      coremod_log.log('COREMOD_API.load_tmp_data (DBLINK):'||chr(10)||l_sql,'DEBUG');
       execute immediate l_sql;
-
       g_last_sql_rowcount := sql%rowcount;
+    elsif COREMOD_API.external_mode_javasrv(p_db_link_name) then
+      COREMOD_EXTPROC.load_external_data (
+        P_TARGET_TABLE => upper(p_trg_table_name),
+        P_SELECT_LIST => l_SELECT_LIST,
+        P_SQL_BODY => replace('(select * from <SRCTBL>)','<SRCTBL>',p_src_table_name),
+        P_DBLINK => p_db_link_name,
+        P_PRIORITY => 3,
+        P_TIMEOUT => 180,
+        P_GENERATE_ONLY => false,
+        P_PLSQL_BODY => null,
+        p_key_pref => load_tmp_data.P_KEY_PREF,
+        p_src_table => load_tmp_data.P_SRC_TABLE_NAME) ;
+      g_last_sql_rowcount := 1;
+    else
+      raise_application_error(-20000,'Unsupported external execution mode for DB Link (get_remote_full_oracle_version): '||p_db_link_name);
+    end if;
   exception
       when others then
         coremod_tasks.log('Error in COREMOD_API.load_tmp_data loading p_db_link_name, p_src_table_name: '||p_db_link_name||', '||p_trg_table_name||':'||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE||chr(10)||l_sql);
@@ -564,9 +639,10 @@ package body COREMOD_API as
     l_sql_get_snaps varchar2(4000)
       := q'[(select min_snap, dbid from (select min(snap_id) min_snap, min(dbid) dbid from dba_hist_snapshot<DBLINK> where dbid = (select dbid from v$database<DBLINK>) and end_interval_time > systimestamp - 1))]';
     l_sql_get_v4metrics varchar2(4000)
-      := q'[insert into opas_dbl_tmp_metrics (GROUP_ID, METRIC_ID) select unique group_id, metric_id from gv$sysmetric_history<DBLINK>]';
+      := q'[(select GROUP_ID, null GROUP_NAME, METRIC_ID, null METRIC_NAME, null METRIC_UNIT, null SRC from (select unique group_id, metric_id from gv$sysmetric_history<DBLINK>))]';
     l_sql_get_awr_metric varchar2(4000)
-      := q'[insert into opas_dbl_tmp_metrics (GROUP_ID, METRIC_ID) select unique group_id, metric_id from dba_hist_sysmetric_history<DBLINK> h where h.snap_id > :l_snap and h.dbid = :l_dbid and h.instance_number > 0]';
+      := q'[(select GROUP_ID, null GROUP_NAME, METRIC_ID, null METRIC_NAME, null METRIC_UNIT, null SRC from (select unique group_id, metric_id
+             from dba_hist_sysmetric_history<DBLINK> h where h.snap_id > <l_snap> and h.dbid = <l_dbid> and h.instance_number > 0))]';
   begin
     COREMOD_TASKS.log('COREMOD_API.update_dblink_db_info: Updating database dossier for "'||p_db_link_name||'" ...');
 
@@ -593,16 +669,29 @@ package body COREMOD_API as
 
     l_version := COREMOD_UTILS.get_remote_full_oracle_version(P_DBLINK => p_db_link_name);
 
-    l_sql := replace(l_sql_get_v4metrics,'<DBLINK>',COREMOD_API.get_dblink_for_query(p_db_link_name));
-    execute immediate l_sql;
-    l_sql := null;
+    COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_DBL_TMP_METRICS',
+      P_SELECT_LIST => L_SELECT_LIST, --empty
+      P_SQL_BODY =>    l_sql_get_v4metrics,
+      P_DBLINK =>      p_db_link_name,
+      P_PRIORITY =>    l_qry_priority,
+      P_TIMEOUT =>     l_qry_timeout) ;
+    --l_sql := replace(l_sql_get_v4metrics,'<DBLINK>',COREMOD_API.get_dblink_for_query(p_db_link_name));
+    --execute immediate l_sql;
+    --l_sql := null;
 
     select TWO_NUMBERS(GROUP_ID, METRIC_ID)  bulk collect into l_v$_metrics from opas_dbl_tmp_metrics;
     delete from opas_dbl_tmp_metrics;
 
-    l_sql := replace(l_sql_get_awr_metric,'<DBLINK>',COREMOD_API.get_dblink_for_query(p_db_link_name));
-    execute immediate l_sql using l_snap, l_dbid;
-    l_sql := null;
+    l_sql := replace(replace(l_sql_get_awr_metric,'<l_snap>',l_snap),'<l_dbid>',l_dbid);
+    COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_DBL_TMP_METRICS',
+      P_SELECT_LIST => L_SELECT_LIST, --empty
+      P_SQL_BODY =>    l_sql,
+      P_DBLINK =>      p_db_link_name,
+      P_PRIORITY =>    l_qry_priority,
+      P_TIMEOUT =>     l_qry_timeout) ;
+    --l_sql := replace(l_sql_get_awr_metric,'<DBLINK>',COREMOD_API.get_dblink_for_query(p_db_link_name));
+    --execute immediate l_sql using l_snap, l_dbid;
+    --l_sql := null;
 
     select TWO_NUMBERS(GROUP_ID, METRIC_ID)  bulk collect into l_awr_metrics from opas_dbl_tmp_metrics;
     delete from opas_dbl_tmp_metrics;

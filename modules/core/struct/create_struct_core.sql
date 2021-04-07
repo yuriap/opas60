@@ -769,6 +769,7 @@ db_link_name        varchar2(128),
 qry_type            varchar2(128),
 select_sql          varchar2(4000),
 load_sql            varchar2(4000),
+pl_sql              varchar2(4000),
 col_number          number,
 created             timestamp default systimestamp,
 started             timestamp,
@@ -800,3 +801,85 @@ r_varchar           varchar2(4000)
 );
 
 create index idx_opas_extproc_results on opas_extproc_results(task_id);
+
+drop table OPAS_OT_TMP_C_SNAPS;
+create global temporary table OPAS_OT_TMP_C_SNAPS as
+select min_snap, dbid from (select min(snap_id) min_snap, min(dbid) dbid from dba_hist_snapshot where 1=2);
+
+drop table OPAS_OT_TMP_C_SNAPS_EXT;
+create table OPAS_OT_TMP_C_SNAPS_EXT as
+SELECT
+  0 task_id,
+  min_snap,
+  dbid
+FROM
+  opas_ot_tmp_c_snaps;
+  
+drop table opas_dbl_tmp_metrics_EXT;
+create table opas_dbl_tmp_metrics_EXT as
+SELECT
+  0 task_id,
+  group_id,
+  group_name,
+  metric_id,
+  metric_name,
+  metric_unit,
+  src
+FROM
+  opas_dbl_tmp_metrics;
+  
+drop table OPAS_DBL_TMP_V$DATABASE_EXT;
+create table OPAS_DBL_TMP_V$DATABASE_EXT as
+SELECT
+  0 task_id,
+  opas_dbl_tmp_v$database.*
+FROM
+  opas_dbl_tmp_v$database;
+--======================
+drop table opas_dbl_tmp_v$pdbs_EXT;
+create table opas_dbl_tmp_v$pdbs_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  opas_dbl_tmp_v$pdbs x;
+drop table opas_dbl_tmp_v$inst_EXT;
+create table opas_dbl_tmp_v$inst_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  opas_dbl_tmp_v$inst x;
+
+create table opas_dbl_tmp_reghst_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  opas_dbl_tmp_reghst x;
+  
+drop table opas_dbl_tmp_sqlptchhst_EXT;
+create table opas_dbl_tmp_sqlptchhst_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  opas_dbl_tmp_sqlptchhst x;
+  
+drop table opas_dbl_tmp_awrinst_EXT;
+create table opas_dbl_tmp_awrinst_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  opas_dbl_tmp_awrinst x;
+  
+create global temporary table opas_ot_tmp_tab_cols 
+as select column_name from dba_tab_cols where 1=2;
+drop table OPAS_OT_TMP_TAB_COLS_EXT;
+create table OPAS_OT_TMP_TAB_COLS_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  OPAS_OT_TMP_TAB_COLS x;

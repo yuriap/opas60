@@ -21,7 +21,11 @@ PACKAGE BODY COREMOD_EXTPROC AS
                                p_dblink        varchar2,
                                p_priority      number default 3,
                                p_timeout       number default 600,
-                               p_generate_only boolean default false)
+                               p_generate_only boolean default false,
+                               p_plsql_body    varchar2 default null,
+                               p_key_pref      varchar2 default null,
+                               p_src_table     varchar2 default null,
+                               p_timestamp_col varchar2 default null)
   is
     l_extunltmpl varchar2(32765) := q'[SELECT <COLLIST>
  FROM <SQLBODY>]';
@@ -37,46 +41,68 @@ FROM   <SQLBODY>]';
     l_loadlocalsql varchar2(32765);
     l_trgcols varchar2(32765);
     l_trgcols_expr varchar2(32765);
-    --l_trgcols_dt varchar2(32765);
-    --l_trgcols_ldr varchar2(32765);
     l_trgcols_java_vals varchar2(32765);
-    --l_fullpath varchar2(32765);
-    --l_connstr  varchar2(512);
-    --l_exec_id number;
-    --l_datafile varchar2(100):= 'data_'||l_exec_id||'.csv';
-    --l_time number;
     l_col_num number := 0;
     l_task_id number;
+    l_column_list varchar2(32765) := null;
+    l_ts_col varchar2(128);
+    l_ts_fnc varchar2(512);
   begin
+--dbms_output.put_line(replace(p_key_pref||'_<SRC_TABLE>','<SRC_TABLE>',p_src_table));
+    if p_key_pref = 'TABCOLLIST' then
+      l_column_list := COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_dblink,
+                                                        P_KEY => replace(p_key_pref||'_<SRC_TABLE>','<SRC_TABLE>',p_src_table));
+    elsif p_key_pref = 'LOCTABCOLS' then
+      l_column_list := COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_dblink,
+                                                        P_KEY => replace(p_key_pref||'_<SRC_TABLE>','<SRC_TABLE>',p_src_table),
+                                                        p_local_tab => p_target_table);
+    end if;
+    if p_timestamp_col is not null and p_timestamp_col in ('TS', 'LTS', 'TSTZ','TSUTC') then
+      l_ts_col := p_timestamp_col;
+      l_ts_fnc := case p_timestamp_col
+                  when 'TS' then 'cast(systimestamp as timestamp)'
+                  when 'LTS' then 'localtimestamp'
+                  when 'TSTZ' then 'systimestamp'
+                  when 'TSUTC' then 'sys_extract_utc(systimestamp)' else null end;
+    end if;
+
+--dbms_output.put_line(','||upper(l_column_list)||',');
+--dbms_output.put_line(l_column_list);
     for i in (select * from user_tab_cols where table_name=upper(p_target_table) and virtual_column='NO' and hidden_column='NO' order by column_id) loop
-      --l_trgcols_dt:= l_trgcols_dt || i.column_name  || ' ' || case when i.data_type='VARCHAR2' then i.data_type||'('||i.data_length||')' else i.data_type end || ', ';
-      --l_trgcols_ldr:= l_trgcols_ldr || i.column_name || ' ' || case when i.data_type='VARCHAR2' and i.data_length>255 then ' char('||i.data_length||')' else null end || ', ';
-      l_trgcols := l_trgcols || i.column_name || ', ';
+      if p_key_pref is not null then
+--dbms_output.put_line(','||i.column_name||',');
+        if instr(','||upper(l_column_list)||',', ','||i.column_name||',')=0 then continue; end if;
+      end if;
+      if i.data_type in ('VARCHAR2', 'CHAR', 'RAW', 'NUMBER', 'DATE') or
+         i.data_type = 'TIMESTAMP' or i.data_type like 'TIMESTAMP(%)' or
+         i.data_type like 'TIMESTAMP(%) WITH TIME ZONE'
+      then
+        l_trgcols := l_trgcols || i.column_name || ', ';
+      end if;
       if p_select_list is not null and p_select_list.exists(i.column_name) then
         l_trgcols_expr := l_trgcols_expr || p_select_list(i.column_name) || ' as ' || i.column_name ||', ' ;
       elsif p_select_list is null or p_select_list is not null and p_select_list.count=0 then
-        l_trgcols_expr:= l_trgcols_expr || ' ' ||
-         case when i.data_type in ('VARCHAR2', 'CHAR', 'RAW') then i.column_name
-              when i.data_type = 'NUMBER' then i.column_name
-              when i.data_type = 'DATE' then 'to_char('||i.column_name||')'
-              when i.data_type = 'TIMESTAMP' then 'to_char('||i.column_name||')'
-              when i.data_type like 'TIMESTAMP(%) WITH TIME ZONE' then 'to_char('||i.column_name||')'
-              else 'Unsupported type '||i.data_type end || ', ';
+        l_trgcols_expr:= l_trgcols_expr ||
+         case when i.data_type in ('VARCHAR2', 'CHAR', 'RAW') then ', ' || i.column_name
+              when i.data_type = 'NUMBER' then ', ' || i.column_name
+              when i.data_type = 'DATE' then ', ' || 'to_char('||i.column_name||')'
+              when i.data_type = 'TIMESTAMP' or i.data_type like 'TIMESTAMP(%)' then ', ' || 'to_char('||i.column_name||')'
+              when i.data_type like 'TIMESTAMP(%) WITH TIME ZONE' then ', ' || 'to_char('||i.column_name||')'
+              else '/*<'||i.column_name || '> Unsupported type '||i.data_type||'*/' end;-- || ', ';
       end if;
-      l_trgcols_java_vals:= l_trgcols_java_vals || ' ' ||
-         case when i.data_type in ('VARCHAR2', 'CHAR', 'RAW') then '?'
-              when i.data_type = 'NUMBER' then 'to_number(?)'
-              when i.data_type = 'DATE' then 'to_date(?)'
-              when i.data_type = 'TIMESTAMP' then 'to_timestamp(?)'
-              when i.data_type like 'TIMESTAMP(%) WITH TIME ZONE' then 'TO_TIMESTAMP_TZ(?)'
-              else 'Unsupported type '||i.data_type end || ', ';
-      l_col_num := l_col_num + 1;
+      l_trgcols_java_vals:= l_trgcols_java_vals ||
+         case when i.data_type in ('VARCHAR2', 'CHAR', 'RAW') then  ', ' || '?'
+              when i.data_type = 'NUMBER' then  ', ' || 'to_number(?)'
+              when i.data_type = 'DATE' then  ', ' || 'to_date(?)'
+              when i.data_type = 'TIMESTAMP' or i.data_type like 'TIMESTAMP(%)' then  ', ' || 'to_timestamp(?)'
+              when i.data_type like 'TIMESTAMP(%) WITH TIME ZONE' then  ', ' || 'TO_TIMESTAMP_TZ(?)'
+              else '/*<'||i.column_name || '>Unsupported type '||i.data_type||'*/' end;-- || ', ';
+      --l_col_num := l_col_num + 1;
     end loop;
     l_trgcols := rtrim(l_trgcols,', ');
-    l_trgcols_expr := rtrim(l_trgcols_expr,', ');
-    --l_trgcols_dt := rtrim(l_trgcols_dt,', ');
-    --l_trgcols_ldr := rtrim(l_trgcols_ldr,', ');
-    l_trgcols_java_vals := rtrim(l_trgcols_java_vals,', ');
+    l_trgcols_expr := ltrim(l_trgcols_expr,', ');
+    l_trgcols_java_vals := ltrim(l_trgcols_java_vals,', ');
+    l_col_num := regexp_count(l_trgcols_expr, ',')+1;
 
     if COREMOD_API.external_mode_dblink(p_dblink) then
       l_sql := l_dbltmpl;
@@ -104,11 +130,16 @@ FROM   <SQLBODY>]';
         log_debug('load_external_data JAVA l_unlsql: '||l_unlsql);
         log_debug('load_external_data JAVA l_loadsql: '||l_loadsql);
         log_debug('load_external_data JAVA l_loadlocalsql: '||l_loadlocalsql);
+        log_debug('load_external_data JAVA p_plsql_body: '||p_plsql_body);
+              dbms_output.put_line(l_unlsql);
+                    dbms_output.put_line(l_loadsql);
+                          dbms_output.put_line(l_loadlocalsql);
+                                dbms_output.put_line(p_plsql_body);
       else
         --SQLSELINS
         INSERT INTO opas_extproc_queue_srv (
-          TASK_ID, PRIORITY, db_link_name, QRY_TYPE, select_sql, load_sql, col_number, TARGET_TABLE) VALUES (
-          l_task_id, p_priority, p_dblink, 'SQLSELINS', l_unlsql,  l_loadsql, l_col_num, p_target_table);
+          TASK_ID, PRIORITY, db_link_name, QRY_TYPE, select_sql, load_sql, col_number, TARGET_TABLE, PL_SQL) VALUES (
+          l_task_id, p_priority, p_dblink, case when p_plsql_body is null then 'SQLSELINS' else 'PLSQLSELINS' end, l_unlsql,  l_loadsql, l_col_num, p_target_table, p_plsql_body);
         commit;
 
         wait_result (  P_TASK_ID => l_task_id,
@@ -397,7 +428,7 @@ FROM   <SQLBODY>]';
     log_info('init_server_parameters finished: '||p_work_id);
   end;
 
-  procedure get_next_task(p_work_id number, p_task_id out number, p_qry_type out varchar2, p_qry1 out varchar2, p_qry2 out varchar2, p_num_cols out number, p_timeouted out number) is
+  procedure get_next_task(p_work_id number, p_task_id out number, p_qry_type out varchar2, p_qry1 out varchar2, p_qry2 out varchar2, p_qry3 out varchar2, p_num_cols out number, p_timeouted out number) is
     l_acquired boolean := false;
     l_iterations number := 0;
     l_max_iteration number := to_number(COREMOD_API.getconf('WORKERAQCITERS')); --2 minutes
@@ -411,6 +442,7 @@ FROM   <SQLBODY>]';
           p_qry1 := j.SELECT_SQL;
           p_qry2 := j.LOAD_SQL;
           p_num_cols := j.COL_NUMBER;
+          p_qry3 := j.PL_SQL;
           l_acquired := true;
           update OPAS_EXTPROC_QUEUE_SRV set STARTED = systimestamp, status='STARTED' where TASK_ID=j.TASK_ID;
           exit;
@@ -566,20 +598,20 @@ FROM   <SQLBODY>]';
                                p_generate_only boolean default false) return number --returns p_task_id
   is
     l_task_id number;
-    l_unlsql  varchar2(32765);
+    l_PL_SQL  varchar2(32765);
     pragma autonomous_transaction;
   begin
-      l_unlsql := replace(p_plsql_body,'<DBLINK>');
+      l_PL_SQL := replace(p_plsql_body,'<DBLINK>');
 
       if p_generate_only then
-        log_info('create_plsql_task JAVA l_unlsql: '||l_unlsql);
+        log_info('create_plsql_task JAVA l_PL_SQL: '||l_PL_SQL);
 
       else
         --PLSQL
         l_task_id := seq_opas_extproc_queue_srv.nextval;
         INSERT INTO opas_extproc_queue_srv (
-          TASK_ID, PRIORITY, db_link_name, QRY_TYPE, select_sql, STATUS) VALUES (
-          l_task_id, p_priority, p_dblink, 'PLSQL', l_unlsql, 'PRE');
+          TASK_ID, PRIORITY, db_link_name, QRY_TYPE, PL_SQL, STATUS) VALUES (
+          l_task_id, p_priority, p_dblink, 'PLSQL', l_PL_SQL, 'PRE');
         commit;
       end if;
       return l_task_id;

@@ -43,6 +43,7 @@ public class remote_executor {
     private static String qry_type = "";
     private static String select_sql = "";
     private static String load_sql = "";
+    private static String pl_sql = "";
     private static int num_cols = 0;
     private static int timedout = 0;
     
@@ -197,15 +198,16 @@ public class remote_executor {
   
     private static void get_task(int p_work_id) throws Exception, SQLException
     {  
-      CallableStatement gettask = localconn.prepareCall("{ call COREMOD_EXTPROC.get_next_task (  P_WORK_ID => ?, P_TASK_ID => ?, P_QRY_TYPE => ?, P_QRY1 => ?, P_QRY2 => ?, P_NUM_COLS => ?, P_TIMEOUTED => ?) }");
+      CallableStatement gettask = localconn.prepareCall("{ call COREMOD_EXTPROC.get_next_task (  P_WORK_ID => ?, P_TASK_ID => ?, P_QRY_TYPE => ?, P_QRY1 => ?, P_QRY2 => ?, P_QRY3 => ?, P_NUM_COLS => ?, P_TIMEOUTED => ?) }");
       gettask.setInt(1, p_work_id);
 
       gettask.registerOutParameter(2, java.sql.Types.DECIMAL);
       gettask.registerOutParameter(3, java.sql.Types.VARCHAR);
       gettask.registerOutParameter(4, java.sql.Types.VARCHAR);
       gettask.registerOutParameter(5, java.sql.Types.VARCHAR);
-      gettask.registerOutParameter(6, java.sql.Types.DECIMAL);
+      gettask.registerOutParameter(6, java.sql.Types.VARCHAR);
       gettask.registerOutParameter(7, java.sql.Types.DECIMAL);
+      gettask.registerOutParameter(8, java.sql.Types.DECIMAL);
 
       gettask.executeUpdate();
  
@@ -213,8 +215,9 @@ public class remote_executor {
       qry_type = gettask.getString(3);
       select_sql = gettask.getString(4);
       load_sql = gettask.getString(5);
-      num_cols = gettask.getInt(6);
-      timedout = gettask.getInt(7);  
+      pl_sql = gettask.getString(6);
+      num_cols = gettask.getInt(7);
+      timedout = gettask.getInt(8);  
         
       gettask.close();
         
@@ -222,6 +225,7 @@ public class remote_executor {
       log_debug("qry_type: " + qry_type);
       //log_debug("select_sql: " + select_sql);
       //log_debug("load_sql: " + load_sql);
+      //log_debug("pl_sql: " + pl_sql);
       log_debug("num_cols: " + num_cols);
       log_debug("timedout: " + timedout);        
     }  
@@ -382,7 +386,7 @@ public class remote_executor {
           log_debug("start plsql exec");      
           paramsstmt.setInt(1, p_task_id);
           ResultSet paramsset = paramsstmt.executeQuery();
-          CallableStatement plsql_block = remoteconn.prepareCall(select_sql);     
+          CallableStatement plsql_block = remoteconn.prepareCall(pl_sql);     
           while (paramsset.next()) {
             r_ordr_num = paramsset.getInt(1);
             r_io_type = paramsset.getString(2);
@@ -437,10 +441,10 @@ public class remote_executor {
           plsql_block.close();
           paramsset.close();   
           paramsstmt.close(); 
-          remoteconn.rollback();
-          localconn.commit();
-                    
-          set_task(p_task_id, "FINISHED", "", 1);
+          if (qry_type.equals("PLSQL")) remoteconn.rollback();
+          //localconn.commit();
+          
+          if (qry_type.equals("PLSQL")) set_task(p_task_id, "FINISHED", "", 1);
           
           executed++;
           log_debug("execute_plsql_task: " + executed);   
@@ -475,6 +479,10 @@ public class remote_executor {
         
         if (remote_conn_established&&(task_id > 0)&&(qry_type.equals("SQLSELINS"))) execute_select_insert_task(task_id);
         if (remote_conn_established&&(task_id > 0)&&(qry_type.equals("PLSQL")))     execute_plsql_task(task_id);
+        if (remote_conn_established&&(task_id > 0)&&(qry_type.equals("PLSQLSELINS"))) {
+          execute_plsql_task(task_id);
+          execute_select_insert_task(task_id);
+        }
       
         try {
           TimeUnit.MILLISECONDS.sleep(100);
