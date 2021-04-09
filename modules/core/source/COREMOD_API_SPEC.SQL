@@ -64,14 +64,16 @@ package COREMOD_API as
   function external_mode_dblink(p_db_link_name varchar2) return boolean;
   function external_mode_javasrv(p_db_link_name varchar2) return boolean;
 
-   procedure load_tmp_data(p_db_link_name varchar2,
+   procedure load_tmp_data(p_db_link_name     varchar2,
                            p_src_table_name_r varchar2,
-                           p_src_table_name varchar2,
-                           p_trg_table_name varchar2,
-                           p_suff varchar2,
-                           p_dbid number default null,
-                           p_key_pref varchar2 default 'TABCOLLIST',
-                           p_filter varchar2 default null);
+                           p_src_table_name   varchar2,
+                           p_trg_table_name   varchar2,
+                           p_suff             varchar2,
+                           p_dbid             number default null,
+                           p_key_pref         varchar2 default 'TABCOLLIST',
+                           p_filter           varchar2 default null,
+                           p_priority         number,
+                           p_timeout          number);
    function get_tmp_load_query(p_db_link_name varchar2,
                                p_src_table_name_r varchar2,
                                p_src_table_name varchar2,

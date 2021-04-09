@@ -68,6 +68,10 @@ PACKAGE COREOBJ_SQL_REPORT_UTILS AS
                                                p_for_grid             boolean default false) return varchar2;
   function getq_print_vash_section_base       (p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
                                                p_for_grid             boolean default false) return varchar2;
+  function getq_print_vash_section1_base       (p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                                p_for_grid             boolean default false) return varchar2;
+  function getq_print_vash_section2_base       (p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                                p_for_grid             boolean default false) return varchar2;
   function getq_print_awr_sqlstat_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
                                                p_for_grid             boolean default false) return varchar2;
   function getq_print_awr_binds_section_base  (p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,

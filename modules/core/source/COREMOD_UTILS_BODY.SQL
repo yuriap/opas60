@@ -146,15 +146,15 @@ else q'[end;]' end;
 --dbms_output.put_line(l_sql2exec);
 --coremod_log.log('l_sql2exec: '||l_sql2exec);
     l_time:=DBMS_UTILITY.GET_TIME;
-    execute immediate 'begin :p_theCursor:=dbms_sql.open_cursor@'||l_dblink||'; end;' using out l_theCursor;
-    execute immediate 'begin dbms_sql.parse@'||l_dblink||'(:p_theCursor, :p_stmt , :p_flg ); end;' using l_theCursor, l_sql2exec, dbms_sql.native;
-    execute immediate 'begin :a:=dbms_sql.execute@'||l_dblink||'(:p_theCursor); end;' using out l_status, in l_theCursor;
-    execute immediate 'begin dbms_sql.close_cursor@'||l_dblink||'(:p_theCursor); end;' using in out l_theCursor;
+    execute immediate 'begin :p_theCursor:=dbms_sql.open_cursor'||l_dblink||'; end;' using out l_theCursor;
+    execute immediate 'begin dbms_sql.parse'||l_dblink||'(:p_theCursor, :p_stmt , :p_flg ); end;' using l_theCursor, l_sql2exec, dbms_sql.native;
+    execute immediate 'begin :a:=dbms_sql.execute'||l_dblink||'(:p_theCursor); end;' using out l_status, in l_theCursor;
+    execute immediate 'begin dbms_sql.close_cursor'||l_dblink||'(:p_theCursor); end;' using in out l_theCursor;
     l_time:=DBMS_UTILITY.GET_TIME-l_time;
     coremod_log.log('Executing: '||(l_time/100),'DEBUG');
     l_time:=DBMS_UTILITY.GET_TIME;
     loop
-      execute immediate 'begin DBMS_OUTPUT.GET_LINE@'||l_dblink||'(line => :p_line, status => :p_status); end;' using out l_line, out l_status;
+      execute immediate 'begin DBMS_OUTPUT.GET_LINE'||l_dblink||'(line => :p_line, status => :p_status); end;' using out l_line, out l_status;
       exit when l_status=1;
       --p_output:=p_output||l_line||chr(10);
       p_output:=p_output||utl_raw.cast_to_varchar2(UTL_COMPRESS.LZ_UNCOMPRESS(l_line));
@@ -164,9 +164,9 @@ else q'[end;]' end;
     coremod_log.log('Getting output: '||(l_time/100),'DEBUG');
   exception
     when others then
-       execute immediate 'begin :p_open:=dbms_sql.IS_OPEN@'||l_dblink||'(:p_theCursor); end;' using out l_open, in l_theCursor;
+       execute immediate 'begin :p_open:=dbms_sql.IS_OPEN'||l_dblink||'(:p_theCursor); end;' using out l_open, in l_theCursor;
       if l_open then
-        execute immediate 'begin dbms_sql.close_cursor@'||l_dblink||'(:p_theCursor); end;' using in out l_theCursor;
+        execute immediate 'begin dbms_sql.close_cursor'||l_dblink||'(:p_theCursor); end;' using in out l_theCursor;
       end if;
       coremod_log.log('execute_plsql_remotelly: Error: '||sqlerrm);
       coremod_log.log('execute_plsql_remotelly: Original SQL: '||p_sql);
@@ -190,7 +190,7 @@ else q'[end;]' end;
       execute_plsql_remotelly_dblink(p_sql, p_dblink, p_output, p_is_output);
     elsif COREMOD_API.external_mode_javasrv(p_dblink) then
     --  raise_application_error(-20000,'Unimplemented execute_plsql_remotelly for SQL*Plus');
-      l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY => p_sql,
+      l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY => 'begin '||replace(p_sql,'l_out',':l_out')||' end;',
                                                   P_DBLINK => execute_plsql_remotelly.p_dblink,
                                                   P_PRIORITY => 3);
       if p_is_output then

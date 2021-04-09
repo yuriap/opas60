@@ -24,6 +24,9 @@ package body COREMOD_API as
 
   g_last_sql_rowcount number;
 
+  g_qry_priority number := 3;
+  g_qry_timeout  number := 300; --sec
+
   function getMODNAME return varchar2 is begin return gMODNAME; end;
 
   function get_last_rowcount return number is begin return g_last_sql_rowcount; end;
@@ -135,10 +138,10 @@ package body COREMOD_API as
     when others then return null;
   end;
 
-  function external_mode return varchar2 is begin return COREMOD_API.getconf('EXTERNALMODE'); end;
-  function external_mode_dblink return boolean is begin return external_mode = gemDBLINK; end;
+  --function external_mode return varchar2 is begin return COREMOD_API.getconf('EXTERNALMODE'); end;
+  --function external_mode_dblink return boolean is begin return external_mode = gemDBLINK; end;
   --function external_mode_sqlplus return boolean is begin return external_mode = gemSQLPLUS; end;
-  function external_mode_javasrv return boolean is begin return external_mode = gemJAVASRV; end;
+  --function external_mode_javasrv return boolean is begin return external_mode = gemJAVASRV; end;
 
   function external_mode(p_db_link_name varchar2) return varchar2 RESULT_CACHE
   is
@@ -573,14 +576,16 @@ package body COREMOD_API as
       return l_sql;
   end;
 
-  procedure load_tmp_data(p_db_link_name varchar2,
+  procedure load_tmp_data(p_db_link_name     varchar2,
                           p_src_table_name_r varchar2,
-                          p_src_table_name varchar2,
-                          p_trg_table_name varchar2,
-                          p_suff varchar2,
-                          p_dbid number default null,
-                          p_key_pref varchar2 default 'TABCOLLIST',
-                          p_filter varchar2 default null)
+                          p_src_table_name   varchar2,
+                          p_trg_table_name   varchar2,
+                          p_suff             varchar2,
+                          p_dbid             number default null,
+                          p_key_pref         varchar2 default 'TABCOLLIST',
+                          p_filter           varchar2 default null,
+                          p_priority         number,
+                          p_timeout          number)
   is
     l_sql           varchar2(32765);
     L_SELECT_LIST   COREMOD_EXTPROC.t_columns;
@@ -605,8 +610,8 @@ package body COREMOD_API as
         P_SELECT_LIST => l_SELECT_LIST,
         P_SQL_BODY => replace('(select * from <SRCTBL>)','<SRCTBL>',p_src_table_name),
         P_DBLINK => p_db_link_name,
-        P_PRIORITY => 3,
-        P_TIMEOUT => 180,
+        P_PRIORITY => load_tmp_data.p_priority,
+        P_TIMEOUT => load_tmp_data.p_timeout,
         P_GENERATE_ONLY => false,
         P_PLSQL_BODY => null,
         p_key_pref => load_tmp_data.P_KEY_PREF,
@@ -726,11 +731,11 @@ package body COREMOD_API as
     insert (VERSION, GROUP_ID, METRIC_ID)
     values (l_version, s.GROUP_ID, s.METRIC_ID);
 
-    load_tmp_data(p_db_link_name, 'V_$DATABASE',                'V$DATABASE',                 'opas_dbl_tmp_v$database','V$DB');
-    load_tmp_data(p_db_link_name, 'V_$PDBS',                    'V$PDBS',                     'opas_dbl_tmp_v$pdbs',    'V$PDBS');
-    load_tmp_data(p_db_link_name, 'GV_$INSTANCE',               'GV$INSTANCE',                'opas_dbl_tmp_v$inst',    'GV$INST');
-    load_tmp_data(p_db_link_name, 'DBA_REGISTRY_HISTORY',       'DBA_REGISTRY_HISTORY',       'opas_dbl_tmp_reghst',    'REGHST');
-    load_tmp_data(p_db_link_name, 'DBA_REGISTRY_SQLPATCH',      'DBA_REGISTRY_SQLPATCH',      'opas_dbl_tmp_sqlptchhst','SQLPTCH');
+    load_tmp_data(p_db_link_name, 'V_$DATABASE',                'V$DATABASE',                 'opas_dbl_tmp_v$database','V$DB', p_priority=>g_qry_priority, p_timeout=>g_qry_timeout);
+    load_tmp_data(p_db_link_name, 'V_$PDBS',                    'V$PDBS',                     'opas_dbl_tmp_v$pdbs',    'V$PDBS', p_priority=>g_qry_priority, p_timeout=>g_qry_timeout);
+    load_tmp_data(p_db_link_name, 'GV_$INSTANCE',               'GV$INSTANCE',                'opas_dbl_tmp_v$inst',    'GV$INST', p_priority=>g_qry_priority, p_timeout=>g_qry_timeout);
+    load_tmp_data(p_db_link_name, 'DBA_REGISTRY_HISTORY',       'DBA_REGISTRY_HISTORY',       'opas_dbl_tmp_reghst',    'REGHST', p_priority=>g_qry_priority, p_timeout=>g_qry_timeout);
+    load_tmp_data(p_db_link_name, 'DBA_REGISTRY_SQLPATCH',      'DBA_REGISTRY_SQLPATCH',      'opas_dbl_tmp_sqlptchhst','SQLPTCH', p_priority=>g_qry_priority, p_timeout=>g_qry_timeout);
 /*
 select
   listagg(src, ',') within group (order by src) src, group_id, metric_id, metric_name
@@ -776,7 +781,7 @@ order by 1, 2,3
       update opas_db_links set dbid = (select dbid from opas_dbl_tmp_v$database) where DB_LINK_NAME = p_db_link_name returning dbid into l_dbid;
     end if;
 
-    load_tmp_data(p_db_link_name, 'DBA_HIST_DATABASE_INSTANCE', 'DBA_HIST_DATABASE_INSTANCE', 'opas_dbl_tmp_awrinst',   'DBH_INST', l_dbid);
+    load_tmp_data(p_db_link_name, 'DBA_HIST_DATABASE_INSTANCE', 'DBA_HIST_DATABASE_INSTANCE', 'opas_dbl_tmp_awrinst',   'DBH_INST', l_dbid, p_priority=>g_qry_priority, p_timeout=>g_qry_timeout);
 
     MERGE INTO opas_db_link_v$pdbs t
       using opas_dbl_tmp_v$pdbs s

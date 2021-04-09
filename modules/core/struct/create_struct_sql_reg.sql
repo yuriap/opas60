@@ -1528,3 +1528,154 @@ SELECT
   last_active
 FROM
   opas_ot_tmp_sqlcatch_sqls;
+  
+drop table OPAS_OT_SQL_NONSHARED_EXT;
+create table OPAS_OT_SQL_NONSHARED_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  OPAS_OT_SQL_NONSHARED x where 1=2;
+  
+drop table OPAS_OT_SQL_VSQL_EXT;
+create table OPAS_OT_SQL_VSQL_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  OPAS_OT_SQL_VSQL x where 1=2;
+  
+drop table OPAS_OT_SQL_VSQL_OBJS_EXT;
+create table OPAS_OT_SQL_VSQL_OBJS_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  OPAS_OT_SQL_VSQL_OBJS x where 1=2;
+  
+drop table OPAS_OT_TMP_GV$SQL_MONITOR_EXT;
+create table OPAS_OT_TMP_GV$SQL_MONITOR_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  OPAS_OT_TMP_GV$SQL_MONITOR x where 1=2;
+  
+drop table OPAS_OT_TMP_DBA_HIST_REPORTS_EXT;
+create table OPAS_OT_TMP_DBA_HIST_REPORTS_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  OPAS_OT_TMP_DBA_HIST_REPORTS x where 1=2;
+  
+drop table OPAS_OT_TMP_DBA_HIST_REP_XML_EXT;
+create table OPAS_OT_TMP_DBA_HIST_REP_XML_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  OPAS_OT_TMP_DBA_HIST_REP_XML x where 1=2;
+  
+drop table OPAS_OT_SQL_WA_EXT;
+create table OPAS_OT_SQL_WA_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  OPAS_OT_SQL_WA x where 1=2;
+  
+drop table OPAS_OT_SQL_OPT_ENV_EXT;
+create table OPAS_OT_SQL_OPT_ENV_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  OPAS_OT_SQL_OPT_ENV x where 1=2;
+
+drop table OPAS_OT_TMP_GV$SQL_PLAN_STAT_ALL_EXT;
+create table OPAS_OT_TMP_GV$SQL_PLAN_STAT_ALL_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  OPAS_OT_TMP_GV$SQL_PLAN_STAT_ALL x where 1=2;
+  
+create global temporary table OPAS_OT_TMP_GV$ASH1
+as select sql_id,sample_time,SQL_EXEC_START,sql_plan_hash_value,sql_plan_line_id,sql_plan_operation,sql_plan_options,event,CURRENT_OBJ#,CURRENT_FILE#,program,module,action,client_id
+from gv$active_session_history where 1=2;
+drop table OPAS_OT_TMP_GV$ASH1_EXT;
+create table OPAS_OT_TMP_GV$ASH1_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  OPAS_OT_TMP_GV$ASH1 x where 1=2;
+  
+drop table OPAS_OT_TMP_GV$ASH_OBJS_EXT;
+create table OPAS_OT_TMP_GV$ASH_OBJS_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  OPAS_OT_TMP_GV$ASH_OBJS x where 1=2;
+  
+drop table OPAS_OT_TMP_AWRSQLSTAT_EXT;
+create table OPAS_OT_TMP_AWRSQLSTAT_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  OPAS_OT_TMP_AWRSQLSTAT x where 1=2;
+  
+drop table OPAS_OT_TMP_AWRSQLBIND_EXT;
+create table OPAS_OT_TMP_AWRSQLBIND_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  OPAS_OT_TMP_AWRSQLBIND x where 1=2;
+  
+drop table OPAS_OT_TMP_DBH_PLAN_EXT;
+create table OPAS_OT_TMP_DBH_PLAN_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  OPAS_OT_TMP_DBH_PLAN x where 1=2;
+  
+create global temporary table OPAS_OT_TMP_PLANS_OTHER_XML
+as select SQL_ID, DBID, 0 INST_ID, PLAN_HASH_VALUE, 0 CHILD_NUMBER, ID, 0 OTHER_XML_FLG
+from DBA_HIST_SQL_PLAN where 1=2;
+drop table OPAS_OT_TMP_PLANS_OTHER_XML_EXT;
+create table OPAS_OT_TMP_PLANS_OTHER_XML_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  OPAS_OT_TMP_PLANS_OTHER_XML x where 1=2;
+
+  
+drop table OPAS_OT_TMP_AWR_ASH_OBJS_EXT;
+create table OPAS_OT_TMP_AWR_ASH_OBJS_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  OPAS_OT_TMP_AWR_ASH_OBJS x where 1=2;
+  
+drop table OPAS_DBL_TMP_AWRSNAPS_EXT;
+create table OPAS_DBL_TMP_AWRSNAPS_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  OPAS_DBL_TMP_AWRSNAPS x where 1=2;
+  
+drop table OPAS_OT_TMP_REC_SQL_IDS_EXT;
+create table OPAS_OT_TMP_REC_SQL_IDS_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  OPAS_OT_TMP_REC_SQL_IDS x where 1=2;

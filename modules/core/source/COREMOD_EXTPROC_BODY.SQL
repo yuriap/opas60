@@ -7,6 +7,8 @@ PACKAGE BODY COREMOD_EXTPROC AS
   gsrvQueryPerServerSession number; -- init section below
   gsrvLoggingLevel          varchar2(10); -- init section below
 
+  gRowsProcessed number;
+
   procedure log_info(p_message varchar2) is begin coremod_log.log(p_message, 'INFO', 'OPAS_EXTEXEC'); end;
   procedure log_debug(p_message varchar2) is
   begin
@@ -47,6 +49,8 @@ FROM   <SQLBODY>]';
     l_column_list varchar2(32765) := null;
     l_ts_col varchar2(128);
     l_ts_fnc varchar2(512);
+    l_dblink boolean := COREMOD_API.external_mode_dblink(p_dblink);
+    l_javasrv boolean := COREMOD_API.external_mode_javasrv(p_dblink);
   begin
 --dbms_output.put_line(replace(p_key_pref||'_<SRC_TABLE>','<SRC_TABLE>',p_src_table));
     if p_key_pref = 'TABCOLLIST' then
@@ -71,17 +75,20 @@ FROM   <SQLBODY>]';
     for i in (select * from user_tab_cols where table_name=upper(p_target_table) and virtual_column='NO' and hidden_column='NO' order by column_id) loop
       if p_key_pref is not null then
 --dbms_output.put_line(','||i.column_name||',');
-        if instr(','||upper(l_column_list)||',', ','||i.column_name||',')=0 then continue; end if;
+      if instr(','||upper(l_column_list)||',', ','||i.column_name||',')=0 then continue; end if;
       end if;
-      if i.data_type in ('VARCHAR2', 'CHAR', 'RAW', 'NUMBER', 'DATE') or
+      if (i.data_type in ('VARCHAR2', 'CHAR', 'RAW', 'NUMBER', 'DATE') or
          i.data_type = 'TIMESTAMP' or i.data_type like 'TIMESTAMP(%)' or
-         i.data_type like 'TIMESTAMP(%) WITH TIME ZONE'
+         i.data_type like 'TIMESTAMP(%) WITH TIME ZONE'     )
+         and l_javasrv
       then
+        l_trgcols := l_trgcols || i.column_name || ', ';
+      elsif l_dblink then
         l_trgcols := l_trgcols || i.column_name || ', ';
       end if;
       if p_select_list is not null and p_select_list.exists(i.column_name) then
-        l_trgcols_expr := l_trgcols_expr || p_select_list(i.column_name) || ' as ' || i.column_name ||', ' ;
-      elsif p_select_list is null or p_select_list is not null and p_select_list.count=0 then
+        l_trgcols_expr := l_trgcols_expr ||', ' || p_select_list(i.column_name) || ' as ' || i.column_name  ;
+      elsif p_select_list is null or p_select_list is not null and p_select_list.count=0 and l_javasrv then
         l_trgcols_expr:= l_trgcols_expr ||
          case when i.data_type in ('VARCHAR2', 'CHAR', 'RAW') then ', ' || i.column_name
               when i.data_type = 'NUMBER' then ', ' || i.column_name
@@ -89,6 +96,8 @@ FROM   <SQLBODY>]';
               when i.data_type = 'TIMESTAMP' or i.data_type like 'TIMESTAMP(%)' then ', ' || 'to_char('||i.column_name||')'
               when i.data_type like 'TIMESTAMP(%) WITH TIME ZONE' then ', ' || 'to_char('||i.column_name||')'
               else '/*<'||i.column_name || '> Unsupported type '||i.data_type||'*/' end;-- || ', ';
+      elsif l_dblink then
+        l_trgcols_expr:= l_trgcols_expr || ', ' || i.column_name;
       end if;
       l_trgcols_java_vals:= l_trgcols_java_vals ||
          case when i.data_type in ('VARCHAR2', 'CHAR', 'RAW') then  ', ' || '?'
@@ -104,16 +113,18 @@ FROM   <SQLBODY>]';
     l_trgcols_java_vals := ltrim(l_trgcols_java_vals,', ');
     l_col_num := regexp_count(l_trgcols_expr, ',')+1;
 
-    if COREMOD_API.external_mode_dblink(p_dblink) then
+    if l_dblink then
       l_sql := l_dbltmpl;
       l_sql := replace(replace(replace(replace(l_sql,'<SQLBODY>',p_sql_body),'<DBLINK>',COREMOD_API.get_dblink_for_query(p_dblink)),'<TARGETTBL>',p_target_table),'<TARGETCOLLIST>',l_trgcols);
       l_sql := replace(l_sql,'<COLLIST>',l_trgcols_expr);
+      log_debug('load_external_data DBLINK l_sql: '||l_sql);
       if p_generate_only then
         log_info('load_external_data DBLINK l_sql: '||l_sql);
       else
         execute immediate l_sql;
+        gRowsProcessed := sql%rowcount;
       end if;
-    elsif COREMOD_API.external_mode_javasrv(p_dblink) then
+    elsif l_javasrv then
       l_task_id := seq_opas_extproc_queue_srv.nextval;
       l_unlsql := l_extunltmpl;
 
@@ -127,15 +138,19 @@ FROM   <SQLBODY>]';
       l_loadlocalsql := replace(replace(l_loadlocalsql,'<TARGET_TABLE>',p_target_table),'<TARGETCOLLIST>',l_trgcols);
 
       if p_generate_only then
+        log_info('load_external_data JAVA l_unlsql: '||l_unlsql);
+        log_info('load_external_data JAVA l_loadsql: '||l_loadsql);
+        log_info('load_external_data JAVA l_loadlocalsql: '||l_loadlocalsql);
+        log_info('load_external_data JAVA p_plsql_body: '||p_plsql_body);
+--              dbms_output.put_line(l_unlsql);
+--                    dbms_output.put_line(l_loadsql);
+--                          dbms_output.put_line(l_loadlocalsql);
+--                                dbms_output.put_line(p_plsql_body);
+      else
         log_debug('load_external_data JAVA l_unlsql: '||l_unlsql);
         log_debug('load_external_data JAVA l_loadsql: '||l_loadsql);
         log_debug('load_external_data JAVA l_loadlocalsql: '||l_loadlocalsql);
         log_debug('load_external_data JAVA p_plsql_body: '||p_plsql_body);
-              dbms_output.put_line(l_unlsql);
-                    dbms_output.put_line(l_loadsql);
-                          dbms_output.put_line(l_loadlocalsql);
-                                dbms_output.put_line(p_plsql_body);
-      else
         --SQLSELINS
         INSERT INTO opas_extproc_queue_srv (
           TASK_ID, PRIORITY, db_link_name, QRY_TYPE, select_sql, load_sql, col_number, TARGET_TABLE, PL_SQL) VALUES (
@@ -145,8 +160,10 @@ FROM   <SQLBODY>]';
         wait_result (  P_TASK_ID => l_task_id,
                        P_TIMEOUT => load_external_data.p_timeout) ;
 
-        execute immediate  l_loadlocalsql using l_task_id;
-        set_task_taken (  P_TASK_ID => l_task_id) ;
+        execute immediate l_loadlocalsql using l_task_id;
+        set_task_taken (  P_TASK_ID => l_task_id) ;  -- gRowsProcessed filled here
+
+        --select ROWS_PROCESSED into gRowsProcessed from OPAS_EXTPROC_QUEUE_SRV where TASK_ID=l_task_id;
       end if;
     else
       raise_application_error(-20000,'Unsupported external execution mode for DB Link(load_external_data): '||p_dblink);
@@ -476,10 +493,16 @@ FROM   <SQLBODY>]';
     commit;
   end;
 
+  function get_rows_processed return number
+  is
+  begin
+    return gRowsProcessed;
+  end;
+
   procedure set_task_taken(p_task_id number) is
     pragma autonomous_transaction;
   begin
-    update OPAS_EXTPROC_QUEUE_SRV set TAKEN = systimestamp, STATUS='TAKEN' where TASK_ID=p_task_id;
+    update OPAS_EXTPROC_QUEUE_SRV set TAKEN = systimestamp, STATUS='TAKEN' where TASK_ID=p_task_id returning ROWS_PROCESSED into gRowsProcessed;
     commit;
   end;
 

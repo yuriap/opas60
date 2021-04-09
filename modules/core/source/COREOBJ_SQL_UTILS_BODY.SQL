@@ -19,6 +19,10 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
 
   pTSFMT1                constant varchar2(30) := 'YYYYMMDDHH24MISS.FF3';
 
+  g_qry_priority number := 1;
+  g_qry_timeout  number := 300; --sec
+  g_SELECT_LIST COREMOD_EXTPROC.t_columns;
+
   procedure read_gAWRParams(p_obj_id  opas_ot_sql_data_point_ref.obj_id%type)
   is
     l_ts   varchar2(100);
@@ -258,11 +262,11 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     for i in (select * from opas_ot_sql_descriptions where sql_id=p_data.sql_id and sql_text is null) loop
       if p_data.dblink <> '$LOCAL$' then
         COREMOD_UTILS.get_clob_remotelly(q'[select sql_fulltext into l_out from gv$sql where sql_id=']' || p_data.sql_id || q'[' and rownum=1;]',
-                                         COREMOD_API.get_ora_dblink(p_data.dblink),
+                                         p_data.dblink, --COREMOD_API.get_ora_dblink(p_data.dblink),
                                          l_sql);
         if nvl(l_sql,'<NO_DATA_FOUND>') = '<NO_DATA_FOUND>' then
           COREMOD_UTILS.get_clob_remotelly(q'[select sql_text into l_out from dba_hist_sqltext where sql_id=']' || p_data.sql_id || q'[';]',
-                                           COREMOD_API.get_ora_dblink(p_data.dblink),
+                                           p_data.dblink, --COREMOD_API.get_ora_dblink(p_data.dblink),
                                            l_sql);
         end if;
       else
@@ -394,9 +398,9 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
 
     -- https://timurakhmadeev.wordpress.com/2012/03/15/vsql-is_obsolete/
     l_sql :=
-        q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_NONSHARED */ INTO opas_ot_sql_nonshared (
-              sql_data_point_id, sql_id, inst_id, nonshared_reason, cnt)
-           select :p_sql_data_point_id, sql_id, inst_id, nonshared_reason, cnt from
+        --INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_NONSHARED */ INTO opas_ot_sql_nonshared (
+        --      sql_data_point_id, sql_id, inst_id, nonshared_reason, cnt)
+           q'[(select <p_sql_data_point_id> sql_data_point_id, sql_id, inst_id, nonshared_reason, cnt from
           (select inst_id, sql_id, nonshared_reason, count(*) cnt from (select inst_id,sql_id,
              UNBOUND_CURSOR,SQL_TYPE_MISMATCH,OPTIMIZER_MISMATCH,OUTLINE_MISMATCH,STATS_ROW_MISMATCH,LITERAL_MISMATCH,FORCE_HARD_PARSE,
              EXPLAIN_PLAN_CURSOR,BUFFERED_DML_MISMATCH,PDML_ENV_MISMATCH,INST_DRTLD_MISMATCH,SLAVE_QC_MISMATCH,TYPECHECK_MISMATCH,
@@ -408,8 +412,8 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
              BIND_PEEKED_PQ_MISMATCH,MV_REWRITE_MISMATCH,ROLL_INVALID_MISMATCH,OPTIMIZER_MODE_MISMATCH,PX_MISMATCH,MV_STALEOBJ_MISMATCH,FLASHBACK_TABLE_MISMATCH,
              LITREP_COMP_MISMATCH,PLSQL_DEBUG,LOAD_OPTIMIZER_STATS,ACL_MISMATCH,FLASHBACK_ARCHIVE_MISMATCH,LOCK_USER_SCHEMA_FAILED,REMOTE_MAPPING_MISMATCH,
              LOAD_RUNTIME_HEAP_FAILED,HASH_MATCH_FAILED,PURGED_CURSOR,BIND_LENGTH_UPGRADEABLE,USE_FEEDBACK_STATS
-          from gv$sql_shared_cursor]' || COREMOD_API.get_dblink_for_query(p_data.dblink) ||
-          q'[ where sql_id = :p_sql_id) unpivot
+          from gv$sql_shared_cursor<DBLINK>
+          where sql_id = '<p_sql_id>') unpivot
             (nonshared_value for nonshared_reason in (
                UNBOUND_CURSOR as 'UNBOUND_CURSOR', SQL_TYPE_MISMATCH as 'SQL_TYPE_MISMATCH', OPTIMIZER_MISMATCH as 'OPTIMIZER_MISMATCH', OUTLINE_MISMATCH as 'OUTLINE_MISMATCH',
                STATS_ROW_MISMATCH as 'STATS_ROW_MISMATCH', LITERAL_MISMATCH as 'LITERAL_MISMATCH', FORCE_HARD_PARSE as 'FORCE_HARD_PARSE', EXPLAIN_PLAN_CURSOR as 'EXPLAIN_PLAN_CURSOR',
@@ -429,9 +433,18 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                LOAD_RUNTIME_HEAP_FAILED as 'LOAD_RUNTIME_HEAP_FAILED', HASH_MATCH_FAILED as 'HASH_MATCH_FAILED', PURGED_CURSOR as 'PURGED_CURSOR', BIND_LENGTH_UPGRADEABLE as 'BIND_LENGTH_UPGRADEABLE',
                USE_FEEDBACK_STATS as 'USE_FEEDBACK_STATS'))
          where nonshared_value = 'Y'
-         group by inst_id,sql_id, nonshared_reason)]';
-    execute immediate l_sql using p_data.sql_data_point_id, p_data.sql_id;
-    l_rows := case when sql%rowcount > 0 then 1 else 0 end;
+         group by inst_id,sql_id, nonshared_reason))]';
+    --execute immediate l_sql using p_data.sql_data_point_id, p_data.sql_id;
+    --l_rows := case when sql%rowcount > 0 then 1 else 0 end;
+    l_sql := replace(replace(l_sql,'<p_sql_data_point_id>',p_data.sql_data_point_id),'<p_sql_id>',p_data.sql_id);
+    COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_SQL_NONSHARED',
+      P_SELECT_LIST => g_SELECT_LIST, --empty
+      P_SQL_BODY =>    l_sql,
+      P_DBLINK =>      p_data.dblink,
+      P_PRIORITY =>    g_qry_priority,
+      P_TIMEOUT =>     g_qry_timeout) ;
+
+    l_rows := case when COREMOD_EXTPROC.get_rows_processed > 0 then 1 else 0 end;
 
     finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSHARING, p_rows_processed => l_rows);
   exception
@@ -450,37 +463,54 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsVSQL);
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsEXADATA);
 
-    l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_VSQL */ INTO opas_ot_sql_vsql (
-              sql_data_point_id,
-              sql_id, child_number, plan_hash_value, optimizer_env_hash_value, inst_id, force_matching_signature, old_hash_value, program_id, program_line#,
-              parsing_schema_name, module, action, first_load_time, last_load_time, last_active_time, is_obsolete, is_bind_sensitive, is_bind_aware, is_shareable,
-              sql_profile, sql_patch, sql_plan_baseline, px_servers_executions, physical_read_requests, physical_read_bytes, physical_write_requests, physical_write_bytes,
-              parse_calls, executions, fetches, rows_processed, end_of_fetch_count, cpu_time, elapsed_time, disk_reads, buffer_gets, direct_writes, application_wait_time,
-              concurrency_wait_time, cluster_wait_time, user_io_wait_time, plsql_exec_time, java_exec_time, io_cell_offload_eligible_bytes, IO_INTERCONNECT_BYTES,
-              optimized_phy_read_requests, io_cell_uncompressed_bytes, io_cell_offload_returned_bytes)
-           select
-              :p_sql_data_point_id,
+    l_sql := --INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_VSQL */ INTO opas_ot_sql_vsql (
+             -- sql_data_point_id,
+             -- sql_id, child_number, plan_hash_value, optimizer_env_hash_value, inst_id, force_matching_signature, old_hash_value, program_id, program_line#,
+             -- parsing_schema_name, module, action, first_load_time, last_load_time, last_active_time, is_obsolete, is_bind_sensitive, is_bind_aware, is_shareable,
+             -- sql_profile, sql_patch, sql_plan_baseline, px_servers_executions, physical_read_requests, physical_read_bytes, physical_write_requests, physical_write_bytes,
+             -- parse_calls, executions, fetches, rows_processed, end_of_fetch_count, cpu_time, elapsed_time, disk_reads, buffer_gets, direct_writes, application_wait_time,
+             -- concurrency_wait_time, cluster_wait_time, user_io_wait_time, plsql_exec_time, java_exec_time, io_cell_offload_eligible_bytes, IO_INTERCONNECT_BYTES,
+             -- optimized_phy_read_requests, io_cell_uncompressed_bytes, io_cell_offload_returned_bytes)
+           q'[(select
+              <p_sql_data_point_id> sql_data_point_id,
               sql_id, child_number, plan_hash_value, optimizer_env_hash_value, inst_id, force_matching_signature, old_hash_value, program_id, program_line#,
               parsing_schema_name, module, action, first_load_time, last_load_time, last_active_time, is_obsolete, is_bind_sensitive, is_bind_aware, is_shareable,
               sql_profile, sql_patch, sql_plan_baseline, px_servers_executions, physical_read_requests, physical_read_bytes, physical_write_requests, physical_write_bytes,
               parse_calls, executions, fetches, rows_processed, end_of_fetch_count, cpu_time, elapsed_time, disk_reads, buffer_gets, direct_writes, application_wait_time,
               concurrency_wait_time, cluster_wait_time, user_io_wait_time, plsql_exec_time, java_exec_time, io_cell_offload_eligible_bytes, IO_INTERCONNECT_BYTES,
               optimized_phy_read_requests, io_cell_uncompressed_bytes, io_cell_offload_returned_bytes
-           from gv$sql]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || ' where sql_id=:p_sql_id';
+           from gv$sql<DBLINK> where sql_id='<p_sql_id>')]';
 
-    execute immediate l_sql using p_data.sql_data_point_id, p_data.sql_id;
-    l_rows := sql%rowcount;
+    --execute immediate l_sql using p_data.sql_data_point_id, p_data.sql_id;
+    --l_rows := sql%rowcount;
+
+    l_sql := replace(replace(l_sql,'<p_sql_data_point_id>',p_data.sql_data_point_id),'<p_sql_id>',p_data.sql_id);
+    COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_SQL_VSQL',
+      P_SELECT_LIST => g_SELECT_LIST, --empty
+      P_SQL_BODY =>    l_sql,
+      P_DBLINK =>      p_data.dblink,
+      P_PRIORITY =>    g_qry_priority,
+      P_TIMEOUT =>     g_qry_timeout) ;
+
+    l_rows := COREMOD_EXTPROC.get_rows_processed;
+
     l_sql:=null;
 
+    l_sql := --INSERT INTO opas_ot_sql_vsql_objs
+               --    ( sql_data_point_id,   CHILD_NUMBER, object_id, owner, object_type, object_name)
+           q'[(select <p_sql_data_point_id> sql_data_point_id,  <CHILD_NUMBER> CHILD_NUMBER, object_id, owner, object_type, object_name from dba_objects<DBLINK> s where s.object_id=<program_id>)]';
     for i in (select unique program_id, CHILD_NUMBER from opas_ot_sql_vsql where sql_data_point_id = p_data.sql_data_point_id) loop
-      l_sql := q'[INSERT INTO opas_ot_sql_vsql_objs
-                   ( sql_data_point_id,   CHILD_NUMBER, object_id, owner, object_type, object_name)
-           select :p_sql_data_point_id,  :CHILD_NUMBER, object_id, owner, object_type, object_name from dba_objects]' ||
-             COREMOD_API.get_dblink_for_query(p_data.dblink)
-             || ' s where s.object_id=:program_id';
-      execute immediate l_sql using p_data.sql_data_point_id, i.CHILD_NUMBER, i.program_id;
-      l_sql:=null;
+      --execute immediate l_sql using p_data.sql_data_point_id, i.CHILD_NUMBER, i.program_id;
+      --l_sql := replace(replace(replace(l_sql,'<p_sql_data_point_id>',p_data.sql_data_point_id),'<CHILD_NUMBER>',i.CHILD_NUMBER),'<program_id>',i.program_id);
+      COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_SQL_VSQL_OBJS',
+        P_SELECT_LIST => g_SELECT_LIST, --empty
+        P_SQL_BODY =>    replace(replace(replace(l_sql,'<p_sql_data_point_id>',p_data.sql_data_point_id),'<CHILD_NUMBER>',i.CHILD_NUMBER),'<program_id>',i.program_id),
+        P_DBLINK =>      p_data.dblink,
+        P_PRIORITY =>    g_qry_priority,
+        P_TIMEOUT =>     g_qry_timeout) ;
+--coremod_tasks.log('OPAS_OT_SQL_VSQL_OBJS: '||COREMOD_EXTPROC.get_rows_processed);
     end loop;
+    l_sql:=null;
 
     finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsVSQL,    p_rows_processed => l_rows);
     finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsEXADATA, p_rows_processed => l_rows);
@@ -504,29 +534,27 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
   begin
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMONV$);
 --coremod_tasks.log('0: start');
-    l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_SQLMON */ INTO opas_ot_tmp_gv$sql_monitor (<SRC_DB_COL_LICT>)
-              select <SRC_DB_COL_LICT> from gv$sql_monitor]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || q'[ where sql_id = :p_sql_id]'; --and rownum < :p_drows]
-    l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_GV_$SQL_MONITOR'));
+    --l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_SQLMON */ INTO opas_ot_tmp_gv$sql_monitor (<SRC_DB_COL_LICT>)
+    --          select <SRC_DB_COL_LICT> from gv$sql_monitor]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || q'[ where sql_id = :p_sql_id]'; --and rownum < :p_drows]
+    --l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_GV_$SQL_MONITOR'));
 
-    l_drows := nvl( COREOBJ_API.get_param_n(p_obj_id, pnSQLMONHSTRows, true), defSQLMONHSTRows);
+    -- execute immediate l_sql using p_data.sql_id;
 
-    begin
-      execute immediate l_sql using p_data.sql_id; --, l_drows;
---coremod_tasks.log('1: '||sql%rowcount);
-    exception
-      when others then  execute immediate l_sql using p_data.sql_id, 20;
---coremod_tasks.log('2: '||sql%rowcount);
-    end;
-
---insert into ttt_opas_ot_tmp_gv$sql_monitor select * from opas_ot_tmp_gv$sql_monitor;
---coremod_tasks.log('1.1: '||sql%rowcount);
+    COREMOD_API.load_tmp_data (  P_DB_LINK_NAME => p_data.dblink,
+                                 P_SRC_TABLE_NAME_R => 'GV_$SQL_MONITOR',
+                                 P_SRC_TABLE_NAME => 'GV$SQL_MONITOR',
+                                 P_TRG_TABLE_NAME => 'opas_ot_tmp_gv$sql_monitor',
+                                 P_SUFF => 'V$MON',
+                                 P_DBID => null,
+                                 P_KEY_PREF => 'TABCOLLIST',
+                                 P_FILTER => replace(q'[ sql_id = '<sql_id>']','<sql_id>',p_data.sql_id)
+                                 , p_priority=>g_qry_priority, p_timeout=>g_qry_timeout) ;
     l_sql := null;
 
     update opas_ot_tmp_gv$sql_monitor set sqlmon_id = opas_ot_sq_sqlmon_id.nextval;
---coremod_tasks.log('3: '||sql%rowcount);
---for i in (select * from opas_ot_tmp_gv$sql_monitor) loop
---  coremod_tasks.log('a: '||i.report_id||':'||i.status);
---end loop;
+
+    l_drows := nvl( COREOBJ_API.get_param_n(p_obj_id, pnSQLMONHSTRows, true), defSQLMONHSTRows);
+
     INSERT
       INTO opas_ot_sql_sqlmon (
         sqlmon_id, sql_id, sql_mon_report, plan_id, source, report_id, status, first_refresh_time,
@@ -641,6 +669,8 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
 --      and p.source = srcV$
 --      and not exists (select 1 from opas_ot_sql_sqlmon_ref i where sql_data_point_id = p_data.sql_data_point_id and i.sqlmon_id=p.sqlmon_id)
       ;
+    l_rows := ceil(sql%rowcount/3);
+coremod_tasks.log('l_rows mon: '||l_rows);
 --coremod_tasks.log('5: '||sql%rowcount);
     --select count(1) into l_rows from opas_ot_sql_sqlmon_ref where sql_data_point_id = p_data.sql_data_point_id;
 
@@ -735,49 +765,99 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     l_obj_lst    varchar2(32765);
     l_ddays      number;
     l_drows      number;
+    l_task       number;
   begin
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLMONHST);
 
-    l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_SQLMON_HST */ INTO opas_ot_tmp_dba_hist_reports (<SRC_DB_COL_LICT>)
-              select <SRC_DB_COL_LICT> from dba_hist_reports]' || COREMOD_API.get_dblink_for_query(p_data.dblink) ||
-              q'[ r where r.component_name = 'sqlmonitor' and r.key1 = :p_sql_id and rownum <= :p_rows ]' ||
-              case when gAWRParams.DATES_SPECIFIED then q'[ and period_start_time between :d1 and :d2 ]' else q'[ and period_start_time > (sysdate - :p_days)]' end;
+--    l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_SQLMON_HST */ INTO opas_ot_tmp_dba_hist_reports (<SRC_DB_COL_LICT>)
+--              select <SRC_DB_COL_LICT> from dba_hist_reports]' || COREMOD_API.get_dblink_for_query(p_data.dblink) ||
+--              q'[ r where r.component_name = 'sqlmonitor' and r.key1 = :p_sql_id and rownum <= :p_rows ]' ||
+--              case when gAWRParams.DATES_SPECIFIED then q'[ and period_start_time between :d1 and :d2 ]' else q'[ and period_start_time > (sysdate - :p_days)]' end;
               --TODO filter istory reports
-    l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_DBA_HIST_REPORTS'));
+--    l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_DBA_HIST_REPORTS'));
 
---coremod_log.log('load_sql_mon_hst','INFO');
---coremod_log.log(l_sql,'INFO');
 
     l_ddays := nvl( COREOBJ_API.get_param_n(p_obj_id, pnSQLMONHSTDays, true), defSQLMONHSTDays);
     l_drows := nvl( COREOBJ_API.get_param_n(p_obj_id, pnSQLMONHSTRows, true), defSQLMONHSTRows);
 
-    if gAWRParams.DATES_SPECIFIED then
-      begin
---coremod_log.log(gAWRParams.BEGIN_INTERVAL_TIME,'INFO');
---coremod_log.log(gAWRParams.END_INTERVAL_TIME,'INFO');
-        execute immediate l_sql using p_data.sql_id, l_drows, gAWRParams.BEGIN_INTERVAL_TIME, gAWRParams.END_INTERVAL_TIME;
-      exception
-        when others then execute immediate l_sql using p_data.sql_id, 20, gAWRParams.BEGIN_INTERVAL_TIME, gAWRParams.END_INTERVAL_TIME;
-      end;
-    else
-      begin
-        execute immediate l_sql using p_data.sql_id, l_drows, l_ddays;
-      exception
-        when others then execute immediate l_sql using p_data.sql_id, 20, l_ddays;
-      end;
-    end if;
+--    if gAWRParams.DATES_SPECIFIED then
+--      begin
+--        execute immediate l_sql using p_data.sql_id, l_drows, gAWRParams.BEGIN_INTERVAL_TIME, gAWRParams.END_INTERVAL_TIME;
+--      exception
+--        when others then execute immediate l_sql using p_data.sql_id, 20, gAWRParams.BEGIN_INTERVAL_TIME, gAWRParams.END_INTERVAL_TIME;
+--      end;
+--    else
+--      begin
+--        execute immediate l_sql using p_data.sql_id, l_drows, l_ddays;
+--      exception
+--        when others then execute immediate l_sql using p_data.sql_id, 20, l_ddays;
+--      end;
+--    end if;
+
+    COREMOD_API.load_tmp_data (  P_DB_LINK_NAME => p_data.dblink,
+                                 P_SRC_TABLE_NAME_R => 'DBA_HIST_REPORTS',
+                                 P_SRC_TABLE_NAME => 'DBA_HIST_REPORTS',
+                                 P_TRG_TABLE_NAME => 'opas_ot_tmp_dba_hist_reports',
+                                 P_SUFF => 'V$MONHST',
+                                 P_DBID => null,
+                                 P_KEY_PREF => 'TABCOLLIST',
+                                 P_FILTER => replace(replace(replace(replace(replace(q'[component_name = 'sqlmonitor' and key1 = '<sql_id>' and rownum <= <p_rows> ]' ||
+                                               case when gAWRParams.DATES_SPECIFIED then q'[ and period_start_time between to_date('<d1>','yyyymmddhh24miss') and to_date('<d2>','yyyymmddhh24miss') ]'
+                                                    else q'[ and period_start_time > (sysdate - <p_days>)]' end,
+                                                    '<sql_id>',p_data.sql_id),
+                                                    '<p_rows>',l_drows),
+                                                    '<p_days>',l_ddays),
+                                                    '<d1>',to_char(gAWRParams.BEGIN_INTERVAL_TIME,'yyyymmddhh24miss')),
+                                                    '<d2>',to_char(gAWRParams.END_INTERVAL_TIME,'yyyymmddhh24miss'))
+                              , p_priority=>g_qry_priority, p_timeout=>g_qry_timeout) ;
 
     l_sql := null;
+    if COREMOD_API.external_mode_dblink(p_data.dblink) then
+      select listagg(REPORT_ID,',')within group (order by REPORT_ID) into l_obj_lst from (select REPORT_ID from opas_ot_tmp_dba_hist_reports);
+      if l_obj_lst is not null then
+        l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_SQLMON_XML */ INTO opas_ot_tmp_dba_hist_rep_xml (REPORT_ID, REPORT)
+                  select d.REPORT_ID, d.REPORT from dba_hist_reports_details]' || COREMOD_API.get_dblink_for_query(p_data.dblink) ||
+                  q'[ d where d.REPORT_ID in (<RPT_LST>)]'; --TODO filter history reports
+        l_sql := replace(l_sql,'<RPT_LST>',l_obj_lst);
 
-    select listagg(REPORT_ID,',')within group (order by REPORT_ID) into l_obj_lst from (select REPORT_ID from opas_ot_tmp_dba_hist_reports);
-    if l_obj_lst is not null then
-      l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_SQLMON_XML */ INTO opas_ot_tmp_dba_hist_rep_xml (REPORT_ID, REPORT)
-                select d.REPORT_ID, d.REPORT from dba_hist_reports_details]' || COREMOD_API.get_dblink_for_query(p_data.dblink) ||
-                q'[ d where d.REPORT_ID in (<RPT_LST>)]'; --TODO filter history reports
-      l_sql := replace(l_sql,'<RPT_LST>',l_obj_lst);
+        execute immediate l_sql;
+        l_sql := null;
+      end if;
+    elsif COREMOD_API.external_mode_javasrv(p_data.dblink) then
+      for i in (select REPORT_ID from opas_ot_tmp_dba_hist_reports) loop
+        l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY =>
+  q'[declare a clob;
+     begin
+       select REPORT into a from dba_hist_reports_details where REPORT_ID=:ID;
+       :outclob := a;
+     exception when no_data_found then :outclob := null;
+     end;]',
+                                                    P_DBLINK => p_data.dblink,
+                                                    P_PRIORITY => g_qry_priority);
+        COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task,
+                                     P_IO_TYPE => 'IN',
+                                     P_ORDR_NUM => 1,
+                                     p_number => i.REPORT_ID
+                                  ) ;
 
-      execute immediate l_sql;
-      l_sql := null;
+        COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task,
+                                     P_IO_TYPE => 'OUT',
+                                     P_ORDR_NUM => 2,
+                                     p_clob => null --empty_clob()
+                                  ) ;
+
+        COREMOD_EXTPROC.execute_plsql_task (  P_TASK_ID => l_task,
+                                              P_TIMEOUT => g_qry_timeout) ;
+
+        COREMOD_EXTPROC.get_param (  P_TASK_ID => l_task,
+                                     P_ORDR_NUM => 2,
+                                     p_clob => l_report) ;
+        --INSERT INTO OPAS_OT_TMP_DBA_HIST_REP_XML_EXT (TASK_ID, REPORT_ID, REPORT) values (l_task, i.REPORT_ID, l_report);
+        --commit;
+        INSERT INTO OPAS_OT_TMP_DBA_HIST_REP_XML (REPORT_ID, REPORT) values (i.REPORT_ID, l_report);
+      end loop;
+    else
+      raise_application_error(-20000,'Unsupported external execution mode for DB Link(load_sql_mon_hst): '||p_data.dblink);
     end if;
 
     INSERT ALL
@@ -883,8 +963,9 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                   ,physical_read_bytes path 'stat[@name="read_bytes"]'
                   ) x2;
 
-    l_rows := round(sql%rowcount/3);
+    l_rows := ceil(sql%rowcount/3);
     --select count(1) into l_rows from opas_ot_sql_sqlmon_ref where sql_data_point_id = p_data.sql_data_point_id;
+coremod_tasks.log('l_rows mon hst: '||l_rows);
 
     insert into opas_ot_tmp_gv$sql_plan_stat_all (
            report_id,
@@ -1072,18 +1153,28 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
   begin
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsWORKAREA);
 
-    l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_WA */ into opas_ot_sql_wa (
-              sql_data_point_id,
-              sql_id, inst_id, child_number, policy, operation_id, operation_type, estimated_optimal_size, estimated_onepass_size, last_memory_used, last_execution,
-              last_degree, total_executions, optimal_executions, onepass_executions, multipasses_executions, active_time, max_tempseg_size, last_tempseg_size)
-           select
-              :p_sql_data_point_id,
+    l_sql :=--INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_WA */ into opas_ot_sql_wa (
+            --  sql_data_point_id,
+            --  sql_id, inst_id, child_number, policy, operation_id, operation_type, estimated_optimal_size, estimated_onepass_size, last_memory_used, last_execution,
+            --  last_degree, total_executions, optimal_executions, onepass_executions, multipasses_executions, active_time, max_tempseg_size, last_tempseg_size)
+           q'[(select
+              <p_sql_data_point_id> SQL_DATA_POINT_ID,
               sql_id, inst_id, child_number, policy, operation_id, operation_type, estimated_optimal_size, estimated_onepass_size, last_memory_used, last_execution,
               last_degree, total_executions, optimal_executions, onepass_executions, multipasses_executions, active_time, max_tempseg_size, last_tempseg_size
-           from gv$sql_workarea]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || ' where sql_id=:p_sql_id';
+           from gv$sql_workarea<DBLINK> where sql_id='<p_sql_id>')]';
 
-    execute immediate l_sql using p_data.sql_data_point_id, p_data.sql_id;
-    l_rows := case when sql%rowcount > 0 then 1 else 0 end;
+    --execute immediate l_sql using p_data.sql_data_point_id, p_data.sql_id;
+    --l_rows := case when sql%rowcount > 0 then 1 else 0 end;
+
+    l_sql := replace(replace(l_sql,'<p_sql_data_point_id>',p_data.sql_data_point_id),'<p_sql_id>',p_data.sql_id);
+    COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_SQL_WA',
+      P_SELECT_LIST => g_SELECT_LIST, --empty
+      P_SQL_BODY =>    l_sql,
+      P_DBLINK =>      p_data.dblink,
+      P_PRIORITY =>    g_qry_priority,
+      P_TIMEOUT =>     g_qry_timeout) ;
+
+    l_rows := case when COREMOD_EXTPROC.get_rows_processed > 0 then 1 else 0 end;
 
     finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsWORKAREA, p_rows_processed => l_rows);
   exception
@@ -1101,16 +1192,27 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
   begin
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsOPTENV);
 
-    l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_OE */ into opas_ot_sql_opt_env (
-              sql_data_point_id, sql_id,
-              inst_id,child_number,name,isdefault,value)
-           select
-              :p_sql_data_point_id, sql_id,
+    l_sql :=--INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_OE */ into opas_ot_sql_opt_env (
+            --  sql_data_point_id, sql_id,
+            --  inst_id,child_number,name,isdefault,value)
+           q'[(select
+              <p_sql_data_point_id> SQL_DATA_POINT_ID, sql_id,
               inst_id,child_number,name,isdefault,value
-           from gv$sql_optimizer_env]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || ' where sql_id=:p_sql_id';
+           from gv$sql_optimizer_env<DBLINK> where sql_id='<p_sql_id>')]';
 
-    execute immediate l_sql using p_data.sql_data_point_id, p_data.sql_id;
+    --execute immediate l_sql using p_data.sql_data_point_id, p_data.sql_id;
     --l_rows := sql%rowcount;
+
+    l_sql := replace(replace(l_sql,'<p_sql_data_point_id>',p_data.sql_data_point_id),'<p_sql_id>',p_data.sql_id);
+    COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_SQL_OPT_ENV',
+      P_SELECT_LIST => g_SELECT_LIST, --empty
+      P_SQL_BODY =>    l_sql,
+      P_DBLINK =>      p_data.dblink,
+      P_PRIORITY =>    g_qry_priority,
+      P_TIMEOUT =>     g_qry_timeout) ;
+
+    --l_rows := case when COREMOD_EXTPROC.get_rows_processed > 0 then 1 else 0 end;
+
     select count(distinct inst_id||':'||child_number) into l_rows from opas_ot_sql_opt_env where sql_data_point_id = p_data.sql_data_point_id;
 
     finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsOPTENV, p_rows_processed => l_rows);
@@ -1126,17 +1228,75 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
   is
     l_sql        varchar2(32765);
     l_rows       number;
+    l_task       number;
+    l_other_xml  clob;
   begin
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLLAST);
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLADV);
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLALL);
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLADAPT);
 
-    l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_PLANS */ INTO opas_ot_tmp_gv$sql_plan_stat_all (<SRC_DB_COL_LICT>)
-              select <SRC_DB_COL_LICT> from gv$sql_plan_statistics_all]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || q'[ where sql_id = :p_sql_id]';
-    l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_GV_$SQL_PLAN_STATISTICS_ALL'));
-    execute immediate l_sql using p_data.sql_id;
-    l_sql := null;
+    --l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_PLANS */ INTO opas_ot_tmp_gv$sql_plan_stat_all (<SRC_DB_COL_LICT>)
+    --          select <SRC_DB_COL_LICT> from gv$sql_plan_statistics_all]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || q'[ where sql_id = :p_sql_id]';
+    --l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_GV_$SQL_PLAN_STATISTICS_ALL'));
+    --execute immediate l_sql using p_data.sql_id;
+    --l_sql := null;
+
+    COREMOD_API.load_tmp_data (  P_DB_LINK_NAME => p_data.dblink,
+                                 P_SRC_TABLE_NAME_R => 'GV_$SQL_PLAN_STATISTICS_ALL',
+                                 P_SRC_TABLE_NAME => 'GV$SQL_PLAN_STATISTICS_ALL',
+                                 P_TRG_TABLE_NAME => 'OPAS_OT_TMP_GV$SQL_PLAN_STAT_ALL',
+                                 P_SUFF => 'V$SQLPLALL',
+                                 P_DBID => null,
+                                 P_KEY_PREF => 'TABCOLLIST',
+                                 P_FILTER => replace(q'[ sql_id = '<sql_id>']','<sql_id>',p_data.sql_id)
+                                 , p_priority=>g_qry_priority, p_timeout=>g_qry_timeout) ;
+
+    if COREMOD_API.external_mode_javasrv(p_data.dblink) then
+      l_sql := q'[GV_$SQL_PLAN_STATISTICS_ALL where (<FILTER>) and other_xml is not null]';
+
+      l_sql := replace(l_sql,'<FILTER>',replace(q'[ sql_id = '<sql_id>']','<sql_id>',p_data.sql_id));
+
+      g_SELECT_LIST.delete;
+      g_SELECT_LIST('SQL_ID'):='SQL_ID';
+      g_SELECT_LIST('DBID'):='0';
+      g_SELECT_LIST('INST_ID'):='INST_ID';
+      g_SELECT_LIST('PLAN_HASH_VALUE'):='PLAN_HASH_VALUE';
+      g_SELECT_LIST('CHILD_NUMBER'):='CHILD_NUMBER';
+      g_SELECT_LIST('ID'):='ID';
+      g_SELECT_LIST('OTHER_XML_FLG'):='1';
+
+      COREMOD_EXTPROC.load_external_data (
+        P_TARGET_TABLE => 'OPAS_OT_TMP_PLANS_OTHER_XML',
+        P_SELECT_LIST => g_SELECT_LIST,
+        P_SQL_BODY => l_sql,
+        P_DBLINK => p_data.dblink,
+        p_priority => g_qry_priority,
+        P_TIMEOUT => g_qry_timeout) ;
+
+      for i in (select * from OPAS_OT_TMP_PLANS_OTHER_XML) loop
+        l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY =>
+  q'[declare a clob;
+     begin
+       select other_xml into a from GV_$SQL_PLAN_STATISTICS_ALL where SQL_ID = :SQL_ID and INST_ID=:INST_ID and PLAN_HASH_VALUE = :PLAN_HASH_VALUE and CHILD_NUMBER = :CHILD_NUMBER and ID=:ID and rownum=1;
+       :outclob := a;
+     exception when no_data_found then :outclob := null;
+     end;]',
+                                                    P_DBLINK => p_data.dblink,
+                                                    P_PRIORITY => g_qry_priority);
+
+        COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 1, p_number => i.SQL_ID ) ;
+        COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 2, p_number => i.INST_ID ) ;
+        COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 3, p_number => i.PLAN_HASH_VALUE ) ;
+        COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 4, p_number => i.CHILD_NUMBER ) ;
+        COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 5, p_number => i.ID ) ;
+        COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'OUT', P_ORDR_NUM => 6, p_clob => null ) ;
+        COREMOD_EXTPROC.execute_plsql_task (  P_TASK_ID => l_task, P_TIMEOUT => g_qry_timeout) ;
+        COREMOD_EXTPROC.get_param (  P_TASK_ID => l_task, P_ORDR_NUM => 6, p_clob => l_other_xml) ;
+        update OPAS_OT_TMP_GV$SQL_PLAN_STAT_ALL set OTHER_XML = l_other_xml where INST_ID = i.INST_ID and SQL_ID = i.SQL_ID and PLAN_HASH_VALUE = i.PLAN_HASH_VALUE and CHILD_NUMBER=i.CHILD_NUMBER and ID = i.ID;
+      end loop;
+      g_SELECT_LIST.delete;
+    end if;
 
     INSERT INTO opas_ot_tmp_gv$sql_plan_key
            ( plan_id,                   inst_id, child_number, plan_hash_value, full_plan_hash_value)
@@ -1215,27 +1375,88 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
 
       if COREMOD_FILE_UTILS.get_file_size(p_file_id => l_sql_ptr) > 32000 then raise_application_error(-20000, 'SQL Text is too long'); end if;
       COREMOD_FILE_UTILS.get_locator(l_sql_ptr,l_sql_text);
+      l_sql := replace(l_remote_ep,'<SQLTOEXPLAIN>',l_sql_text);
+      delete from plan_table where STATEMENT_ID = 'OPAS60';
+      commit;
 
       if p_data.dblink <> COREMOD_API.gLocalDBLink then
+        if COREMOD_API.external_mode_dblink(p_data.dblink) then
+          l_col_list := COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_PLAN_TABLE$');
 
-        l_col_list := COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_PLAN_TABLE$');
+          COREMOD_UTILS.execute_plsql_remotelly (  P_SQL => l_sql,
+            P_DBLINK => p_data.dblink,
+            P_OUTPUT => l_sql_out,
+            P_IS_OUTPUT => false) ;
 
-        l_sql := replace(l_remote_ep,'<SQLTOEXPLAIN>',l_sql_text);
+          l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_EP_PLANS */ INTO plan_table (<SRC_DB_COL_LICT>)
+                     select <SRC_DB_COL_LICT> from plan_table]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || q'[ where STATEMENT_ID = 'OPAS60']';
+          l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',l_col_list);
+          execute immediate l_sql;
+          l_sql := null;
+        elsif COREMOD_API.external_mode_javasrv(p_data.dblink) then
+          declare
+           l_task number;
+           l_other_xml clob;
+          begin
+            l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY => l_remote_ep,
+                                                        P_DBLINK => p_data.dblink,
+                                                        P_PRIORITY => g_qry_priority);
 
-        COREMOD_UTILS.execute_plsql_remotelly (  P_SQL => l_sql,
-          P_DBLINK => p_data.dblink,
-          P_OUTPUT => l_sql_out,
-          P_IS_OUTPUT => false) ;
+            COREMOD_EXTPROC.execute_plsql_task (  P_TASK_ID => l_task,
+                                                  P_TIMEOUT => g_qry_timeout) ;
+            COREMOD_API.load_tmp_data (  P_DB_LINK_NAME => p_data.dblink,
+                                         P_SRC_TABLE_NAME_R => 'PLAN_TABLE$',
+                                         P_SRC_TABLE_NAME => 'PLAN_TABLE',
+                                         P_TRG_TABLE_NAME => 'PLAN_TABLE',
+                                         P_SUFF => 'PLN',
+                                         P_DBID => null,
+                                         P_KEY_PREF => 'TABCOLLIST',
+                                         P_FILTER => q'[ where STATEMENT_ID = 'OPAS60']'
+                                         , p_priority=>g_qry_priority, p_timeout=>g_qry_timeout) ;
 
-        delete from plan_table where STATEMENT_ID = 'OPAS60';
+            l_sql := q'[PLAN_TABLE where STATEMENT_ID = 'OPAS60' and other_xml is not null]';
 
-        l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_EP_PLANS */ INTO plan_table (<SRC_DB_COL_LICT>)
-                   select <SRC_DB_COL_LICT> from plan_table]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || q'[ where STATEMENT_ID = 'OPAS60']';
-        l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',l_col_list);
-        execute immediate l_sql;
-        l_sql := null;
+            g_SELECT_LIST.delete;
+            g_SELECT_LIST('SQL_ID'):='null';
+            g_SELECT_LIST('DBID'):='0';
+            g_SELECT_LIST('INST_ID'):='0';
+            g_SELECT_LIST('PLAN_HASH_VALUE'):='0';
+            g_SELECT_LIST('CHILD_NUMBER'):='0';
+            g_SELECT_LIST('ID'):='ID';
+            g_SELECT_LIST('OTHER_XML_FLG'):='1';
+
+            COREMOD_EXTPROC.load_external_data (
+              P_TARGET_TABLE => 'OPAS_OT_TMP_PLANS_OTHER_XML',
+              P_SELECT_LIST => g_SELECT_LIST,
+              P_SQL_BODY => l_sql,
+              P_DBLINK => p_data.dblink,
+              p_priority => g_qry_priority,
+              P_TIMEOUT => g_qry_timeout) ;
+
+            for i in (select * from OPAS_OT_TMP_PLANS_OTHER_XML) loop
+              l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY =>
+        q'[declare a clob;
+           begin
+             select other_xml into a from PLAN_TABLE where STATEMENT_ID = 'OPAS60' and ID=:ID and rownum=1;
+             :outclob := a;
+           exception when no_data_found then :outclob := null;
+           end;]',
+                                                          P_DBLINK => p_data.dblink,
+                                                          P_PRIORITY => g_qry_priority);
+
+              COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 1, p_number => i.ID ) ;
+              COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'OUT', P_ORDR_NUM => 2, p_clob => null ) ;
+              COREMOD_EXTPROC.execute_plsql_task (  P_TASK_ID => l_task, P_TIMEOUT => g_qry_timeout) ;
+              COREMOD_EXTPROC.get_param (  P_TASK_ID => l_task, P_ORDR_NUM => 2, p_clob => l_other_xml) ;
+              update PLAN_TABLE set OTHER_XML = l_other_xml where ID = i.ID;
+            end loop;
+            g_SELECT_LIST.delete;
+
+          end;
+        else
+          raise_application_error(-20000,'Unsupported external execution mode for DB Link(load_sql_ep_plans): '||p_data.dblink);
+        end if;
       else
-        l_sql := replace(l_remote_ep,'<SQLTOEXPLAIN>',l_sql_text);
         execute immediate l_sql;
       end if;
 
@@ -1302,31 +1523,48 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
   begin
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsVASH);
 
-    l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_VASH */ INTO opas_ot_tmp_gv$ash
-                    (sql_id,sample_time,SQL_EXEC_START,sql_plan_hash_value,sql_plan_line_id,sql_plan_operation,sql_plan_options,event,CURRENT_OBJ#,CURRENT_FILE#,program,module,action,client_id)
-              select sql_id,sample_time,SQL_EXEC_START,sql_plan_hash_value,sql_plan_line_id,sql_plan_operation,sql_plan_options,event,CURRENT_OBJ#,CURRENT_FILE#,program,module,action,client_id
-                from gv$active_session_history]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || q'[ where sql_id = :p_sql_id]';
-    --l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_GV_$ACTIVE_SESSION_HISTORY'));
-    execute immediate l_sql using p_data.sql_id;
-    l_sql := null;
+    l_sql :=--INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_VASH */ INTO opas_ot_tmp_gv$ash
+            --        (sql_id,sample_time,SQL_EXEC_START,sql_plan_hash_value,sql_plan_line_id,sql_plan_operation,sql_plan_options,event,CURRENT_OBJ#,CURRENT_FILE#,program,module,action,client_id)
+              q'[(select sql_id,sample_time,SQL_EXEC_START,sql_plan_hash_value,sql_plan_line_id,sql_plan_operation,sql_plan_options,event,CURRENT_OBJ#,CURRENT_FILE#,program,module,action,client_id
+                from gv$active_session_history<DBLINK> where sql_id = '<p_sql_id>')]';
+    ----l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_GV_$ACTIVE_SESSION_HISTORY'));
+    --execute immediate l_sql using p_data.sql_id;
+    --l_sql := null;
+    l_sql := replace(l_sql,'<p_sql_id>',p_data.sql_id);
+    COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_GV$ASH1',
+      P_SELECT_LIST => g_SELECT_LIST, --empty
+      P_SQL_BODY =>    l_sql,
+      P_DBLINK =>      p_data.dblink,
+      P_PRIORITY =>    g_qry_priority,
+      P_TIMEOUT =>     g_qry_timeout) ;
 
-    select listagg(CURRENT_OBJ#,',')within group (order by CURRENT_OBJ#) into l_obj_lst from (select unique CURRENT_OBJ# from opas_ot_tmp_gv$ash);
+    select listagg(CURRENT_OBJ#,',')within group (order by CURRENT_OBJ#) into l_obj_lst from (select unique CURRENT_OBJ# from OPAS_OT_TMP_GV$ASH1);
     if l_obj_lst is not null then
-      l_sql := q'[INSERT INTO opas_ot_tmp_gv$ash_objs ( object_id, object_type, object_name)
-                 select    object_id, object_type, object_name from dba_objects]' ||
-                COREMOD_API.get_dblink_for_query(p_data.dblink)
-                || ' s where s.object_id in ('||l_obj_lst||')';
-      execute immediate l_sql;
+      l_sql := --INSERT INTO opas_ot_tmp_gv$ash_objs ( object_id, object_type, object_name)
+                 q'[(select    object_id, object_type, object_name from dba_objects<DBLINK> s where s.object_id in (]'||l_obj_lst||'))';
+      --execute immediate l_sql;
+
+      COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_GV$ASH_OBJS',
+        P_SELECT_LIST => g_SELECT_LIST, --empty
+        P_SQL_BODY =>    l_sql,
+        P_DBLINK =>      p_data.dblink,
+        P_PRIORITY =>    g_qry_priority,
+        P_TIMEOUT =>     g_qry_timeout) ;
+
       l_sql := null;
     end if;
 
-    select listagg(CURRENT_FILE#,',')within group (order by CURRENT_FILE#) into l_obj_lst from (select unique CURRENT_FILE# from opas_ot_tmp_gv$ash);
+    select listagg(CURRENT_FILE#,',')within group (order by CURRENT_FILE#) into l_obj_lst from (select unique CURRENT_FILE# from opas_ot_tmp_gv$ash1);
     if l_obj_lst is not null then
-      l_sql := q'[INSERT INTO opas_ot_tmp_gv$ash_objs ( object_id, object_type, object_name)
-             select    FILE_ID, 'TABLESPACE', TABLESPACE_NAME from dba_data_files]' ||
-               COREMOD_API.get_dblink_for_query(p_data.dblink)
-               || ' s where s.FILE_ID in ('||l_obj_lst||')';
-      execute immediate l_sql;
+      l_sql := --INSERT INTO opas_ot_tmp_gv$ash_objs ( object_id, object_type, object_name)
+             q'[(select    FILE_ID object_id, 'TABLESPACE' object_type, TABLESPACE_NAME object_name from dba_data_files<DBLINK> s where s.FILE_ID in (]'||l_obj_lst||'))';
+      --execute immediate l_sql;
+      COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_GV$ASH_OBJS',
+        P_SELECT_LIST => g_SELECT_LIST, --empty
+        P_SQL_BODY =>    l_sql,
+        P_DBLINK =>      p_data.dblink,
+        P_PRIORITY =>    g_qry_priority,
+        P_TIMEOUT =>     g_qry_timeout) ;
       l_sql := null;
     end if;
 
@@ -1334,7 +1572,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
          ( sql_data_point_id,        source_tab, sql_id, min_sample_time,  max_sample_time,  sql_exec_start, program, module, action, client_id, samples_cnt)
     select * from (
     select p_data.sql_data_point_id, srcV$,      sql_id, min(sample_time), max(sample_time), sql_exec_start, program, module, action, client_id, count(1) cnt
-      from opas_ot_tmp_gv$ash
+      from opas_ot_tmp_gv$ash1
      group by sql_id, sql_exec_start, program, module, action, client_id
      order by cnt desc
     ) where rownum<=10;
@@ -1362,7 +1600,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
           from (select x.*,
                        case when CURRENT_OBJ#>0 then (select object_type||'.'||object_name from opas_ot_tmp_gv$ash_objs where object_id=CURRENT_OBJ# and object_type!='TABLESPACE') else to_char(CURRENT_OBJ#) end obj,
                        case when CURRENT_FILE#>0 then (select object_name from opas_ot_tmp_gv$ash_objs where object_id=CURRENT_FILE# and object_type='TABLESPACE') else null end tbs
-            from opas_ot_tmp_gv$ash x)
+            from opas_ot_tmp_gv$ash1 x)
          group by trunc(SQL_EXEC_START,'HH'),
                   sql_plan_hash_value,
                   sql_plan_line_id,
@@ -1386,7 +1624,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
           from (select x.*,
                        case when CURRENT_OBJ#>0 then (select object_type||'.'||object_name from opas_ot_tmp_gv$ash_objs where object_id=CURRENT_OBJ# and object_type!='TABLESPACE') else to_char(CURRENT_OBJ#) end obj,
                        case when CURRENT_FILE#>0 then (select object_name from opas_ot_tmp_gv$ash_objs where object_id=CURRENT_FILE# and object_type='TABLESPACE') else null end tbs
-            from opas_ot_tmp_gv$ash x)
+            from opas_ot_tmp_gv$ash1 x)
          group by sql_plan_hash_value,
                   sql_plan_line_id,
                   sql_plan_operation || ' ' || sql_plan_options,
@@ -1415,12 +1653,12 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
   begin
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_SQLSTAT);
 
-    l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_AWRSQLST */ into opas_ot_tmp_awrsqlstat (<SRC_DB_COL_LICT>)
-           select <SRC_DB_COL_LICT>
-           from dba_hist_sqlstat]' || COREMOD_API.get_dblink_for_query(p_data.dblink) ||
-           q'[ where sql_id=:p_sql_id and dbid = :p_dbid and snap_id between :p1 and :p2 and INSTANCE_NUMBER in (<INST_LST>) <CON_FILTER>]';
+    l_sql :=--q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_AWRSQLST */ into opas_ot_tmp_awrsqlstat (<SRC_DB_COL_LICT>)
+           --select <SRC_DB_COL_LICT>
+           --from dba_hist_sqlstat]' || COREMOD_API.get_dblink_for_query(p_data.dblink) ||
+           q'[ sql_id='<p_sql_id>' and dbid = <p_dbid> and snap_id between <p1> and <p2> and INSTANCE_NUMBER in (<INST_LST>) <CON_FILTER>]';
 
-    l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_DBA_HIST_SQLSTAT'));
+    --l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_DBA_HIST_SQLSTAT'));
     l_sql := replace(l_sql,'<INST_LST>', p_awr_params.INSTANCE_LIST_C);
 
     if p_awr_params.CON_ID is not null and instr(COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_DBA_HIST_SQLSTAT'),'CON_ID') > 0 then
@@ -1429,8 +1667,21 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       l_sql := replace(l_sql,'<CON_FILTER>','');
     end if;
 
-    execute immediate l_sql using p_data.sql_id, p_awr_params.DBID, p_awr_params.SNAP_START, p_awr_params.SNAP_END;
-    l_rows := sql%rowcount;
+    COREMOD_API.load_tmp_data (  P_DB_LINK_NAME => p_data.dblink,
+                                 P_SRC_TABLE_NAME_R => 'DBA_HIST_SQLSTAT',
+                                 P_SRC_TABLE_NAME => 'DBA_HIST_SQLSTAT',
+                                 P_TRG_TABLE_NAME => 'opas_ot_tmp_awrsqlstat',
+                                 P_SUFF => 'AWRSQLSTAT',
+                                 P_DBID => null,
+                                 P_KEY_PREF => 'TABCOLLIST',
+                                 P_FILTER => replace(replace(replace(replace(l_sql,'<p_sql_id>',p_data.sql_id),
+                                                                                   '<p_dbid>',p_awr_params.DBID),
+                                                                                   '<p1>',p_awr_params.SNAP_START),
+                                                                                   '<p2>',p_awr_params.SNAP_END)
+                              , p_priority=>g_qry_priority, p_timeout=>g_qry_timeout) ;
+    l_rows := COREMOD_API.get_last_rowcount;
+    --execute immediate l_sql using p_data.sql_id, p_awr_params.DBID, p_awr_params.SNAP_START, p_awr_params.SNAP_END;
+    --l_rows := sql%rowcount;
 
     merge into opas_ot_sql_awr_sqlstat t
       using opas_ot_tmp_awrsqlstat s
@@ -1482,12 +1733,12 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
   begin
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_BINDS);
 
-    l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_AWRSQLBI */ into opas_ot_tmp_awrsqlbind (<SRC_DB_COL_LICT>)
-           select <SRC_DB_COL_LICT>
-           from dba_hist_sqlbind]' || COREMOD_API.get_dblink_for_query(p_data.dblink) ||
-           q'[ where sql_id=:p_sql_id and dbid = :p_dbid and snap_id between :p1 and :p2 and INSTANCE_NUMBER in (<INST_LST>) <CON_FILTER>]';
+    l_sql :=--q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_AWRSQLBI */ into opas_ot_tmp_awrsqlbind (<SRC_DB_COL_LICT>)
+           --select <SRC_DB_COL_LICT>
+           --from dba_hist_sqlbind]' || COREMOD_API.get_dblink_for_query(p_data.dblink) ||
+           q'[ sql_id='<p_sql_id>' and dbid = <p_dbid> and snap_id between <p1> and <p2> and INSTANCE_NUMBER in (<INST_LST>) <CON_FILTER>]';
 
-    l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_DBA_HIST_SQLBIND'));
+    --l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_DBA_HIST_SQLBIND'));
     l_sql := replace(l_sql,'<INST_LST>', p_awr_params.INSTANCE_LIST_C);
 
     if p_awr_params.CON_ID is not null and instr(COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_DBA_HIST_SQLBIND'),'CON_ID') > 0 then
@@ -1496,8 +1747,21 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       l_sql := replace(l_sql,'<CON_FILTER>','');
     end if;
 
-    execute immediate l_sql using p_data.sql_id, p_awr_params.DBID, p_awr_params.SNAP_START, p_awr_params.SNAP_END;
-    l_rows := sql%rowcount;
+    --execute immediate l_sql using p_data.sql_id, p_awr_params.DBID, p_awr_params.SNAP_START, p_awr_params.SNAP_END;
+    --l_rows := sql%rowcount;
+    COREMOD_API.load_tmp_data (  P_DB_LINK_NAME => p_data.dblink,
+                                 P_SRC_TABLE_NAME_R => 'DBA_HIST_SQLBIND',
+                                 P_SRC_TABLE_NAME => 'DBA_HIST_SQLBIND',
+                                 P_TRG_TABLE_NAME => 'opas_ot_tmp_awrsqlbind',
+                                 P_SUFF => 'AWRSQLBIND',
+                                 P_DBID => null,
+                                 P_KEY_PREF => 'TABCOLLIST',
+                                 P_FILTER => replace(replace(replace(replace(l_sql,'<p_sql_id>',p_data.sql_id),
+                                                                                   '<p_dbid>',p_awr_params.DBID),
+                                                                                   '<p1>',p_awr_params.SNAP_START),
+                                                                                   '<p2>',p_awr_params.SNAP_END)
+                              , p_priority=>g_qry_priority, p_timeout=>g_qry_timeout) ;
+    l_rows := COREMOD_API.get_last_rowcount;
 
     merge into opas_ot_sql_awr_sqlbind t
       using opas_ot_tmp_awrsqlbind s
@@ -1529,15 +1793,18 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
                            p_awr_params t_awr_params_rec)
   is
     l_sql        varchar2(32765);
+    l_filter     varchar2(32765);
     l_rows       number;
+    l_task       number;
+    l_other_xml  clob;
   begin
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_SQLPLAN);
 
-    l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_AWRPLANS */ INTO opas_ot_tmp_dbh_plan (<SRC_DB_COL_LICT>)
-              select <SRC_DB_COL_LICT> from dba_hist_sql_plan]' || COREMOD_API.get_dblink_for_query(p_data.dblink) ||
-           q'[ where sql_id=:p_sql_id and dbid = :p_dbid <CON_FILTER>]';
+    l_sql :=--q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_AWRPLANS */ INTO opas_ot_tmp_dbh_plan (<SRC_DB_COL_LICT>)
+            --  select <SRC_DB_COL_LICT> from dba_hist_sql_plan]' || COREMOD_API.get_dblink_for_query(p_data.dblink) ||
+           q'[ sql_id='<p_sql_id>' and dbid = <p_dbid> <CON_FILTER>]';
 
-    l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_DBA_HIST_SQL_PLAN'));
+    --l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_DBA_HIST_SQL_PLAN'));
 
     if p_awr_params.CON_ID is not null and instr(COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_DBA_HIST_SQL_PLAN'),'CON_ID') > 0 then
       l_sql := replace(l_sql,'<CON_FILTER>','and CON_ID = '||p_awr_params.CON_ID);
@@ -1545,8 +1812,70 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       l_sql := replace(l_sql,'<CON_FILTER>','');
     end if;
 
-    execute immediate l_sql using p_data.sql_id, p_awr_params.DBID;
-    l_rows := sql%rowcount;
+    --execute immediate l_sql using p_data.sql_id, p_awr_params.DBID;
+    --l_rows := sql%rowcount;
+
+    --todo OTHER_XML to transfer
+    l_filter := replace(replace(replace(replace(l_sql,'<p_sql_id>',p_data.sql_id),
+                                                      '<p_dbid>',p_awr_params.DBID),
+                                                      '<p1>',p_awr_params.SNAP_START),
+                                                      '<p2>',p_awr_params.SNAP_END);
+    COREMOD_API.load_tmp_data (  P_DB_LINK_NAME => p_data.dblink,
+                                 P_SRC_TABLE_NAME_R => 'DBA_HIST_SQL_PLAN',
+                                 P_SRC_TABLE_NAME => 'DBA_HIST_SQL_PLAN',
+                                 P_TRG_TABLE_NAME => 'opas_ot_tmp_dbh_plan',
+                                 P_SUFF => 'AWRSQLPLAN',
+                                 P_DBID => null,
+                                 P_KEY_PREF => 'TABCOLLIST',
+                                 P_FILTER => l_filter
+                               , p_priority=>g_qry_priority, p_timeout=>g_qry_timeout) ;
+    l_rows := COREMOD_API.get_last_rowcount;
+
+    if COREMOD_API.external_mode_javasrv(p_data.dblink) then
+      l_sql := q'[DBA_HIST_SQL_PLAN where (<FILTER>) and  other_xml is not null]';
+
+      l_sql := replace(l_sql,'<FILTER>',l_filter);
+
+      g_SELECT_LIST.delete;
+      g_SELECT_LIST('SQL_ID'):='SQL_ID';
+      g_SELECT_LIST('DBID'):='DBID';
+      g_SELECT_LIST('INST_ID'):='0';
+      g_SELECT_LIST('PLAN_HASH_VALUE'):='PLAN_HASH_VALUE';
+      g_SELECT_LIST('CHILD_NUMBER'):='0';
+      g_SELECT_LIST('ID'):='ID';
+      g_SELECT_LIST('OTHER_XML_FLG'):='1';
+
+      COREMOD_EXTPROC.load_external_data (
+        P_TARGET_TABLE => 'OPAS_OT_TMP_PLANS_OTHER_XML',
+        P_SELECT_LIST => g_SELECT_LIST,
+        P_SQL_BODY => l_sql,
+        P_DBLINK => p_data.dblink,
+        p_priority => g_qry_priority,
+        P_TIMEOUT => g_qry_timeout) ;
+
+      for i in (select * from OPAS_OT_TMP_PLANS_OTHER_XML) loop
+        l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY =>
+  q'[declare a clob;
+     begin
+       select other_xml into a from DBA_HIST_SQL_PLAN where SQL_ID = :SQL_ID and DBID=:DBID and PLAN_HASH_VALUE = :PLAN_HASH_VALUE and ID=:ID and rownum=1;
+       :outclob := a;
+     exception when no_data_found then :outclob := null;
+     end;]',
+                                                    P_DBLINK => p_data.dblink,
+                                                    P_PRIORITY => g_qry_priority);
+
+        COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 1, p_number => i.SQL_ID ) ;
+        COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 2, p_number => i.DBID ) ;
+        COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 3, p_number => i.PLAN_HASH_VALUE ) ;
+        COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 4, p_number => i.ID ) ;
+        COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'OUT', P_ORDR_NUM => 5, p_clob => null ) ;
+        COREMOD_EXTPROC.execute_plsql_task (  P_TASK_ID => l_task, P_TIMEOUT => g_qry_timeout) ;
+        COREMOD_EXTPROC.get_param (  P_TASK_ID => l_task, P_ORDR_NUM => 5, p_clob => l_other_xml) ;
+        update opas_ot_tmp_dbh_plan set OTHER_XML = l_other_xml where DBID = i.DBID and SQL_ID = i.SQL_ID and PLAN_HASH_VALUE = i.PLAN_HASH_VALUE and ID = i.ID;
+      end loop;
+      g_SELECT_LIST.delete;
+    end if;
+
     l_sql := null;
 
     INSERT INTO opas_ot_tmp_dbh_plan_key
@@ -1612,79 +1941,111 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_ASHINVOKER);
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsAWR_ASHPLSTATS);
 
-    l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_AWRASH */ into opas_ot_tmp_dbh_ash (
-                  dbid, SNAP_ID, SESSION_ID, SESSION_SERIAL#, INSTANCE_NUMBER, SQL_ID, TOP_LEVEL_SQL_ID, USER_ID, PROGRAM, MACHINE, MODULE, ACTION,
-                  CLIENT_ID, ECID, PLSQL_ENTRY_OBJECT_ID, PLSQL_ENTRY_SUBPROGRAM_ID, PLSQL_OBJECT_ID, PLSQL_SUBPROGRAM_ID, FORCE_MATCHING_SIGNATURE,
-                  SQL_CHILD_NUMBER, SQL_PLAN_HASH_VALUE, SQL_FULL_PLAN_HASH_VALUE, SQL_EXEC_ID, SQL_EXEC_START, SQL_PLAN_LINE_ID, SQL_PLAN_OPERATION, EVENT,
-                  SQL_PLAN_OPTIONS, SESSION_TYPE, CON_ID, CON_DBID, MIN_SAMPLE_TIME, MAX_SAMPLE_TIME, CNT, PGA_ALLOCATED, TEMP_SPACE_ALLOCATED,
-                  CURRENT_OBJ#,CURRENT_FILE#)
-           select dbid, snap_id, session_id, session_serial#, instance_number, sql_id, TOP_LEVEL_SQL_ID, user_id, program, machine, module, action,
+    l_sql :=--INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_AWRASH */ into opas_ot_tmp_dbh_ash (
+            --      dbid, SNAP_ID, SESSION_ID, SESSION_SERIAL#, INSTANCE_NUMBER, SQL_ID, TOP_LEVEL_SQL_ID, USER_ID, PROGRAM, MACHINE, MODULE, ACTION,
+            --      CLIENT_ID, ECID, PLSQL_ENTRY_OBJECT_ID, PLSQL_ENTRY_SUBPROGRAM_ID, PLSQL_OBJECT_ID, PLSQL_SUBPROGRAM_ID, FORCE_MATCHING_SIGNATURE,
+            --      SQL_CHILD_NUMBER, SQL_PLAN_HASH_VALUE, SQL_FULL_PLAN_HASH_VALUE, SQL_EXEC_ID, SQL_EXEC_START, SQL_PLAN_LINE_ID, SQL_PLAN_OPERATION, EVENT,
+            --      SQL_PLAN_OPTIONS, SESSION_TYPE, CON_ID, CON_DBID, MIN_SAMPLE_TIME, MAX_SAMPLE_TIME, CNT, PGA_ALLOCATED, TEMP_SPACE_ALLOCATED,
+            --      CURRENT_OBJ#,CURRENT_FILE#)
+           q'[(select dbid, snap_id, session_id, session_serial#, instance_number, sql_id, TOP_LEVEL_SQL_ID, user_id, program, machine, module, action,
                   client_id, ecid, plsql_entry_object_id, plsql_entry_subprogram_id, PLSQL_OBJECT_ID, PLSQL_SUBPROGRAM_ID, force_matching_signature,
                   sql_child_number, sql_plan_hash_value, sql_full_plan_hash_value, SQL_EXEC_ID, SQL_EXEC_START, sql_plan_line_id, sql_plan_operation, event,
                   sql_plan_options, session_type, con_id, con_dbid, min(sample_time) min_sample_time, max(sample_time) max_sample_time, count(1) cnt,
                   max(pga_allocated) pga_allocated, max(temp_space_allocated) temp_space_allocated,
                   CURRENT_OBJ#,CURRENT_FILE#
-             from dba_hist_active_sess_history]' || COREMOD_API.get_dblink_for_query(p_data.dblink) ||
-           q'[ where sql_id=:p_sql_id and dbid = :p_dbid and snap_id between :p1 and :p2 and INSTANCE_NUMBER in (<INST_LST>)
+             from dba_hist_active_sess_history<DBLINK>
+           where sql_id='<p_sql_id>' and dbid = <p_dbid> and snap_id between <p1> and <p2> and INSTANCE_NUMBER in (<INST_LST>)
            group by
              dbid, snap_id, session_id, session_serial#, instance_number, sql_id, TOP_LEVEL_SQL_ID, user_id, program, machine, module, action,
              client_id, ecid, plsql_entry_object_id, plsql_entry_subprogram_id, PLSQL_OBJECT_ID, PLSQL_SUBPROGRAM_ID, force_matching_signature,
              sql_child_number, sql_plan_hash_value, sql_full_plan_hash_value, SQL_EXEC_ID, SQL_EXEC_START, sql_plan_line_id, sql_plan_operation, event,
              sql_plan_options, session_type, con_id, con_dbid,
-             CURRENT_OBJ#,CURRENT_FILE#]';
+             CURRENT_OBJ#,CURRENT_FILE#)]';
 
     l_sql := replace(l_sql,'<INST_LST>', p_awr_params.INSTANCE_LIST_C);
---coremod_tasks.log('load_awr_sqlash: l_sql '||l_sql);
-    execute immediate l_sql using p_data.sql_id, p_awr_params.DBID, p_awr_params.SNAP_START, p_awr_params.SNAP_END;
-    --l_rows := sql%rowcount;
---coremod_tasks.log('load_awr_sqlash: sql%rowcount '||sql%rowcount);
+    l_sql := replace(replace(replace(replace(l_sql,'<p_sql_id>',p_data.sql_id),
+                                                   '<p_dbid>',p_awr_params.DBID),
+                                                   '<p1>',p_awr_params.SNAP_START),
+                                                   '<p2>',p_awr_params.SNAP_END);
+    --execute immediate l_sql using p_data.sql_id, p_awr_params.DBID, p_awr_params.SNAP_START, p_awr_params.SNAP_END;
+
+    COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_DBH_ASH',
+      P_SELECT_LIST => g_SELECT_LIST, --empty
+      P_SQL_BODY =>    l_sql,
+      P_DBLINK =>      p_data.dblink,
+      P_PRIORITY =>    g_qry_priority,
+      P_TIMEOUT =>     g_qry_timeout) ;
+
+--coremod_tasks.log('load_awr_sqlash: '||COREMOD_EXTPROC.get_rows_processed    );
 
     for i in (select plsql_entry_object_id, plsql_entry_subprogram_id from opas_ot_tmp_dbh_ash where plsql_entry_object_id is not null union
               select PLSQL_OBJECT_ID, PLSQL_SUBPROGRAM_ID from opas_ot_tmp_dbh_ash where PLSQL_OBJECT_ID is not null) loop
-      l_sql := q'[INSERT INTO opas_ot_tmp_awr_ash_objs
-                   ( object_id, subprogram_id, owner, object_type, object_name, PROCEDURE_NAME)
-           select    object_id, subprogram_id, owner, object_type, object_name, PROCEDURE_NAME from dba_procedures]' ||
-             COREMOD_API.get_dblink_for_query(p_data.dblink)
-             || ' s where s.object_id=:p_program_id and decode(s.subprogram_id,:p_subprogram_id,1,0)=1';
-      execute immediate l_sql using i.plsql_entry_object_id, i.plsql_entry_subprogram_id;
+      l_sql := --INSERT INTO opas_ot_tmp_awr_ash_objs
+               --    ( object_id, subprogram_id, owner, object_type, object_name, PROCEDURE_NAME)
+          q'[( select object_id, subprogram_id, owner, object_type, object_name, PROCEDURE_NAME from dba_procedures<DBLINK> s
+               where s.object_id=<p_program_id> and decode(s.subprogram_id,<p_subprogram_id>,1,0)=1)]';
+
+      l_sql := replace(replace(l_sql,'<p_program_id>',i.plsql_entry_object_id),'<p_subprogram_id>',nvl(to_char(i.plsql_entry_subprogram_id),'null'));
+      COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_AWR_ASH_OBJS',
+        P_SELECT_LIST => g_SELECT_LIST, --empty
+        P_SQL_BODY =>    l_sql,
+        P_DBLINK =>      p_data.dblink,
+        P_PRIORITY =>    g_qry_priority,
+        P_TIMEOUT =>     g_qry_timeout) ;
+
+      --execute immediate l_sql using i.plsql_entry_object_id, i.plsql_entry_subprogram_id;
       l_sql:=null;
     end loop;
 
     for i in (select unique user_id from opas_ot_tmp_dbh_ash where user_id is not null) loop
-      l_sql := q'[INSERT INTO opas_ot_tmp_awr_ash_objs
-                   ( object_id, subprogram_id, owner, object_type, object_name, PROCEDURE_NAME)
-           select    USER_ID,   null, null, 'USER', USERNAME, null from dba_users]' ||
-             COREMOD_API.get_dblink_for_query(p_data.dblink)
-             || ' s where s.USER_ID=:p_user_id';
-      execute immediate l_sql using i.user_id;
+      l_sql :=-- INSERT INTO opas_ot_tmp_awr_ash_objs
+              --     ( object_id, subprogram_id, owner, object_type, object_name, PROCEDURE_NAME)
+           q'[(select    USER_ID object_id,   null subprogram_id, null owner, 'USER' object_type, USERNAME object_name, null PROCEDURE_NAME from dba_users<DBLINK> s where s.USER_ID=<p_user_id>)]';
+      l_sql := replace(l_sql,'<p_user_id>', i.user_id);
+      COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_AWR_ASH_OBJS',
+        P_SELECT_LIST => g_SELECT_LIST, --empty
+        P_SQL_BODY =>    l_sql,
+        P_DBLINK =>      p_data.dblink,
+        P_PRIORITY =>    g_qry_priority,
+        P_TIMEOUT =>     g_qry_timeout) ;
+
+      --execute immediate l_sql using i.user_id;
       l_sql:=null;
     end loop;
 
     select listagg(CURRENT_OBJ#,',')within group (order by CURRENT_OBJ#) into l_obj_lst from (select unique CURRENT_OBJ# from opas_ot_tmp_dbh_ash);
     if l_obj_lst is not null then
-      l_sql := q'[INSERT INTO opas_ot_tmp_awr_ash_objs ( object_id, object_type, object_name)
-                 select    object_id, object_type, object_name from dba_objects]' ||
-                COREMOD_API.get_dblink_for_query(p_data.dblink)
-                || ' s where s.object_id in ('||l_obj_lst||')';
-      execute immediate l_sql;
+      l_sql := --INSERT INTO opas_ot_tmp_awr_ash_objs ( object_id, object_type, object_name)
+               q'[( select object_id, null SUBPROGRAM_ID, null OWNER, object_type, object_name, null PROCEDURE_NAME from dba_objects<DBLINK> s where s.object_id in (]'||l_obj_lst||'))';
+      COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_AWR_ASH_OBJS',
+        P_SELECT_LIST => g_SELECT_LIST, --empty
+        P_SQL_BODY =>    l_sql,
+        P_DBLINK =>      p_data.dblink,
+        P_PRIORITY =>    g_qry_priority,
+        P_TIMEOUT =>     g_qry_timeout) ;
+      --execute immediate l_sql;
       l_sql := null;
     end if;
 
     select listagg(CURRENT_FILE#,',')within group (order by CURRENT_FILE#) into l_obj_lst from (select unique CURRENT_FILE# from opas_ot_tmp_dbh_ash);
     if l_obj_lst is not null then
-      l_sql := q'[INSERT INTO opas_ot_tmp_awr_ash_objs ( object_id, object_type, object_name)
-             select    FILE_ID, 'TABLESPACE', TABLESPACE_NAME from dba_data_files]' ||
-               COREMOD_API.get_dblink_for_query(p_data.dblink)
-               || ' s where s.FILE_ID in ('||l_obj_lst||')';
-      execute immediate l_sql;
+      l_sql := --INSERT INTO opas_ot_tmp_awr_ash_objs ( object_id, object_type, object_name)
+             q'[(select FILE_ID OBJECT_ID, null SUBPROGRAM_ID, null OWNER, 'TABLESPACE' OBJECT_TYPE, TABLESPACE_NAME OBJECT_NAME, null PROCEDURE_NAME from dba_data_files<DBLINK> s where s.FILE_ID in (]'||l_obj_lst||'))';
+      COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_AWR_ASH_OBJS',
+        P_SELECT_LIST => g_SELECT_LIST, --empty
+        P_SQL_BODY =>    l_sql,
+        P_DBLINK =>      p_data.dblink,
+        P_PRIORITY =>    g_qry_priority,
+        P_TIMEOUT =>     g_qry_timeout) ;
+      --execute immediate l_sql;
       l_sql := null;
     end if;
 
     INSERT INTO opas_ot_sql_ash_ident
          ( sql_data_point_id,        source_tab, sql_id, min_sample_time,  max_sample_time,  sql_exec_start, program, module, action, client_id, samples_cnt)
     select * from (
-    select p_data.sql_data_point_id, srcAWR,     sql_id, min(sample_time), max(sample_time), sql_exec_start, program, module, action, client_id, count(1) cnt
-      from opas_ot_tmp_gv$ash
+    select p_data.sql_data_point_id, srcAWR,     sql_id, min(MIN_SAMPLE_TIME), max(MAX_SAMPLE_TIME), sql_exec_start, program, module, action, client_id, count(1) cnt
+      from opas_ot_tmp_dbh_ash
      group by sql_id, sql_exec_start, program, module, action, client_id
      order by cnt desc
     ) where rownum<=10;
@@ -1802,7 +2163,9 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     l_sql1       varchar2(32765);
     l_ts1        timestamp with time zone;
     l_ts2        timestamp with time zone;
-    l_found      number;
+    --l_found      number;
+    l_task number;
+
   begin
 
     coremod_log.log('update_dblink_db_info_awrsn','DEBUG');
@@ -1816,20 +2179,43 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
 
     delete from opas_dbl_tmp_awrsnaps;
 
-    l_sql := q'[select incarnation# from v$database_incarnation]' || COREMOD_API.get_dblink_for_query(p_db_link_name) || q'[ where status='CURRENT']';
-    execute immediate l_sql into p_params.INCARNATION#;
-    l_sql := null;
+    if COREMOD_API.external_mode_dblink(p_db_link_name) then
+     l_sql := q'[select incarnation# from v$database_incarnation]' || COREMOD_API.get_dblink_for_query(p_db_link_name) || q'[ where status='CURRENT']';
+      execute immediate l_sql into p_params.INCARNATION#;
+      l_sql := null;
+    elsif COREMOD_API.external_mode_javasrv(p_db_link_name) then
+      l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY => q'[begin select incarnation# into :out from v$database_incarnation where status='CURRENT'; end;]',
+                                                  P_DBLINK => p_db_link_name,
+                                                  P_PRIORITY => g_qry_priority);
+
+      COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'OUT', P_ORDR_NUM => 1, p_number => null ) ;
+      COREMOD_EXTPROC.execute_plsql_task (  P_TASK_ID => l_task, P_TIMEOUT => g_qry_timeout) ;
+      COREMOD_EXTPROC.get_param (  P_TASK_ID => l_task, P_ORDR_NUM => 1, p_number => p_params.INCARNATION#) ;
+    end if;
+
 
     if p_start_dt is not null and p_end_dt is not null then
       l_ts1 := p_start_dt;
       l_ts2 := p_end_dt;
     else -- p_days is not null then
       if p_search_last_days then
-        l_sql :=q'[select max(END_INTERVAL_TIME), count(1) found_cnt from dba_hist_snapshot]' || COREMOD_API.get_dblink_for_query(p_db_link_name) ||
-                q'[ s, dba_hist_sqlstat]' || COREMOD_API.get_dblink_for_query(p_db_link_name) ||
-                q'[ q where s.dbid=q.dbid and s.dbid=:p_dbid and s.snap_id=q.snap_id and s.instance_number=q.instance_number and q.sql_id=:p_sql_id]';
-        execute immediate l_sql into l_ts2, l_found using p_params.DBID, p_sql_id;
-        l_sql := null;
+        l_sql :=q'[select max(END_INTERVAL_TIME) ts from dba_hist_snapshot<DBLINK>
+                q'[ s, dba_hist_sqlstat<DBLINK>
+                q'[ q where s.dbid=q.dbid and s.dbid=<p_dbid> and s.snap_id=q.snap_id and s.instance_number=q.instance_number and q.sql_id='<p_sql_id>']';
+        l_sql := replace(replace(l_sql,'<p_dbid>',p_params.DBID),'<p_sql_id>',p_sql_id);
+        if COREMOD_API.external_mode_dblink(p_db_link_name) then
+          l_sql := replace(l_sql,'<DBLINK>',COREMOD_API.get_dblink_for_query(p_db_link_name));
+          execute immediate l_sql into l_ts2; -- using p_params.DBID, p_sql_id;
+          l_sql := null;
+        elsif COREMOD_API.external_mode_javasrv(p_db_link_name) then
+          l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY => replace(q'[begin for i in (<SQL>) loop :out := i.ts; end loop; end;]','<SQL>',l_sql),
+                                                      P_DBLINK => p_db_link_name,
+                                                      P_PRIORITY => g_qry_priority);
+
+          COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'OUT', P_ORDR_NUM => 1, p_timestamp => null ) ;
+          COREMOD_EXTPROC.execute_plsql_task (  P_TASK_ID => l_task, P_TIMEOUT => g_qry_timeout) ;
+          COREMOD_EXTPROC.get_param (  P_TASK_ID => l_task, P_ORDR_NUM => 1, p_timestamp => l_ts2) ;
+        end if;
       else
         l_ts2 := COREMOD_UTILS.get_remote_ts(p_db_link_name);
       end if;
@@ -1842,12 +2228,12 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     coremod_log.log('l_ts1: '||to_char(l_ts1,'YYYY-MM-DD HH24:MI:SS'),'DEBUG');
     coremod_log.log('l_ts2: '||to_char(l_ts2,'YYYY-MM-DD HH24:MI:SS'),'DEBUG');
 
-    l_sql :=q'[INSERT /*+ OPAS60_DBLINK_AWRSN */ INTO opas_dbl_tmp_awrsnaps (<SRC_DB_COL_LICT>)
-              select <SRC_DB_COL_LICT> from dba_hist_snapshot]' || COREMOD_API.get_dblink_for_query(p_db_link_name) ||
-              q'[ where END_INTERVAL_TIME between :d1 and :d2 and dbid=:p_dbid <CON_FILTER>]';
+    l_sql :=--q'[INSERT /*+ OPAS60_DBLINK_AWRSN */ INTO opas_dbl_tmp_awrsnaps (<SRC_DB_COL_LICT>)
+            --  select <SRC_DB_COL_LICT> from dba_hist_snapshot]' || COREMOD_API.get_dblink_for_query(p_db_link_name) ||
+              q'[  END_INTERVAL_TIME between to_timestamp('<d1>','yyyymmddhh24miss') and to_timestamp('<d2>','yyyymmddhh24miss') and dbid=<p_dbid> <CON_FILTER>]';
 
 
-    l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_db_link_name, P_KEY => 'TABCOLLIST_DBA_HIST_SNAPSHOT'));
+    --l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_db_link_name, P_KEY => 'TABCOLLIST_DBA_HIST_SNAPSHOT'));
 
 --    if p_params.CON_ID is not null and instr(COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_db_link_name, P_KEY => 'TABCOLLIST_DBA_HIST_SNAPSHOT'),'CON_ID') > 0 then
 --      l_sql := replace(l_sql,'<CON_FILTER>','and CON_ID = '||p_params.CON_ID);
@@ -1855,7 +2241,20 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
       l_sql := replace(l_sql,'<CON_FILTER>','');
 --    end if;
 
-    execute immediate l_sql using l_ts1, l_ts2, p_params.DBID;
+    l_sql := replace(replace(replace(l_sql,'<p_dbid>',p_params.DBID),
+                                           '<d1>',to_char(l_ts1,'yyyymmddhh24miss')),
+                                           '<d2>',to_char(l_ts2,'yyyymmddhh24miss'));
+    COREMOD_API.load_tmp_data (  P_DB_LINK_NAME => p_db_link_name,
+                                 P_SRC_TABLE_NAME_R => 'DBA_HIST_SNAPSHOT',
+                                 P_SRC_TABLE_NAME => 'DBA_HIST_SNAPSHOT',
+                                 P_TRG_TABLE_NAME => 'OPAS_DBL_TMP_AWRSNAPS',
+                                 P_SUFF => 'AWRSNAPS',
+                                 P_DBID => null,
+                                 P_KEY_PREF => 'TABCOLLIST',
+                                 P_FILTER => l_sql
+                               , p_priority=>g_qry_priority, p_timeout=>g_qry_timeout) ;
+
+    --execute immediate l_sql using l_ts1, l_ts2, p_params.DBID;
     l_sql := null;
 
     select min(END_INTERVAL_TIME), max(END_INTERVAL_TIME),
@@ -1921,22 +2320,36 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     l_rec_v$  := nvl(COREOBJ_API.get_param_n(p_obj_id, COREOBJ_SQL_UTILS.pnV$Recursive,    true), COREOBJ_SQL_UTILS.defV$Recursive);
     l_rec_awr := nvl(COREOBJ_API.get_param_n(p_obj_id, COREOBJ_SQL_UTILS.pnAWRRecursive,   true), COREOBJ_SQL_UTILS.defAWRRecursive);
     if l_rec_v$ >= 0 then
-      l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_REC_SQL */ into opas_ot_tmp_rec_sql_ids (sql_id)
-                 select sql_id from gv$active_session_history]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || ' where top_level_sql_id=:p_sql_id and sql_id<>top_level_sql_id
+      l_sql :=--INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_REC_SQL */ into opas_ot_tmp_rec_sql_ids (sql_id)
+                 q'[(select sql_id from gv$active_session_history<DBLINK> where top_level_sql_id='<p_sql_id>' and sql_id<>top_level_sql_id
                  group by sql_id
-                 having count(1) > :p_limit';
-      execute immediate l_sql using p_data.sql_id, l_rec_v$;
+                 having count(1) > <p_limit>)]';
+      l_sql := replace(replace(l_sql,'<p_sql_id>',p_data.sql_id),'<p_limit>',l_rec_v$);
+      COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_REC_SQL_IDS',
+        P_SELECT_LIST => g_SELECT_LIST, --empty
+        P_SQL_BODY =>    l_sql,
+        P_DBLINK =>      p_data.dblink,
+        P_PRIORITY =>    g_qry_priority,
+        P_TIMEOUT =>     g_qry_timeout) ;
+      --execute immediate l_sql using p_data.sql_id, l_rec_v$;
       l_sql := null;
     end if;
     if l_rec_awr >= 0 then
-      l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_REC_SQL */ into opas_ot_tmp_rec_sql_ids (sql_id)
-                 select sql_id from dba_hist_active_sess_history]' || COREMOD_API.get_dblink_for_query(p_data.dblink)
-                 || ' where top_level_sql_id=:p_sql_id and dbid = :p_dbid and snap_id between :p1 and :p2 and INSTANCE_NUMBER in (<INST_LST>) and sql_id<>top_level_sql_id
+      l_sql :=--INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_REC_SQL */ into opas_ot_tmp_rec_sql_ids (sql_id)
+              q'[(select sql_id from dba_hist_active_sess_history<DBLINK>
+                  where top_level_sql_id='<p_sql_id>' and dbid = <p_dbid> and snap_id between <p1> and <p2> and INSTANCE_NUMBER in (<INST_LST>) and sql_id<>top_level_sql_id
                  group by sql_id
-                 having count(1) > :p_limit';
+                 having count(1) > <p_limit>)]';
       l_sql := replace(l_sql,'<INST_LST>', p_awr_params.INSTANCE_LIST_C);
+      l_sql := replace(replace(replace(replace(replace(l_sql,'<p_sql_id>',p_data.sql_id),'<p_limit>',l_rec_v$),'<p_dbid>',p_awr_params.DBID),'<p1>',p_awr_params.SNAP_START),'<p2>',p_awr_params.SNAP_END);
+      COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_REC_SQL_IDS',
+        P_SELECT_LIST => g_SELECT_LIST, --empty
+        P_SQL_BODY =>    l_sql,
+        P_DBLINK =>      p_data.dblink,
+        P_PRIORITY =>    g_qry_priority,
+        P_TIMEOUT =>     g_qry_timeout) ;
 
-      execute immediate l_sql using p_data.sql_id, p_awr_params.DBID, p_awr_params.SNAP_START, p_awr_params.SNAP_END, l_rec_awr;
+      --execute immediate l_sql using p_data.sql_id, p_awr_params.DBID, p_awr_params.SNAP_START, p_awr_params.SNAP_END, l_rec_awr;
       l_sql := null;
     end if;
 

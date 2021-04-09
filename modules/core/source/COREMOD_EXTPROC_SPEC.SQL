@@ -37,7 +37,7 @@ PACKAGE COREMOD_EXTPROC AS
   procedure set_task_finshed(p_task_id number, p_status varchar2, p_errormsg varchar2, p_rows_processed number/*, p_result clob default null*/);
   procedure set_task_taken(p_task_id number);
   procedure wait_result(p_task_id number, p_timeout number default 600);
-
+  function get_rows_processed return number;
   function get_server_status(p_format varchar2) return varchar2;
 
 

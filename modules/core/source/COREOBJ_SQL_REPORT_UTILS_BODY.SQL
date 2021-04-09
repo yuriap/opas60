@@ -763,6 +763,24 @@ q'[select plan_table_output "Plan Table Output" from table(dbms_xplan.display('O
  order by SAMPLES_CNT desc]','<sql_data_point_id>',p_sql_data_point_id),'<DTFMT>',defDataTimeFmt);
   end;
 
+  function getq_print_vash_section1_base       (p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                                p_for_grid             boolean default false) return varchar2
+  is
+  begin
+    return replace(replace(q'[select plan_hash_value, id, row_src "Row source", event, cnt "Time", tim_pct "Time, %", tim_id_pct "Time by ID, %", obj "Object", tbs "Tablespace"
+  from OPAS_OT_SQL_VASH2 x where sql_data_point_id = <sql_data_point_id>
+ order by plan_hash_value, id, event]','<sql_data_point_id>',p_sql_data_point_id),'<DTFMT>',defDataTimeFmt);
+  end;
+
+  function getq_print_vash_section2_base       (p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
+                                                p_for_grid             boolean default false) return varchar2
+  is
+  begin
+    return replace(replace(replace(q'[select to_char(sql_hour,'<defDTFullFmt>') "Hour", to_char(SQL_EXEC_START,'<defDTFullFmt>') SQL_EXEC_START, to_char(sql_exec_end,'<defDTFullFmt>') sql_exec_end, plan_hash_value, id, row_src, event, cnt, tim_pct, tim_id_pct, obj, tbs
+  from OPAS_OT_SQL_VASH1 x where sql_data_point_id = <sql_data_point_id>
+ order by SQL_EXEC_START, plan_hash_value, id, event]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt);
+  end;
+
   procedure print_vash_section_base(p_sql_data_point_id    opas_ot_sql_data.sql_data_point_id%type,
                                     p_output out COREMOD_REPORT_UTILS.t_output_lines) AS
   begin
@@ -794,9 +812,7 @@ q'[select plan_table_output "Plan Table Output" from table(dbms_xplan.display('O
     p_output(p_output.count+1):=HTF.BR;
 
     COREMOD_REPORT_UTILS.print_query_result_html (
-p_query => replace(q'[select plan_hash_value, id, row_src "Row source", event, cnt "Time", tim_pct "Time, %", tim_id_pct "Time by ID, %", obj "Object", tbs "Tablespace"
-  from OPAS_OT_SQL_VASH2 x where sql_data_point_id = <sql_data_point_id>
- order by plan_hash_value, id, event]','<sql_data_point_id>',p_sql_data_point_id),
+p_query => getq_print_vash_section1_base(p_sql_data_point_id),
                                             p_width => gwWideSection1,
                                             p_summary => 'V$ASH Summary',
                                             --p_search varchar2 default null,
@@ -820,9 +836,7 @@ p_query => replace(q'[select plan_hash_value, id, row_src "Row source", event, c
     p_output(p_output.count+1):=HTF.BR;
 
     COREMOD_REPORT_UTILS.print_query_result_html (
-p_query => replace(replace(replace(q'[select to_char(sql_hour,'<defDTFullFmt>') "Hour", to_char(SQL_EXEC_START,'<defDTFullFmt>') SQL_EXEC_START, to_char(sql_exec_end,'<defDTFullFmt>') sql_exec_end, plan_hash_value, id, row_src, event, cnt, tim_pct, tim_id_pct, obj, tbs
-  from OPAS_OT_SQL_VASH1 x where sql_data_point_id = <sql_data_point_id>
- order by SQL_EXEC_START, plan_hash_value, id, event]','<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt),
+p_query => getq_print_vash_section2_base(p_sql_data_point_id),
                                             p_width => gwWideSection1,--'
                                             p_summary => 'V$ASH Details',
                                             --p_search varchar2 default null,
@@ -939,6 +953,7 @@ order by snap nulls last, inst_id]'; --'
     else
       l_sql := replace(replace(l_sql,'<COMMFORGRID>',''),'<UNCOMMFORGRID>','--');
     end if;
+    --coremod_log.log(replace(replace(replace(l_sql,'<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt));
     return replace(replace(replace(l_sql,'<sql_data_point_id>',p_sql_data_point_id),'<defDTFmt>',defDataTimeFmt),'<defDTFullFmt>',defDataTimeFullFmt);
   end;
 
@@ -1518,6 +1533,9 @@ order by snap,plan_hash_value,PLAN_LINE_ID nulls first,SAMPLES desc]','<sql_data
 
     COREMOD_LOG.Stop_SQL_TRACE('COREOBJ_SQL_REPORT_UTILS.PRINT_SECTION_HTML.SQL_TRACE');
     COREMOD_LOG.Stop_SQL_GATHER_STAT('COREOBJ_SQL_REPORT_UTILS.PRINT_SECTION_HTML.GATHER_SQL_STAT');
+  exception
+    when others then
+      raise_application_error(-20000, 'Error print_section_html ('||p_sql_data_point_id||'): '||DBMS_UTILITY.FORMAT_ERROR_STACK);
   end;
 
   function print_report_html(p_obj_id  opas_objects.obj_id%type,
