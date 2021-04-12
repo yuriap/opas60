@@ -256,18 +256,39 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
     l_file_id opas_files.file_id%type;
     l_rows number := 1;
     l_sql_approx varchar2(4000);
+    l_task number;
   begin
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQL_TEXT);
 
     for i in (select * from opas_ot_sql_descriptions where sql_id=p_data.sql_id and sql_text is null) loop
       if p_data.dblink <> '$LOCAL$' then
-        COREMOD_UTILS.get_clob_remotelly(q'[select sql_fulltext into l_out from gv$sql where sql_id=']' || p_data.sql_id || q'[' and rownum=1;]',
-                                         p_data.dblink, --COREMOD_API.get_ora_dblink(p_data.dblink),
-                                         l_sql);
-        if nvl(l_sql,'<NO_DATA_FOUND>') = '<NO_DATA_FOUND>' then
-          COREMOD_UTILS.get_clob_remotelly(q'[select sql_text into l_out from dba_hist_sqltext where sql_id=']' || p_data.sql_id || q'[';]',
+        if COREMOD_API.external_mode_dblink(p_data.dblink) then
+          COREMOD_UTILS.get_clob_remotelly(q'[select sql_fulltext into l_out from gv$sql where sql_id=']' || p_data.sql_id || q'[' and rownum=1;]',
                                            p_data.dblink, --COREMOD_API.get_ora_dblink(p_data.dblink),
-                                           l_sql);
+                                           l_sql,
+                                           p_timeout => g_qry_timeout);
+          if nvl(l_sql,'<NO_DATA_FOUND>') = '<NO_DATA_FOUND>' then
+            COREMOD_UTILS.get_clob_remotelly(q'[select sql_text into l_out from dba_hist_sqltext where sql_id=']' || p_data.sql_id || q'[';]',
+                                             p_data.dblink, --COREMOD_API.get_ora_dblink(p_data.dblink),
+                                             l_sql,
+                                             p_timeout => g_qry_timeout);
+          end if;
+        elsif COREMOD_API.external_mode_javasrv(p_data.dblink) then
+          l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY =>
+  q'[declare a clob := null;
+     begin
+       begin select txt into a from (select sql_fulltext txt from gv$sql where sql_id=:p_sql_id1 union all select sql_text from dba_hist_sqltext where sql_id=:p_sql_id2) where rownum=1;
+       exception when others then null; end;
+       :outclob := a;
+     end;]',
+                                                     P_DBLINK => p_data.dblink,
+                                                     P_PRIORITY => g_qry_priority);
+
+        COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 1, p_varchar2 => p_data.sql_id ) ;
+        COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 2, p_varchar2 => p_data.sql_id ) ;
+        COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'OUT', P_ORDR_NUM => 3, p_clob => null ) ;
+        COREMOD_EXTPROC.execute_plsql_task (  P_TASK_ID => l_task, P_TIMEOUT => g_qry_timeout) ;
+        COREMOD_EXTPROC.get_param (  P_TASK_ID => l_task, P_ORDR_NUM => 3, p_clob => l_sql) ;
         end if;
       else
         begin
@@ -401,39 +422,37 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
         --INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_NONSHARED */ INTO opas_ot_sql_nonshared (
         --      sql_data_point_id, sql_id, inst_id, nonshared_reason, cnt)
            q'[(select <p_sql_data_point_id> sql_data_point_id, sql_id, inst_id, nonshared_reason, cnt from
-          (select inst_id, sql_id, nonshared_reason, count(*) cnt from (select inst_id,sql_id,
-             UNBOUND_CURSOR,SQL_TYPE_MISMATCH,OPTIMIZER_MISMATCH,OUTLINE_MISMATCH,STATS_ROW_MISMATCH,LITERAL_MISMATCH,FORCE_HARD_PARSE,
-             EXPLAIN_PLAN_CURSOR,BUFFERED_DML_MISMATCH,PDML_ENV_MISMATCH,INST_DRTLD_MISMATCH,SLAVE_QC_MISMATCH,TYPECHECK_MISMATCH,
-             AUTH_CHECK_MISMATCH,BIND_MISMATCH,DESCRIBE_MISMATCH,LANGUAGE_MISMATCH,TRANSLATION_MISMATCH,BIND_EQUIV_FAILURE,INSUFF_PRIVS,
-             INSUFF_PRIVS_REM,REMOTE_TRANS_MISMATCH,LOGMINER_SESSION_MISMATCH,INCOMP_LTRL_MISMATCH,OVERLAP_TIME_MISMATCH,EDITION_MISMATCH,
-             MV_QUERY_GEN_MISMATCH,USER_BIND_PEEK_MISMATCH,TYPCHK_DEP_MISMATCH,NO_TRIGGER_MISMATCH,FLASHBACK_CURSOR,ANYDATA_TRANSFORMATION,
-             PDDL_ENV_MISMATCH,TOP_LEVEL_RPI_CURSOR,DIFFERENT_LONG_LENGTH,LOGICAL_STANDBY_APPLY,DIFF_CALL_DURN,BIND_UACS_DIFF,PLSQL_CMP_SWITCHS_DIFF,
-             CURSOR_PARTS_MISMATCH,STB_OBJECT_MISMATCH,CROSSEDITION_TRIGGER_MISMATCH,PQ_SLAVE_MISMATCH,TOP_LEVEL_DDL_MISMATCH,MULTI_PX_MISMATCH,
-             BIND_PEEKED_PQ_MISMATCH,MV_REWRITE_MISMATCH,ROLL_INVALID_MISMATCH,OPTIMIZER_MODE_MISMATCH,PX_MISMATCH,MV_STALEOBJ_MISMATCH,FLASHBACK_TABLE_MISMATCH,
-             LITREP_COMP_MISMATCH,PLSQL_DEBUG,LOAD_OPTIMIZER_STATS,ACL_MISMATCH,FLASHBACK_ARCHIVE_MISMATCH,LOCK_USER_SCHEMA_FAILED,REMOTE_MAPPING_MISMATCH,
-             LOAD_RUNTIME_HEAP_FAILED,HASH_MATCH_FAILED,PURGED_CURSOR,BIND_LENGTH_UPGRADEABLE,USE_FEEDBACK_STATS
-          from gv$sql_shared_cursor<DBLINK>
-          where sql_id = '<p_sql_id>') unpivot
-            (nonshared_value for nonshared_reason in (
-               UNBOUND_CURSOR as 'UNBOUND_CURSOR', SQL_TYPE_MISMATCH as 'SQL_TYPE_MISMATCH', OPTIMIZER_MISMATCH as 'OPTIMIZER_MISMATCH', OUTLINE_MISMATCH as 'OUTLINE_MISMATCH',
-               STATS_ROW_MISMATCH as 'STATS_ROW_MISMATCH', LITERAL_MISMATCH as 'LITERAL_MISMATCH', FORCE_HARD_PARSE as 'FORCE_HARD_PARSE', EXPLAIN_PLAN_CURSOR as 'EXPLAIN_PLAN_CURSOR',
-               BUFFERED_DML_MISMATCH as 'BUFFERED_DML_MISMATCH', PDML_ENV_MISMATCH as 'PDML_ENV_MISMATCH', INST_DRTLD_MISMATCH as 'INST_DRTLD_MISMATCH', SLAVE_QC_MISMATCH as 'SLAVE_QC_MISMATCH',
-               TYPECHECK_MISMATCH as 'TYPECHECK_MISMATCH', AUTH_CHECK_MISMATCH as 'AUTH_CHECK_MISMATCH', BIND_MISMATCH as 'BIND_MISMATCH', DESCRIBE_MISMATCH as 'DESCRIBE_MISMATCH',
-               LANGUAGE_MISMATCH as 'LANGUAGE_MISMATCH', TRANSLATION_MISMATCH as 'TRANSLATION_MISMATCH', BIND_EQUIV_FAILURE as 'BIND_EQUIV_FAILURE', INSUFF_PRIVS as 'INSUFF_PRIVS',
-               INSUFF_PRIVS_REM as 'INSUFF_PRIVS_REM', REMOTE_TRANS_MISMATCH as 'REMOTE_TRANS_MISMATCH', LOGMINER_SESSION_MISMATCH as 'LOGMINER_SESSION_MISMATCH', INCOMP_LTRL_MISMATCH as 'INCOMP_LTRL_MISMATCH',
-               OVERLAP_TIME_MISMATCH as 'OVERLAP_TIME_MISMATCH', EDITION_MISMATCH as 'EDITION_MISMATCH', MV_QUERY_GEN_MISMATCH as 'MV_QUERY_GEN_MISMATCH', USER_BIND_PEEK_MISMATCH as 'USER_BIND_PEEK_MISMATCH',
-               TYPCHK_DEP_MISMATCH as 'TYPCHK_DEP_MISMATCH', NO_TRIGGER_MISMATCH as 'NO_TRIGGER_MISMATCH', FLASHBACK_CURSOR as 'FLASHBACK_CURSOR', ANYDATA_TRANSFORMATION as 'ANYDATA_TRANSFORMATION',
-               PDDL_ENV_MISMATCH as 'PDDL_ENV_MISMATCH', TOP_LEVEL_RPI_CURSOR as 'TOP_LEVEL_RPI_CURSOR', DIFFERENT_LONG_LENGTH as 'DIFFERENT_LONG_LENGTH', LOGICAL_STANDBY_APPLY as 'LOGICAL_STANDBY_APPLY',
-               DIFF_CALL_DURN as 'DIFF_CALL_DURN', BIND_UACS_DIFF as 'BIND_UACS_DIFF', PLSQL_CMP_SWITCHS_DIFF as 'PLSQL_CMP_SWITCHS_DIFF', CURSOR_PARTS_MISMATCH as 'CURSOR_PARTS_MISMATCH',
-               STB_OBJECT_MISMATCH as 'STB_OBJECT_MISMATCH', CROSSEDITION_TRIGGER_MISMATCH as 'CROSSEDITION_TRIGGER_MISMATCH', PQ_SLAVE_MISMATCH as 'PQ_SLAVE_MISMATCH', TOP_LEVEL_DDL_MISMATCH as 'TOP_LEVEL_DDL_MISMATCH',
-               MULTI_PX_MISMATCH as 'MULTI_PX_MISMATCH', BIND_PEEKED_PQ_MISMATCH as 'BIND_PEEKED_PQ_MISMATCH', MV_REWRITE_MISMATCH as 'MV_REWRITE_MISMATCH', ROLL_INVALID_MISMATCH as 'ROLL_INVALID_MISMATCH',
-               OPTIMIZER_MODE_MISMATCH as 'OPTIMIZER_MODE_MISMATCH', PX_MISMATCH as 'PX_MISMATCH', MV_STALEOBJ_MISMATCH as 'MV_STALEOBJ_MISMATCH', FLASHBACK_TABLE_MISMATCH as 'FLASHBACK_TABLE_MISMATCH',
-               LITREP_COMP_MISMATCH as 'LITREP_COMP_MISMATCH', PLSQL_DEBUG as 'PLSQL_DEBUG', LOAD_OPTIMIZER_STATS as 'LOAD_OPTIMIZER_STATS', ACL_MISMATCH as 'ACL_MISMATCH',
-               FLASHBACK_ARCHIVE_MISMATCH as 'FLASHBACK_ARCHIVE_MISMATCH', LOCK_USER_SCHEMA_FAILED as 'LOCK_USER_SCHEMA_FAILED', REMOTE_MAPPING_MISMATCH as 'REMOTE_MAPPING_MISMATCH',
-               LOAD_RUNTIME_HEAP_FAILED as 'LOAD_RUNTIME_HEAP_FAILED', HASH_MATCH_FAILED as 'HASH_MATCH_FAILED', PURGED_CURSOR as 'PURGED_CURSOR', BIND_LENGTH_UPGRADEABLE as 'BIND_LENGTH_UPGRADEABLE',
-               USE_FEEDBACK_STATS as 'USE_FEEDBACK_STATS'))
-         where nonshared_value = 'Y'
-         group by inst_id,sql_id, nonshared_reason))]';
+(select inst_id, sql_id, nonshared_reason, count(*) cnt from (select inst_id,sql_id,
+UNBOUND_CURSOR,SQL_TYPE_MISMATCH,OPTIMIZER_MISMATCH,OUTLINE_MISMATCH,STATS_ROW_MISMATCH,LITERAL_MISMATCH,FORCE_HARD_PARSE,
+EXPLAIN_PLAN_CURSOR,BUFFERED_DML_MISMATCH,PDML_ENV_MISMATCH,INST_DRTLD_MISMATCH,SLAVE_QC_MISMATCH,TYPECHECK_MISMATCH,
+AUTH_CHECK_MISMATCH,BIND_MISMATCH,DESCRIBE_MISMATCH,LANGUAGE_MISMATCH,TRANSLATION_MISMATCH,BIND_EQUIV_FAILURE,INSUFF_PRIVS,
+INSUFF_PRIVS_REM,REMOTE_TRANS_MISMATCH,LOGMINER_SESSION_MISMATCH,INCOMP_LTRL_MISMATCH,OVERLAP_TIME_MISMATCH,EDITION_MISMATCH,
+MV_QUERY_GEN_MISMATCH,USER_BIND_PEEK_MISMATCH,TYPCHK_DEP_MISMATCH,NO_TRIGGER_MISMATCH,FLASHBACK_CURSOR,ANYDATA_TRANSFORMATION,
+PDDL_ENV_MISMATCH,TOP_LEVEL_RPI_CURSOR,DIFFERENT_LONG_LENGTH,LOGICAL_STANDBY_APPLY,DIFF_CALL_DURN,BIND_UACS_DIFF,PLSQL_CMP_SWITCHS_DIFF,
+CURSOR_PARTS_MISMATCH,STB_OBJECT_MISMATCH,CROSSEDITION_TRIGGER_MISMATCH,PQ_SLAVE_MISMATCH,TOP_LEVEL_DDL_MISMATCH,MULTI_PX_MISMATCH,
+BIND_PEEKED_PQ_MISMATCH,MV_REWRITE_MISMATCH,ROLL_INVALID_MISMATCH,OPTIMIZER_MODE_MISMATCH,PX_MISMATCH,MV_STALEOBJ_MISMATCH,FLASHBACK_TABLE_MISMATCH,
+LITREP_COMP_MISMATCH,PLSQL_DEBUG,LOAD_OPTIMIZER_STATS,ACL_MISMATCH,FLASHBACK_ARCHIVE_MISMATCH,LOCK_USER_SCHEMA_FAILED,REMOTE_MAPPING_MISMATCH,
+LOAD_RUNTIME_HEAP_FAILED,HASH_MATCH_FAILED,PURGED_CURSOR,BIND_LENGTH_UPGRADEABLE,USE_FEEDBACK_STATS
+from gv$sql_shared_cursor<DBLINK>
+where sql_id = '<p_sql_id>') unpivot
+(nonshared_value for nonshared_reason in (
+UNBOUND_CURSOR as'UNBOUND_CURSOR',SQL_TYPE_MISMATCH as'SQL_TYPE',OPTIMIZER_MISMATCH as'OPTIMIZER',OUTLINE_MISMATCH as'OUTLINE',
+STATS_ROW_MISMATCH as'STATS_ROW',LITERAL_MISMATCH as'LITERAL',FORCE_HARD_PARSE as'FORCE_HARD_PARSE',EXPLAIN_PLAN_CURSOR as'EXPLAIN_PLAN_CURSOR',
+BUFFERED_DML_MISMATCH as'BUFFERED_DML',PDML_ENV_MISMATCH as'PDML_ENV',INST_DRTLD_MISMATCH as'INST_DRTLD',SLAVE_QC_MISMATCH as'SLAVE_QC',
+TYPECHECK_MISMATCH as'TYPECHECK',AUTH_CHECK_MISMATCH as'AUTH_CHECK',BIND_MISMATCH as'BIND',DESCRIBE_MISMATCH as'DESCRIBE',
+LANGUAGE_MISMATCH as'LANGUAGE',TRANSLATION_MISMATCH as'TRANSLATION',BIND_EQUIV_FAILURE as'BIND_EQUIV_FAILURE',INSUFF_PRIVS as'INSUFF_PRIVS',
+INSUFF_PRIVS_REM as 'INSUFF_PRIVS_REM', REMOTE_TRANS_MISMATCH as 'REMOTE_TRANS',LOGMINER_SESSION_MISMATCH as 'LOGMINER_SESSION',INCOMP_LTRL_MISMATCH as 'INCOMP_LTRL',
+OVERLAP_TIME_MISMATCH as'OVERLAP_TIME',EDITION_MISMATCH as'EDITION',MV_QUERY_GEN_MISMATCH as'MV_QUERY_GEN',USER_BIND_PEEK_MISMATCH as'USER_BIND_PEEK',
+TYPCHK_DEP_MISMATCH as'TYPCHK_DEP',NO_TRIGGER_MISMATCH as'NO_TRIGGER',FLASHBACK_CURSOR as'FLSH_CURSOR',ANYDATA_TRANSFORMATION as'ANYDATA_TRANSF',
+PDDL_ENV_MISMATCH as'PDDL_ENV',TOP_LEVEL_RPI_CURSOR as'TOP_LVL_RPI_CRSR',DIFFERENT_LONG_LENGTH as'DIFF_LONG_LENGTH',LOGICAL_STANDBY_APPLY as'LOG_STNDB_APPLY',
+DIFF_CALL_DURN as'DIFF_CALL_DURN',BIND_UACS_DIFF as'BIND_UACS_DIFF',PLSQL_CMP_SWITCHS_DIFF as'PLSQL_CMP_SWITCHS_DIFF',CURSOR_PARTS_MISMATCH as'CRSR_PARTS',
+STB_OBJECT_MISMATCH as'STB_OBJ',CROSSEDITION_TRIGGER_MISMATCH as'CROSSED_TRG',PQ_SLAVE_MISMATCH as'PQ_SLV',TOP_LEVEL_DDL_MISMATCH as'TOP_LVL_DDL',
+MULTI_PX_MISMATCH as'MULTI_PX',BIND_PEEKED_PQ_MISMATCH as'BIND_PEEK_PQ',MV_REWRITE_MISMATCH as'MV_REWR',ROLL_INVALID_MISMATCH as'ROLL_INV',
+OPTIMIZER_MODE_MISMATCH as'OPT_MODE',PX_MISMATCH as'PX',MV_STALEOBJ_MISMATCH as'MV_STALEOBJ',FLASHBACK_TABLE_MISMATCH as'FLSH_TABLE',
+LITREP_COMP_MISMATCH as'LITREP_COMP',PLSQL_DEBUG as'PLSQL_DBG',LOAD_OPTIMIZER_STATS as'LOAD_OPT_ST',ACL_MISMATCH as 'ACL',
+FLASHBACK_ARCHIVE_MISMATCH as'FLSH_ARC',LOCK_USER_SCHEMA_FAILED as'LCK_USR_SCH_F',REMOTE_MAPPING_MISMATCH as'REMOTE_MAP',
+LOAD_RUNTIME_HEAP_FAILED as'LOAD_RT_HEAP_F',HASH_MATCH_FAILED as'HASH_MATCH_F',PURGED_CURSOR as'PURGED_CRS',BIND_LENGTH_UPGRADEABLE as'BIND_LENGTH_UPG',
+USE_FEEDBACK_STATS as'USE_FB_STATS'))where nonshared_value = 'Y'group by inst_id,sql_id, nonshared_reason))]';
     --execute immediate l_sql using p_data.sql_data_point_id, p_data.sql_id;
     --l_rows := case when sql%rowcount > 0 then 1 else 0 end;
     l_sql := replace(replace(l_sql,'<p_sql_data_point_id>',p_data.sql_data_point_id),'<p_sql_id>',p_data.sql_id);
@@ -670,7 +689,7 @@ PACKAGE BODY COREOBJ_SQL_UTILS AS
 --      and not exists (select 1 from opas_ot_sql_sqlmon_ref i where sql_data_point_id = p_data.sql_data_point_id and i.sqlmon_id=p.sqlmon_id)
       ;
     l_rows := ceil(sql%rowcount/3);
-coremod_tasks.log('l_rows mon: '||l_rows);
+--coremod_tasks.log('l_rows mon: '||l_rows);
 --coremod_tasks.log('5: '||sql%rowcount);
     --select count(1) into l_rows from opas_ot_sql_sqlmon_ref where sql_data_point_id = p_data.sql_data_point_id;
 
@@ -707,7 +726,8 @@ coremod_tasks.log('l_rows mon: '||l_rows);
                                                       ,'<SQL_ID>',p_data.sql_id)
                                                       ,'<REP_ID>',i.report_id),
                                            p_dblink => p_data.dblink,
-                                           p_output => l_report);
+                                           p_output => l_report,
+                                           p_timeout => g_qry_timeout);
 --coremod_tasks.log('i.report_id <> 0: '||i.report_id);
           else
             if i.sql_text_avail = 1 and i.PROCESS_NAME = 'MAIN' then
@@ -720,7 +740,8 @@ coremod_tasks.log('l_rows mon: '||l_rows);
                                                       ,'<IID>',i.instance_number)
                                                       ,'<SDT>',to_char(i.sql_exec_start,'YYYYMMDDHH24MISS')),
                                            p_dblink => p_data.dblink,
-                                           p_output => l_report);
+                                           p_output => l_report,
+                                           p_timeout => g_qry_timeout);
 --coremod_tasks.log('i.sql_text_avail: '||i.sql_text_avail||' '||i.PROCESS_NAME||' '||i.sid||' '||i.session_serial#||' '||i.sql_exec_id);
             end if;
           end if;
@@ -826,35 +847,39 @@ coremod_tasks.log('l_rows mon: '||l_rows);
     elsif COREMOD_API.external_mode_javasrv(p_data.dblink) then
       for i in (select REPORT_ID from opas_ot_tmp_dba_hist_reports) loop
         l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY =>
-  q'[declare a clob;
+  q'[declare a clob := null;
      begin
-       select REPORT into a from dba_hist_reports_details where REPORT_ID=:ID;
-       :outclob := a;
-     exception when no_data_found then :outclob := null;
+       begin select REPORT into a from dba_hist_reports_details where REPORT_ID=:ID; exception when others then null; end;
+       :l_out := a;
      end;]',
                                                     P_DBLINK => p_data.dblink,
                                                     P_PRIORITY => g_qry_priority);
+--coremod_tasks.log('COREMOD_EXTPROC: 1');
         COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task,
                                      P_IO_TYPE => 'IN',
                                      P_ORDR_NUM => 1,
                                      p_number => i.REPORT_ID
                                   ) ;
-
+--coremod_tasks.log('COREMOD_EXTPROC: 2');
         COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task,
                                      P_IO_TYPE => 'OUT',
                                      P_ORDR_NUM => 2,
                                      p_clob => null --empty_clob()
                                   ) ;
-
+--coremod_tasks.log('COREMOD_EXTPROC: 3');
         COREMOD_EXTPROC.execute_plsql_task (  P_TASK_ID => l_task,
                                               P_TIMEOUT => g_qry_timeout) ;
-
+--coremod_tasks.log('COREMOD_EXTPROC: 4');
         COREMOD_EXTPROC.get_param (  P_TASK_ID => l_task,
                                      P_ORDR_NUM => 2,
                                      p_clob => l_report) ;
+--coremod_tasks.log('l_report('||l_task||'): <'||length(l_report)||'>');
         --INSERT INTO OPAS_OT_TMP_DBA_HIST_REP_XML_EXT (TASK_ID, REPORT_ID, REPORT) values (l_task, i.REPORT_ID, l_report);
         --commit;
         INSERT INTO OPAS_OT_TMP_DBA_HIST_REP_XML (REPORT_ID, REPORT) values (i.REPORT_ID, l_report);
+--coremod_tasks.log('OPAS_OT_TMP_DBA_HIST_REP_XML: '||sql%rowcount);
+        INSERT INTO OPAS_OT_TMP_DBA_HIST_REP_XML_EXT (TASK_ID, REPORT_ID, REPORT) values (l_task, i.REPORT_ID, l_report);
+--coremod_tasks.log('OPAS_OT_TMP_DBA_HIST_REP_XML_EXT: '||sql%rowcount);
       end loop;
     else
       raise_application_error(-20000,'Unsupported external execution mode for DB Link(load_sql_mon_hst): '||p_data.dblink);
@@ -965,7 +990,7 @@ coremod_tasks.log('l_rows mon: '||l_rows);
 
     l_rows := ceil(sql%rowcount/3);
     --select count(1) into l_rows from opas_ot_sql_sqlmon_ref where sql_data_point_id = p_data.sql_data_point_id;
-coremod_tasks.log('l_rows mon hst: '||l_rows);
+--coremod_tasks.log('l_rows mon hst: '||l_rows);
 
     insert into opas_ot_tmp_gv$sql_plan_stat_all (
            report_id,
@@ -1055,7 +1080,7 @@ coremod_tasks.log('l_rows mon hst: '||l_rows);
        and p.report_id=k.report_id;
 
 
-    for i in (select * from opas_ot_sql_descriptions where sql_id=p_data.sql_id and sql_text is null) loop
+    for i in (select * from opas_ot_sql_descriptions where sql_id=p_data.sql_id and sql_text is null and sql_text_approx is null) loop
       begin
         for j in (select * from (
                   select XMLCast(xmlquery('$p/report/sql_monitor_report/target/sql_fulltext' passing xmltype(report) as "p" RETURNING CONTENT) as clob) sql_text,
@@ -1117,7 +1142,8 @@ coremod_tasks.log('l_rows mon hst: '||l_rows);
             q'[begin l_out := DBMS_AUTO_REPORT.REPORT_REPOSITORY_DETAIL(RID => <REP_ID>, TYPE => 'text'); end;]'
                                                     ,'<REP_ID>',i.report_id),
                                          p_dblink => p_data.dblink,
-                                         p_output => l_report);
+                                         p_output => l_report,
+                                         p_timeout => g_qry_timeout);
 
         l_file_id := COREMOD_FILE_UTILS.create_file(
           P_MODNAME => COREMOD_API.gMODNAME,
@@ -1253,7 +1279,7 @@ coremod_tasks.log('l_rows mon hst: '||l_rows);
                                  , p_priority=>g_qry_priority, p_timeout=>g_qry_timeout) ;
 
     if COREMOD_API.external_mode_javasrv(p_data.dblink) then
-      l_sql := q'[GV_$SQL_PLAN_STATISTICS_ALL where (<FILTER>) and other_xml is not null]';
+      l_sql := q'[GV$SQL_PLAN_STATISTICS_ALL where (<FILTER>) and other_xml is not null]';
 
       l_sql := replace(l_sql,'<FILTER>',replace(q'[ sql_id = '<sql_id>']','<sql_id>',p_data.sql_id));
 
@@ -1276,16 +1302,17 @@ coremod_tasks.log('l_rows mon hst: '||l_rows);
 
       for i in (select * from OPAS_OT_TMP_PLANS_OTHER_XML) loop
         l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY =>
-  q'[declare a clob;
+  q'[declare a clob := null;
      begin
-       select other_xml into a from GV_$SQL_PLAN_STATISTICS_ALL where SQL_ID = :SQL_ID and INST_ID=:INST_ID and PLAN_HASH_VALUE = :PLAN_HASH_VALUE and CHILD_NUMBER = :CHILD_NUMBER and ID=:ID and rownum=1;
+       begin select other_xml into a from GV$SQL_PLAN_STATISTICS_ALL
+             where SQL_ID = :SQL_ID and INST_ID=:INST_ID and PLAN_HASH_VALUE = :PLAN_HASH_VALUE and CHILD_NUMBER = :CHILD_NUMBER and ID=:ID and rownum=1;
+             exception when others then null; end;
        :outclob := a;
-     exception when no_data_found then :outclob := null;
      end;]',
                                                     P_DBLINK => p_data.dblink,
                                                     P_PRIORITY => g_qry_priority);
 
-        COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 1, p_number => i.SQL_ID ) ;
+        COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 1, p_varchar2 => i.SQL_ID ) ;
         COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 2, p_number => i.INST_ID ) ;
         COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 3, p_number => i.PLAN_HASH_VALUE ) ;
         COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 4, p_number => i.CHILD_NUMBER ) ;
@@ -1357,7 +1384,7 @@ coremod_tasks.log('l_rows mon hst: '||l_rows);
   is
     l_sql        varchar2(32765);
     l_rows       number := 0;
-    l_remote_ep  varchar2(32765) := q'[begin delete from plan_table where STATEMENT_ID = 'OPAS60'; execute immediate q'~explain plan set statement_id='OPAS60' for ]' || chr(10) || q'[<SQLTOEXPLAIN>~'; end;]';
+    l_remote_ep  varchar2(32765) := q'[begin delete from plan_table where STATEMENT_ID = '<PLANID>'; execute immediate q'~explain plan set statement_id='<PLANID>' for ]' || chr(10) || q'[<SQLTOEXPLAIN>~'; end;]';
     l_sql_ptr    OPAS_OT_SQL_DESCRIPTIONS.SQL_TEXT%type;
     l_sql_text   clob;
     l_sql_out    clob;
@@ -1365,8 +1392,9 @@ coremod_tasks.log('l_rows mon hst: '||l_rows);
     l_full_plan_hash number;
     l_col_list   varchar2(32765);
     l_sqlerrm    varchar2(32765);
+    l_PLANID     varchar2(100):= 'OPAS60'||DBMS_RANDOM.STRING('X',6);
   begin
-    finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLEP, p_rows_processed => 0);
+    --finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLEP, p_rows_processed => 0);
     --dangerous! can lead to ORA-04020: deadlock detected while trying to lock object ...
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLEP);
 
@@ -1375,8 +1403,8 @@ coremod_tasks.log('l_rows mon hst: '||l_rows);
 
       if COREMOD_FILE_UTILS.get_file_size(p_file_id => l_sql_ptr) > 32000 then raise_application_error(-20000, 'SQL Text is too long'); end if;
       COREMOD_FILE_UTILS.get_locator(l_sql_ptr,l_sql_text);
-      l_sql := replace(l_remote_ep,'<SQLTOEXPLAIN>',l_sql_text);
-      delete from plan_table where STATEMENT_ID = 'OPAS60';
+      l_sql := replace(replace(l_remote_ep,'<SQLTOEXPLAIN>',l_sql_text),'<PLANID>',l_PLANID);
+      delete from plan_table where STATEMENT_ID = l_PLANID;
       commit;
 
       if p_data.dblink <> COREMOD_API.gLocalDBLink then
@@ -1389,7 +1417,7 @@ coremod_tasks.log('l_rows mon hst: '||l_rows);
             P_IS_OUTPUT => false) ;
 
           l_sql :=q'[INSERT /*+ OPAS60_COREOBJ_SQL_UTILS_LOAD_EP_PLANS */ INTO plan_table (<SRC_DB_COL_LICT>)
-                     select <SRC_DB_COL_LICT> from plan_table]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || q'[ where STATEMENT_ID = 'OPAS60']';
+                     select <SRC_DB_COL_LICT> from plan_table]' || COREMOD_API.get_dblink_for_query(p_data.dblink) || q'[ where STATEMENT_ID = '<PLANID>']';
           l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',l_col_list);
           execute immediate l_sql;
           l_sql := null;
@@ -1398,23 +1426,26 @@ coremod_tasks.log('l_rows mon hst: '||l_rows);
            l_task number;
            l_other_xml clob;
           begin
-            l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY => l_remote_ep,
+            /*
+            l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY => l_sql,
                                                         P_DBLINK => p_data.dblink,
                                                         P_PRIORITY => g_qry_priority);
 
             COREMOD_EXTPROC.execute_plsql_task (  P_TASK_ID => l_task,
-                                                  P_TIMEOUT => g_qry_timeout) ;
+                                                  P_TIMEOUT => g_qry_timeout) ;  */
+
             COREMOD_API.load_tmp_data (  P_DB_LINK_NAME => p_data.dblink,
                                          P_SRC_TABLE_NAME_R => 'PLAN_TABLE$',
                                          P_SRC_TABLE_NAME => 'PLAN_TABLE',
                                          P_TRG_TABLE_NAME => 'PLAN_TABLE',
                                          P_SUFF => 'PLN',
                                          P_DBID => null,
-                                         P_KEY_PREF => 'TABCOLLIST',
-                                         P_FILTER => q'[ where STATEMENT_ID = 'OPAS60']'
+                                         P_KEY_PREF => 'LOCTABCOLS',
+                                         P_FILTER => replace(q'[ STATEMENT_ID = '<PLANID>']','<PLANID>',l_PLANID),
+                                         p_plsql_body => l_sql
                                          , p_priority=>g_qry_priority, p_timeout=>g_qry_timeout) ;
 
-            l_sql := q'[PLAN_TABLE where STATEMENT_ID = 'OPAS60' and other_xml is not null]';
+            l_sql := replace(q'[PLAN_TABLE where STATEMENT_ID = '<PLANID>' and other_xml is not null]','<PLANID>',l_PLANID);
 
             g_SELECT_LIST.delete;
             g_SELECT_LIST('SQL_ID'):='null';
@@ -1434,13 +1465,12 @@ coremod_tasks.log('l_rows mon hst: '||l_rows);
               P_TIMEOUT => g_qry_timeout) ;
 
             for i in (select * from OPAS_OT_TMP_PLANS_OTHER_XML) loop
-              l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY =>
-        q'[declare a clob;
+              l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY => replace(
+        q'[declare a clob := null;
            begin
-             select other_xml into a from PLAN_TABLE where STATEMENT_ID = 'OPAS60' and ID=:ID and rownum=1;
+             begin select other_xml into a from PLAN_TABLE where STATEMENT_ID = '<PLANID>' and ID=:ID and rownum=1; exception when others then null; end;
              :outclob := a;
-           exception when no_data_found then :outclob := null;
-           end;]',
+           end;]','<PLANID>',l_PLANID),
                                                           P_DBLINK => p_data.dblink,
                                                           P_PRIORITY => g_qry_priority);
 
@@ -1467,7 +1497,7 @@ coremod_tasks.log('l_rows mon hst: '||l_rows);
                     plan_hash      path 'info[@type="plan_hash"]',
                     plan_hash_full path 'info[@type="plan_hash_full"]'
                    ) x1
-       where other_xml is not null and STATEMENT_ID = 'OPAS60';
+       where other_xml is not null and STATEMENT_ID = l_PLANID;
 
       INSERT INTO opas_ot_tmp_gv$sql_plan_key
              ( plan_id,                   plan_hash_value, full_plan_hash_value)
@@ -1495,7 +1525,7 @@ coremod_tasks.log('l_rows mon hst: '||l_rows);
       select p.*, k.plan_id opas_plan_id, p_data.sql_id sql_id, k.plan_hash_value, k.full_plan_hash_value
         from plan_table p,
              opas_ot_tmp_gv$sql_plan_key k
-       where p.STATEMENT_ID = 'OPAS60';
+       where p.STATEMENT_ID = l_PLANID;
 
       select count(1) into l_rows from opas_ot_sql_plan_ref r, opas_ot_sql_plans p where r.plan_id=p.plan_id and p.plan_source = srcEP and r.sql_data_point_id = p_data.sql_data_point_id;
     end if;
@@ -1855,16 +1885,16 @@ coremod_tasks.log('l_rows mon hst: '||l_rows);
 
       for i in (select * from OPAS_OT_TMP_PLANS_OTHER_XML) loop
         l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY =>
-  q'[declare a clob;
+  q'[declare a clob := null;
      begin
-       select other_xml into a from DBA_HIST_SQL_PLAN where SQL_ID = :SQL_ID and DBID=:DBID and PLAN_HASH_VALUE = :PLAN_HASH_VALUE and ID=:ID and rownum=1;
+       begin select other_xml into a from DBA_HIST_SQL_PLAN where SQL_ID = :SQL_ID and DBID=:DBID and PLAN_HASH_VALUE = :PLAN_HASH_VALUE and ID=:ID and rownum=1;
+       exception when others then null; end;
        :outclob := a;
-     exception when no_data_found then :outclob := null;
      end;]',
                                                     P_DBLINK => p_data.dblink,
                                                     P_PRIORITY => g_qry_priority);
 
-        COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 1, p_number => i.SQL_ID ) ;
+        COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 1, p_varchar2 => i.SQL_ID ) ;
         COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 2, p_number => i.DBID ) ;
         COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 3, p_number => i.PLAN_HASH_VALUE ) ;
         COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 4, p_number => i.ID ) ;
@@ -1968,7 +1998,7 @@ coremod_tasks.log('l_rows mon hst: '||l_rows);
                                                    '<p1>',p_awr_params.SNAP_START),
                                                    '<p2>',p_awr_params.SNAP_END);
     --execute immediate l_sql using p_data.sql_id, p_awr_params.DBID, p_awr_params.SNAP_START, p_awr_params.SNAP_END;
-
+    g_SELECT_LIST.delete;
     COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_DBH_ASH',
       P_SELECT_LIST => g_SELECT_LIST, --empty
       P_SQL_BODY =>    l_sql,
@@ -2651,9 +2681,12 @@ coremod_tasks.log('l_rows mon hst: '||l_rows);
     load_sql_text(l_data);
     coremod_api.end_longops_section(p_sofar => 1, p_lops_ind => l_lops_ind);
     commit;
+
     --load_sql_ep_plans(l_data);
     --coremod_api.end_longops_section(p_sofar => 2, p_lops_ind => l_lops_ind);
     --commit;
+    finish_section(l_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLEP, p_rows_processed => 0);
+
     load_sql_plans(l_data);
     coremod_api.end_longops_section(p_sofar => 3, p_lops_ind => l_lops_ind);
     commit;

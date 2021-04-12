@@ -424,7 +424,7 @@ package body COREMOD_API as
                 execute immediate l_sql into l_res using ltrim(p_key, 'TABCOLLIST_'), ltrim(p_key, 'TABCOLLIST_');
 
               exception
-                when others then raise_application_error(-20000,'Unable to get DB Link Cache for Key|DB Link: '||p_key||'|'||p_db_link_name||chr(10)||' '||sqlerrm||chr(10)||l_sql);
+                when others then raise_application_error(-20000,'Unable to get DB Link Cache(DBLINK) for Key|DB Link: '||p_key||'|'||p_db_link_name||chr(10)||' '||sqlerrm||chr(10)||l_sql);
               end;
             when p_key like 'LOCTABCOLS%' then
               begin
@@ -435,7 +435,7 @@ package body COREMOD_API as
                 execute immediate l_sql into l_res using ltrim(p_key, 'LOCTABCOLS_'), p_local_tab;
 
               exception
-                when others then raise_application_error(-20000,'Unable to get DB Link Cache for Key|Local Tab|DB Link: '||p_key||'|'||p_local_tab||'|'||p_db_link_name||chr(10)||' '||sqlerrm||chr(10)||l_sql);
+                when others then raise_application_error(-20000,'Unable to get DB Link Cache(DBLINK) for Key|Local Tab|DB Link: '||p_key||'|'||p_local_tab||'|'||p_db_link_name||chr(10)||' '||sqlerrm||chr(10)||l_sql);
               end;
           else
             raise_application_error(-20000,'Unsupported DB Link Cache Key: '||p_key);
@@ -452,7 +452,7 @@ package body COREMOD_API as
 
                 COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_TAB_COLS',
                   P_SELECT_LIST => L_SELECT_LIST, --empty
-                  P_SQL_BODY =>    replace(q'[select column_name from dba_tab_cols where table_name=upper('<p_tab_name>') and owner='SYS']','<p_tab_name>',ltrim(p_key, 'TABCOLLIST_')),
+                  P_SQL_BODY =>    replace(q'[(select column_name from dba_tab_cols where table_name=upper('<p_tab_name>') and owner='SYS')]','<p_tab_name>',ltrim(p_key, 'TABCOLLIST_')),
                   P_DBLINK =>      p_db_link_name,
                   P_PRIORITY =>    3,
                   P_TIMEOUT =>     60) ;
@@ -463,7 +463,7 @@ package body COREMOD_API as
                    select column_name from dba_tab_cols where table_name=upper(ltrim(p_key, 'TABCOLLIST_')) and owner='SYS' and DATA_TYPE not in ('XMLTYPE','LONG'));
 
               exception
-                when others then raise_application_error(-20000,'Unable to get DB Link Cache for Key|DB Link: '||p_key||'|'||p_db_link_name||chr(10)||' '||sqlerrm||chr(10)||l_sql);
+                when others then raise_application_error(-20000,'Unable to get DB Link Cache(JAVA) for Key|DB Link: '||p_key||'|'||p_db_link_name||chr(10)||' '||sqlerrm||chr(10)||l_sql);
               end;
             when p_key like 'LOCTABCOLS%' then
               begin
@@ -475,7 +475,7 @@ package body COREMOD_API as
 
                 COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_TAB_COLS',
                   P_SELECT_LIST => L_SELECT_LIST, --empty
-                  P_SQL_BODY =>    replace(q'[select column_name from dba_tab_cols where table_name=upper('<p_tab_name>') and owner='SYS']','<p_tab_name>',ltrim(p_key, 'LOCTABCOLS_')),
+                  P_SQL_BODY =>    replace(q'[(select column_name from dba_tab_cols where table_name=upper('<p_tab_name>') and owner='SYS')]','<p_tab_name>',ltrim(p_key, 'LOCTABCOLS_')),
                   P_DBLINK =>      p_db_link_name,
                   P_PRIORITY =>    3,
                   P_TIMEOUT =>     60) ;
@@ -486,7 +486,7 @@ package body COREMOD_API as
                    select column_name from dba_tab_cols where table_name=upper(p_local_tab) and DATA_TYPE not in ('XMLTYPE','LONG'));
 
               exception
-                when others then raise_application_error(-20000,'Unable to get DB Link Cache for Key|Local Tab|DB Link: '||p_key||'|'||p_local_tab||'|'||p_db_link_name||chr(10)||' '||sqlerrm||chr(10)||l_sql);
+                when others then raise_application_error(-20000,'Unable to get DB Link Cache(JAVA) for Key|Local Tab|DB Link: '||p_key||'|'||p_local_tab||'|'||p_db_link_name||chr(10)||' '||sqlerrm||chr(10)||l_sql);
               end;
           else
             raise_application_error(-20000,'Unsupported DB Link Cache Key: '||p_key);
@@ -585,7 +585,8 @@ package body COREMOD_API as
                           p_key_pref         varchar2 default 'TABCOLLIST',
                           p_filter           varchar2 default null,
                           p_priority         number,
-                          p_timeout          number)
+                          p_timeout          number,
+                          p_plsql_body       varchar2 default null)
   is
     l_sql           varchar2(32765);
     L_SELECT_LIST   COREMOD_EXTPROC.t_columns;
@@ -605,24 +606,26 @@ package body COREMOD_API as
       execute immediate l_sql;
       g_last_sql_rowcount := sql%rowcount;
     elsif COREMOD_API.external_mode_javasrv(p_db_link_name) then
+      l_sql := replace(replace('(select * from <SRCTBL> where (<FILTER>))','<SRCTBL>',p_src_table_name),'<FILTER>',nvl(p_filter,' 1=1 '));
+      coremod_log.log('COREMOD_API.load_tmp_data (JAVA):'||chr(10)||l_sql,'DEBUG');
       COREMOD_EXTPROC.load_external_data (
         P_TARGET_TABLE => upper(p_trg_table_name),
         P_SELECT_LIST => l_SELECT_LIST,
-        P_SQL_BODY => replace('(select * from <SRCTBL>)','<SRCTBL>',p_src_table_name),
+        P_SQL_BODY => l_sql,
         P_DBLINK => p_db_link_name,
         P_PRIORITY => load_tmp_data.p_priority,
         P_TIMEOUT => load_tmp_data.p_timeout,
         P_GENERATE_ONLY => false,
-        P_PLSQL_BODY => null,
+        P_PLSQL_BODY => load_tmp_data.p_plsql_body,
         p_key_pref => load_tmp_data.P_KEY_PREF,
-        p_src_table => load_tmp_data.P_SRC_TABLE_NAME) ;
-      g_last_sql_rowcount := 1;
+        p_src_table_r => load_tmp_data.P_SRC_TABLE_NAME_R) ;
+      g_last_sql_rowcount := COREMOD_EXTPROC.get_rows_processed;
     else
       raise_application_error(-20000,'Unsupported external execution mode for DB Link (get_remote_full_oracle_version): '||p_db_link_name);
     end if;
   exception
       when others then
-        coremod_tasks.log('Error in COREMOD_API.load_tmp_data loading p_db_link_name, p_src_table_name: '||p_db_link_name||', '||p_trg_table_name||':'||sqlerrm||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE||chr(10)||l_sql);
+        coremod_tasks.log('Error in COREMOD_API.load_tmp_data loading p_db_link_name, p_trg_table_name: '||p_db_link_name||', '||p_trg_table_name||':'||sqlerrm||chr(10)||l_sql||chr(10)||DBMS_UTILITY.FORMAT_ERROR_BACKTRACE||chr(10)||l_sql);
   end;
 
   procedure update_dblink_db_info(p_db_link_name varchar2)

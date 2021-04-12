@@ -26,7 +26,7 @@ PACKAGE BODY COREMOD_EXTPROC AS
                                p_generate_only boolean default false,
                                p_plsql_body    varchar2 default null,
                                p_key_pref      varchar2 default null,
-                               p_src_table     varchar2 default null,
+                               p_src_table_r   varchar2 default null,
                                p_timestamp_col varchar2 default null)
   is
     l_extunltmpl varchar2(32765) := q'[SELECT <COLLIST>
@@ -53,12 +53,15 @@ FROM   <SQLBODY>]';
     l_javasrv boolean := COREMOD_API.external_mode_javasrv(p_dblink);
   begin
 --dbms_output.put_line(replace(p_key_pref||'_<SRC_TABLE>','<SRC_TABLE>',p_src_table));
+
+    gRowsProcessed := 0;
+
     if p_key_pref = 'TABCOLLIST' then
       l_column_list := COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_dblink,
-                                                        P_KEY => replace(p_key_pref||'_<SRC_TABLE>','<SRC_TABLE>',p_src_table));
+                                                        P_KEY => replace(p_key_pref||'_<SRC_TABLE>','<SRC_TABLE>',p_src_table_r));
     elsif p_key_pref = 'LOCTABCOLS' then
       l_column_list := COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_dblink,
-                                                        P_KEY => replace(p_key_pref||'_<SRC_TABLE>','<SRC_TABLE>',p_src_table),
+                                                        P_KEY => replace(p_key_pref||'_<SRC_TABLE>','<SRC_TABLE>',p_src_table_r),
                                                         p_local_tab => p_target_table);
     end if;
     if p_timestamp_col is not null and p_timestamp_col in ('TS', 'LTS', 'TSTZ','TSUTC') then
@@ -115,6 +118,7 @@ FROM   <SQLBODY>]';
 
     if l_dblink then
       l_sql := l_dbltmpl;
+      l_col_num := regexp_count(l_trgcols_expr, ',')+1;
       l_sql := replace(replace(replace(replace(l_sql,'<SQLBODY>',p_sql_body),'<DBLINK>',COREMOD_API.get_dblink_for_query(p_dblink)),'<TARGETTBL>',p_target_table),'<TARGETCOLLIST>',l_trgcols);
       l_sql := replace(l_sql,'<COLLIST>',l_trgcols_expr);
       log_debug('load_external_data DBLINK l_sql: '||l_sql);
@@ -134,6 +138,7 @@ FROM   <SQLBODY>]';
       l_loadsql := q'[INSERT INTO <TARGET_TABLE>_EXT (task_id, <TARGETCOLLIST>) VALUES (to_number(?), <INSCOLLIST>)]';
       l_loadsql := replace(replace(replace(l_loadsql,'<TARGET_TABLE>',p_target_table),'<TARGETCOLLIST>',l_trgcols),'<INSCOLLIST>',l_trgcols_java_vals);
 
+      l_col_num := regexp_count(l_trgcols_java_vals, ',')+1;
       l_loadlocalsql := q'[INSERT INTO <TARGET_TABLE> (<TARGETCOLLIST>) select <TARGETCOLLIST> from <TARGET_TABLE>_EXT where task_id=:l_task]';
       l_loadlocalsql := replace(replace(l_loadlocalsql,'<TARGET_TABLE>',p_target_table),'<TARGETCOLLIST>',l_trgcols);
 
@@ -203,7 +208,7 @@ FROM   <SQLBODY>]';
     end loop;
 */
     delete from OPAS_EXTPROC_WORK_SRV where FINISHED < sysdate - l_retention_h/24;
-    select task_id bulk collect into l_ids from OPAS_EXTPROC_QUEUE_SRV where nvl(FINISHED,TAKEN) < sysdate - l_retention_h/24;
+    select task_id bulk collect into l_ids from OPAS_EXTPROC_QUEUE_SRV where (nvl(FINISHED,TAKEN) < sysdate - l_retention_h/24) or (status='PRE' and created < sysdate - l_retention_h/24);
     for i in 1..l_ids.count loop
       cleanup_task(l_ids(i));
       delete from OPAS_EXTPROC_QUEUE_SRV where task_id=l_ids(i);
@@ -311,7 +316,7 @@ FROM   <SQLBODY>]';
     l_maxiter  number := to_number(COREMOD_API.getconf('COORDAQCITERS'));
     l_sleep    number := to_number(COREMOD_API.getconf('COORDAQCSLEEP'));
   begin
-    log_info('coordinator_proc started');
+    log_debug('coordinator_proc started');
     loop
       if l_iter = 0 or mod(l_iter,20)=0 then
         gsrvLoggingLevel := COREMOD_API.getconf('EXTLOGGINGMODE');
@@ -358,7 +363,7 @@ FROM   <SQLBODY>]';
           exit when l_dblink is null or l_threads2created <= 0;
           if (
                (not l_dblinks_running.exists(l_dblink)) or
-               (l_dblinks_running.exists(l_dblink) and l_dblinks2start(l_dblink) > gsrvQueryPerServerSession/2)
+               (l_dblinks_running.exists(l_dblink) and l_dblinks2start(l_dblink) > 4 ) -- number of tasks in queue to start a new worker rvQueryPerServerSession/2)
              )
               and l_threads2created>0 then
             l_dblinks_running(l_dblink):=0;
@@ -386,7 +391,7 @@ FROM   <SQLBODY>]';
       exit when l_iter > l_maxiter;
       dbms_session.sleep(l_sleep);
     end loop;
-    log_info('coordinator_proc finished');
+    log_debug('coordinator_proc finished');
   end;
 
   procedure report_connection_problem(p_work_id number, p_errormsg varchar2)
@@ -475,7 +480,7 @@ FROM   <SQLBODY>]';
     if l_iterations>l_max_iteration then
       p_timeouted := 1; log_info('get_next_task timed out: p_work_id, '||p_work_id);
     else
-      log_info('get_next_task finished');
+      log_debug('get_next_task finished');
     end if;
   end;
 /*
@@ -590,29 +595,41 @@ FROM   <SQLBODY>]';
   end;
 
   procedure set_param(p_task_id number, p_ordr_num number, p_clob clob) is
+  pragma autonomous_transaction;
   begin
     --raise_application_error(-20000,'p_clob:'||length(p_clob));
     update OPAS_EXTPROC_RESULTS set R_CLOB = p_clob where TASK_ID = p_task_id and R_ORDR_NUM = p_ordr_num;
+    commit;
   end;
   procedure set_param(p_task_id number, p_ordr_num number, p_number number) is
+  pragma autonomous_transaction;
   begin
     update OPAS_EXTPROC_RESULTS set R_NUMBER = p_number where TASK_ID = p_task_id and R_ORDR_NUM = p_ordr_num;
+    commit;
   end;
   procedure set_param(p_task_id number, p_ordr_num number, p_date date) is
+  pragma autonomous_transaction;
   begin
     update OPAS_EXTPROC_RESULTS set R_DATE = p_date where TASK_ID = p_task_id and R_ORDR_NUM = p_ordr_num;
+    commit;
   end;
   procedure set_param(p_task_id number, p_ordr_num number, p_timestamp timestamp) is
+  pragma autonomous_transaction;
   begin
     update OPAS_EXTPROC_RESULTS set R_TIMESTAMP = p_timestamp where TASK_ID = p_task_id and R_ORDR_NUM = p_ordr_num;
+    commit;
   end;
   procedure set_param(p_task_id number, p_ordr_num number, p_timestamp_tz timestamp with time zone) is
+  pragma autonomous_transaction;
   begin
     update OPAS_EXTPROC_RESULTS set R_TIMESTAMP_TZ = p_timestamp_tz where TASK_ID = p_task_id and R_ORDR_NUM = p_ordr_num;
+    commit;
   end;
   procedure set_param(p_task_id number, p_ordr_num number, p_varchar2 varchar2) is
+  pragma autonomous_transaction;
   begin
     update OPAS_EXTPROC_RESULTS set R_VARCHAR = p_varchar2 where TASK_ID = p_task_id and R_ORDR_NUM = p_ordr_num;
+    commit;
   end;
 
   function  create_plsql_task (p_plsql_body    varchar2,

@@ -175,13 +175,13 @@ else q'[end;]' end;
       raise_application_error(-20000,'Error in COREMOD_REPORT_UTILS.execute_plsql_remotelly: '||sqlerrm);
   end;
 
-  procedure get_clob_remotelly(p_sql varchar2, p_dblink varchar2, p_output out clob)
+  procedure get_clob_remotelly(p_sql varchar2, p_dblink varchar2, p_output out clob, p_timeout number default 600)
   is
   begin
-    execute_plsql_remotelly(p_sql, p_dblink, p_output, true);
+    execute_plsql_remotelly(p_sql, p_dblink, p_output, true, p_timeout);
   end;
 
-  procedure execute_plsql_remotelly(p_sql varchar2, p_dblink varchar2, p_output out clob, p_is_output boolean default true)
+  procedure execute_plsql_remotelly(p_sql varchar2, p_dblink varchar2, p_output out clob, p_is_output boolean default true, p_timeout number default 600)
   is
     l_task   number;
     l_output varchar2(4000);
@@ -190,7 +190,7 @@ else q'[end;]' end;
       execute_plsql_remotelly_dblink(p_sql, p_dblink, p_output, p_is_output);
     elsif COREMOD_API.external_mode_javasrv(p_dblink) then
     --  raise_application_error(-20000,'Unimplemented execute_plsql_remotelly for SQL*Plus');
-      l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY => 'begin '||replace(p_sql,'l_out',':l_out')||' end;',
+      l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY => 'begin '||replace(p_sql,'l_out',':l_out')||' exception when no_data_found then null; end;',
                                                   P_DBLINK => execute_plsql_remotelly.p_dblink,
                                                   P_PRIORITY => 3);
       if p_is_output then
@@ -200,12 +200,12 @@ else q'[end;]' end;
                                      p_clob => null) ;
       end if;
       COREMOD_EXTPROC.execute_plsql_task (  P_TASK_ID => l_task,
-                                            P_TIMEOUT => 60) ;
+                                            P_TIMEOUT => p_timeout) ;
       if p_is_output then
         COREMOD_EXTPROC.get_param (  P_TASK_ID => l_task,
                                      P_ORDR_NUM => 1,
-                                     p_clob => l_output) ;
-        p_output := l_output;
+                                     p_clob => p_output) ;
+        --p_output := l_output;
       end if;
     end if;
   end;

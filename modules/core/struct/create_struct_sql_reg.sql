@@ -1679,3 +1679,54 @@ SELECT
   x.*
 FROM
   OPAS_OT_TMP_REC_SQL_IDS x where 1=2;
+  
+drop table OPAS_OT_TMP_DBH_ASH_EXT;
+create table OPAS_OT_TMP_DBH_ASH_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  OPAS_OT_TMP_DBH_ASH x where 1=2;
+  
+drop table PLAN_TABLE_EXT;
+create table PLAN_TABLE_EXT as
+SELECT
+  0 task_id,
+  statement_id,
+  plan_id,
+  timestamp,
+  remarks,
+  operation,
+  options,
+  object_node,
+  object_owner,
+  object_name,
+  object_alias,
+  object_instance,
+  object_type,
+  optimizer,
+  search_columns,
+  id,
+  parent_id,
+  depth,
+  position,
+  cost,
+  cardinality,
+  bytes,
+  other_tag,
+  partition_start,
+  partition_stop,
+  partition_id,
+  --other,
+  other_xml,
+  distribution,
+  cpu_cost,
+  io_cost,
+  temp_space,
+  access_predicates,
+  filter_predicates,
+  projection,
+  time,
+  qblock_name
+FROM
+  sys.plan_table$ where 1=2;

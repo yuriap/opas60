@@ -18,7 +18,7 @@ PACKAGE COREMOD_EXTPROC AS
                                p_generate_only boolean default false,
                                p_plsql_body    varchar2 default null,
                                p_key_pref      varchar2 default null,
-                               p_src_table     varchar2 default null,
+                               p_src_table_r   varchar2 default null,
                                p_timestamp_col varchar2 default null);
 
   procedure Cleanup_queue;

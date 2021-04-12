@@ -232,6 +232,8 @@ public class remote_executor {
     
     private static void execute_select_insert_task(int p_task_id)  throws Exception, SQLException {
 		
+      log_debug("start execute_select_insert_task: p_task_id=" + p_task_id);
+      
       String which_sql = "";
       int rows_processed = 0;
       int batch_processed = 0;
@@ -383,7 +385,7 @@ public class remote_executor {
 
       PreparedStatement paramsstmt = localconn.prepareStatement("SELECT r_ordr_num, r_io_type, r_data_type, r_clob, r_number, r_date, r_timestamp, r_timestamp_tz, r_varchar FROM opas_extproc_results where task_id = ? order by r_ordr_num, r_io_type");
       try {
-          log_debug("start plsql exec");      
+          log_debug("start execute_plsql_task exec: p_task_id=" + p_task_id);      
           paramsstmt.setInt(1, p_task_id);
           ResultSet paramsset = paramsstmt.executeQuery();
           CallableStatement plsql_block = remoteconn.prepareCall(pl_sql);     
@@ -449,10 +451,10 @@ public class remote_executor {
           executed++;
           log_debug("execute_plsql_task: " + executed);   
       } catch (SQLException e) {    
-          set_task(p_task_id, "FAILED", e.getMessage(), 0);
+          set_task(p_task_id, "FAILED", "SQL Exception: " + e.getMessage(), 0);
           log_info("execute_plsql_task SQLException: " + e.getMessage()); 
       } catch (Exception e) {       
-          set_task(p_task_id, "FAILED", e.getMessage(), 0);
+          set_task(p_task_id, "FAILED", "Exception: " + e.getMessage(), 0);
           log_info("execute_plsql_task Exception: " + e.getMessage()); 
       }            
     }

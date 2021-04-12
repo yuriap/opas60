@@ -205,65 +205,71 @@ package body coremod_tasks as
     l_norm_limit number := to_number(COREMOD_API.getconf('MAXTHREADS'||tpNORM,COREMOD_API.gMODNAME));
     l_low_limit  number := to_number(COREMOD_API.getconf('MAXTHREADS'||tpLOW,COREMOD_API.gMODNAME));
     */
+    --l_iter number := 0;
+    --l_maxiter  number := to_number(COREMOD_API.getconf('COORDAQCITERS'));
+    --l_sleep    number := to_number(COREMOD_API.getconf('COORDAQCSLEEP'));
   begin
     COREMOD_API.lock_resource(
       P_RESOURCE_NAME => 'OPASTASKCOORD',
       P_MODE => 6,
       P_TIMEOUT => 60,
       P_RELEASE_ON_COMMIT => false);
-
-    for i in (select priority_levels.lvl task_priority, count(j.job_name) cnt
-                from (select decode(level,1,tpHIGH,2,tpNORM,3,tpLOW,4,tpINTERNAL) lvl from dual connect by level <=4) priority_levels,
-                     USER_SCHEDULER_RUNNING_JOBS j,
-                     (select tq.job_name, nvl(tq.task_priority,t.task_priority) task_priority from opas_task_queue tq, opas_task t where tq.taskname = t.taskname) ttq
-               where priority_levels.lvl = ttq.task_priority
-                 and j.job_name(+) like 'OPASTASK%'
-                 and j.job_name(+) = ttq.job_name
-               group by priority_levels.lvl)
-    loop
-      if i.task_priority = tpINTERNAL then
-        l_freeslots := 1000;
-      else
-        if i.cnt < to_number(COREMOD_API.getconf('MAXTHREADS'||i.task_priority,COREMOD_API.gMODNAME)) then
-          l_freeslots:= to_number(COREMOD_API.getconf('MAXTHREADS'||i.task_priority,COREMOD_API.gMODNAME)) - i.cnt;
+    --loop
+      for i in (select priority_levels.lvl task_priority, count(j.job_name) cnt
+                  from (select decode(level,1,tpHIGH,2,tpNORM,3,tpLOW,4,tpINTERNAL) lvl from dual connect by level <=4) priority_levels,
+                       USER_SCHEDULER_RUNNING_JOBS j,
+                       (select tq.job_name, nvl(tq.task_priority,t.task_priority) task_priority from opas_task_queue tq, opas_task t where tq.taskname = t.taskname) ttq
+                 where priority_levels.lvl = ttq.task_priority
+                   and j.job_name(+) like 'OPASTASK%'
+                   and j.job_name(+) = ttq.job_name
+                 group by priority_levels.lvl)
+      loop
+        if i.task_priority = tpINTERNAL then
+          l_freeslots := 1000;
         else
-          l_freeslots := 0;
+          if i.cnt < to_number(COREMOD_API.getconf('MAXTHREADS'||i.task_priority,COREMOD_API.gMODNAME)) then
+            l_freeslots:= to_number(COREMOD_API.getconf('MAXTHREADS'||i.task_priority,COREMOD_API.gMODNAME)) - i.cnt;
+          else
+            l_freeslots := 0;
+          end if;
         end if;
-      end if;
 
-      select tq.* bulk collect into l_tasks
-        from opas_task_queue tq, opas_task t
-       where status=gtqQUEUED
-         and tq.taskname = t.taskname
-         and nvl(tq.task_priority, t.task_priority) = i.task_priority
-         for update skip locked order by queued;
+        select tq.* bulk collect into l_tasks
+          from opas_task_queue tq, opas_task t
+         where status=gtqQUEUED
+           and tq.taskname = t.taskname
+           and nvl(tq.task_priority, t.task_priority) = i.task_priority
+           for update skip locked order by queued;
 
-      for i in 1..least(l_freeslots,l_tasks.count) loop
-        l_2run.extend;
-        l_2run(l_2run.count):=l_tasks(i);
-        l_2run(l_2run.count).job_name:=gJOBNMPREF||'_'||upper(l_2run(l_2run.count).taskname)||'_'||DBMS_RANDOM.STRING('X',6);
-        set_task_started(l_tasks(i).tq_id, l_2run(l_2run.count).job_name);
+        for i in 1..least(l_freeslots,l_tasks.count) loop
+          l_2run.extend;
+          l_2run(l_2run.count):=l_tasks(i);
+          l_2run(l_2run.count).job_name:=gJOBNMPREF||'_'||upper(l_2run(l_2run.count).taskname)||'_'||DBMS_RANDOM.STRING('X',6);
+          set_task_started(l_tasks(i).tq_id, l_2run(l_2run.count).job_name);
+        end loop;
       end loop;
-    end loop;
 
-    commit;
+      commit;
 
-    for i in 1..l_2run.count
-    loop
-      begin
-        dbms_scheduler.create_job(job_name => l_2run(i).job_name,
-                                  job_type => 'PLSQL_BLOCK',
-                                  job_action => 'begin coremod_tasks.execute_task('||l_2run(i).tq_id||'); end;',
-                                  start_date => systimestamp,
-                                  enabled => true,
-                                  auto_drop=> true);
-      exception
-        when others then
-          log('Execute task error: '||sqlerrm,l_2run(i).tq_id);
-          log(DBMS_UTILITY.FORMAT_ERROR_STACK,l_2run(i).tq_id);
-      end;
-    end loop;
-
+      for i in 1..l_2run.count
+      loop
+        begin
+          dbms_scheduler.create_job(job_name => l_2run(i).job_name,
+                                    job_type => 'PLSQL_BLOCK',
+                                    job_action => 'begin coremod_tasks.execute_task('||l_2run(i).tq_id||'); end;',
+                                    start_date => systimestamp,
+                                    enabled => true,
+                                    auto_drop=> true);
+        exception
+          when others then
+            log('Execute task error: '||sqlerrm,l_2run(i).tq_id);
+            log(DBMS_UTILITY.FORMAT_ERROR_STACK,l_2run(i).tq_id);
+        end;
+      end loop;
+      --l_iter := l_iter + 1;
+      --exit when l_iter > l_maxiter;
+      --dbms_session.sleep(l_sleep);
+    --end loop;
     COREMOD_API.release_resource;
   end;
 
@@ -317,22 +323,37 @@ package body coremod_tasks as
   end;
 
   procedure create_task_job is
+    l_cnt number;
+    l_job_status varchar2(100);
   begin
-    dbms_scheduler.create_program(
-                              program_name             => 'OPAS_TASK_COORD_PRG',
-                              program_type             => 'PLSQL_BLOCK',
-                              program_action           => 'begin coremod_tasks.execute_task_proc; end;',
-                              enabled                  => true,
-                              comments                 => 'OPAS Task job coordinator program');
-    dbms_scheduler.create_job(job_name                 => 'OPAS_TASK_COORD',
-                              program_name             => 'OPAS_TASK_COORD_PRG',
-                              start_date               => trunc(systimestamp,'mi'),
-                              repeat_interval          => 'FREQ=SECONDLY; INTERVAL=10',
-                              job_style                => 'LIGHTWEIGHT',
-                              $IF not OPAS_CLOUD.gOPAS_CLOUD $THEN
-                              job_class                => 'JC_'||user,
-                              $END
-                              enabled                  => true);
+    select count(1) into l_cnt from user_scheduler_programs where program_name='OPAS_TASK_COORD_PRG';
+    if l_cnt = 0 then
+      dbms_scheduler.create_program(
+                                program_name             => 'OPAS_TASK_COORD_PRG',
+                                program_type             => 'PLSQL_BLOCK',
+                                program_action           => 'begin coremod_tasks.execute_task_proc; end;',
+                                enabled                  => true,
+                                comments                 => 'OPAS Task job coordinator program');
+    end if;
+
+    begin
+      select count(1) into l_cnt from user_scheduler_jobs where job_name='OPAS_TASK_COORD';
+      if l_cnt > 0 then
+        begin dbms_scheduler.stop_job('OPAS_TASK_COORD');exception when others then null; end;
+        begin dbms_scheduler.drop_job('OPAS_TASK_COORD');exception when others then null; end;
+      end if;
+
+      dbms_scheduler.create_job(job_name                 => 'OPAS_TASK_COORD',
+                                program_name             => 'OPAS_TASK_COORD_PRG',
+                                start_date               => trunc(systimestamp,'mi'),
+                                repeat_interval          => 'FREQ=SECONDLY; INTERVAL=2',
+                                job_style                => 'LIGHTWEIGHT',
+                                $IF not OPAS_CLOUD.gOPAS_CLOUD $THEN
+                                job_class                => 'JC_'||user,
+                                $END
+                                enabled                  => true);
+
+    end;
   end;
 
   procedure wait_task_finish(p_tq_id opas_task_queue.tq_id%type, p_timeout number default 3600)
