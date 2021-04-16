@@ -135,7 +135,10 @@ public class remote_executor {
       localrset.close();   
       localstmt.close();
       
-      connect_to_remote();
+      //connect_to_remote();
+      
+      remoteconn = DriverManager.getConnection("jdbc:oracle:thin:@//"+server_connectstr,username,password_str);
+      
       Statement remotestmt = remoteconn.createStatement();
       ResultSet remoterset = remotestmt.executeQuery("select * from dual");
 
@@ -424,15 +427,17 @@ public class remote_executor {
               if (r_data_type.equals("CLOB"))         {
                 //set_result_clob(p_task_id, r_ordr_num, plsql_block.getClob(r_ordr_num));
                 Clob myClob1 = plsql_block.getClob(r_ordr_num);
-                Clob myClob2 = localconn.createClob();
-                String res = clobToString(myClob1);
-                myClob2.setString(1, res); //;
-                CallableStatement setres = localconn.prepareCall("{ call COREMOD_EXTPROC.set_param (  P_TASK_ID => ?, p_ordr_num => ?, p_clob => ?) }");    
-                setres.setInt(1, p_task_id);
-                setres.setInt(2, r_ordr_num);
-                setres.setClob(3, myClob2);
-                setres.executeUpdate(); 
-                setres.close();      
+                if ((myClob1 != null)&&(myClob1.length()>0)) {
+                  Clob myClob2 = localconn.createClob();            
+                  String res = clobToString(myClob1);             
+                  myClob2.setString(1, res); //;           
+                  CallableStatement setres = localconn.prepareCall("{ call COREMOD_EXTPROC.set_param (  P_TASK_ID => ?, p_ordr_num => ?, p_clob => ?) }");                 
+                  setres.setInt(1, p_task_id);
+                  setres.setInt(2, r_ordr_num);          
+                  setres.setClob(3, myClob2);          
+                  setres.executeUpdate();             
+                  setres.close();      
+                }
               }
               if (r_data_type.equals("DATE"))         set_result_date(p_task_id, r_ordr_num, plsql_block.getDate(r_ordr_num));
               if (r_data_type.equals("TIMESTAMP"))    set_result_timestamp(p_task_id, r_ordr_num, plsql_block.getTimestamp(r_ordr_num));
@@ -451,10 +456,10 @@ public class remote_executor {
           executed++;
           log_debug("execute_plsql_task: " + executed);   
       } catch (SQLException e) {    
-          set_task(p_task_id, "FAILED", "SQL Exception: " + e.getMessage(), 0);
+          set_task(p_task_id, "FAILED", " PLSQL: SQL Exception: " + e.getMessage(), 0);
           log_info("execute_plsql_task SQLException: " + e.getMessage()); 
       } catch (Exception e) {       
-          set_task(p_task_id, "FAILED", "Exception: " + e.getMessage(), 0);
+          set_task(p_task_id, "FAILED", " PLSQL: Exception: " + e.getMessage(), 0);
           log_info("execute_plsql_task Exception: " + e.getMessage()); 
       }            
     }
@@ -495,7 +500,7 @@ public class remote_executor {
 
       if (remote_conn_established) set_work(cWORK_ID, executed, "No errors");
       finalize_conn();
-      log_info("finished");        
+      log_info("finished. executed tasks: " + executed);        
     }
 }
 /

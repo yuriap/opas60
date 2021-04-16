@@ -6,6 +6,10 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
   gCurrentSession opas_ot_sql_searches.session_id%type;
   gSearchMode varchar2(1);
 
+  g_qry_priority number := 1;
+  g_qry_timeout  number := 300; --sec
+  g_SELECT_LIST COREMOD_EXTPROC.t_columns;
+
   function get_shorten_sql_text(p_sql_id varchar2, p_length number default 0, p_show_tail number default 1) return varchar2 deterministic
   is
     PRAGMA UDF;
@@ -379,6 +383,9 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
     l_rows        number;
     l_time        timestamp := systimestamp;
     l_duration    varchar2(100);
+    l_task        number;
+    l_sql_fulltext clob;
+    l_parsing_schema varchar2(512);
   begin
     coremod_log.log('COREOBJ_SQL_SEARCH.start_external_search: started for: '||p_session_id,'DEBUG');
     extract_params(p_session_id);
@@ -440,36 +447,72 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
         -- the last one
         l_v_sql := l_v_sql || q'[ and rownum <= ]' || l_rows || chr(10);
 
-        l_v_sql := replace(l_v_sql,'<DBLINK>',COREMOD_API.get_dblink_for_query(gParams('P1411_DATABASE')));
-        l_v_sql := replace(l_v_sql,'<DBLINKNM>',gParams('P1411_DATABASE'));
+        if COREMOD_API.external_mode_dblink(gParams('P1411_DATABASE')) then
+          l_v_sql := replace(l_v_sql,'<DBLINK>',COREMOD_API.get_dblink_for_query(gParams('P1411_DATABASE')));
+          l_v_sql := replace(l_v_sql,'<DBLINKNM>',gParams('P1411_DATABASE'));
 
-        coremod_log.log('COREOBJ_SQL_SEARCH.start_external_search v$sql: '||l_v_sql,'DEBUG');
+          coremod_log.log('COREOBJ_SQL_SEARCH.start_external_search v$sql: '||l_v_sql,'DEBUG');
 
-        l_counter := 0;
-        l_sql_id_list := null;
-        l_sql := l_v_sql;
-        open l_crsr for l_sql;
-        loop
-          fetch l_crsr into l_sql_id;
-          exit when l_crsr%notfound;
-          l_counter := l_counter + 1;
-          l_sql_id_list := l_sql_id_list || q'[']' || l_sql_id || q'[',]';
-        end loop;
-        close l_crsr;
+          l_counter := 0;
+          l_sql_id_list := null;
+          l_sql := l_v_sql;
 
-        if l_counter > 0 then
-          l_v2_sql := replace(l_v2_sql,'<DBLINK>',COREMOD_API.get_dblink_for_query(gParams('P1411_DATABASE')));
-          l_v2_sql := replace(l_v2_sql,'<DBLINKNM>',gParams('P1411_DATABASE'));
+          open l_crsr for l_sql;
+          loop
+            fetch l_crsr into l_sql_id;
+            exit when l_crsr%notfound;
+            l_counter := l_counter + 1;
+            l_sql_id_list := l_sql_id_list || q'[']' || l_sql_id || q'[',]';
+          end loop;
+          close l_crsr;
 
-          l_v2_sql := replace(l_v2_sql,'<SQL_ID_LIST>',rtrim(l_sql_id_list,','));
-          coremod_log.log('COREOBJ_SQL_SEARCH.start_external_search v$sql2: '||l_v2_sql,'DEBUG');
+          if l_counter > 0 then
+            l_v2_sql := replace(l_v2_sql,'<DBLINK>',COREMOD_API.get_dblink_for_query(gParams('P1411_DATABASE')));
+            l_v2_sql := replace(l_v2_sql,'<DBLINKNM>',gParams('P1411_DATABASE'));
 
-          l_sql := l_v2_sql;
-          execute immediate l_sql using p_session_id, stExternal;
+            l_v2_sql := replace(l_v2_sql,'<SQL_ID_LIST>',rtrim(l_sql_id_list,','));
+            coremod_log.log('COREOBJ_SQL_SEARCH.start_external_search v$sql2: '||l_v2_sql,'DEBUG');
 
-          l_rows_found := sql%rowcount;
-        else
-          l_rows_found := 0;
+            l_sql := l_v2_sql;
+            execute immediate l_sql using p_session_id, stExternal;
+
+            l_rows_found := sql%rowcount;
+          else
+            l_rows_found := 0;
+          end if;
+        elsif COREMOD_API.external_mode_javasrv(gParams('P1411_DATABASE')) then
+          delete from OPAS_OT_TMP_REC_SQL_IDS;
+          COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_REC_SQL_IDS',
+            P_SELECT_LIST => g_SELECT_LIST, --empty
+            P_SQL_BODY =>    '('||l_v_sql||')',
+            P_DBLINK =>      gParams('P1411_DATABASE'),
+            P_PRIORITY =>    g_qry_priority,
+            P_TIMEOUT =>     g_qry_timeout) ;
+
+          for i in ( select SQL_ID from OPAS_OT_TMP_REC_SQL_IDS ) loop
+            l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY =>
+      q'[declare a clob := null; l_sch varchar2(512);
+         begin
+           begin select sql_fulltext, parsing_schema_name into a, l_sch from gv$sql where SQL_ID=:P_SQL_ID and rownum=1; exception when others then null; end;
+           :l_out := a; :l_psch := l_sch;
+         end;]',
+                                                        P_DBLINK => gParams('P1411_DATABASE'),
+                                                        P_PRIORITY => g_qry_priority);
+
+            COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 1, p_varchar2 => i.SQL_ID ) ;
+            COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'OUT', P_ORDR_NUM => 2, p_clob => null ) ;
+            COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'OUT', P_ORDR_NUM => 3, p_varchar2 => null ) ;
+            COREMOD_EXTPROC.execute_plsql_task (  P_TASK_ID => l_task, P_TIMEOUT => g_qry_timeout) ;
+            COREMOD_EXTPROC.get_param (  P_TASK_ID => l_task, P_ORDR_NUM => 2, p_clob => l_sql_fulltext) ;
+            COREMOD_EXTPROC.get_param (  P_TASK_ID => l_task, P_ORDR_NUM => 3, p_varchar2 => l_parsing_schema) ;
+
+            insert /*+ qb_name(OPAS60) */ into opas_ot_sql_search_results
+             (session_id,    search_source, sql_id, sql_text_external, created_by,          first_discovered, first_discovered_at, txt_score)
+            select /*+ qb_name(OPAS60) */
+             p_session_id, stExternal,   i.SQL_ID, l_sql_fulltext,      l_parsing_schema, sysdate,          gParams('P1411_DATABASE')||'/V$SQL',          0 from dual;
+            l_rows_found := l_rows_found + 1;
+          end loop;
+
         end if;
       end if;
 --====================================================================================================
@@ -531,38 +574,74 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
 
         -- the last one
         l_awr_sql := l_awr_sql || q'[ and rownum <= ]' || to_char( l_rows - l_rows_found ) || chr(10);
-
-        l_awr_sql := replace(l_awr_sql,'<DBLINK>',COREMOD_API.get_dblink_for_query(gParams('P1411_DATABASE')));
-        l_awr_sql := replace(l_awr_sql,'<DBLINKNM>',gParams('P1411_DATABASE'));
         l_awr_sql := replace(l_awr_sql,'<DBID>',coremod_api.get_dblink_dbid(gParams('P1411_DATABASE')));
 
-        coremod_log.log('COREOBJ_SQL_SEARCH.start_external_search awr: '||l_awr_sql,'DEBUG');
+        if COREMOD_API.external_mode_dblink(gParams('P1411_DATABASE')) then
+          l_awr_sql := replace(l_awr_sql,'<DBLINK>',COREMOD_API.get_dblink_for_query(gParams('P1411_DATABASE')));
+          l_awr_sql := replace(l_awr_sql,'<DBLINKNM>',gParams('P1411_DATABASE'));
 
-        l_counter := 0;
-        l_sql_id_list := null;
-        l_sql := l_awr_sql;
-        open l_crsr for l_sql;
-        loop
-          fetch l_crsr into l_sql_id;
-          exit when l_crsr%notfound;
-          l_counter := l_counter + 1;
-          l_sql_id_list := l_sql_id_list || q'[']' || l_sql_id || q'[',]';
-        end loop;
-        close l_crsr;
+          coremod_log.log('COREOBJ_SQL_SEARCH.start_external_search awr: '||l_awr_sql,'DEBUG');
 
-        if l_counter > 0 then
-          l_awr2_sql := replace(l_awr2_sql,'<DBLINK>',COREMOD_API.get_dblink_for_query(gParams('P1411_DATABASE')));
-          l_awr2_sql := replace(l_awr2_sql,'<DBLINKNM>',gParams('P1411_DATABASE'));
+          l_counter := 0;
+          l_sql_id_list := null;
+          l_sql := l_awr_sql;
 
-          l_awr2_sql := replace(l_awr2_sql,'<SQL_ID_LIST>',rtrim(l_sql_id_list,','));
-          coremod_log.log('COREOBJ_SQL_SEARCH.start_external_search awr2: '||l_awr2_sql,'DEBUG');
+          open l_crsr for l_sql;
+          --open l_crsr for select SQL_ID from OPAS_OT_TMP_REC_SQL_IDS;
+          loop
+            fetch l_crsr into l_sql_id;
+            exit when l_crsr%notfound;
+            l_counter := l_counter + 1;
+            l_sql_id_list := l_sql_id_list || q'[']' || l_sql_id || q'[',]';
+          end loop;
+          close l_crsr;
 
-          l_sql := l_awr2_sql;
-          execute immediate l_sql using p_session_id, stExternal;
+          if l_counter > 0 then
+            l_awr2_sql := replace(l_awr2_sql,'<DBLINK>',COREMOD_API.get_dblink_for_query(gParams('P1411_DATABASE')));
+            l_awr2_sql := replace(l_awr2_sql,'<DBLINKNM>',gParams('P1411_DATABASE'));
 
-          l_rows_found := sql%rowcount + l_rows_found;
-        else
-          l_rows_found := l_rows_found;
+            l_awr2_sql := replace(l_awr2_sql,'<SQL_ID_LIST>',rtrim(l_sql_id_list,','));
+            coremod_log.log('COREOBJ_SQL_SEARCH.start_external_search awr2: '||l_awr2_sql,'DEBUG');
+
+            l_sql := l_awr2_sql;
+            execute immediate l_sql using p_session_id, stExternal;
+
+            l_rows_found := sql%rowcount + l_rows_found;
+          else
+            l_rows_found := l_rows_found;
+          end if;
+        elsif COREMOD_API.external_mode_javasrv(gParams('P1411_DATABASE')) then
+          delete from OPAS_OT_TMP_REC_SQL_IDS;
+          COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_REC_SQL_IDS',
+            P_SELECT_LIST => g_SELECT_LIST, --empty
+            P_SQL_BODY =>    '('||l_awr_sql||')',
+            P_DBLINK =>      gParams('P1411_DATABASE'),
+            P_PRIORITY =>    g_qry_priority,
+            P_TIMEOUT =>     g_qry_timeout) ;
+
+          for i in ( select SQL_ID from OPAS_OT_TMP_REC_SQL_IDS ) loop
+            l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY =>
+      q'[declare a clob := null;
+         begin
+           begin select sql_text into a from dba_hist_sqltext where SQL_ID=:P_SQL_ID and rownum=1; exception when others then null; end;
+           :l_out := a;
+         end;]',
+                                                        P_DBLINK => gParams('P1411_DATABASE'),
+                                                        P_PRIORITY => g_qry_priority);
+
+            COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 1, p_varchar2 => i.SQL_ID ) ;
+            COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'OUT', P_ORDR_NUM => 2, p_clob => null ) ;
+            --COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'OUT', P_ORDR_NUM => 3, p_varchar2 => null ) ;
+            COREMOD_EXTPROC.execute_plsql_task (  P_TASK_ID => l_task, P_TIMEOUT => g_qry_timeout) ;
+            COREMOD_EXTPROC.get_param (  P_TASK_ID => l_task, P_ORDR_NUM => 2, p_clob => l_sql_fulltext) ;
+            --COREMOD_EXTPROC.get_param (  P_TASK_ID => l_task, P_ORDR_NUM => 3, p_varchar2 => l_parsing_schema) ;
+
+            insert /*+ qb_name(OPAS60) */ into opas_ot_sql_search_results
+             (session_id,    search_source, sql_id, sql_text_external, created_by,          first_discovered, first_discovered_at, txt_score)
+            select /*+ qb_name(OPAS60) */
+             p_session_id, stExternal,   i.SQL_ID, l_sql_fulltext,      null, sysdate,          gParams('P1411_DATABASE')||'/V$SQL',          0 from dual;
+            l_rows_found := l_rows_found + 1;
+          end loop;
         end if;
       end if;
 

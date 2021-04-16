@@ -586,7 +586,8 @@ package body COREMOD_API as
                           p_filter           varchar2 default null,
                           p_priority         number,
                           p_timeout          number,
-                          p_plsql_body       varchar2 default null)
+                          p_plsql_body       varchar2 default null,
+                          p_timestamp_col    varchar2 default null)
   is
     l_sql           varchar2(32765);
     L_SELECT_LIST   COREMOD_EXTPROC.t_columns;
@@ -600,7 +601,8 @@ package body COREMOD_API as
         P_SUFF => load_tmp_data.P_SUFF,
         P_DBID => load_tmp_data.P_DBID,
         P_KEY_PREF => load_tmp_data.P_KEY_PREF,
-        P_FILTER => load_tmp_data.P_FILTER);
+        P_FILTER => load_tmp_data.P_FILTER,
+        p_timestamp_col => load_tmp_data.p_timestamp_col);
 
       coremod_log.log('COREMOD_API.load_tmp_data (DBLINK):'||chr(10)||l_sql,'DEBUG');
       execute immediate l_sql;
@@ -618,7 +620,8 @@ package body COREMOD_API as
         P_GENERATE_ONLY => false,
         P_PLSQL_BODY => load_tmp_data.p_plsql_body,
         p_key_pref => load_tmp_data.P_KEY_PREF,
-        p_src_table_r => load_tmp_data.P_SRC_TABLE_NAME_R) ;
+        p_src_table_r => load_tmp_data.P_SRC_TABLE_NAME_R,
+        p_timestamp_col => load_tmp_data.p_timestamp_col) ;
       g_last_sql_rowcount := COREMOD_EXTPROC.get_rows_processed;
     else
       raise_application_error(-20000,'Unsupported external execution mode for DB Link (get_remote_full_oracle_version): '||p_db_link_name);
@@ -898,27 +901,31 @@ order by 1, 2,3
   begin
     --coremod_log.log('DB Link data update job COREMOD_API.update_dblink_data start.');
     for i in (select * from OPAS_DB_LINKS where status=dblCREATED) loop
-      DBMS_SCHEDULER.EVALUATE_CALENDAR_STRING(
-          calendar_string    => i.UPDATE_SCHED,
-          start_date         => nvl(i.DATA_UPDATED,i.CREATED),
-          return_date_after  => nvl(i.DATA_UPDATED,i.CREATED),
-          next_run_date      => l_next_date);
-      --coremod_log.log('DB Link data update job COREMOD_API.update_dblink_data: '||i.DB_LINK_NAME||' '||to_char(nvl(i.DATA_UPDATED,i.CREATED),'YYYY/MM/DD HH24:MI:SS')||' '||to_char(l_next_date,'YYYY/MM/DD HH24:MI:SS'));
-      if l_next_date < systimestamp then
-        l_tq_id:=COREMOD_TASKS.prep_execute_task (  P_TASKNAME => L_TASKNAME) ;
-        COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => 'B1', p_varchar_par => upper(i.DB_LINK_NAME));
-        COREMOD_ALERTS.add_notification (
-          nt_id => l_nt_id,
-          NT_TEXT => 'Scheduled database dossier update for DB Link "'||upper(i.DB_LINK_NAME)|| '" finished with '||COREMOD_ALERTS.ntPlaceHolder,
-          --NT_LINK => COREMOD_ALERTS.create_url(), 'f?p='||v('APP_ID')||':1401:<APP_SESSION>::::APP_OBJ_ID,APP_PREV_PAGE:'||l_obj_id||',10',
-          NT_TYPE_ID => COREMOD_ALERTS.nttTaskfinished,
-          --NT_COLOR => NT_COLOR, --default
-          NT_USERNAME => i.owner,
-          --NT_NO_BROWSER_NOTIF_FLAG => NT_NO_BROWSER_NOTIF_FLAG, default
-          NT_ACTIVATE => 0) ;
+      if (i.DBLINK_MODE = gemDBLINK and i.STATUS = dblCREATED or
+              i.DBLINK_MODE = gemJAVASRV and i.STATUS = dblEXTENABLED)
+      then
+        DBMS_SCHEDULER.EVALUATE_CALENDAR_STRING(
+            calendar_string    => i.UPDATE_SCHED,
+            start_date         => nvl(i.DATA_UPDATED,i.CREATED),
+            return_date_after  => nvl(i.DATA_UPDATED,i.CREATED),
+            next_run_date      => l_next_date);
+        --coremod_log.log('DB Link data update job COREMOD_API.update_dblink_data: '||i.DB_LINK_NAME||' '||to_char(nvl(i.DATA_UPDATED,i.CREATED),'YYYY/MM/DD HH24:MI:SS')||' '||to_char(l_next_date,'YYYY/MM/DD HH24:MI:SS'));
+        if l_next_date < systimestamp then
+          l_tq_id:=COREMOD_TASKS.prep_execute_task (  P_TASKNAME => L_TASKNAME) ;
+          COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => 'B1', p_varchar_par => upper(i.DB_LINK_NAME));
+          COREMOD_ALERTS.add_notification (
+            nt_id => l_nt_id,
+            NT_TEXT => 'Scheduled database dossier update for DB Link "'||upper(i.DB_LINK_NAME)|| '" finished with '||COREMOD_ALERTS.ntPlaceHolder,
+            --NT_LINK => COREMOD_ALERTS.create_url(), 'f?p='||v('APP_ID')||':1401:<APP_SESSION>::::APP_OBJ_ID,APP_PREV_PAGE:'||l_obj_id||',10',
+            NT_TYPE_ID => COREMOD_ALERTS.nttTaskfinished,
+            --NT_COLOR => NT_COLOR, --default
+            NT_USERNAME => i.owner,
+            --NT_NO_BROWSER_NOTIF_FLAG => NT_NO_BROWSER_NOTIF_FLAG, default
+            NT_ACTIVATE => 0) ;
 
-        COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => COREMOD_TASKS.parNotifyMe, p_num_par => l_nt_id);
-        COREMOD_TASKS.queue_task ( p_tq_id => l_tq_id ) ;
+          COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => COREMOD_TASKS.parNotifyMe, p_num_par => l_nt_id);
+          COREMOD_TASKS.queue_task ( p_tq_id => l_tq_id ) ;
+        end if;
       end if;
     end loop;
     commit;

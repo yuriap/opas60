@@ -253,3 +253,50 @@ create global temporary table opas_ot_tmp_gv$stats ON COMMIT DELETE ROWS as sele
 drop table opas_ot_tmp_gv$ash_info;
 create global temporary table opas_ot_tmp_gv$ash_info on commit preserve rows as
 select inst_id, oldest_sample_time, oldest_sample_time oldest_sample_time_utc from GV$ASH_INFO where 1=2;
+
+
+--==========================================================================================================
+create table OPAS_OT_TMP_GV$ASH_INFO_EXT as
+select
+  0 task_id,
+  x.*
+from OPAS_OT_TMP_GV$ASH_INFO x where 1=2;
+
+drop table OPAS_OT_ASHACUBE_METRICS_EXT;
+create table OPAS_OT_ASHACUBE_METRICS_EXT as
+select
+  0 task_id,
+  x.*
+from OPAS_OT_ASHACUBE_METRICS x where 1=2;
+
+drop table OPAS_OT_TMP_GV$ASH_EXT;
+create table OPAS_OT_TMP_GV$ASH_EXT as
+select
+  0 task_id,
+  x.*
+from OPAS_OT_TMP_GV$ASH x where 1=2;
+
+drop table OPAS_OT_TMP_GV$SESSION_EXT;
+create table OPAS_OT_TMP_GV$SESSION_EXT as
+select
+  0 task_id,
+  x.*
+from OPAS_OT_TMP_GV$SESSION x where 1=2;
+
+drop table OPAS_OT_TMP_GV$STATS_EXT;
+create table OPAS_OT_TMP_GV$STATS_EXT as
+select
+  0 task_id,
+  x.*
+from OPAS_OT_TMP_GV$STATS x where 1=2;
+
+
+create global temporary table OPAS_OT_TMP_DB_STATISTICS 
+as select * from OPAS_DB_STATISTICS where 1=2;
+drop table OPAS_OT_TMP_DB_STATISTICS_EXT;
+create table OPAS_OT_TMP_DB_STATISTICS_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  OPAS_OT_TMP_DB_STATISTICS x;

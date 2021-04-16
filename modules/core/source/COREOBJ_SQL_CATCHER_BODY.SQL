@@ -251,7 +251,7 @@ package body COREOBJ_SQL_CATCHER is
         P_SQL_BODY => l_sql,
         P_DBLINK => l_ctchr.srcdb,
         p_priority => 0,
-        P_TIMEOUT => 120) ;
+        P_TIMEOUT => 600) ;
 /*
       if COREMOD_API.external_mode_javasrv(l_ctchr.srcdb) then
         COREMOD_EXTPROC.wait_result (  P_TASK_ID => l_task,

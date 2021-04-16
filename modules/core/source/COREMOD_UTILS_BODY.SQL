@@ -190,7 +190,7 @@ else q'[end;]' end;
       execute_plsql_remotelly_dblink(p_sql, p_dblink, p_output, p_is_output);
     elsif COREMOD_API.external_mode_javasrv(p_dblink) then
     --  raise_application_error(-20000,'Unimplemented execute_plsql_remotelly for SQL*Plus');
-      l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY => 'begin '||replace(p_sql,'l_out',':l_out')||' exception when no_data_found then null; end;',
+      l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY => 'declare l_outclob clob := null; begin '||replace(p_sql,'l_out','l_outclob')||' :l_out := l_outclob; exception when no_data_found then null; end;',
                                                   P_DBLINK => execute_plsql_remotelly.p_dblink,
                                                   P_PRIORITY => 3);
       if p_is_output then

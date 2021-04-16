@@ -737,19 +737,6 @@ ordr            number
 -- OPAS External SQL
 ---------------------------------------------------------------------------------------------
 
-create table opas_extproc_queue (
-exec_id             number                                           primary key,
-db_link_name        varchar2(128),
-sql2exec            varchar2(4000),
-created             timestamp default systimestamp,
-started             timestamp,
-finished            timestamp,
-status              varchar2(100)    default 'NEW',
-tot_duration        number
-);
-
-create sequence seq_opas_extproc_queue maxvalue 1e9 cycle;
-
 create table opas_extproc_work_srv (
 work_id             number                                           primary key,
 db_link_name        varchar2(128),
@@ -759,6 +746,12 @@ finished            timestamp,
 qry_executed        number,
 errmsgs             varchar2(4000)
 );
+
+create table opas_extproc_work_srv_heartbeat (
+last_event timestamp
+);
+insert into opas_extproc_work_srv_heartbeat values(null);
+commit;
 
 create sequence seq_opas_extproc_work_srv maxvalue 2147483647 cycle;
 

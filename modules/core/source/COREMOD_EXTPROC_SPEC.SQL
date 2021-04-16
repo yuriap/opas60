@@ -39,7 +39,7 @@ PACKAGE COREMOD_EXTPROC AS
   procedure wait_result(p_task_id number, p_timeout number default 600);
   function get_rows_processed return number;
   function get_server_status(p_format varchar2) return varchar2;
-
+  procedure get_next_server(p_work_id out number);
 
   procedure add_param(p_task_id number, p_io_type varchar2, p_ordr_num number, p_clob clob);
   procedure add_param(p_task_id number, p_io_type varchar2, p_ordr_num number, p_number number);

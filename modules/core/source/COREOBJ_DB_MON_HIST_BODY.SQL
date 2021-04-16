@@ -34,6 +34,7 @@ package body coreobj_db_mon_hist is
     l_sess_id   opas_ot_db_mon_hist_sess.sess_id%type;
     l_sess_id2  opas_ot_db_mon_hist_sess.sess_id%type;
     l_view_sql varchar2(32765);
+    l_SELECT_LIST COREMOD_EXTPROC.t_columns;
   begin
     for i in (select * from opas_ot_db_mon_hist where status=stActive) loop
       DBMS_SCHEDULER.EVALUATE_CALENDAR_STRING(
@@ -48,28 +49,28 @@ package body coreobj_db_mon_hist is
       if l_next_date is not null and l_next_date <= systimestamp then
         begin
           if i.calc_type = ctDelta then
-            l_view_sql := q'[insert into opas_ot_db_mon_hist_data (sess_id, inst_id, range#, quantity)
-with ranges as (<BUCKETS>)
-select <SESS_ID>, d.inst_id, r.range#, val
+            l_view_sql := --insert into opas_ot_db_mon_hist_data (sess_id, inst_id, range#, quantity)
+q'[(with ranges as (<BUCKETS>)
+select <SESS_ID> SESS_ID, d.inst_id, r.range#, val QUANTITY
   from (<STAT>) d, ranges r
- where d.end_range = r.range#_end]';
+ where d.end_range = r.range#_end)]';
           elsif i.calc_type = ctRegular then
-            l_view_sql := q'[insert into opas_ot_db_mon_hist_data (sess_id, inst_id, range#, quantity)
-with ranges as (<BUCKETS>)
-select <SESS_ID>, d.inst_id, r.range#, count(1) cnt
+            l_view_sql := --insert into opas_ot_db_mon_hist_data (sess_id, inst_id, range#, quantity)
+q'[(with ranges as (<BUCKETS>)
+select <SESS_ID> SESS_ID, d.inst_id, r.range#, count(1) QUANTITY
   from (<STAT>) d, ranges r
  where val between r.range#_start and r.range#_end
- group by d.inst_id, r.range#]';
+ group by d.inst_id, r.range#)]';
           elsif i.calc_type = ctRatio#1 then
-            l_view_sql := q'[insert into opas_ot_db_mon_hist_data (sess_id, inst_id, range#, quantity)
-with ranges as (<BUCKETS>),
+            l_view_sql := --insert into opas_ot_db_mon_hist_data (sess_id, inst_id, range#, quantity)
+q'[(with ranges as (<BUCKETS>),
 ranges_with_instances as (
 select r.range#, i.inst_id
 from ranges r, gv$instance<DBLINK> i)
-select <SESS_ID>, r.inst_id, r.range#, nvl(d.stats,0)
+select <SESS_ID> SESS_ID, r.inst_id, r.range#, nvl(d.stats,0) QUANTITY
   from (<STAT>) d, ranges_with_instances r
 where d.range#(+) = r.range#
-  and d.inst_id(+) = r.inst_id]';
+  and d.inst_id(+) = r.inst_id)]';
           end if;
 
           l_next_rem_date := coremod_utils.get_remote_ts(p_dblink => i.dblink);
@@ -78,9 +79,19 @@ where d.range#(+) = r.range#
                values (i.dbmh_id, l_next_rem_date, case i.calc_type when ctRegular then ssReady when ctDelta then ssSnapshot when ctRatio#1 then ssSnapshot else 'N/A' end)
                returning sess_id into l_sess_id;
 
-          l_view_sql:=replace(replace(replace(replace(l_view_sql,'<BUCKETS>',i.dbmh_buckets),'<STAT>',i.dbmh_stat),'<SESS_ID>',l_sess_id),'<DBLINK>',COREMOD_API.get_dblink_for_query(i.dblink));
+          l_view_sql:=replace(replace(replace(l_view_sql,'<BUCKETS>',i.dbmh_buckets),
+                                                         '<STAT>',i.dbmh_stat),
+                                                         '<SESS_ID>',l_sess_id);
 
-          execute immediate l_view_sql;
+          --execute immediate l_view_sql;
+          COREMOD_EXTPROC.load_external_data (
+              P_TARGET_TABLE => 'OPAS_OT_DB_MON_HIST_DATA',
+              P_SELECT_LIST => l_SELECT_LIST,
+              P_SQL_BODY => l_view_sql,
+              P_DBLINK => i.dblink,
+              p_priority => 3,
+              P_TIMEOUT => 300) ;
+
           update opas_ot_db_mon_hist set last_exec_ts = systimestamp where dbmh_id = i.dbmh_id;
 
 --coremod_log.log('i.dbmh_id: '||i.dbmh_id);

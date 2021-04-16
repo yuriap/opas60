@@ -26,6 +26,10 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
   gLogLevel             varchar2(100):='INFO';
   gLogLevelInfo         varchar2(100):='INFO';
 
+  g_qry_priority number := 1;
+  g_qry_timeout  number := 300; --sec
+  g_SELECT_LIST COREMOD_EXTPROC.t_columns;
+
     cursor crsr_granules (pc_obj_id  opas_objects.obj_id%type,
                           pc_dblink  OPAS_DB_LINKS.DB_LINK_NAME%type,
                           --pc_min_ash date,
@@ -262,11 +266,29 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
   procedure init_ash_info(p_dblink opas_db_links.db_link_name%type)
   is
     l_sql  varchar2(1000);
+    L_SELECT_LIST COREMOD_EXTPROC.t_columns;
   begin
     delete from opas_ot_tmp_gv$ash_info; --+ INTERVAL '30' SECOND
-    l_sql :=  q'[INSERT INTO opas_ot_tmp_gv$ash_info (inst_id, oldest_sample_time) select inst_id, oldest_sample_time  from GV$ASH_INFO]' || COREMOD_API.get_dblink_for_query(p_dblink) || ' where oldest_sample_time is not null';
-    execute immediate l_sql;
-    gASH_Available := case when sql%rowcount>0 then 'Y' else 'N' end;
+    l_sql :=  --INSERT INTO opas_ot_tmp_gv$ash_info (inst_id, oldest_sample_time)
+                 q'[(select inst_id, oldest_sample_time, null OLDEST_SAMPLE_TIME_UTC from GV$ASH_INFO<DBLINK> where oldest_sample_time is not null)]';
+      g_SELECT_LIST.delete;
+      g_SELECT_LIST('INST_ID'):='INST_ID';
+      g_SELECT_LIST('OLDEST_SAMPLE_TIME'):='to_char(OLDEST_SAMPLE_TIME)';
+      g_SELECT_LIST('OLDEST_SAMPLE_TIME_UTC'):='OLDEST_SAMPLE_TIME_UTC';
+
+      COREMOD_EXTPROC.load_external_data (
+        P_TARGET_TABLE => 'OPAS_OT_TMP_GV$ASH_INFO',
+        P_SELECT_LIST => g_SELECT_LIST,
+        P_SQL_BODY => l_sql,
+        P_DBLINK => p_dblink,
+        p_priority => g_qry_priority,
+        P_TIMEOUT => g_qry_timeout) ;
+      g_SELECT_LIST.delete;
+    --execute immediate l_sql;
+    --gASH_Available := case when sql%rowcount>0 then 'Y' else 'N' end;
+    gASH_Available := case when COREMOD_EXTPROC.get_rows_processed()>0 then 'Y' else 'N' end;
+
+
     if gASH_Available = 'Y' then
       update opas_ot_tmp_gv$ash_info
          set oldest_sample_time_utc = sys_extract_utc(to_timestamp_tz(to_char(oldest_sample_time,'YYYYMMDDHH24MISS')|| ' ' || gTargetTZ ,'YYYYMMDDHH24MISS TZH:TZM'));
@@ -277,23 +299,69 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
   procedure get_remote_data(p_dblink opas_db_links.db_link_name%type)
   is
     l_sql  varchar2(1000);
+    l_task number;
   begin
-    l_sql := --RAC!!!
-      q'[select extract(TIMEZONE_HOUR from systimestamp)||':'||extract(TIMEZONE_MINUTE from systimestamp),]' ||
-      q'[(select incarnation# from v$database_incarnation]' || COREMOD_API.get_dblink_for_query(p_dblink) || q'[ where status='CURRENT']'
-      || q'[), systimestamp, cast(systimestamp as timestamp), sys_extract_utc(systimestamp) from dual]'||COREMOD_API.get_dblink_for_query(p_dblink);
+    if COREMOD_API.external_mode_dblink(p_dblink) then
+      l_sql := --RAC!!!
+        q'[select extract(TIMEZONE_HOUR from systimestamp)||':'||extract(TIMEZONE_MINUTE from systimestamp),]' ||
+        q'[(select incarnation# from v$database_incarnation]' || COREMOD_API.get_dblink_for_query(p_dblink) || q'[ where status='CURRENT']'
+        || q'[), systimestamp, cast(systimestamp as timestamp), sys_extract_utc(systimestamp) from dual]'||COREMOD_API.get_dblink_for_query(p_dblink);
 
-    execute immediate l_sql into gTargetTZ, /*gTargetMinASHTS,*/ gTargetIncarnation, gTargetCurrTS_TZ, gTargetCurrTS, gTargetCurrTS_UTC;
+      execute immediate l_sql into gTargetTZ, /*gTargetMinASHTS,*/ gTargetIncarnation, gTargetCurrTS_TZ, gTargetCurrTS, gTargetCurrTS_UTC;
+    elsif COREMOD_API.external_mode_javasrv(p_dblink) then
+            l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY =>
+      q'[begin
+           select extract(TIMEZONE_HOUR from systimestamp)||':'||extract(TIMEZONE_MINUTE from systimestamp),
+                  (select incarnation# from v$database_incarnation  where status='CURRENT'),
+                  systimestamp,
+                  cast(systimestamp as timestamp),
+                  sys_extract_utc(systimestamp)
+                  into :gTargetTZ, :gTargetIncarnation, :gTargetCurrTS_TZ, :gTargetCurrTS, :gTargetCurrTS_UTC
+                  from dual;
+         end;]',
+                                                        P_DBLINK => p_dblink,
+                                                        P_PRIORITY => g_qry_priority);
 
+            COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'OUT', P_ORDR_NUM => 1, p_varchar2 => null ) ;
+            COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'OUT', P_ORDR_NUM => 2, p_number => null ) ;
+            COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'OUT', P_ORDR_NUM => 3, p_timestamp_tz => null ) ;
+            COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'OUT', P_ORDR_NUM => 4, p_timestamp => null ) ;
+            COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'OUT', P_ORDR_NUM => 5, p_timestamp => null ) ;
+            COREMOD_EXTPROC.execute_plsql_task (  P_TASK_ID => l_task, P_TIMEOUT => g_qry_timeout) ;
+            COREMOD_EXTPROC.get_param (  P_TASK_ID => l_task, P_ORDR_NUM => 1, p_varchar2 => gTargetTZ) ;
+            COREMOD_EXTPROC.get_param (  P_TASK_ID => l_task, P_ORDR_NUM => 2, p_number => gTargetIncarnation) ;
+            COREMOD_EXTPROC.get_param (  P_TASK_ID => l_task, P_ORDR_NUM => 3, p_timestamp_tz => gTargetCurrTS_TZ) ;
+            COREMOD_EXTPROC.get_param (  P_TASK_ID => l_task, P_ORDR_NUM => 4, p_timestamp => gTargetCurrTS) ;
+            COREMOD_EXTPROC.get_param (  P_TASK_ID => l_task, P_ORDR_NUM => 5, p_timestamp => gTargetCurrTS_UTC) ;
+    end if;
     init_ash_info(p_dblink);
   end;
 
   procedure get_remote_curr_ts(p_dblink opas_db_links.db_link_name%type)
   is
     l_sql  varchar2(1000);
+    l_task number;
   begin
-    l_sql := q'[select cast(systimestamp as timestamp), sys_extract_utc(systimestamp) from dual]'||COREMOD_API.get_dblink_for_query(p_dblink);
-    execute immediate l_sql into gTargetCurrTS, gTargetCurrTS_UTC;
+    if COREMOD_API.external_mode_dblink(p_dblink) then
+      l_sql := q'[select cast(systimestamp as timestamp), sys_extract_utc(systimestamp) from dual]'||COREMOD_API.get_dblink_for_query(p_dblink);
+      execute immediate l_sql into gTargetCurrTS, gTargetCurrTS_UTC;
+    elsif COREMOD_API.external_mode_javasrv(p_dblink) then
+            l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY =>
+      q'[begin
+           select cast(systimestamp as timestamp),
+                  sys_extract_utc(systimestamp)
+                  into :gTargetCurrTS, :gTargetCurrTS_UTC
+                  from dual;
+         end;]',
+                                                        P_DBLINK => p_dblink,
+                                                        P_PRIORITY => g_qry_priority);
+
+            COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'OUT', P_ORDR_NUM => 1, p_timestamp => null ) ;
+            COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'OUT', P_ORDR_NUM => 2, p_timestamp => null ) ;
+            COREMOD_EXTPROC.execute_plsql_task (  P_TASK_ID => l_task, P_TIMEOUT => g_qry_timeout) ;
+            COREMOD_EXTPROC.get_param (  P_TASK_ID => l_task, P_ORDR_NUM => 1, p_timestamp => gTargetCurrTS) ;
+            COREMOD_EXTPROC.get_param (  P_TASK_ID => l_task, P_ORDR_NUM => 2, p_timestamp => gTargetCurrTS_UTC) ;
+    end if;
   end;
 
   function get_remote_ts_utc(p_dblink opas_db_links.db_link_name%type) return timestamp
@@ -310,10 +378,33 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
     l_sql_get_snaps varchar2(4000)
       := q'[select min(snap_id) min_snap, max(snap_id) max_snap from dba_hist_snapshot<DBLINK> where dbid = ]' ||
       gTargetDBID || q'[ and begin_interval_time + INTERVAL '125' MINUTE >= :p1 and end_interval_time - INTERVAL '125' MINUTE <= :p2 ]';
+    l_task number;
   begin
     llog('COREOBJ_ASHA_CUBE_CALCS.get_remote_awr_snaps: p_start_dt "'|| to_char(p_start_dt,'YYYY/MM/DD HH24:MI:SS.FF9') ||'"');
     llog('COREOBJ_ASHA_CUBE_CALCS.get_remote_awr_snaps: p_end_dt "'|| to_char(p_end_dt,'YYYY/MM/DD HH24:MI:SS.FF9') ||'"');
-    execute immediate replace(l_sql_get_snaps,'<DBLINK>',COREMOD_API.get_dblink_for_query(p_dblink)) into gTargetSNAP_START, gTargetSNAP_END using p_start_dt, p_end_dt;
+    if COREMOD_API.external_mode_dblink(p_dblink) then
+      execute immediate replace(l_sql_get_snaps,'<DBLINK>',COREMOD_API.get_dblink_for_query(p_dblink)) into gTargetSNAP_START, gTargetSNAP_END using p_start_dt, p_end_dt;
+    elsif COREMOD_API.external_mode_javasrv(p_dblink) then
+            l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY =>
+      q'[begin
+          select min(snap_id) min_snap, max(snap_id) max_snap
+            into :gTargetSNAP_START, :gTargetSNAP_END
+            from dba_hist_snapshot<DBLINK>
+           where dbid = :gTargetDBID
+             and begin_interval_time + INTERVAL '125' MINUTE >= :p1
+             and end_interval_time - INTERVAL '125' MINUTE <= :p2 ;
+         end;]',
+                                                        P_DBLINK => p_dblink,
+                                                        P_PRIORITY => g_qry_priority);
+            COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'OUT', P_ORDR_NUM => 1, p_number => null ) ;
+            COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'OUT', P_ORDR_NUM => 2, p_number => null ) ;
+            COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 3, p_number => gTargetDBID ) ;
+            COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 4, p_timestamp => p_start_dt ) ;
+            COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 5, p_timestamp => p_end_dt ) ;
+            COREMOD_EXTPROC.execute_plsql_task (  P_TASK_ID => l_task, P_TIMEOUT => g_qry_timeout) ;
+            COREMOD_EXTPROC.get_param (  P_TASK_ID => l_task, P_ORDR_NUM => 1, p_number => gTargetSNAP_START) ;
+            COREMOD_EXTPROC.get_param (  P_TASK_ID => l_task, P_ORDR_NUM => 2, p_number => gTargetSNAP_END) ;
+    end if;
     llog('COREOBJ_ASHA_CUBE_CALCS.get_remote_awr_snaps: gTargetSNAP_START, gTargetSNAP_END "'||gTargetSNAP_START ||'", "'||gTargetSNAP_END||'"');
   end;
 
@@ -325,7 +416,7 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
     commit;
     --llog('COREOBJ_ASHA_CUBE_CALCS.show_remote_date_context: gTargetCurrTS_TZ "'|| to_char(gTargetCurrTS_TZ,'YYYY-MM-DD HH24:MI:SS.FF3 TZH:TZM') ||'"');
     --llog('COREOBJ_ASHA_CUBE_CALCS.show_remote_date_context: gTargetMinASHTS "'|| to_char(gTargetMinASHTS,'YYYY-MM-DD HH24:MI:SS') ||'"');
-    if p_dblink <> COREMOD_API.gLocalDBLink then
+    if p_dblink <> COREMOD_API.gLocalDBLink and COREMOD_API.external_mode_dblink(p_dblink) then
       execute immediate 'ALTER SESSION CLOSE DATABASE LINK '||p_dblink;
     end if;
 
@@ -467,23 +558,55 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
     llog('COREOBJ_ASHA_CUBE_CALCS.load_metrics('|| p_asharange_id ||'): l_metric_flt: "'||l_metric_flt||'"');
 
     if l_metric_flt is not null then
-      l_sql_gm := q'[insert into opas_ot_ashacube_metrics (asharange_id, dblink, inst_id, begin_time_utc, end_time_utc, group_id, metric_id, value)
-      select
-        :p_asharange_id, :pDBLINK, inst_id, SYS_EXTRACT_UTC(from_tz(cast(begin_time as timestamp),:gTargetTZ)), SYS_EXTRACT_UTC(from_tz(cast(end_time as timestamp),:gTargetTZ)), group_id, metric_id, value
+      l_sql_gm := --insert into opas_ot_ashacube_metrics (asharange_id, dblink, inst_id, begin_time_utc, end_time_utc, group_id, metric_id, value)
+      q'[(select
+        <p_asharange_id> asharange_id, '<pDBLINK>' dblink, inst_id,
+        SYS_EXTRACT_UTC(from_tz(cast(begin_time as timestamp),'<gTargetTZ>'))+0 begin_time_utc,
+        SYS_EXTRACT_UTC(from_tz(cast(end_time as timestamp),'<gTargetTZ>'))+0 end_time_utc,
+        group_id, metric_id, value
       from (
         select inst_id, begin_time, end_time, group_id, metric_id, value from gv$sysmetric_history<DBLINK> where (<GROUPMETRIC>) and <DTFLT>
         union
         select instance_number, begin_time, end_time, group_id, metric_id, value from dba_hist_sysmetric_history<DBLINK> where (<GROUPMETRIC>) and <DTFLT>
-        and dbid=:p_dbid and snap_id between :pstart and :pend and instance_number > 0)]';
+        and dbid=<p_dbid> and snap_id between <pstart> and <pend> and instance_number > 0))]';
 
-      l_sql_gm := replace(replace(l_sql_gm,'<GROUPMETRIC>',l_metric_flt),'<DBLINK>',COREMOD_API.get_dblink_for_query(COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK)));
+      --l_sql_gm := replace(replace(l_sql_gm,'<GROUPMETRIC>',l_metric_flt),'<DBLINK>',COREMOD_API.get_dblink_for_query(COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK)));
+      l_sql_gm := replace(l_sql_gm,'<GROUPMETRIC>',l_metric_flt);
 
 
-      l_sql := replace(l_sql_gm,'<DTFLT>',q'[end_time >= to_date(']' || to_char(p_start_dt,'YYYYMMDDHH24MISS') || q'[','YYYYMMDDHH24MISS') and end_time < to_date(']' || to_char(p_end_dt,'YYYYMMDDHH24MISS') || q'[','YYYYMMDDHH24MISS')]');
+      l_sql_gm := replace(l_sql_gm,'<DTFLT>',q'[end_time >= to_date(']' || to_char(p_start_dt,'YYYYMMDDHH24MISS') || q'[','YYYYMMDDHH24MISS') and end_time < to_date(']' || to_char(p_end_dt,'YYYYMMDDHH24MISS') || q'[','YYYYMMDDHH24MISS')]');
 
-      llog('COREOBJ_ASHA_CUBE_CALCS.load_metrics('|| p_asharange_id ||'): metric sql: '||chr(10)||l_sql);
-      execute immediate l_sql using p_asharange_id, COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK), gTargetTZ, gTargetTZ, gTargetDBID, gTargetSNAP_START, gTargetSNAP_END;
-      p_rows := p_rows + sql%rowcount;
+      l_sql_gm := replace(replace(replace(replace(replace(replace(
+                  l_sql_gm,'<p_asharange_id>',p_asharange_id),
+                           '<pDBLINK>',COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK)),
+                           '<gTargetTZ>',gTargetTZ),
+                           '<p_dbid>',gTargetDBID),
+                           '<pstart>',gTargetSNAP_START),
+                           '<pend>',gTargetSNAP_END);
+      l_sql := l_sql_gm;
+      --llog('COREOBJ_ASHA_CUBE_CALCS.load_metrics('|| p_asharange_id ||'): metric sql: '||chr(10)||l_sql);
+      --execute immediate l_sql using p_asharange_id, COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK), gTargetTZ, gTargetTZ, gTargetDBID, gTargetSNAP_START, gTargetSNAP_END;
+
+      g_SELECT_LIST.delete;
+      g_SELECT_LIST('ASHARANGE_ID'):='ASHARANGE_ID';
+      g_SELECT_LIST('DBLINK'):='DBLINK';
+      g_SELECT_LIST('INST_ID'):='INST_ID';
+      g_SELECT_LIST('BEGIN_TIME_UTC'):='to_char(BEGIN_TIME_UTC)';
+      g_SELECT_LIST('END_TIME_UTC'):='to_char(END_TIME_UTC)';
+      g_SELECT_LIST('GROUP_ID'):='GROUP_ID';
+      g_SELECT_LIST('METRIC_ID'):='METRIC_ID';
+      g_SELECT_LIST('VALUE'):='VALUE';
+
+      COREMOD_EXTPROC.load_external_data (
+        P_TARGET_TABLE => 'OPAS_OT_ASHACUBE_METRICS',
+        P_SELECT_LIST => g_SELECT_LIST,
+        P_SQL_BODY => l_sql,
+        P_DBLINK => COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK),
+        p_priority => g_qry_priority,
+        P_TIMEOUT => g_qry_timeout) ;
+
+      g_SELECT_LIST.delete;
+      p_rows := p_rows +  COREMOD_EXTPROC.get_rows_processed();
 
       for i in (select ASHARANGE_ID, l.GROUP_ID, l.METRIC_ID,
                        (select count(1) from OPAS_OT_ASHACUBE_METRICS m
@@ -519,6 +642,7 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
     l_end_range_dt   timestamp;
 
     l_awr_filter     varchar2(4000);
+    l_cnt            number;
   begin
     p_asharange_id := p_granula.asharange_id;
     llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): Begin.', gLogLevelInfo);
@@ -583,6 +707,7 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
                 p_key_pref => 'LOCTABCOLS',
                 --P_DBID => null,
                 P_FILTER => q'[sample_time between to_timestamp(']' || to_char(l_start_dt,'YYYYMMDDHH24MISS') || q'[','YYYYMMDDHH24MISS') and to_timestamp(']' || to_char(l_end_dt,'YYYYMMDDHH24MISS') || q'[','YYYYMMDDHH24MISS')]'
+                , p_priority=>g_qry_priority, p_timeout=>g_qry_timeout
                 );
  -- llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): 1 l_start_dt "'|| to_char(l_start_dt,'YYYY/MM/DD HH24:MI:SS.FF9') ||'"');
  -- llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): 1 l_end_dt "'|| to_char(l_end_dt,'YYYY/MM/DD HH24:MI:SS.FF9') ||'"');
@@ -590,7 +715,9 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
                    SAMPLE_TP = case when SAMPLE_TP = gtDBA_HIST_ASH then gtGV$ASHAWR else gtGV$ASH end,
                    MODIFIED = systimestamp
              where ASHARANGE_ID = p_asharange_id;
-            llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): V$ASH finish: '||COREMOD_API.get_last_rowcount|| ' loaded. ', gLogLevelInfo);
+
+--select count(1) into l_cnt from OPAS_OT_TMP_GV$ASH  where sample_time >= l_start_dt and sample_time < l_end_dt;
+            llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): V$ASH finish: '||COREMOD_API.get_last_rowcount|| ' loaded.', gLogLevelInfo);
 
             if p_granula.min_ash is not null then
               llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): V$ASH p_granula.min_ash correction: '||to_char(p_granula.min_ash,'YYYY/MM/DD HH24:MI:SS'), gLogLevelInfo);
@@ -624,6 +751,7 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
                 P_FILTER => q'[sample_time between to_timestamp(']' || to_char(l_start_dt,'YYYYMMDDHH24MISS') || q'[','YYYYMMDDHH24MISS') and to_timestamp(']' || to_char(l_end_dt,'YYYYMMDDHH24MISS') || q'[','YYYYMMDDHH24MISS')]'
                             || ' and instance_number>0 and snap_id between ' || gTargetSNAP_START || ' and ' || gTargetSNAP_END
                             || l_awr_filter
+                , p_priority=>g_qry_priority, p_timeout=>g_qry_timeout
                 );
 
               update OPAS_OT_ASHACUBE_RANGES set MIN_SNAP_ID = gTargetSNAP_START, MAX_SNAP_ID = gTargetSNAP_END,
@@ -639,11 +767,13 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
         else
           null;
         end case;
-
+--select count(1) into l_cnt from OPAS_OT_TMP_GV$ASH  where sample_time >= l_start_dt and sample_time < l_end_dt;
+--   llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): l_rows 1 "'|| l_rows ||'" +'||l_cnt);
         if COREOBJ_ASHA_CUBE_CALCS.gp(pMetricList) is not null then
           load_metrics(p_asharange_id, l_start_dt, l_end_dt, l_rows);
         end if;
-
+--select count(1) into l_cnt from OPAS_OT_TMP_GV$ASH  where sample_time >= l_start_dt and sample_time < l_end_dt;
+--   llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): l_rows 2"'|| l_rows ||'" +'||l_cnt);
         update OPAS_OT_TMP_GV$ASH set event='CPU', wait_class='CPU' where event is null;
        -- if l_is_data4insert then
             INSERT INTO opas_ot_ashacube_ash (
@@ -673,9 +803,9 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
             from OPAS_OT_TMP_GV$ASH
             where sample_time >= l_start_dt and sample_time < l_end_dt;
             l_rows := l_rows + sql%rowcount;
-
-   -- llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): 2 l_start_dt "'|| to_char(l_start_dt,'YYYY/MM/DD HH24:MI:SS.FF9') ||'"');
-   -- llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): 2 l_end_dt "'|| to_char(l_end_dt,'YYYY/MM/DD HH24:MI:SS.FF9') ||'"');
+--   llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): l_rows 3"'|| l_rows ||'"');
+--   llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): 2 l_start_dt "'|| to_char(l_start_dt,'YYYY/MM/DD HH24:MI:SS.FF9') ||'"');
+--   llog('COREOBJ_ASHA_CUBE_CALCS.get_granule('|| p_asharange_id ||'): 2 l_end_dt "'|| to_char(l_end_dt,'YYYY/MM/DD HH24:MI:SS.FF9') ||'"');
 
         if p_current_range then
             get_remote_curr_ts(COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK));
@@ -807,7 +937,7 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
     llog('COREOBJ_ASHA_CUBE_CALCS.sample_stat_for_granule('|| p_asharange_id ||'): l_end_dt "'|| to_char(l_end_dt,'YYYY/MM/DD HH24:MI:SS.FF9') ||'"');
 
     if gTargetCurrTS_UTC >= l_range.START_TIME_UTC - INTERVAL '70' SECOND and gTargetCurrTS_UTC < l_range.END_TIME_UTC + INTERVAL '10' SECOND then
-
+      /*
       l_sql1 := COREMOD_API.get_tmp_load_query(
         P_DB_LINK_NAME => l_range.DBLINK,
         P_SRC_TABLE_NAME_R => 'GV_$SESSION',
@@ -817,9 +947,9 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
         P_DBID => null,
         P_KEY_PREF => 'TABCOLLIST',
         P_FILTER => q'[status='ACTIVE' and type='USER']',
-        p_timestamp_col => 'TSTZ');
+        p_timestamp_col => 'TSTZ');*/
 
-      llog('COREOBJ_ASHA_CUBE_CALCS.sample_data_for_granule('|| p_asharange_id ||'): Sampling SQL "'||l_sql1||'"');
+      --llog('COREOBJ_ASHA_CUBE_CALCS.sample_data_for_granule('|| p_asharange_id ||'): Sampling SQL "'||l_sql1||'"');
 
       l_sql2 :=
       q'[INSERT INTO opas_ot_ashacube_ash (
@@ -856,7 +986,19 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
       l_start_time := DBMS_UTILITY.GET_TIME;
       loop
         --sampling
-        execute immediate l_sql1;
+        --execute immediate l_sql1;
+        COREMOD_API.load_tmp_data (
+          P_DB_LINK_NAME => l_range.DBLINK,
+          P_SRC_TABLE_NAME_R => 'GV_$SESSION',
+          P_SRC_TABLE_NAME => 'GV$SESSION',
+          P_TRG_TABLE_NAME => 'OPAS_OT_TMP_GV$SESSION',
+          P_SUFF => 'GV$SESS',
+          p_key_pref => 'TABCOLLIST',
+          P_DBID => null,
+          P_FILTER => q'[status='ACTIVE' and type='USER']',
+          p_timestamp_col => 'TSTZ'
+          , p_priority=>g_qry_priority, p_timeout=>g_qry_timeout );
+
         --llog('COREOBJ_ASHA_CUBE_CALCS.sample_data_for_granule('|| p_asharange_id ||') sampled "'||sql%rowcount||'"');
 
         l_sleep_time := (l_sampling_interval - (DBMS_UTILITY.GET_TIME-l_start_time))/100;
@@ -928,6 +1070,8 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
     l_sql1              varchar2(32765);
     l_sql2              varchar2(32765);
     l_sql3              varchar2(32765);
+
+    l_SELECT_LIST1 COREMOD_EXTPROC.t_columns;
   begin
     COREMOD_LOG.Start_SQL_GATHER_STAT('COREOBJ_ASHA_CUBE_CALCS.SAMPLE_STAT_FOR_GRANULE.GATHER_SQL_STAT');
     COREMOD_LOG.Start_SQL_TRACE('COREOBJ_ASHA_CUBE_CALCS.SAMPLE_STAT_FOR_GRANULE.SQL_TRACE');
@@ -948,24 +1092,34 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
 
     if gTargetCurrTS_UTC >= l_range.START_TIME_UTC - INTERVAL '70' SECOND and gTargetCurrTS_UTC < l_range.END_TIME_UTC + INTERVAL '10' SECOND then
 
-      l_sql3 := q'[merge into opas_db_statistics t
-      using (select statistic#, display_name, '<DBLINKNM>' dblink from v$statname<DBLINK> where <STATSLIST>) s
-      on (s.statistic#=t.statistic# and s.dblink=t.dblink)
-      when not matched then insert (statistic#, display_name, dblink) values (s.statistic#, s.display_name, s.dblink)]';
+      --l_sql3 := q'[merge into opas_db_statistics t
+      --using (select statistic#, display_name, '<DBLINKNM>' dblink from v$statname<DBLINK> where <STATSLIST>) s
+      --on (s.statistic#=t.statistic# and s.dblink=t.dblink)
+      --when not matched then insert (statistic#, display_name, dblink) values (s.statistic#, s.display_name, s.dblink)]';
 
+      l_sql3 := q'[(select statistic#, display_name, '<DBLINKNM>' dblink from v$statname<DBLINK> where <STATSLIST>)]';
+
+      l_SELECT_LIST1('ASHARANGE_ID'):='ASHARANGE_ID';
+      l_SELECT_LIST1('DBLINK'):='DBLINK';
+      l_SELECT_LIST1('TS_UTC'):='to_char(TS_UTC)';
+      l_SELECT_LIST1('INST_ID'):='INST_ID';
+      l_SELECT_LIST1('SID'):='SID';
+      l_SELECT_LIST1('STATISTIC#'):='STATISTIC#';
+      l_SELECT_LIST1('VALUE'):='VALUE';
 
       if gp(pGETSTATS) = 'Y' and gp(pGETSEESTATS) = 'Y' then
-        l_sql1 := q'[insert into opas_ot_tmp_gv$stats (TS_UTC, INST_ID, SID, STATISTIC#, VALUE)
-        select  :ts_utc, inst_id, sid, statistic#, value from (
-        select  inst_id, sid, statistic#, value from gv$sesstat<DBLINK> where value>0 and <STATSLIST> union all select  inst_id, null sid, statistic#, value from gv$sysstat<DBLINK> where value>0 and <STATSLIST>)]';
+        l_sql1 := --insert into opas_ot_tmp_gv$stats (TS_UTC, INST_ID, SID, STATISTIC#, VALUE)
+        q'[(select null ASHARANGE_ID null DBLINK, to_timestamp('<ts_utc>','yyyymmddhh24miss.ff9') TS_UTC, inst_id, sid, statistic#, value from (
+        select  inst_id, sid, statistic#, value from gv$sesstat<DBLINK> where value>0 and <STATSLIST> union all select  inst_id, null sid, statistic#, value
+        from gv$sysstat<DBLINK> where value>0 and <STATSLIST>))]';
       elsif gp(pGETSTATS) = 'Y' and gp(pGETSEESTATS) = 'N' then
-        l_sql1 := q'[insert into opas_ot_tmp_gv$stats (TS_UTC, INST_ID, SID, STATISTIC#, VALUE)
-        select  :ts_utc, inst_id, sid, statistic#, value from (
-        select  inst_id, null sid, statistic#, value from gv$sysstat<DBLINK> where value>0 and <STATSLIST>)]';
+        l_sql1 := --insert into opas_ot_tmp_gv$stats (TS_UTC, INST_ID, SID, STATISTIC#, VALUE)
+        q'[(select null ASHARANGE_ID null DBLINK, to_timestamp('<ts_utc>','yyyymmddhh24miss.ff9') TS_UTC inst_id, sid, statistic#, value from (
+        select  inst_id, null sid, statistic#, value from gv$sysstat<DBLINK> where value>0 and <STATSLIST>))]';
       end if;
 
-      l_sql1 := replace(l_sql1,'<DBLINK>',COREMOD_API.get_dblink_for_query(COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK)));
-      l_sql3 := replace(l_sql3,'<DBLINK>',COREMOD_API.get_dblink_for_query(COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK)));
+      --l_sql1 := replace(l_sql1,'<DBLINK>',COREMOD_API.get_dblink_for_query(COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK)));
+      --l_sql3 := replace(l_sql3,'<DBLINK>',COREMOD_API.get_dblink_for_query(COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK)));
       l_sql3 := replace(l_sql3,'<DBLINKNM>',COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK));
 
       l_sql1 :=replace(replace(l_sql1,'<STATSLIST>','statistic# in (<LIST>)'),'<LIST>',replace(gp(pSTATSLIST),':',','));
@@ -987,7 +1141,19 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
 
       llog('COREOBJ_ASHA_CUBE_CALCS.sample_stat_for_granule('|| p_asharange_id ||') Loading SQL "'||l_sql2||'"');
 
-      execute immediate l_sql3;
+      g_SELECT_LIST.delete;
+      COREMOD_EXTPROC.load_external_data (
+          P_TARGET_TABLE => 'OPAS_OT_TMP_DB_STATISTICS',
+          P_SELECT_LIST => g_SELECT_LIST,
+          P_SQL_BODY => l_sql3,
+          P_DBLINK => COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK),
+          p_priority => g_qry_priority,
+          P_TIMEOUT => g_qry_timeout) ;
+      --execute immediate l_sql3;
+      merge into opas_db_statistics t
+      using (select statistic#, display_name, dblink from OPAS_OT_TMP_DB_STATISTICS) s
+      on (s.statistic#=t.statistic# and s.dblink=t.dblink)
+      when not matched then insert (statistic#, display_name, dblink) values (s.statistic#, s.display_name, s.dblink);
       commit;
 
       delete from OPAS_OT_TMP_GV$ASH;
@@ -995,8 +1161,18 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
       l_start_time := DBMS_UTILITY.GET_TIME;
       loop
         --sampling
-        execute immediate l_sql1 using SYS_EXTRACT_UTC(systimestamp);
-        l_rows := l_rows + sql%rowcount;
+        --execute immediate l_sql1 using SYS_EXTRACT_UTC(systimestamp);
+
+        COREMOD_EXTPROC.load_external_data (
+          P_TARGET_TABLE => 'OPAS_OT_TMP_GV$STATS',
+          P_SELECT_LIST => l_SELECT_LIST1,
+          P_SQL_BODY => replace(l_sql1,'<ts_utc>',to_char(SYS_EXTRACT_UTC(systimestamp),'yyyymmddhh24miss.ff9')),
+          P_DBLINK => COREOBJ_ASHA_CUBE_CALCS.gp(pDBLINK),
+          p_priority => g_qry_priority,
+          P_TIMEOUT => g_qry_timeout) ;
+
+        --l_rows := l_rows + sql%rowcount;
+        l_rows := l_rows + COREMOD_EXTPROC.get_rows_processed();
 
         l_sleep_time := (l_sampling_interval - (DBMS_UTILITY.GET_TIME-l_start_time))/100;
         if l_sleep_time > 0.09 then

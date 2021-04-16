@@ -37,6 +37,7 @@ INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EX
 INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EXTERNAL','TIMOUTCREATED',    7200,    'Timeout of waiting result: after request created, seconds');
 INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EXTERNAL','TIMOUTSTARTED',    3600,    'Timeout of waiting result: after , seconds');
 INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EXTERNAL','JDBCBATCHSIZE',    100,     'Batch processing size');
+INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EXTERNAL','SERVERTYPE',       'STANDALONE',     'Server Type: LOCALJVM, STANDALONE');
 
 
 

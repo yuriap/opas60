@@ -118,3 +118,12 @@ FROM
     opas_ot_db_mon_hist_sess s,
     opas_ot_db_mon_hist_data d
 where s.sess_id = d.sess_id and s.status = 'R';
+
+--=======================================================================
+drop table OPAS_OT_DB_MON_HIST_DATA_EXT;
+create table OPAS_OT_DB_MON_HIST_DATA_EXT as
+SELECT
+  0 task_id,
+  x.*
+FROM
+  OPAS_OT_DB_MON_HIST_DATA x where 1=2;

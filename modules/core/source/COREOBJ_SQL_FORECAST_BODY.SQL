@@ -50,10 +50,25 @@ PACKAGE BODY COREOBJ_SQL_FORECAST AS
   is
     l_sql varchar2(10000);
     l_cnt number;
+    l_task number;
   begin
-    l_sql := q'[select /*+ full(a) */ count(1) from <TABNAME>]' || COREMOD_API.get_dblink_for_query(p_dblink) || q'[ a]';
+    l_sql := replace(q'[select /*+ full(a) */ count(1) cnt from <TABNAME><DBLINK> a]','<TABNAME>',p_table_name);
 
-    execute immediate replace(l_sql,'<TABNAME>',p_table_name) into l_cnt;
+    if COREMOD_API.external_mode_dblink(p_dblink) then
+      execute immediate replace(l_sql,'<DBLINK>',COREMOD_API.get_dblink_for_query(p_dblink)) into l_cnt;
+    elsif COREMOD_API.external_mode_javasrv(p_dblink) then
+            l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY => replace(
+      q'[begin
+          for i in (<SQL>) loop
+            :out := i.cnt;
+          end loop;
+         end;]','<SQL>',l_sql),
+                                                        P_DBLINK => p_dblink,
+                                                        P_PRIORITY => 3);
+            COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'OUT', P_ORDR_NUM => 1, p_number => null ) ;
+            COREMOD_EXTPROC.execute_plsql_task (  P_TASK_ID => l_task, P_TIMEOUT => 600) ;
+            COREMOD_EXTPROC.get_param (  P_TASK_ID => l_task, P_ORDR_NUM => 1, p_number => l_cnt) ;
+    end if;
 
     merge into OPAS_OT_SQL_FORECAST_STAT t
     using (select p_obj_id obj_id, p_table_name TABLE_NAME, l_cnt NUM_ROWS from dual) s
