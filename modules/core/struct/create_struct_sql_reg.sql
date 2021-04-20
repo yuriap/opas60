@@ -1655,6 +1655,15 @@ SELECT
 FROM
   OPAS_OT_TMP_PLANS_OTHER_XML x where 1=2;
 
+alter table OPAS_OT_TMP_PLANS_OTHER_XML_EXT modify SQL_ID	null;
+alter table OPAS_OT_TMP_PLANS_OTHER_XML_EXT modify DBID	null;
+alter table OPAS_OT_TMP_PLANS_OTHER_XML_EXT modify PLAN_HASH_VALUE	null;
+alter table OPAS_OT_TMP_PLANS_OTHER_XML_EXT modify ID	null;
+
+alter table OPAS_OT_TMP_PLANS_OTHER_XML modify SQL_ID	null;
+alter table OPAS_OT_TMP_PLANS_OTHER_XML modify DBID	null;
+alter table OPAS_OT_TMP_PLANS_OTHER_XML modify PLAN_HASH_VALUE	null;
+alter table OPAS_OT_TMP_PLANS_OTHER_XML modify ID	null;
   
 drop table OPAS_OT_TMP_AWR_ASH_OBJS_EXT;
 create table OPAS_OT_TMP_AWR_ASH_OBJS_EXT as

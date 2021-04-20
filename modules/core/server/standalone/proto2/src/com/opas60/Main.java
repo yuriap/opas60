@@ -16,6 +16,7 @@ public class Main {
                 DBUtils.log_info("Starting server.");
                 DBUtils.load_configuration(args[1]);
                 connect_to_local();
+                DBUtils.before_server_start();
                 ExecutorService exec = Executors.newCachedThreadPool();
                 do
                     DBUtils.init_server(args[1], exec);

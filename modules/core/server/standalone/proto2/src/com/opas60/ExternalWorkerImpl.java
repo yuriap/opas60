@@ -122,18 +122,27 @@ public class ExternalWorkerImpl {
             setconnprob.setString(2, remote_conn_error);
             setconnprob.executeUpdate();
             setconnprob.close();
-            log_debug("connect_to_remote Exception: " + e.getMessage());
+            log_info("connect_to_remote Exception: " + e.getMessage());
         }
     }
     private void finalize_conn() throws Exception, SQLException {
-        if (!remoteconn.isClosed()) {
+        log_info("Remote connection closing...");
+        if ((remoteconn != null)&&(!remoteconn.isClosed())) {
+            log_info("Remote connection is not closed.");
             remoteconn.close();
             log_info("Remote connection closed.");
         } else {
             log_info("Remote connection was not established. Nothing to close");
         }
-        localconn.close();
-        log_info("Local connection closed.");
+        log_info("Local connection closing...");
+        if ((localconn != null)&&(!localconn.isClosed())) {
+            log_info("Local connection is not closed.");
+            localconn.close();
+            log_info("Local connection closed.");
+        }
+        else {
+            log_info("Local connection was not established. Nothing to close");
+        }
     }
 
     public void test_remote_dbs() throws Exception, SQLException {
@@ -143,18 +152,24 @@ public class ExternalWorkerImpl {
         ResultSet localrset = localstmt.executeQuery();
 
         while (localrset.next()) {
-            remote_username = localrset.getString(1);
-            remote_password_str = localrset.getString(2);
-            remote_server_connectstr = localrset.getString(3);
-            DBLinkName = localrset.getString(4);
-            remoteconn = DriverManager.getConnection("jdbc:oracle:thin:@//" + remote_server_connectstr, remote_username, remote_password_str);
-            Statement remotestmt = remoteconn.createStatement();
-            ResultSet remoterset = remotestmt.executeQuery("select * from dual");
-            remoterset.next();
-            log_info("Remote database <" + DBLinkName + "> is accessible.");
-            remoterset.close();
-            remotestmt.close();
-            remoteconn.close();
+            try {
+                remote_username = localrset.getString(1);
+                remote_password_str = localrset.getString(2);
+                remote_server_connectstr = localrset.getString(3);
+                DBLinkName = localrset.getString(4);
+                remoteconn = DriverManager.getConnection("jdbc:oracle:thin:@//" + remote_server_connectstr, remote_username, remote_password_str);
+                Statement remotestmt = remoteconn.createStatement();
+                ResultSet remoterset = remotestmt.executeQuery("select * from dual");
+                remoterset.next();
+                log_info("Remote database <" + DBLinkName + "> is accessible.");
+                remoterset.close();
+                remotestmt.close();
+                remoteconn.close();
+            } catch (SQLException e) {
+                log_info("test_remote_dbs SQLException: " + e.getMessage());
+            } catch (Exception e) {
+                log_info("test_remote_dbs Exception: " + e.getMessage());
+            }
         }
 
         localrset.close();
@@ -162,23 +177,23 @@ public class ExternalWorkerImpl {
 
         finalize_conn();
     }
-    public void init_server(String ConfigFileName, ExecutorService exec) throws Exception, SQLException
-    {
-        setProcName("Main thread");
-        setWorker_Id(0);
-        setup_app_info_module_act(localconn, Module, "Getting new server...");
-        CallableStatement getserverid = localconn.prepareCall("{ call COREMOD_EXTPROC.get_next_server (  P_WORK_ID => ?) }");
-        getserverid.registerOutParameter(1, java.sql.Types.DECIMAL);
-        getserverid.executeUpdate();
-        int work_id = getserverid.getInt(1);
-        getserverid.close();
-
-        log_info("init_server: Starting server for work_id: " + work_id);
-
-        if (work_id>0) exec.execute(new ExternalWorker(ConfigFileName, work_id));
-
-        log_info("init_server: Started server for work_id: " + work_id);
-    }
+//    public void init_server(String ConfigFileName, ExecutorService exec) throws Exception, SQLException
+//    {
+//        setProcName("Main thread");
+//        setWorker_Id(0);
+//        setup_app_info_module_act(localconn, Module, "Getting new server...");
+//        CallableStatement getserverid = localconn.prepareCall("{ call COREMOD_EXTPROC.get_next_server (  P_WORK_ID => ?) }");
+//        getserverid.registerOutParameter(1, java.sql.Types.DECIMAL);
+//        getserverid.executeUpdate();
+//        int work_id = getserverid.getInt(1);
+//        getserverid.close();
+//
+//        log_info("init_server: Starting server for work_id: " + work_id);
+//
+//        if (work_id>0) exec.execute(new ExternalWorker(ConfigFileName, work_id));
+//
+//        log_info("init_server: Started server for work_id: " + work_id);
+//    }
     //=========================================================================
     public void start_server(int work_id) throws Exception, SQLException
     {
@@ -186,7 +201,7 @@ public class ExternalWorkerImpl {
         setWorker_Id(work_id);
 
         log_info("start_server work_id: " + work_id);
-
+        String errm = "";
         try {
             connect_to_local();
             init_worker(Worker_Id);
@@ -208,7 +223,8 @@ public class ExternalWorkerImpl {
                 }
 
                 if (remoteconn.isClosed()) break;
-
+                setup_app_info_module_act(remoteconn, "Worker ("+Worker_Id+")", "Got task: " + task_id);
+                setup_app_info_module_act(localconn, "Worker ("+Worker_Id+")", "Got task: " + task_id);
                 if ((!remoteconn.isClosed())&&(task_id > 0)) setup_app_info_module_act(remoteconn, "Worker ("+Worker_Id+")", "Task/qry_type "+task_id+"/"+qry_type);
                 if ((!remoteconn.isClosed())&&(task_id > 0)&&(qry_type.equals("SQLSELINS"))) execute_select_insert_task(task_id);
                 if ((!remoteconn.isClosed())&&(task_id > 0)&&(qry_type.equals("PLSQL")))     execute_plsql_task(task_id);
@@ -232,25 +248,21 @@ public class ExternalWorkerImpl {
 
         } catch (SQLException e) {
             //set_task(p_task_id, "FAILED", which_sql + e.getMessage(), 0);
-            if (!localconn.isClosed()) {
-              set_work(Worker_Id, executed, e.getMessage());
-            }else {
-                log_info("start_server Unable to Finish work with SQL Exception, local connection is closed");
-            }
-            log_info("start_server SQLException: " + e.getMessage());
+            errm = e.getMessage();
+            log_info("start_server SQLException: " + errm);
+
         } catch (Exception e) {
             //set_task(p_task_id, "FAILED", e.getMessage(), 0);
-            if (!localconn.isClosed()) {
-                set_work(Worker_Id, executed, e.getMessage());
-            }else {
-                log_info("start_server Unable to Finish work with Exception, local connection is closed");
-            }
-            log_info("start_server Exception: " + e.getMessage());
-        }
-        //if (!remoteconn.isClosed())
+            errm = e.getMessage();
+            log_info("start_server Exception: " + errm);
+        } finally {
+            if ((localconn != null)&&(!localconn.isClosed())) set_work(Worker_Id, executed, errm);
+            else log_info("start_server Unable to Finish work with Exception, local connection is closed");
 
-        finalize_conn();
-        log_info("finished. executed tasks: " + executed);
+            log_info("start_server finalizing...");
+            finalize_conn();
+            log_info("start_server finished. executed tasks: " + executed);
+        }
     }
     private void init_worker(int p_work_id) throws Exception, SQLException
     {
@@ -292,11 +304,12 @@ public class ExternalWorkerImpl {
     }
     private void set_task(int p_task_id, String p_status, String p_errm, int p_rows_processed) throws Exception, SQLException
     {
-        CallableStatement settask = localconn.prepareCall("{ call COREMOD_EXTPROC.set_task_finshed (  P_TASK_ID => ?, p_status => ?, p_errormsg => ?, p_rows_processed => ?) }");
-        settask.setInt(1, p_task_id);
-        settask.setString(2, p_status);
-        settask.setString(3, p_errm);
-        settask.setInt(4, p_rows_processed);
+        CallableStatement settask = localconn.prepareCall("{ call COREMOD_EXTPROC.set_task_finshed (  P_WORK_ID => ?, P_TASK_ID => ?, p_status => ?, p_errormsg => ?, p_rows_processed => ?) }");
+        settask.setInt(1, Worker_Id);
+        settask.setInt(2, p_task_id);
+        settask.setString(3, p_status);
+        settask.setString(4, p_errm);
+        settask.setInt(5, p_rows_processed);
         settask.executeUpdate();
         settask.close();
     }

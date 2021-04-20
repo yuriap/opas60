@@ -744,8 +744,13 @@ job_name            varchar2(128),
 started             timestamp,
 finished            timestamp,
 qry_executed        number,
-errmsgs             varchar2(4000)
+errmsgs             varchar2(4000),
+sess_sid            number,
+sess_inst_id        number,
+task_id             number
 );
+
+
 
 create table opas_extproc_work_srv_heartbeat (
 last_event timestamp
@@ -762,7 +767,7 @@ db_link_name        varchar2(128),
 qry_type            varchar2(128),
 select_sql          varchar2(4000),
 load_sql            varchar2(4000),
-pl_sql              varchar2(4000),
+pl_sql              clob,
 col_number          number,
 created             timestamp default systimestamp,
 started             timestamp,
@@ -774,7 +779,8 @@ exec_res            clob,
 errormsg            varchar2(4000),
 target_table        varchar2(128),
 rows_processed      number,
-duration            interval day to second generated always as (finished - started)
+duration            interval day to second generated always as (finished - started),
+timeout_secs        number
 );
 
 create sequence seq_opas_extproc_queue_srv maxvalue 2147483647 cycle;

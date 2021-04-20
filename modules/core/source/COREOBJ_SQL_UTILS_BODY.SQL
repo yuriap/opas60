@@ -759,7 +759,7 @@ USE_FEEDBACK_STATS as'USE_FB_STATS'))where nonshared_value = 'Y'group by inst_id
 
           update opas_ot_sql_sqlmon set sql_mon_report = l_file_id where sqlmon_id = i.sqlmon_id;
 --coremod_tasks.log('set report: i.sqlmon_id:l_file_id'||i.sqlmon_id||' '||l_file_id);
-          l_rows := l_rows + 1;
+          --l_rows := l_rows + 1;
         end if;
       exception
         when others then
@@ -1425,6 +1425,7 @@ USE_FEEDBACK_STATS as'USE_FB_STATS'))where nonshared_value = 'Y'group by inst_id
           declare
            l_task number;
            l_other_xml clob;
+           l_id number;
           begin
             /*
             l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY => l_sql,
@@ -1466,19 +1467,21 @@ USE_FEEDBACK_STATS as'USE_FB_STATS'))where nonshared_value = 'Y'group by inst_id
 
             for i in (select * from OPAS_OT_TMP_PLANS_OTHER_XML) loop
               l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY => replace(
-        q'[declare a clob := null;
+        q'[declare a clob := null; b number := null;
            begin
-             begin select other_xml into a from PLAN_TABLE where STATEMENT_ID = '<PLANID>' and ID=:ID and rownum=1; exception when others then null; end;
+             begin select other_xml, id into a, b from PLAN_TABLE where STATEMENT_ID = '<PLANID>' and other_xml is not null and rownum=1; exception when others then null; end;
+             :outid := b;
              :outclob := a;
            end;]','<PLANID>',l_PLANID),
                                                           P_DBLINK => p_data.dblink,
                                                           P_PRIORITY => g_qry_priority);
 
-              COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'IN', P_ORDR_NUM => 1, p_number => i.ID ) ;
+              COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'OUT', P_ORDR_NUM => 1, p_number => null ) ;
               COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'OUT', P_ORDR_NUM => 2, p_clob => null ) ;
               COREMOD_EXTPROC.execute_plsql_task (  P_TASK_ID => l_task, P_TIMEOUT => g_qry_timeout) ;
+              COREMOD_EXTPROC.get_param (  P_TASK_ID => l_task, P_ORDR_NUM => 1, p_number => l_id) ;
               COREMOD_EXTPROC.get_param (  P_TASK_ID => l_task, P_ORDR_NUM => 2, p_clob => l_other_xml) ;
-              update PLAN_TABLE set OTHER_XML = l_other_xml where ID = i.ID;
+              update PLAN_TABLE set OTHER_XML = l_other_xml where ID = l_id and STATEMENT_ID = l_PLANID;
             end loop;
             g_SELECT_LIST.delete;
 

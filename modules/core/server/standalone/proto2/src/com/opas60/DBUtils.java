@@ -92,6 +92,7 @@ public class DBUtils {
     }
 
     private static void finalize_conn() throws Exception, SQLException {
+        log_info("Local connection closing...");
         localconn.close();
         log_info("Local connection closed.");
     }
@@ -121,6 +122,13 @@ public class DBUtils {
         localstmt.close();
 
         finalize_conn();
+    }
+    public static void before_server_start() throws Exception, SQLException
+    {
+
+        CallableStatement beforestart = localconn.prepareCall("{ call COREMOD_EXTPROC.server_before_start }");
+        beforestart.executeUpdate();
+        beforestart.close();
     }
     public static void init_server(String ConfigFileName, ExecutorService exec) throws Exception, SQLException
     {

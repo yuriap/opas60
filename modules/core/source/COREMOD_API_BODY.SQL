@@ -604,12 +604,12 @@ package body COREMOD_API as
         P_FILTER => load_tmp_data.P_FILTER,
         p_timestamp_col => load_tmp_data.p_timestamp_col);
 
-      coremod_log.log('COREMOD_API.load_tmp_data (DBLINK):'||chr(10)||l_sql,'DEBUG');
+      --coremod_tasks.log('COREMOD_API.load_tmp_data (DBLINK):'||chr(10)||l_sql,'DEBUG');
       execute immediate l_sql;
       g_last_sql_rowcount := sql%rowcount;
     elsif COREMOD_API.external_mode_javasrv(p_db_link_name) then
       l_sql := replace(replace('(select * from <SRCTBL> where (<FILTER>))','<SRCTBL>',p_src_table_name),'<FILTER>',nvl(p_filter,' 1=1 '));
-      coremod_log.log('COREMOD_API.load_tmp_data (JAVA):'||chr(10)||l_sql,'DEBUG');
+      --coremod_tasks.log('COREMOD_API.load_tmp_data (JAVA):'||chr(10)||l_sql,'DEBUG');
       COREMOD_EXTPROC.load_external_data (
         P_TARGET_TABLE => upper(p_trg_table_name),
         P_SELECT_LIST => l_SELECT_LIST,

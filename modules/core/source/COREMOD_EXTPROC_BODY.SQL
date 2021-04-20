@@ -9,6 +9,10 @@ PACKAGE BODY COREMOD_EXTPROC AS
 
   gRowsProcessed number;
 
+  -- *****************************************************************************************************
+  -- logging
+  -- *****************************************************************************************************
+
   procedure log_info(p_message varchar2) is begin coremod_log.log(p_message, 'INFO', 'OPAS_EXTEXEC'); end;
   procedure log_debug(p_message varchar2) is
   begin
@@ -17,6 +21,9 @@ PACKAGE BODY COREMOD_EXTPROC AS
     end if;
   end;
 
+  -- *****************************************************************************************************
+  --external query executor
+  -- *****************************************************************************************************
   procedure load_external_data(p_target_table  varchar2,
                                p_select_list   t_columns,
                                p_sql_body      varchar2,
@@ -56,13 +63,11 @@ FROM   <SQLBODY>]';
           pragma autonomous_transaction;
         begin
           INSERT INTO opas_extproc_queue_srv (
-            TASK_ID, PRIORITY, db_link_name, QRY_TYPE, select_sql, load_sql, col_number, TARGET_TABLE, PL_SQL) VALUES (
-            l_task_id, p_priority, p_dblink, case when p_plsql_body is null then 'SQLSELINS' else 'PLSQLSELINS' end, l_unlsql,  l_loadsql, l_col_num, p_target_table, p_plsql_body);
+            TASK_ID, PRIORITY, db_link_name, QRY_TYPE, select_sql, load_sql, col_number, TARGET_TABLE, PL_SQL, TIMEOUT_SECS) VALUES (
+            l_task_id, p_priority, p_dblink, case when p_plsql_body is null then 'SQLSELINS' else 'PLSQLSELINS' end, l_unlsql,  l_loadsql, l_col_num, p_target_table, p_plsql_body, p_timeout);
           commit;
         end;
   begin
---dbms_output.put_line(replace(p_key_pref||'_<SRC_TABLE>','<SRC_TABLE>',p_src_table));
-
     gRowsProcessed := 0;
 
     if p_key_pref = 'TABCOLLIST' then
@@ -82,11 +87,13 @@ FROM   <SQLBODY>]';
                   when 'TSUTC' then 'sys_extract_utc(systimestamp)' else null end;
     end if;
 
---dbms_output.put_line(','||upper(l_column_list)||',');
---dbms_output.put_line(l_column_list);
-    for i in (select * from user_tab_cols where table_name=upper(p_target_table) and virtual_column='NO' and hidden_column='NO' order by column_id) loop
+        for i in (select column_name, data_type, column_id from user_tab_cols where table_name=upper(p_target_table) and virtual_column='NO' and hidden_column='NO'
+              union all
+              select column_name, data_type, column_id from all_tab_cols where table_name=upper(p_src_table_r) and virtual_column='NO' and hidden_column='NO'
+                 and not exists (select 1 from user_tab_cols where table_name=upper(p_target_table))
+               order by column_id
+    ) loop
       if p_key_pref is not null then
---dbms_output.put_line(','||i.column_name||',');
       if instr(','||upper(l_column_list)||',', ','||i.column_name||',')=0 then continue; end if;
       end if;
       if (i.data_type in ('VARCHAR2', 'CHAR', 'RAW', 'NUMBER', 'DATE') or
@@ -118,7 +125,6 @@ FROM   <SQLBODY>]';
               when i.data_type = 'TIMESTAMP' or i.data_type like 'TIMESTAMP(%)' then  ', ' || 'to_timestamp(?)'
               when i.data_type like 'TIMESTAMP(%) WITH TIME ZONE' then  ', ' || 'TO_TIMESTAMP_TZ(?)'
               else '/*<'||i.column_name || '>Unsupported type '||i.data_type||'*/' end;-- || ', ';
-      --l_col_num := l_col_num + 1;
     end loop;
     l_trgcols := rtrim(l_trgcols,', ');
     l_trgcols_expr := ltrim(l_trgcols_expr,', ');
@@ -156,10 +162,6 @@ FROM   <SQLBODY>]';
         log_info('load_external_data JAVA l_loadsql: '||l_loadsql);
         log_info('load_external_data JAVA l_loadlocalsql: '||l_loadlocalsql);
         log_info('load_external_data JAVA p_plsql_body: '||p_plsql_body);
---              dbms_output.put_line(l_unlsql);
---                    dbms_output.put_line(l_loadsql);
---                          dbms_output.put_line(l_loadlocalsql);
---                                dbms_output.put_line(p_plsql_body);
       else
         log_debug('load_external_data JAVA l_unlsql: '||l_unlsql);
         log_debug('load_external_data JAVA l_loadsql: '||l_loadsql);
@@ -174,7 +176,6 @@ FROM   <SQLBODY>]';
         execute immediate l_loadlocalsql using l_task_id;
         set_task_taken (  P_TASK_ID => l_task_id) ;  -- gRowsProcessed filled here
 
-        --select ROWS_PROCESSED into gRowsProcessed from OPAS_EXTPROC_QUEUE_SRV where TASK_ID=l_task_id;
       end if;
     else
       raise_application_error(-20000,'Unsupported external execution mode for DB Link(load_external_data): '||p_dblink);
@@ -182,6 +183,45 @@ FROM   <SQLBODY>]';
 
   end;
 
+  function  create_plsql_task (p_plsql_body    varchar2,
+                               p_dblink        varchar2,
+                               p_priority      number default 3,
+                               p_generate_only boolean default false) return number --returns p_task_id
+  is
+    l_task_id number;
+    l_PL_SQL  varchar2(32765);
+    pragma autonomous_transaction;
+  begin
+      l_PL_SQL := replace(p_plsql_body,'<DBLINK>');
+
+      if p_generate_only then
+        log_info('create_plsql_task JAVA l_PL_SQL: '||l_PL_SQL);
+
+      else
+        --PLSQL
+        l_task_id := seq_opas_extproc_queue_srv.nextval;
+        INSERT INTO opas_extproc_queue_srv (
+          TASK_ID, PRIORITY, db_link_name, QRY_TYPE, PL_SQL, STATUS) VALUES (
+          l_task_id, p_priority, p_dblink, 'PLSQL', l_PL_SQL, 'PRE');
+        commit;
+      end if;
+      return l_task_id;
+  end;
+
+  procedure execute_plsql_task (p_task_id       number,
+                                p_timeout       number default 600)
+  is
+    pragma autonomous_transaction;
+  begin
+    update OPAS_EXTPROC_QUEUE_SRV set STATUS = 'NEW', TIMEOUT_SECS = p_timeout where TASK_ID = p_task_id;
+    commit;
+    wait_result (  P_TASK_ID => p_task_id,
+                   P_TIMEOUT => execute_plsql_task.p_timeout) ;
+  end;
+
+-- *****************************************************************************************************
+-- cleanups
+-- *****************************************************************************************************
   procedure cleanup_task(p_task_id number)
   is
   begin
@@ -202,19 +242,10 @@ FROM   <SQLBODY>]';
     l_ids TABLEOFNUMBERS;
     l_retention_h number := to_number(COREMOD_API.getconf('EXTEXECLOGRETENT'));
   begin
-/*    select exec_id bulk collect into l_ids from opas_extproc_queue where finished < sysdate - 1/24;
-
-    for i in 1..l_ids.count loop
-      begin
-        host_command (p_command => '/home/oracle/extproc/execsqlpluscln.sh '||l_ids(i));
-        delete from opas_extproc_queue where exec_id = l_ids(i);
-      exception
-        when others then llog('Unable to cleanup COREMOD_EXTPROC('||l_ids(i)||'): '||sqlerrm);
-      end;
-    end loop;
-*/
     delete from OPAS_EXTPROC_WORK_SRV where FINISHED < sysdate - l_retention_h/24;
-    select task_id bulk collect into l_ids from OPAS_EXTPROC_QUEUE_SRV where (nvl(FINISHED,TAKEN) < sysdate - l_retention_h/24) or (status='PRE' and created < sysdate - l_retention_h/24);
+    select task_id bulk collect into l_ids from OPAS_EXTPROC_QUEUE_SRV
+     where (nvl(FINISHED,TAKEN) < sysdate - l_retention_h/24) or
+           (status='PRE' and created < sysdate - l_retention_h/24);
     for i in 1..l_ids.count loop
       cleanup_task(l_ids(i));
       delete from OPAS_EXTPROC_QUEUE_SRV where task_id=l_ids(i);
@@ -222,6 +253,9 @@ FROM   <SQLBODY>]';
     end loop;
   end;
 
+-- *****************************************************************************************************
+-- coordinator job procedures
+-- *****************************************************************************************************
   procedure start_coordinator is
     l_server_interval varchar2(100) := COREMOD_API.getconf('SRVINTERVAL');
     l_cnt number;
@@ -254,14 +288,6 @@ FROM   <SQLBODY>]';
     log_info('start_coordinator executed');
   end;
 
-  procedure stop_worker(p_job_name varchar2) is
-  begin
-    begin dbms_scheduler.stop_job(job_name  => p_job_name); exception when others then coremod_tasks.log('COREMOD_EXTPROC.stop_worker stop_job: '||p_job_name||': '||sqlerrm); end;
-    update OPAS_EXTPROC_WORK_SRV set FINISHED = systimestamp, errmsgs = 'Stopped by stop_worker' where JOB_NAME=p_job_name;
-    commit;
-    log_info('stop_worker executed: '||p_job_name);
-  end;
-
   procedure stop_coordinator is
   begin
     for i in (select * from opas_extproc_work_srv where job_name is not null and finished is null) loop
@@ -270,7 +296,6 @@ FROM   <SQLBODY>]';
 
     begin dbms_scheduler.stop_job(job_name  => 'OPASEXTSQL'); exception when others then coremod_tasks.log('COREMOD_EXTPROC.stop_coordinator stop_job: '||sqlerrm); end;
     begin dbms_scheduler.disable('OPASEXTSQL'); exception when others then coremod_tasks.log('COREMOD_EXTPROC.stop_coordinator disable: '||sqlerrm); end;
-    --begin dbms_scheduler.drop_program(program_name => 'OPASEXTSQL_PRG'); exception when others then coremod_tasks.log('COREMOD_EXTPROC.stop_coordinator drop_program: '||sqlerrm); end;
     log_info('stop_coordinator executed');
   end;
 
@@ -289,6 +314,14 @@ FROM   <SQLBODY>]';
     if l_connect_error_count > 3 then
       COREMOD_API.drop_dblink(p_db_link_name => upper(p_dblink), p_suspend => true);
       raise_application_error(-20000,'DB Link '||p_dblink||' suspended due to multiple connection errors');
+    end if;
+
+    select count(1) into l_connect_error_count
+      from OPAS_EXTPROC_WORK_SRV
+     where DB_LINK_NAME = p_dblink and errmsgs like 'Connection problem%' and STARTED > sysdate - 5/(24*60*60);
+
+    if l_connect_error_count > 0 then
+      raise_application_error(-20000,'DB Link '||p_dblink||' has connectivity problem');
     end if;
   end;
 
@@ -377,9 +410,9 @@ FROM   <SQLBODY>]';
               and l_threads2created>0 then
             l_dblinks_running(l_dblink):=0;
             log_info('coordinator_proc_local job l_dblink, l_threads2created: '||l_dblink||', '||l_threads2created);
-            --round(2*to_number(l_dblinks2start(l_dblink))/gsrvQueryPerServerSession)
+
             INSERT INTO opas_extproc_work_srv ( work_id, db_link_name, job_name)
-              VALUES (seq_opas_extproc_queue_srv.nextval, l_dblink, gshJobName||'_'||DBMS_RANDOM.STRING('X',6)) returning work_id, job_name into l_work_id, l_job_name;
+              VALUES (seq_opas_extproc_work_srv.nextval, l_dblink, gshJobName||'_'||DBMS_RANDOM.STRING('X',6)) returning work_id, job_name into l_work_id, l_job_name;
             commit;
             dbms_scheduler.create_job(job_name => l_job_name,
                                       job_type => 'PLSQL_BLOCK',
@@ -392,10 +425,6 @@ FROM   <SQLBODY>]';
           end if;
           l_dblink := l_dblinks2start.next(l_dblink);
         end loop;
-      --for i in (select DB_LINK_NAME, cnt, count(unique DB_LINK_NAME) over() dblnks from (select DB_LINK_NAME, count(1) cnt from OPAS_EXTPROC_QUEUE_SRV where STATUS='NEW' group by DB_LINK_NAME)) loop
-      --  null;
-      --end loop;
-      --end if;
       l_iter := l_iter + 1;
       exit when l_iter > l_maxiter;
       dbms_session.sleep(l_sleep);
@@ -403,9 +432,102 @@ FROM   <SQLBODY>]';
     log_debug('coordinator_proc_local finished');
   end coordinator_proc_local;
 
+  procedure coordinator_proc_standalone_v2 is
+    l_max_workers number;
+    l_threads2create  number:=0;
+    l_queued_jobs     number;
+    l_zombie_jobs     number;
+    l_running_jobs    number;
+    l_dblinks_running t_jobs;
+    l_dblinks2start   t_jobs;
+    l_dblinks2ban     t_jobs;
+    --l_dblink          varchar2(128);
+
+    l_work_id number;
+    l_job_name varchar2(128);
+
+    l_iter number := 0;
+    l_maxiter  number := to_number(COREMOD_API.getconf('COORDAQCITERS'));
+    l_sleep    number := to_number(COREMOD_API.getconf('COORDAQCSLEEP'));
+  begin
+    log_info('coordinator_proc_standalone_v2 started');
+    loop
+      if l_iter = 0 or mod(l_iter,20)=0 then
+        gsrvLoggingLevel := COREMOD_API.getconf('EXTLOGGINGMODE');
+        l_max_workers := to_number(COREMOD_API.getconf('MAXEXTWORKERS'));
+        gsrvQueryPerServerSession := to_number(COREMOD_API.getconf('QRYPERWORKERSESS'));
+      end if;
+
+      for i in (SELECT que_actual.DB_LINK_NAME, que_length, nvl(sess_alive,0)sess_alive, nvl(task_active,0) task_active, max_TIMEOUT_SECS, nvl(total_cnt,0) total_cnt
+                  FROM (select DB_LINK_NAME, count(1) que_length
+                          from OPAS_EXTPROC_QUEUE_SRV que0
+                         where status = 'NEW'
+                         group by que0.DB_LINK_NAME) que_actual,
+                       (select wrkr.DB_LINK_NAME,
+                               count(1) total_cnt,
+                               sum(decode(ss.sid,null,0,1)) sess_alive,
+                               sum(decode(wrkr.TASK_ID,null,0,1)) task_active,
+                               max(que.TIMEOUT_SECS) max_TIMEOUT_SECS
+                          from opas_extproc_work_srv  wrkr,
+                               gv$session             ss,
+                               OPAS_EXTPROC_QUEUE_SRV que
+                         where wrkr.SESS_SID = ss.sid(+)
+                           and wrkr.SESS_INST_ID = ss.inst_id(+)
+                           and wrkr.TASK_ID = que.TASK_ID(+)
+                           and wrkr.finished is null
+                           group by wrkr.DB_LINK_NAME) wrkr
+                 where que_actual.DB_LINK_NAME = wrkr.DB_LINK_NAME(+))
+      loop
+        log_info('coordinator_proc_standalone_v2: DB_LINK_NAME='||i.DB_LINK_NAME||'; total_cnt='||i.total_cnt||'; que_length='||i.que_length||'; sess_alive='||i.sess_alive||'; task_active='||i.task_active||'; max_TIMEOUT_SECS='||i.max_TIMEOUT_SECS);
+
+        if not l_dblinks2ban.exists(i.DB_LINK_NAME) then
+          begin
+            check_connection_problem(i.DB_LINK_NAME);
+          exception
+            when others then
+              if not l_dblinks2ban.exists(i.DB_LINK_NAME) then
+                l_dblinks2ban(i.DB_LINK_NAME) := 20;
+              end if;
+              log_info('coordinator_proc_standalone_v2 connection problem: '||i.DB_LINK_NAME||': '||sqlerrm);
+          end;
+        else
+          if l_dblinks2ban(i.DB_LINK_NAME)>0 then
+            l_dblinks2ban(i.DB_LINK_NAME):=l_dblinks2ban(i.DB_LINK_NAME)-1;
+          else
+            l_dblinks2ban.delete(i.DB_LINK_NAME);
+          end if;
+        end if;
+
+        if (i.que_length > 0 and i.sess_alive<l_max_workers and i.sess_alive < i.task_active or
+            i.que_length > 0 and i.sess_alive<l_max_workers+2 and i.task_active = i.sess_alive)
+            and
+            i.total_cnt <= l_max_workers+2
+        then
+          if not l_dblinks2ban.exists(i.DB_LINK_NAME) then
+            INSERT INTO opas_extproc_work_srv ( work_id, db_link_name, job_name)
+              VALUES (seq_opas_extproc_work_srv.nextval, i.DB_LINK_NAME, gshJobName||'_'||DBMS_RANDOM.STRING('X',6)) returning work_id, job_name into l_work_id, l_job_name;
+            log_info('coordinator_proc_standalone to start: l_job_name l_dblink: '||l_job_name||', '||i.DB_LINK_NAME);
+          else
+            log_info('coordinator_proc_standalone to banned: l_dblink: '||i.DB_LINK_NAME);
+          end if;
+        else
+          log_info('coordinator_proc_standalone limit reached: l_dblink: '||i.DB_LINK_NAME);
+        end if;
+      end loop;
+      commit;
+
+      l_iter := l_iter + 1;
+      exit when l_iter > l_maxiter;
+      dbms_session.sleep(l_sleep);
+    end loop;
+    log_info('coordinator_proc_standalone_v2 finished');
+  end coordinator_proc_standalone_v2;
+
   procedure coordinator_proc_standalone is
     l_max_workers number;
-    l_threads2created number:=0;
+    l_threads2create  number:=0;
+    l_queued_jobs     number;
+    l_zombie_jobs     number;
     l_running_jobs    number;
     l_dblinks_running t_jobs;
     l_dblinks2start   t_jobs;
@@ -427,72 +549,81 @@ FROM   <SQLBODY>]';
         gsrvQueryPerServerSession := to_number(COREMOD_API.getconf('QRYPERWORKERSESS'));
       end if;
 
-        for i in (select DB_LINK_NAME, count(1) cnt from OPAS_EXTPROC_QUEUE_SRV where STATUS='NEW' group by DB_LINK_NAME) loop
+      for i in (select DB_LINK_NAME, count(1) cnt from OPAS_EXTPROC_QUEUE_SRV where STATUS='NEW' group by DB_LINK_NAME) loop
 
-          l_dblinks2start.delete;
-          l_dblinks_running.delete;
+        l_dblinks2start.delete;
+        l_dblinks_running.delete;
 
-          --select count(1) into l_running_jobs from user_scheduler_running_jobs where job_name in (select JOB_NAME from OPAS_EXTPROC_WORK_SRV where FINISHED is null and STARTED is not null);
+        if gsrvLoggingLevel = 'DEBUG' then
+          select sum(decode(started, null, 1, 0)), sum(decode(sid, null, 0, 1)) ,
+                 sum(case when started is not null and started>sysdate - 3/(24*60*60) and sid is null then 1 else 0 end)
+            into l_queued_jobs, l_running_jobs, l_zombie_jobs
+            from OPAS_EXTPROC_WORK_SRV, gv$session
+           where FINISHED is null
+            and SESS_SID = sid(+)
+            and SESS_INST_ID = inst_id(+);
 
-          select count(1) into l_running_jobs from OPAS_EXTPROC_WORK_SRV where FINISHED is null;
+        --if l_zombie_jobs>0 then
+          log_debug('coordinator_proc_standalone: l_queued_jobs, l_running_jobs, l_zombie_jobs: '||l_queued_jobs||', '||l_running_jobs||', '||l_zombie_jobs);
+        --end if;
+        end if;
 
-          if l_max_workers > l_running_jobs then
-            l_threads2created := l_max_workers - l_running_jobs;
+        select count(1)
+          into l_running_jobs
+          from OPAS_EXTPROC_WORK_SRV  where FINISHED is null;-- and DB_LINK_NAME = i.DB_LINK_NAME;
+        log_debug('coordinator_proc_standalone('||i.DB_LINK_NAME||'): l_running_jobs: '|| l_running_jobs);
 
-            for i in (select unique DB_LINK_NAME from OPAS_EXTPROC_WORK_SRV where DB_LINK_NAME in (select DB_LINK_NAME from OPAS_EXTPROC_WORK_SRV where FINISHED is null)) loop
-              l_dblinks_running(i.DB_LINK_NAME):=0;
-            end loop;
-          end if;
+        if l_max_workers > l_running_jobs then
+          l_threads2create := l_max_workers - l_running_jobs;
 
-          if not l_dblinks2ban.exists(i.DB_LINK_NAME) then
-            begin
-              check_connection_problem(i.DB_LINK_NAME);
-              l_dblinks2start(i.DB_LINK_NAME):=i.cnt;
-            exception
-              when others then
-                if not l_dblinks2ban.exists(i.DB_LINK_NAME) then
-                  l_dblinks2ban(i.DB_LINK_NAME) := 20;
-                end if;
-                log_info('coordinator_proc_standalone connection problem: '||i.DB_LINK_NAME||': '||sqlerrm);
-            end;
+          for i in (select unique DB_LINK_NAME
+                      from OPAS_EXTPROC_WORK_SRV
+                     where DB_LINK_NAME in (select DB_LINK_NAME from OPAS_EXTPROC_WORK_SRV where FINISHED is null)
+          )
+          loop
+            l_dblinks_running(i.DB_LINK_NAME):=0;
+          end loop;
+        end if;
+
+        if not l_dblinks2ban.exists(i.DB_LINK_NAME) then
+          begin
+            check_connection_problem(i.DB_LINK_NAME);
+            l_dblinks2start(i.DB_LINK_NAME):=i.cnt;
+          exception
+            when others then
+              if not l_dblinks2ban.exists(i.DB_LINK_NAME) then
+                l_dblinks2ban(i.DB_LINK_NAME) := 20;
+              end if;
+              log_info('coordinator_proc_standalone connection problem: '||i.DB_LINK_NAME||': '||sqlerrm);
+          end;
+        else
+          if l_dblinks2ban(i.DB_LINK_NAME)>0 then
+            l_dblinks2ban(i.DB_LINK_NAME):=l_dblinks2ban(i.DB_LINK_NAME)-1;
           else
-            if l_dblinks2ban(i.DB_LINK_NAME)>0 then
-              l_dblinks2ban(i.DB_LINK_NAME):=l_dblinks2ban(i.DB_LINK_NAME)-1;
-            else
-              l_dblinks2ban.delete(i.DB_LINK_NAME);
-            end if;
+            l_dblinks2ban.delete(i.DB_LINK_NAME);
           end if;
-        end loop;
+        end if;
+      end loop;
 
-        l_dblink := l_dblinks2start.first;
-        loop
-          exit when l_dblink is null or l_threads2created <= 0;
-          if (
-               (not l_dblinks_running.exists(l_dblink)) or
-               (l_dblinks_running.exists(l_dblink) and l_dblinks2start(l_dblink) > 4 ) -- number of tasks in queue to start a new worker rvQueryPerServerSession/2)
-             )
-              and l_threads2created>0 then
-            l_dblinks_running(l_dblink):=0;
-            log_info('coordinator_proc_standalone job l_dblink, l_threads2created: '||l_dblink||', '||l_threads2created);
-            --round(2*to_number(l_dblinks2start(l_dblink))/gsrvQueryPerServerSession)
-            INSERT INTO opas_extproc_work_srv ( work_id, db_link_name, job_name)
-              VALUES (seq_opas_extproc_queue_srv.nextval, l_dblink, gshJobName||'_'||DBMS_RANDOM.STRING('X',6)) returning work_id, job_name into l_work_id, l_job_name;
-            commit;
-            /*dbms_scheduler.create_job(job_name => l_job_name,
-                                      job_type => 'PLSQL_BLOCK',
-                                      job_action => q'{begin COREMOD_EXTPROC.worker_proc(}' || l_work_id || q'{); end;}',
-                                      start_date => systimestamp,
-                                      enabled => true,
-                                      auto_drop=> true); */
-            l_threads2created := l_threads2created - 1;
-            log_info('coordinator_proc_standalone job queued: '||l_job_name);
-          end if;
-          l_dblink := l_dblinks2start.next(l_dblink);
-        end loop;
-      --for i in (select DB_LINK_NAME, cnt, count(unique DB_LINK_NAME) over() dblnks from (select DB_LINK_NAME, count(1) cnt from OPAS_EXTPROC_QUEUE_SRV where STATUS='NEW' group by DB_LINK_NAME)) loop
-      --  null;
-      --end loop;
-      --end if;
+      l_dblink := l_dblinks2start.first;
+      loop
+        exit when l_dblink is null;-- or l_threads2created <= 0;
+        if (not l_dblinks_running.exists(l_dblink)) or
+           (l_dblinks_running.exists(l_dblink) and l_dblinks2start(l_dblink) > 5 and l_threads2create > 0) -- number of tasks in queue to start a new worker rvQueryPerServerSession/2)
+        then
+          l_dblinks_running(l_dblink):=0;
+
+          INSERT INTO opas_extproc_work_srv ( work_id, db_link_name, job_name)
+            VALUES (seq_opas_extproc_work_srv.nextval, l_dblink, gshJobName||'_'||DBMS_RANDOM.STRING('X',6)) returning work_id, job_name into l_work_id, l_job_name;
+          commit;
+
+          log_info('coordinator_proc_standalone to start: l_job_name l_dblink, l_threads2create: '||l_job_name||', '||l_dblink||', '||l_threads2create);
+          l_threads2create := l_threads2create - 1;
+
+        end if;
+        l_dblink := l_dblinks2start.next(l_dblink);
+      end loop;
+
       l_iter := l_iter + 1;
       exit when l_iter > l_maxiter;
       dbms_session.sleep(l_sleep);
@@ -538,20 +669,15 @@ FROM   <SQLBODY>]';
     if COREMOD_API.getconf('SERVERTYPE') = 'LOCALJVM' then
       coordinator_proc_local();
     elsif COREMOD_API.getconf('SERVERTYPE') = 'STANDALONE' then
-      coordinator_proc_standalone();
+      coordinator_proc_standalone_v2();
     else
       raise_application_error(-20000,'Unsupported server type: <'||COREMOD_API.getconf('SERVERTYPE')||'>');
     end if;
   end;
 
-  procedure report_connection_problem(p_work_id number, p_errormsg varchar2)
-  is
-    pragma autonomous_transaction;
-  begin
-    update OPAS_EXTPROC_WORK_SRV set FINISHED = systimestamp, errmsgs = 'Connection problem: '||p_errormsg where work_id=p_work_id;
-    commit;
-  end;
-
+-- *****************************************************************************************************
+-- worker's procedures
+-- *****************************************************************************************************
   procedure worker_proc(p_work_id number) is
   begin
     dbms_output.enable(1000000);
@@ -561,11 +687,12 @@ FROM   <SQLBODY>]';
     log_debug('worker_proc finished: '||p_work_id);
   end;
 
-  procedure worker_finished(p_work_id number, p_stmt_done number, p_errors varchar2) is
-    pragma autonomous_transaction;
+  procedure stop_worker(p_job_name varchar2) is
   begin
-    update OPAS_EXTPROC_WORK_SRV set FINISHED = systimestamp, QRY_EXECUTED = p_stmt_done, errmsgs = p_errors where work_id=p_work_id;
+    begin dbms_scheduler.stop_job(job_name  => p_job_name); exception when others then coremod_tasks.log('COREMOD_EXTPROC.stop_worker stop_job: '||p_job_name||': '||sqlerrm); end;
+    update OPAS_EXTPROC_WORK_SRV set FINISHED = systimestamp, errmsgs = 'Stopped by stop_worker', TASK_ID = null where JOB_NAME=p_job_name;
     commit;
+    log_info('stop_worker executed: '||p_job_name);
   end;
 
   procedure stop_worker(p_work_id number) is
@@ -575,13 +702,28 @@ FROM   <SQLBODY>]';
     end loop;
   end;
 
+  procedure server_before_start
+  is
+  begin
+    update OPAS_EXTPROC_WORK_SRV set FINISHED = systimestamp, ERRMSGS = 'Cleaned up', TASK_ID = null where FINISHED is null;-- and STARTED is not null;
+    log_info('server_before_start finished: cleaned abandoned workes: '||sql%rowcount);
+    commit;
+  end;
+
   procedure init_server_parameters(p_work_id number, p_username out varchar2, p_password out varchar2, p_connstr out varchar2, p_query_num out number, p_logging_mode out varchar2, p_batch_size out number) is
     l_status varchar2(100);
     pragma autonomous_transaction;
   begin
-    for i in (select * from opas_extproc_work_srv where job_name is not null and finished is null and STARTED is null and work_id=p_work_id for update nowait) loop
-      update OPAS_EXTPROC_WORK_SRV set STARTED = systimestamp where work_id=p_work_id;
-    end loop;
+    if COREMOD_API.getconf('SERVERTYPE') = 'LOCALJVM' then
+      for i in (select * from opas_extproc_work_srv where job_name is not null and finished is null and STARTED is null and work_id=p_work_id for update nowait) loop
+        update OPAS_EXTPROC_WORK_SRV set STARTED = systimestamp, SESS_SID = sys_context('USERENV','SID'),SESS_INST_ID = sys_context('USERENV','INSTANCE') where work_id=p_work_id;
+      end loop;
+    elsif COREMOD_API.getconf('SERVERTYPE') = 'STANDALONE' then
+      update OPAS_EXTPROC_WORK_SRV set STARTED = systimestamp, SESS_SID = sys_context('USERENV','SID'),SESS_INST_ID = sys_context('USERENV','INSTANCE') where work_id=p_work_id;
+    else
+      raise_application_error(-20000,'Unsupported server type: <'||COREMOD_API.getconf('SERVERTYPE')||'>');
+    end if;
+    log_info('init_server_parameters: '||p_work_id || ' <' || sys_context('USERENV','SID') || '> <'|| sys_context('USERENV','INSTANCE')||'>' );
     commit;
 
     for i in (select * from opas_extproc_work_srv where work_id=p_work_id) loop
@@ -600,6 +742,24 @@ FROM   <SQLBODY>]';
     log_info('init_server_parameters finished: '||p_work_id);
   end;
 
+  procedure worker_finished(p_work_id number, p_stmt_done number, p_errors varchar2) is
+    pragma autonomous_transaction;
+  begin
+    update OPAS_EXTPROC_WORK_SRV set FINISHED = systimestamp, QRY_EXECUTED = p_stmt_done, errmsgs = p_errors, TASK_ID = null where work_id=p_work_id and finished is null;
+    commit;
+  end;
+
+  procedure report_connection_problem(p_work_id number, p_errormsg varchar2)
+  is
+    pragma autonomous_transaction;
+  begin
+    update OPAS_EXTPROC_WORK_SRV set FINISHED = systimestamp, errmsgs = 'Connection problem: '||p_errormsg, TASK_ID = null where work_id=p_work_id;
+    commit;
+  end;
+
+-- *****************************************************************************************************
+-- task operations
+-- *****************************************************************************************************
   procedure get_next_task(p_work_id number, p_task_id out number, p_qry_type out varchar2, p_qry1 out varchar2, p_qry2 out varchar2, p_qry3 out varchar2, p_num_cols out number, p_timeouted out number) is
     l_acquired boolean := false;
     l_iterations number := 0;
@@ -617,6 +777,7 @@ FROM   <SQLBODY>]';
           p_qry3 := j.PL_SQL;
           l_acquired := true;
           update OPAS_EXTPROC_QUEUE_SRV set STARTED = systimestamp, status='STARTED' where TASK_ID=j.TASK_ID;
+          update OPAS_EXTPROC_WORK_SRV set TASK_ID = j.TASK_ID where work_id=p_work_id;
           exit;
         end loop;
         l_iterations := l_iterations + 1;
@@ -633,25 +794,46 @@ FROM   <SQLBODY>]';
       log_debug('get_next_task finished');
     end if;
   end;
-/*
-  procedure set_task_selected_data(p_task_id number) is
-    pragma autonomous_transaction;
-  begin
-    update OPAS_EXTPROC_QUEUE_SRV set SELECTED = systimestamp, STATUS='SELECTED' where TASK_ID=p_task_id;
-    commit;
-  end;
-*/
-  procedure set_task_finshed(p_task_id number, p_status varchar2, p_errormsg varchar2, p_rows_processed number/*, p_result clob default null*/) is
+
+  procedure set_task_finshed(p_work_id number, p_task_id number, p_status varchar2, p_errormsg varchar2, p_rows_processed number/*, p_result clob default null*/) is
     pragma autonomous_transaction;
   begin
     update OPAS_EXTPROC_QUEUE_SRV set FINISHED = systimestamp, STATUS=p_status, ERRORMSG = p_errormsg, ROWS_PROCESSED = p_rows_processed/*, EXEC_RES = p_result*/ where TASK_ID=p_task_id;
+    update OPAS_EXTPROC_WORK_SRV set TASK_ID = null where work_id=p_work_id;
     commit;
   end;
 
-  function get_rows_processed return number
+-- *****************************************************************************************************
+-- client API calls
+-- *****************************************************************************************************
+  procedure wait_result(p_task_id number, p_timeout number default 600)
   is
+    l_start_tim date := sysdate;
+    l_res boolean := false;
+    l_timedout1 boolean := false;
+    l_timedout2 boolean := false;
+    l_timedout3 boolean := false;
+
+    l_timout_after_task_created number := to_number(COREMOD_API.getconf('TIMOUTCREATED'));
+    l_timout_after_task_started number := to_number(COREMOD_API.getconf('TIMOUTSTARTED'));
   begin
-    return gRowsProcessed;
+    loop
+      for i in (select created, started, FINISHED, status, ERRORMSG from OPAS_EXTPROC_QUEUE_SRV where TASK_ID=p_task_id and FINISHED is not null)
+      loop
+        l_res := i.FINISHED is not null; --p_status := i.status;
+        l_timedout1 := (sysdate - (i.created+0))*24*3600 > l_timout_after_task_created;
+        l_timedout2 := (sysdate - (i.started+0))*24*3600 > l_timout_after_task_started;
+        if i.status='FAILED' then raise_application_error(-20000, 'Task <'||p_task_id||'> failed with: '||i.ERRORMSG);end if;
+      end loop;
+
+      if not l_timedout1 and not l_timedout2 then l_timedout3 := (sysdate-l_start_tim)*24*3600>p_timeout; end if;
+
+      if l_timedout1 then set_task_timedout(p_task_id, 'Timeout after (created) '||l_timout_after_task_created|| ' secs'); raise_application_error(-20000, 'Task '||p_task_id||' timed out after (created) '||l_timout_after_task_created|| ' secs.'); end if;
+      if l_timedout2 then set_task_timedout(p_task_id, 'Timeout after (started) '||l_timout_after_task_started|| ' secs'); raise_application_error(-20000, 'Task '||p_task_id||' timed out after (started) '||l_timout_after_task_started|| ' secs.'); end if;
+      if l_timedout3 then set_task_timedout(p_task_id, 'Timeout after (specified) '||p_timeout|| ' secs'); raise_application_error(-20000, 'Task '||p_task_id||' timed out after (specified '||p_timeout|| ' secs.'); end if;
+      exit when l_res or l_timedout1 or l_timedout2 or l_timedout3;
+      dbms_session.sleep(0.1);
+    end loop;
   end;
 
   procedure set_task_taken(p_task_id number) is
@@ -668,36 +850,20 @@ FROM   <SQLBODY>]';
     commit;
   end;
 
-  procedure wait_result(p_task_id number, p_timeout number default 600)
+  function get_rows_processed return number
   is
-    l_start_tim date := sysdate;
-    l_res boolean := false;
-    l_timedout boolean := false;
-
-    l_timout_after_task_created number := to_number(COREMOD_API.getconf('TIMOUTCREATED'));
-    l_timout_after_task_started number := to_number(COREMOD_API.getconf('TIMOUTSTARTED'));
   begin
-    loop
-      for i in (select created, started, FINISHED, status, ERRORMSG from OPAS_EXTPROC_QUEUE_SRV where TASK_ID=p_task_id and FINISHED is not null)
-      loop
-        l_res := i.FINISHED is not null; --p_status := i.status;
-        l_timedout := (sysdate - (i.created+0))*24*3600 > l_timout_after_task_created;
-        l_timedout := (sysdate - (i.started+0))*24*3600 > l_timout_after_task_started;
-        if i.status='FAILED' then raise_application_error(-20000, 'Task <'||p_task_id||'> failed with: '||i.ERRORMSG);end if;
-      end loop;
-
-      if not l_timedout then l_timedout := (sysdate-l_start_tim)*24*3600>p_timeout; end if;
-
-      if l_timedout then set_task_timedout(p_task_id, 'Timeout after '||p_timeout|| ' secs'); raise_application_error(-20000, 'Task '||p_task_id||' timed out after '||p_timeout|| ' secs.'); end if;
-      exit when l_res or l_timedout;
-      dbms_session.sleep(0.1);
-    end loop;
+    return gRowsProcessed;
   end;
 
+-- *****************************************************************************************************
+-- client API calls parameters
+-- *****************************************************************************************************
   procedure clean_param(p_task_id number, p_ordr_num number) is
   begin
     delete from OPAS_EXTPROC_RESULTS where TASK_ID = p_task_id and R_ORDR_NUM = p_ordr_num;
   end;
+
   procedure add_param(p_task_id number, p_io_type varchar2, p_ordr_num number, p_clob clob) is
     pragma autonomous_transaction;
   begin
@@ -708,6 +874,7 @@ FROM   <SQLBODY>]';
     insert into OPAS_EXTPROC_RESULTS(TASK_ID, R_ORDR_NUM, R_IO_TYPE, R_DATA_TYPE, R_CLOB) values (p_task_id, p_ordr_num, p_io_type, 'CLOB', p_clob);
     commit;
   end;
+
   procedure add_param(p_task_id number, p_io_type varchar2, p_ordr_num number, p_number number) is
     pragma autonomous_transaction;
   begin
@@ -715,6 +882,7 @@ FROM   <SQLBODY>]';
     insert into OPAS_EXTPROC_RESULTS(TASK_ID, R_ORDR_NUM, R_IO_TYPE, R_DATA_TYPE, R_NUMBER) values (p_task_id, p_ordr_num, p_io_type, 'NUMBER', p_number);
     commit;
   end;
+
   procedure add_param(p_task_id number, p_io_type varchar2, p_ordr_num number, p_date date) is
     pragma autonomous_transaction;
   begin
@@ -722,6 +890,7 @@ FROM   <SQLBODY>]';
     insert into OPAS_EXTPROC_RESULTS(TASK_ID, R_ORDR_NUM, R_IO_TYPE, R_DATA_TYPE, R_DATE) values (p_task_id, p_ordr_num, p_io_type, 'DATE', p_date);
     commit;
   end;
+
   procedure add_param(p_task_id number, p_io_type varchar2, p_ordr_num number, p_timestamp timestamp) is
     pragma autonomous_transaction;
   begin
@@ -729,6 +898,7 @@ FROM   <SQLBODY>]';
     insert into OPAS_EXTPROC_RESULTS(TASK_ID, R_ORDR_NUM, R_IO_TYPE, R_DATA_TYPE, R_TIMESTAMP) values (p_task_id, p_ordr_num, p_io_type, 'TIMESTAMP', p_timestamp);
     commit;
   end;
+
   procedure add_param(p_task_id number, p_io_type varchar2, p_ordr_num number, p_timestamp_tz timestamp with time zone) is
     pragma autonomous_transaction;
   begin
@@ -736,6 +906,7 @@ FROM   <SQLBODY>]';
     insert into OPAS_EXTPROC_RESULTS(TASK_ID, R_ORDR_NUM, R_IO_TYPE, R_DATA_TYPE, R_TIMESTAMP_TZ) values (p_task_id, p_ordr_num, p_io_type, 'TIMESTAMP_TZ', p_timestamp_tz);
     commit;
   end;
+
   procedure add_param(p_task_id number, p_io_type varchar2, p_ordr_num number, p_varchar2 varchar2) is
     pragma autonomous_transaction;
   begin
@@ -747,34 +918,38 @@ FROM   <SQLBODY>]';
   procedure set_param(p_task_id number, p_ordr_num number, p_clob clob) is
   pragma autonomous_transaction;
   begin
-    --raise_application_error(-20000,'p_clob:'||length(p_clob));
     update OPAS_EXTPROC_RESULTS set R_CLOB = p_clob where TASK_ID = p_task_id and R_ORDR_NUM = p_ordr_num;
     commit;
   end;
+
   procedure set_param(p_task_id number, p_ordr_num number, p_number number) is
   pragma autonomous_transaction;
   begin
     update OPAS_EXTPROC_RESULTS set R_NUMBER = p_number where TASK_ID = p_task_id and R_ORDR_NUM = p_ordr_num;
     commit;
   end;
+
   procedure set_param(p_task_id number, p_ordr_num number, p_date date) is
   pragma autonomous_transaction;
   begin
     update OPAS_EXTPROC_RESULTS set R_DATE = p_date where TASK_ID = p_task_id and R_ORDR_NUM = p_ordr_num;
     commit;
   end;
+
   procedure set_param(p_task_id number, p_ordr_num number, p_timestamp timestamp) is
   pragma autonomous_transaction;
   begin
     update OPAS_EXTPROC_RESULTS set R_TIMESTAMP = p_timestamp where TASK_ID = p_task_id and R_ORDR_NUM = p_ordr_num;
     commit;
   end;
+
   procedure set_param(p_task_id number, p_ordr_num number, p_timestamp_tz timestamp with time zone) is
   pragma autonomous_transaction;
   begin
     update OPAS_EXTPROC_RESULTS set R_TIMESTAMP_TZ = p_timestamp_tz where TASK_ID = p_task_id and R_ORDR_NUM = p_ordr_num;
     commit;
   end;
+
   procedure set_param(p_task_id number, p_ordr_num number, p_varchar2 varchar2) is
   pragma autonomous_transaction;
   begin
@@ -782,41 +957,6 @@ FROM   <SQLBODY>]';
     commit;
   end;
 
-  function  create_plsql_task (p_plsql_body    varchar2,
-                               p_dblink        varchar2,
-                               p_priority      number default 3,
-                               p_generate_only boolean default false) return number --returns p_task_id
-  is
-    l_task_id number;
-    l_PL_SQL  varchar2(32765);
-    pragma autonomous_transaction;
-  begin
-      l_PL_SQL := replace(p_plsql_body,'<DBLINK>');
-
-      if p_generate_only then
-        log_info('create_plsql_task JAVA l_PL_SQL: '||l_PL_SQL);
-
-      else
-        --PLSQL
-        l_task_id := seq_opas_extproc_queue_srv.nextval;
-        INSERT INTO opas_extproc_queue_srv (
-          TASK_ID, PRIORITY, db_link_name, QRY_TYPE, PL_SQL, STATUS) VALUES (
-          l_task_id, p_priority, p_dblink, 'PLSQL', l_PL_SQL, 'PRE');
-        commit;
-      end if;
-      return l_task_id;
-  end;
-
-  procedure execute_plsql_task (p_task_id       number,
-                                p_timeout       number default 600)
-  is
-    pragma autonomous_transaction;
-  begin
-    update OPAS_EXTPROC_QUEUE_SRV set STATUS = 'NEW' where TASK_ID = p_task_id;
-    commit;
-    wait_result (  P_TASK_ID => p_task_id,
-                   P_TIMEOUT => execute_plsql_task.p_timeout) ;
-  end;
   procedure get_param(p_task_id number, p_ordr_num number, p_clob out clob)
   is
   begin
