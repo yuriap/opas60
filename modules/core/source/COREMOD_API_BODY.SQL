@@ -587,7 +587,9 @@ package body COREMOD_API as
                           p_priority         number,
                           p_timeout          number,
                           p_plsql_body       varchar2 default null,
-                          p_timestamp_col    varchar2 default null)
+                          p_timestamp_col    varchar2 default null,
+                          p_is_parent_task boolean default false,
+                          p_parent_task    number default null)
   is
     l_sql           varchar2(32765);
     L_SELECT_LIST   COREMOD_EXTPROC.t_columns;
@@ -621,7 +623,9 @@ package body COREMOD_API as
         P_PLSQL_BODY => load_tmp_data.p_plsql_body,
         p_key_pref => load_tmp_data.P_KEY_PREF,
         p_src_table_r => load_tmp_data.P_SRC_TABLE_NAME_R,
-        p_timestamp_col => load_tmp_data.p_timestamp_col) ;
+        p_timestamp_col => load_tmp_data.p_timestamp_col,
+        p_is_parent_task => load_tmp_data.p_is_parent_task,
+        p_parent_task => load_tmp_data.p_parent_task) ;
       g_last_sql_rowcount := COREMOD_EXTPROC.get_rows_processed;
     else
       raise_application_error(-20000,'Unsupported external execution mode for DB Link (get_remote_full_oracle_version): '||p_db_link_name);

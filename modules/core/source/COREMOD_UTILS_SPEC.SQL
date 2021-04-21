@@ -11,7 +11,14 @@ PACKAGE COREMOD_UTILS AS
   function get_remote_ts(p_dblink opas_db_links.db_link_name%type) return timestamp with time zone;
 
   procedure get_clob_remotelly(p_sql varchar2, p_dblink varchar2, p_output out clob, p_timeout number default 600);
-  procedure execute_plsql_remotelly(p_sql varchar2, p_dblink varchar2, p_output out clob, p_is_output boolean default true, p_timeout number default 600);
+  procedure execute_plsql_remotelly(p_sql            varchar2,
+                                    p_dblink         varchar2,
+                                    p_output         out clob,
+                                    p_is_output      boolean default true,
+                                    p_timeout        number default 600,
+                                    p_priority       number default 3,
+                                    p_is_parent_task boolean default false,
+                                    p_parent_task    number default null);
 
 END COREMOD_UTILS;
 /

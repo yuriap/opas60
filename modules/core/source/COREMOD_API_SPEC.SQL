@@ -75,7 +75,9 @@ package COREMOD_API as
                            p_priority         number,
                            p_timeout          number,
                            p_plsql_body       varchar2 default null,
-                           p_timestamp_col varchar2 default null);
+                           p_timestamp_col varchar2 default null,
+                           p_is_parent_task boolean default false,
+                           p_parent_task    number default null);
    function get_tmp_load_query(p_db_link_name varchar2,
                                p_src_table_name_r varchar2,
                                p_src_table_name varchar2,

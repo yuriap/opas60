@@ -1394,7 +1394,6 @@ USE_FEEDBACK_STATS as'USE_FB_STATS'))where nonshared_value = 'Y'group by inst_id
     l_sqlerrm    varchar2(32765);
     l_PLANID     varchar2(100):= 'OPAS60'||DBMS_RANDOM.STRING('X',6);
   begin
-    --finish_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLEP, p_rows_processed => 0);
     --dangerous! can lead to ORA-04020: deadlock detected while trying to lock object ...
     start_section(p_data.sql_data_point_id, COREOBJ_SQL_REPORT_UTILS.repsSQLPLEP);
 
@@ -1426,14 +1425,8 @@ USE_FEEDBACK_STATS as'USE_FB_STATS'))where nonshared_value = 'Y'group by inst_id
            l_task number;
            l_other_xml clob;
            l_id number;
+           l_parent_task number;
           begin
-            /*
-            l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY => l_sql,
-                                                        P_DBLINK => p_data.dblink,
-                                                        P_PRIORITY => g_qry_priority);
-
-            COREMOD_EXTPROC.execute_plsql_task (  P_TASK_ID => l_task,
-                                                  P_TIMEOUT => g_qry_timeout) ;  */
 
             COREMOD_API.load_tmp_data (  P_DB_LINK_NAME => p_data.dblink,
                                          P_SRC_TABLE_NAME_R => 'PLAN_TABLE$',
@@ -1443,8 +1436,11 @@ USE_FEEDBACK_STATS as'USE_FB_STATS'))where nonshared_value = 'Y'group by inst_id
                                          P_DBID => null,
                                          P_KEY_PREF => 'LOCTABCOLS',
                                          P_FILTER => replace(q'[ STATEMENT_ID = '<PLANID>']','<PLANID>',l_PLANID),
-                                         p_plsql_body => l_sql
-                                         , p_priority=>g_qry_priority, p_timeout=>g_qry_timeout) ;
+                                         p_plsql_body => l_sql,
+                                         p_priority=>g_qry_priority,
+                                         p_timeout=>g_qry_timeout,
+                                         p_is_parent_task => true) ;
+            l_parent_task := COREMOD_EXTPROC.GetParentTask;
 
             l_sql := replace(q'[PLAN_TABLE where STATEMENT_ID = '<PLANID>' and other_xml is not null]','<PLANID>',l_PLANID);
 
@@ -1463,7 +1459,8 @@ USE_FEEDBACK_STATS as'USE_FB_STATS'))where nonshared_value = 'Y'group by inst_id
               P_SQL_BODY => l_sql,
               P_DBLINK => p_data.dblink,
               p_priority => g_qry_priority,
-              P_TIMEOUT => g_qry_timeout) ;
+              P_TIMEOUT => g_qry_timeout,
+              p_parent_task => l_parent_task) ;
 
             for i in (select * from OPAS_OT_TMP_PLANS_OTHER_XML) loop
               l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY => replace(
@@ -1474,7 +1471,8 @@ USE_FEEDBACK_STATS as'USE_FB_STATS'))where nonshared_value = 'Y'group by inst_id
              :outclob := a;
            end;]','<PLANID>',l_PLANID),
                                                           P_DBLINK => p_data.dblink,
-                                                          P_PRIORITY => g_qry_priority);
+                                                          P_PRIORITY => g_qry_priority,
+                                                          p_parent_task => l_parent_task);
 
               COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'OUT', P_ORDR_NUM => 1, p_number => null ) ;
               COREMOD_EXTPROC.add_param (  P_TASK_ID => l_task, P_IO_TYPE => 'OUT', P_ORDR_NUM => 2, p_clob => null ) ;

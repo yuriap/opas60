@@ -9,6 +9,8 @@ PACKAGE BODY COREMOD_EXTPROC AS
 
   gRowsProcessed number;
 
+  gParent_Task_Id number;
+
   -- *****************************************************************************************************
   -- logging
   -- *****************************************************************************************************
@@ -24,6 +26,23 @@ PACKAGE BODY COREMOD_EXTPROC AS
   -- *****************************************************************************************************
   --external query executor
   -- *****************************************************************************************************
+
+  procedure SetParentTask(p_is_parent_task boolean,
+                          p_parent_task    number,
+                          p_task_id        number)
+  is
+  begin
+    if p_is_parent_task then
+      gParent_Task_Id := p_task_id;
+    elsif p_parent_task is not null then
+      gParent_Task_Id := p_parent_task;
+    else
+      gParent_Task_Id := null;
+    end if;
+  end;
+
+  function GetParentTask return number is begin return gParent_Task_Id; end;
+
   procedure load_external_data(p_target_table  varchar2,
                                p_select_list   t_columns,
                                p_sql_body      varchar2,
@@ -34,7 +53,9 @@ PACKAGE BODY COREMOD_EXTPROC AS
                                p_plsql_body    varchar2 default null,
                                p_key_pref      varchar2 default null,
                                p_src_table_r   varchar2 default null,
-                               p_timestamp_col varchar2 default null)
+                               p_timestamp_col varchar2 default null,
+                               p_is_parent_task boolean default false,
+                               p_parent_task    number default null)
   is
     l_extunltmpl varchar2(32765) := q'[SELECT <COLLIST>
  FROM <SQLBODY>]';
@@ -63,8 +84,9 @@ FROM   <SQLBODY>]';
           pragma autonomous_transaction;
         begin
           INSERT INTO opas_extproc_queue_srv (
-            TASK_ID, PRIORITY, db_link_name, QRY_TYPE, select_sql, load_sql, col_number, TARGET_TABLE, PL_SQL, TIMEOUT_SECS) VALUES (
-            l_task_id, p_priority, p_dblink, case when p_plsql_body is null then 'SQLSELINS' else 'PLSQLSELINS' end, l_unlsql,  l_loadsql, l_col_num, p_target_table, p_plsql_body, p_timeout);
+            TASK_ID, PRIORITY, db_link_name, QRY_TYPE, select_sql, load_sql, col_number, TARGET_TABLE, PL_SQL, TIMEOUT_SECS, PARENT_TASK_ID) VALUES (
+            l_task_id, p_priority, p_dblink, case when p_plsql_body is null then 'SQLSELINS' else 'PLSQLSELINS' end,
+            l_unlsql,  l_loadsql, l_col_num, p_target_table, p_plsql_body, p_timeout, gParent_Task_Id);
           commit;
         end;
   begin
@@ -144,7 +166,7 @@ FROM   <SQLBODY>]';
         gRowsProcessed := sql%rowcount;
       end if;
     elsif l_javasrv then
-      l_task_id := seq_opas_extproc_queue_srv.nextval;
+
       l_unlsql := l_extunltmpl;
 
       l_unlsql := replace(replace(l_unlsql,'<SQLBODY>',p_sql_body),'<DBLINK>');
@@ -167,7 +189,10 @@ FROM   <SQLBODY>]';
         log_debug('load_external_data JAVA l_loadsql: '||l_loadsql);
         log_debug('load_external_data JAVA l_loadlocalsql: '||l_loadlocalsql);
         log_debug('load_external_data JAVA p_plsql_body: '||p_plsql_body);
+
         --SQLSELINS
+        l_task_id := seq_opas_extproc_queue_srv.nextval;
+        SetParentTask(p_is_parent_task, p_parent_task, l_task_id);
         add2queue();
 
         wait_result (  P_TASK_ID => l_task_id,
@@ -186,7 +211,9 @@ FROM   <SQLBODY>]';
   function  create_plsql_task (p_plsql_body    varchar2,
                                p_dblink        varchar2,
                                p_priority      number default 3,
-                               p_generate_only boolean default false) return number --returns p_task_id
+                               p_generate_only boolean default false,
+                               p_is_parent_task boolean default false,
+                               p_parent_task    number default null) return number --returns p_task_id
   is
     l_task_id number;
     l_PL_SQL  varchar2(32765);
@@ -200,9 +227,10 @@ FROM   <SQLBODY>]';
       else
         --PLSQL
         l_task_id := seq_opas_extproc_queue_srv.nextval;
+        SetParentTask(p_is_parent_task, p_parent_task, l_task_id);
         INSERT INTO opas_extproc_queue_srv (
-          TASK_ID, PRIORITY, db_link_name, QRY_TYPE, PL_SQL, STATUS) VALUES (
-          l_task_id, p_priority, p_dblink, 'PLSQL', l_PL_SQL, 'PRE');
+          TASK_ID, PRIORITY, db_link_name, QRY_TYPE, PL_SQL, STATUS, PARENT_TASK_ID) VALUES (
+          l_task_id, p_priority, p_dblink, 'PLSQL', l_PL_SQL, 'PRE', gParent_Task_Id);
         commit;
       end if;
       return l_task_id;
@@ -768,7 +796,17 @@ FROM   <SQLBODY>]';
   begin
     for i in (select * from opas_extproc_work_srv where work_id=p_work_id) loop
       loop
-        for j in (select * from OPAS_EXTPROC_QUEUE_SRV where STATUS = 'NEW' and DB_LINK_NAME = i.DB_LINK_NAME for update skip locked order by PRIORITY, CREATED) loop
+        for j in (select * from OPAS_EXTPROC_QUEUE_SRV where STATUS = 'NEW' and DB_LINK_NAME = i.DB_LINK_NAME and (gParent_Task_Id is null or PARENT_TASK_ID = gParent_Task_Id)
+                  for update skip locked order by PRIORITY, CREATED) loop
+
+          if j.PARENT_TASK_ID is not null and gParent_Task_Id is null then
+            gParent_Task_Id := j.PARENT_TASK_ID;
+            log_info('get_next_task get parent task: p_work_id, gParent_Task_Id: '||p_work_id||', '||gParent_Task_Id);
+          elsif j.PARENT_TASK_ID is null and gParent_Task_Id is not null then
+            gParent_Task_Id := null;
+            log_info('get_next_task reset parent task: p_work_id, '||p_work_id);
+          end if;
+
           p_task_id := j.task_id;
           p_qry_type := j.QRY_TYPE;
           p_qry1 := j.SELECT_SQL;
@@ -781,7 +819,8 @@ FROM   <SQLBODY>]';
           exit;
         end loop;
         l_iterations := l_iterations + 1;
-        exit when l_acquired or l_iterations>l_max_iteration;
+        exit when gParent_Task_Id is null and (l_acquired or l_iterations>l_max_iteration) or
+                  gParent_Task_Id is not null and (l_acquired or l_iterations>(l_max_iteration+500)) ;
         dbms_session.sleep(l_sleep);
       end loop;
     end loop;

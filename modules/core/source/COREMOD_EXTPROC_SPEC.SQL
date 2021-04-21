@@ -22,14 +22,20 @@ PACKAGE COREMOD_EXTPROC AS
                                p_plsql_body    varchar2 default null,
                                p_key_pref      varchar2 default null,
                                p_src_table_r   varchar2 default null,
-                               p_timestamp_col varchar2 default null);
+                               p_timestamp_col varchar2 default null,
+                               p_is_parent_task boolean default false,
+                               p_parent_task    number default null);
   function  create_plsql_task (p_plsql_body    varchar2,
                                p_dblink        varchar2,
                                p_priority      number default 3,
-                               p_generate_only boolean default false) return number; --returns p_task_id
+                               p_generate_only boolean default false,
+                               p_is_parent_task boolean default false,
+                               p_parent_task    number default null) return number; --returns p_task_id
 
   procedure execute_plsql_task (p_task_id       number,
                                 p_timeout       number default 600);
+
+  function GetParentTask return number;
 
 -- *****************************************************************************************************
 -- cleanups
