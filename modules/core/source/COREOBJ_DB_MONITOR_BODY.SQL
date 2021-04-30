@@ -10,6 +10,7 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
   is
     L_ALERT_ID number;
     l_obj      opas_objects%rowtype;
+    l_nt_id    opas_notification.ID%type;
   begin
     for i in (select c.*,o.obj_name, o.obj_id, m.measure, m.dblink
                 from opas_ot_db_monitor_alerts_cfg c, OPAS_OT_DB_MONITOR m,
@@ -32,6 +33,17 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
             P_MESSAGE    => 'Limit exceeded. Actual: '||p_metruc_val||' '||i.measure||'; Limit: '||i.ALERT_LIMIT||' '||i.measure||'.',
             P_LINK_PAGE  => 6002,
             P_LINK_PARAM => p_measur_id) ;
+          if i.NOTIFICATION = 'Y' then
+            COREMOD_ALERTS.add_notification (
+                  nt_id => l_nt_id,
+                  NT_TEXT => 'DB Monitor: '||i.obj_name||'. Limit exceeded. Actual: '||p_metruc_val||' '||i.measure||'; Limit: '||i.ALERT_LIMIT||' '||i.measure||'.',
+                  NT_TYPE_ID => COREMOD_ALERTS.nttMaintenance,
+                  NT_COLOR => COREMOD_ALERTS.ntcRed,
+                  NT_USERNAME => l_obj.obj_owner,
+                  --NT_NO_BROWSER_NOTIF_FLAG => 0,
+                  NT_ACTIVATE => 1,
+                  nt_alter_key => upper(i.obj_name)) ;
+          end if;
         end if;
       end if;
     end loop;
@@ -247,7 +259,8 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
 
   procedure add_alert_limit(p_metric_id   opas_ot_db_monitor_alerts_cfg.metric_id%type,
                             p_alert_type  opas_ot_db_monitor_alerts_cfg.alert_type%type,
-                            p_alert_limit  opas_ot_db_monitor_alerts_cfg.alert_limit%type)
+                            p_alert_limit  opas_ot_db_monitor_alerts_cfg.alert_limit%type,
+                            p_alert_notification     varchar2 default 'N')
   is
     l_ts timestamp := systimestamp;
   begin
@@ -259,8 +272,8 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
     merge into opas_ot_db_monitor_alerts_cfg t
     using (select p_metric_id metric_id, p_alert_type alert_type, p_alert_limit alert_limit from dual) s
     on (t.metric_id = s.metric_id and t.alert_type = s.alert_type and t.limit_actual = 'Y')
-    when not matched then insert ( t.metric_id, t.alert_type, t.alert_limit, t.limit_actual, t.actual_start)
-      VALUES (s.metric_id, s.alert_type, s.alert_limit, 'Y', l_ts);
+    when not matched then insert ( t.metric_id, t.alert_type, t.alert_limit, t.limit_actual, t.actual_start, t.NOTIFICATION)
+      VALUES (s.metric_id, s.alert_type, s.alert_limit, 'Y', l_ts, p_alert_notification);
   end;
 
   procedure drop_alert_limit(p_metric_id   opas_ot_db_monitor_alerts_cfg.metric_id%type/*,

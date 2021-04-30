@@ -2199,12 +2199,12 @@ USE_FEEDBACK_STATS as'USE_FB_STATS'))where nonshared_value = 'Y'group by inst_id
 
   begin
 
-    coremod_log.log('update_dblink_db_info_awrsn','DEBUG');
+    coremod_log.log('update_dblink_db_info_awrsn','INFO');
     coremod_log.log('p_db_link_name: '||p_db_link_name,'DEBUG');
     coremod_log.log('p_days: '||p_days,'DEBUG');
     coremod_log.log('p_sql_id: '||p_sql_id,'DEBUG');
-    coremod_log.log('p_start_dt: '||to_char(p_start_dt,'YYYY-MM-DD HH24:MI:SS'),'DEBUG');
-    coremod_log.log('p_end_dt: '||to_char(p_end_dt,'YYYY-MM-DD HH24:MI:SS'),'DEBUG');
+    coremod_log.log('p_start_dt: '||to_char(p_start_dt,'YYYY-MM-DD HH24:MI:SS'),'INFO');
+    coremod_log.log('p_end_dt: '||to_char(p_end_dt,'YYYY-MM-DD HH24:MI:SS'),'INFO');
 
     select DBLINK, dbid, null CON_ID into p_params.DBLINK, p_params.DBID, p_params.CON_ID from OPAS_DB_LINK_V$DB where DBLINK = p_db_link_name and IS_ACTUAL = 'Y';
 
@@ -2256,8 +2256,8 @@ USE_FEEDBACK_STATS as'USE_FB_STATS'))where nonshared_value = 'Y'group by inst_id
       l_ts1 := l_ts2 - NUMTODSINTERVAL(p_days, 'day');
     end if;
 
-    coremod_log.log('l_ts1: '||to_char(l_ts1,'YYYY-MM-DD HH24:MI:SS'),'DEBUG');
-    coremod_log.log('l_ts2: '||to_char(l_ts2,'YYYY-MM-DD HH24:MI:SS'),'DEBUG');
+    coremod_log.log('l_ts1: '||to_char(l_ts1,'YYYY-MM-DD HH24:MI:SS'),'INFO');
+    coremod_log.log('l_ts2: '||to_char(l_ts2,'YYYY-MM-DD HH24:MI:SS'),'INFO');
 
     l_sql :=--q'[INSERT /*+ OPAS60_DBLINK_AWRSN */ INTO opas_dbl_tmp_awrsnaps (<SRC_DB_COL_LICT>)
             --  select <SRC_DB_COL_LICT> from dba_hist_snapshot]' || COREMOD_API.get_dblink_for_query(p_db_link_name) ||
@@ -2298,6 +2298,10 @@ USE_FEEDBACK_STATS as'USE_FB_STATS'))where nonshared_value = 'Y'group by inst_id
      into p_params.INSTANCE_LIST_C
     from ( select unique INSTANCE_NUMBER from opas_dbl_tmp_awrsnaps);
 
+    if p_params.INSTANCE_LIST_C is null then p_params.INSTANCE_LIST_C := '1,2,3,4,5,6,7,8'; end if;
+    if p_params.SNAP_START is null then p_params.SNAP_START := 0; end if;
+    if p_params.SNAP_END is null then p_params.SNAP_START := 1e12; end if;
+
     COREMOD_API.lock_resource
                  (p_resource_name => 'update_dblink_db_info_awrsn',
                   p_mode => DBMS_LOCK.X_MODE,
@@ -2320,15 +2324,15 @@ USE_FEEDBACK_STATS as'USE_FB_STATS'))where nonshared_value = 'Y'group by inst_id
        );
 
     --commit;
-    coremod_log.log('t_awr_params_rec','DEBUG');
+    coremod_log.log('t_awr_params_rec','INFO');
     coremod_log.log('DBLINK: '||p_params.DBLINK,'DEBUG');
     coremod_log.log('DBID: '||p_params.DBID,'DEBUG');
     coremod_log.log('CON_ID: '||p_params.CON_ID,'DEBUG');
-    coremod_log.log('INSTANCE_LIST_C: '||p_params.INSTANCE_LIST_C,'DEBUG');
-    coremod_log.log('SNAP_START: '||p_params.SNAP_START,'DEBUG');
-    coremod_log.log('SNAP_END: '||p_params.SNAP_END,'DEBUG');
-    coremod_log.log('BEGIN_INTERVAL_TIME: '||to_char(p_params.BEGIN_INTERVAL_TIME,'YYYY-MM-DD HH24:MI:SS'),'DEBUG');
-    coremod_log.log('END_INTERVAL_TIME: '||to_char(p_params.END_INTERVAL_TIME,'YYYY-MM-DD HH24:MI:SS'),'DEBUG');
+    coremod_log.log('INSTANCE_LIST_C: '||p_params.INSTANCE_LIST_C,'INFO');
+    coremod_log.log('SNAP_START: '||p_params.SNAP_START,'INFO');
+    coremod_log.log('SNAP_END: '||p_params.SNAP_END,'INFO');
+    coremod_log.log('BEGIN_INTERVAL_TIME: '||to_char(p_params.BEGIN_INTERVAL_TIME,'YYYY-MM-DD HH24:MI:SS'),'INFO');
+    coremod_log.log('END_INTERVAL_TIME: '||to_char(p_params.END_INTERVAL_TIME,'YYYY-MM-DD HH24:MI:SS'),'INFO');
     coremod_log.log('INCARNATION#: '||p_params.INCARNATION#,'DEBUG');
   exception
     when others then

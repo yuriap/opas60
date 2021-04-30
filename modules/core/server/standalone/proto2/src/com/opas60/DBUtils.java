@@ -141,10 +141,12 @@ public class DBUtils {
         int work_id = getserverid.getInt(1);
         getserverid.close();
 
-        log_info("init_server: Starting server for work_id: " + work_id);
-
-        if (work_id>0) exec.execute(new ExternalWorker(ConfigFileName, work_id));
-
-        log_info("init_server: Started server for work_id: " + work_id);
+        if (work_id>0) {
+            log_info("init_server: Starting server for work_id: " + work_id);
+            exec.execute(new ExternalWorker(ConfigFileName, work_id));
+            log_info("init_server: Started server for work_id: " + work_id);
+        } else {
+            log_info("init_server: No task in queue");
+        }
     }
 }

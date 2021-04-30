@@ -196,7 +196,7 @@ package body COREOBJ_SQL_CATCHER is
   procedure task_catcher     (p_obj_id            opas_objects.obj_id%type)
   is
     l_sql_load varchar2(32765) := q'[gv$sql<DBLINK>
-       where sql_id in (<FILTER>)
+       where (<FILTER>)
          and rownum <= <LIMIT>
          group by sql_id, substr(sql_text,1,4000)]';
     --l_head_dbl varchar2(1000):='insert into opas_ot_tmp_sqlcatch_sqls(sql_id, sql_text, ACTUAL_EXECS, actual_eo_fetch, last_active) select sql_id, substr(sql_text,1,4000), sum(EXECUTIONS), sum(END_OF_FETCH_COUNT), max(LAST_ACTIVE_TIME)';
@@ -218,6 +218,15 @@ package body COREOBJ_SQL_CATCHER is
     l_log_time          number := dbms_utility.get_time;
     l_name              opas_objects.obj_name%type;
     l_nt_id             opas_notification.ID%type;
+
+    cursor c_getqryforqueue (cp_obj_id opas_objects.obj_id%type) is
+                     select obj_id, sql_id, sql_text from opas_ot_sqlcatch_sqls
+                      where (status=ssqltReady or (status=ssqltNew and upper(sql_text) like 'ALTER TABLE%'))
+                        and obj_id = cp_obj_id;
+
+    type tc_getqryforqueue is table of c_getqryforqueue%rowtype;
+
+    tbl_getqryforqueue tc_getqryforqueue;
 
     procedure load_sqls is
       --l_exec_id number;
@@ -326,31 +335,30 @@ package body COREOBJ_SQL_CATCHER is
         end if;
 
         if l_ctchr.status in (stActive) then
-          for i in (select obj_id,sql_id, sql_text from opas_ot_sqlcatch_sqls
-                     where (status=ssqltReady or status=ssqltNew and upper(sql_text) like 'ALTER TABLE%'
-                           )
-                       and obj_id = p_obj_id)
+          --for i in (select obj_id, sql_id, sql_text from opas_ot_sqlcatch_sqls
+          --           where (status=ssqltReady or (status=ssqltNew and upper(sql_text) like 'ALTER TABLE%')
+          --                 )
+          --             and obj_id = p_obj_id)
+          open c_getqryforqueue(p_obj_id);
+          fetch c_getqryforqueue bulk collect into tbl_getqryforqueue;
+          close c_getqryforqueue;
+          for i in 1..tbl_getqryforqueue.count
           loop
             coreobj_sql.add(p_obj_id => l_obj_id,
                             p_obj_prnt => p_obj_id,
                             --p_modname => 'OPASCORE',
                             p_owner => l_owner,
                             p_descr => 'SQL Catcher',
-                            p_sql_id => i.sql_id,
+                            p_sql_id => tbl_getqryforqueue(i).sql_id,
                             p_db_link => l_ctchr.srcdb,
                             p_prnt_dp => null,
-                            p_priority => case when upper(i.sql_text) like 'ALTER TABLE%' then coremod_tasks.tpHIGH else null end);
+                            p_priority => case when upper(tbl_getqryforqueue(i).sql_text) like 'ALTER TABLE%' then coremod_tasks.tpHIGH else null end);
 
-            update opas_ot_sqlcatch_sqls set status=ssqltCollected where obj_id=i.obj_id and sql_id=i.sql_id;
+            update opas_ot_sqlcatch_sqls set status=ssqltCollected where obj_id=tbl_getqryforqueue(i).obj_id and sql_id=tbl_getqryforqueue(i).sql_id;
             commit;
-            dbms_lock.sleep(1);
+            --dbms_lock.sleep(0.1);
           end loop;
         end if;
-        --load sqls
-        --for i in () loop
-        --load
-        --  null;
-        --end loop;
       end if;
 
       coremod_api.end_longops_section(p_sofar => round((dbms_utility.get_time - l_start_tim)/100),

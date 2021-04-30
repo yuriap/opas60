@@ -88,12 +88,31 @@ PACKAGE BODY COREMOD_ALERTS AS
     nt_color      opas_notification.color%type default ntcGray,
     nt_username   opas_notification.username%type default 'PUBLIC',
     nt_no_browser_notif_flag opas_notification.no_browser_notif_flag%type default 1,
-    nt_activate    number default 1
+    nt_activate    number default 1,
+    nt_alter_key  varchar2 default null
   ) is
+    l_cnt number;
   begin
-    insert into OPAS_NOTIFICATION (type_id, text, link, color, username, no_browser_notif_flag, STATUS)
-    values (nt_type_id, nt_text, nt_link, nt_color, nt_username, nt_no_browser_notif_flag, case when nt_activate = 1 then ntReady else ntNew end)
-    returning ID into nt_id;
+    if nt_alter_key is not null then
+      select count(1) into l_cnt from OPAS_NOTIFICATION where alter_key = upper(nt_alter_key) and username = upper(nt_username);
+    end if;
+    if nt_alter_key is null or
+       nt_alter_key is not null and l_cnt = 0
+    then
+      insert into OPAS_NOTIFICATION (type_id, text, link, color, username, no_browser_notif_flag, STATUS, ALTER_KEY)
+      values (nt_type_id, nt_text, nt_link, nt_color, nt_username, nt_no_browser_notif_flag, case when nt_activate = 1 then ntReady else ntNew end, nt_alter_key)
+      returning ID into nt_id;
+    elsif nt_alter_key is not null and l_cnt > 0 then
+      UPDATE opas_notification SET
+        type_id = nt_type_id,
+        TEXT = nt_text,
+        LINK = nt_link,
+        COLOR = nt_color,
+        NO_BROWSER_NOTIF_FLAG = nt_no_browser_notif_flag,
+        STATUS = case when nt_activate = 1 then ntReady else ntNew end
+      where alter_key = upper(nt_alter_key) and username = upper(nt_username)
+      returning id into nt_id;
+    end if;
     --commit;
   end add_notification;
 

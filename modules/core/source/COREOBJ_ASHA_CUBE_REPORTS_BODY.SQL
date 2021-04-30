@@ -578,7 +578,7 @@ stats as    (select nvl(event,'CPU') event, /*count(1)*/ sum(tp_time) sec
                from stats_ranged
               where (<FILTER>) <EVENTCLASS>
               group by nvl(event,'CPU'))
-select /*+ qb_name(top_events) */ coalesce((select display_name from nm where name=event),event)||' ('||round(100*sec/tot,2)||'%)' event, sec
+select /*+ qb_name(top_events) */ coalesce((select display_name from nm where name=event),event)||' ('||round(100*sec/tot,2)||'%)' event, sec, event event1
 from (select event,sec,sum(sec)over() tot from stats s order by 2 desc) s
 where rownum<=10]';
 
@@ -606,12 +606,12 @@ where rownum<=10]';
 
     l_sql := get_base_query ||
 q'[
-,stats as    (select 'MODULE:' || nvl(module, 'N/A') || '; ACTION:' || nvl(ACTION, 'N/A') mod_act, /*count(1)*/ sum(tp_time) sec
+,stats as    (select 'MODULE:' || nvl(module, 'N/A') || '; ACTION:' || nvl(ACTION, 'N/A') mod_act, /*count(1)*/ sum(tp_time) sec, module module1, ACTION ACTION1
                from stats_ranged
               where (<FILTER>)
-              group by 'MODULE:' || nvl(module, 'N/A') || '; ACTION:' || nvl(ACTION, 'N/A'))
-select /*+ qb_name(top_modules) */ mod_act || '(' || round(100 * sec / tot, 2) || '%)' mod_act, sec
-from (select mod_act, sec, sum(sec)over() tot from stats s order by 2 desc) s
+              group by 'MODULE:' || nvl(module, 'N/A') || '; ACTION:' || nvl(ACTION, 'N/A'), module, ACTION)
+select /*+ qb_name(top_modules) */ mod_act || '(' || round(100 * sec / tot, 2) || '%)' mod_act, sec, module1, ACTION1
+from (select mod_act, sec, sum(sec)over() tot, module1, ACTION1 from stats s order by 2 desc) s
 where rownum<=10]';
 
     preprocess_qry(l_sql);
@@ -640,7 +640,7 @@ select /*+ qb_name(top_segments) */
                              where data_object_id = CURRENT_OBJ#
                                and o.VERSION_DP_ID = p.DBGDP_ID
                                and p.DBG_ID = m.DBG_ID
-                               and m.DBLINK = s.dblink)  || '(' || round(100 * sec / tot, 2) || '%)' segment, sec
+                               and m.DBLINK = s.dblink)  || '(' || round(100 * sec / tot, 2) || '%)' segment, sec, CURRENT_OBJ# CURRENT_OBJ1
 from (select dblink, CURRENT_OBJ#, sec, sum(sec)over() tot from stats s order by 3 desc) s
 where rownum<=10]';
 
@@ -784,7 +784,7 @@ select
                  group by dblink, session_id, session_serial#, INSTANCE_NUMBER, sql_id, module, action,
                           blocking_session, blocking_session_serial#, blocking_inst_id, event,
                           CURRENT_OBJ#, CURRENT_FILE#, CURRENT_BLOCK#, CURRENT_ROW#, wait_class) x1) x2
- where cnt / tot > 0.001) order by min_ts
+ where cnt / tot > 0.0001) order by min_ts
 ]';
 
     preprocess_qry(l_sql);

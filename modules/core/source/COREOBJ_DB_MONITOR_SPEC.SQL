@@ -26,7 +26,8 @@ PACKAGE COREOBJ_DB_MONITOR AS
 
   procedure add_alert_limit(p_metric_id   opas_ot_db_monitor_alerts_cfg.metric_id%type,
                             p_alert_type  opas_ot_db_monitor_alerts_cfg.alert_type%type,
-                            p_alert_limit  opas_ot_db_monitor_alerts_cfg.alert_limit%type);
+                            p_alert_limit  opas_ot_db_monitor_alerts_cfg.alert_limit%type,
+                            p_alert_notification     varchar2 default 'N');
   procedure drop_alert_limit(p_metric_id   opas_ot_db_monitor_alerts_cfg.metric_id%type/*,
                              p_alert_type  opas_ot_db_monitor_alerts_cfg.alert_type%type*/);
 

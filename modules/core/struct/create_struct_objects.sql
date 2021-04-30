@@ -50,7 +50,8 @@ alert_type      varchar2(128),
 alert_limit     number,
 limit_actual    varchar2(1) default 'Y',
 actual_start    timestamp,
-actual_end      timestamp);
+actual_end      timestamp,
+notification    varchar2(10) default 'N');
 
 create unique index idx_opas_ot_db_mon_acgg_u1   on opas_ot_db_monitor_alerts_cfg(decode(limit_actual,'Y', metric_id, null), decode(limit_actual,'Y', alert_type, null));
 create index idx_opas_ot_db_mon_acgg_m    on opas_ot_db_monitor_alerts_cfg(metric_id);

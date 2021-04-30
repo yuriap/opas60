@@ -478,7 +478,7 @@ FROM   <SQLBODY>]';
     l_maxiter  number := to_number(COREMOD_API.getconf('COORDAQCITERS'));
     l_sleep    number := to_number(COREMOD_API.getconf('COORDAQCSLEEP'));
   begin
-    log_info('coordinator_proc_standalone_v2 started');
+    log_debug('coordinator_proc_standalone_v2 started');
     loop
       if l_iter = 0 or mod(l_iter,20)=0 then
         gsrvLoggingLevel := COREMOD_API.getconf('EXTLOGGINGMODE');
@@ -506,7 +506,7 @@ FROM   <SQLBODY>]';
                            group by wrkr.DB_LINK_NAME) wrkr
                  where que_actual.DB_LINK_NAME = wrkr.DB_LINK_NAME(+))
       loop
-        log_info('coordinator_proc_standalone_v2: DB_LINK_NAME='||i.DB_LINK_NAME||'; total_cnt='||i.total_cnt||'; que_length='||i.que_length||'; sess_alive='||i.sess_alive||'; task_active='||i.task_active||'; max_TIMEOUT_SECS='||i.max_TIMEOUT_SECS);
+        log_debug('coordinator_proc_standalone_v2: DB_LINK_NAME='||i.DB_LINK_NAME||'; total_cnt='||i.total_cnt||'; que_length='||i.que_length||'; sess_alive='||i.sess_alive||'; task_active='||i.task_active||'; max_TIMEOUT_SECS='||i.max_TIMEOUT_SECS);
 
         if not l_dblinks2ban.exists(i.DB_LINK_NAME) then
           begin
@@ -534,12 +534,12 @@ FROM   <SQLBODY>]';
           if not l_dblinks2ban.exists(i.DB_LINK_NAME) then
             INSERT INTO opas_extproc_work_srv ( work_id, db_link_name, job_name)
               VALUES (seq_opas_extproc_work_srv.nextval, i.DB_LINK_NAME, gshJobName||'_'||DBMS_RANDOM.STRING('X',6)) returning work_id, job_name into l_work_id, l_job_name;
-            log_info('coordinator_proc_standalone to start: l_job_name l_dblink: '||l_job_name||', '||i.DB_LINK_NAME);
+            log_debug('coordinator_proc_standalone to start: l_job_name l_dblink: '||l_job_name||', '||i.DB_LINK_NAME);
           else
             log_info('coordinator_proc_standalone to banned: l_dblink: '||i.DB_LINK_NAME);
           end if;
         else
-          log_info('coordinator_proc_standalone limit reached: l_dblink: '||i.DB_LINK_NAME);
+          log_debug('coordinator_proc_standalone limit reached: l_dblink: '||i.DB_LINK_NAME);
         end if;
       end loop;
       commit;
@@ -548,7 +548,7 @@ FROM   <SQLBODY>]';
       exit when l_iter > l_maxiter;
       dbms_session.sleep(l_sleep);
     end loop;
-    log_info('coordinator_proc_standalone_v2 finished');
+    log_debug('coordinator_proc_standalone_v2 finished');
   end coordinator_proc_standalone_v2;
 
   procedure coordinator_proc_standalone is
@@ -796,7 +796,10 @@ FROM   <SQLBODY>]';
   begin
     for i in (select * from opas_extproc_work_srv where work_id=p_work_id) loop
       loop
-        for j in (select * from OPAS_EXTPROC_QUEUE_SRV where STATUS = 'NEW' and DB_LINK_NAME = i.DB_LINK_NAME and (gParent_Task_Id is null or PARENT_TASK_ID = gParent_Task_Id)
+        for j in (select * from OPAS_EXTPROC_QUEUE_SRV where STATUS = 'NEW' and DB_LINK_NAME = i.DB_LINK_NAME and
+                 (gParent_Task_Id is null and PARENT_TASK_ID is null or
+                  gParent_Task_Id is null and TASK_ID = PARENT_TASK_ID or
+                  gParent_Task_Id is not null and PARENT_TASK_ID = gParent_Task_Id)
                   for update skip locked order by PRIORITY, CREATED) loop
 
           if j.PARENT_TASK_ID is not null and gParent_Task_Id is null then

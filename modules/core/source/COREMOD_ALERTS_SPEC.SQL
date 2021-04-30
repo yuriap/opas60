@@ -47,7 +47,8 @@ PACKAGE COREMOD_ALERTS AS
     nt_color      opas_notification.color%type default ntcGray,
     nt_username   opas_notification.username%type default 'PUBLIC',
     nt_no_browser_notif_flag opas_notification.no_browser_notif_flag%type default 1,
-    nt_activate   number default 1
+    nt_activate   number default 1,
+    nt_alter_key  varchar2 default null
   );
 
   procedure set_url(nt_id       opas_notification.id%type,

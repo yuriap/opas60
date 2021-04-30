@@ -687,7 +687,8 @@ from
 	USERNAME VARCHAR2(128 BYTE) DEFAULT 'PUBLIC', 
 	NO_BROWSER_NOTIF_FLAG NUMBER(1,0) DEFAULT 0, 
 	STATUS VARCHAR2(32 BYTE) DEFAULT 'NEW', 
-	created timestamp default systimestamp
+	created timestamp default systimestamp,
+	alter_key         varchar2(128)
    );
 
 
