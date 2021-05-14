@@ -27,7 +27,7 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
   gLogLevelInfo         varchar2(100):='INFO';
 
   g_qry_priority number := 1;
-  g_qry_timeout  number := 300; --sec
+  g_qry_timeout  number := 600; --sec
   g_SELECT_LIST COREMOD_EXTPROC.t_columns;
 
     cursor crsr_granules (pc_obj_id  opas_objects.obj_id%type,

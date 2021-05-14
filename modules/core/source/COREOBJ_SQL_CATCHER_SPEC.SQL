@@ -15,8 +15,8 @@ package COREOBJ_SQL_CATCHER is
   ssqltReady          constant varchar2(10) := 'Ready';
   ssqltCollected      constant varchar2(10) := 'Collected';
 
-  --Defaults
-  def_search_condition constant varchar2(1000) := q'[select sql_id from gv$sql<DBLINK> where sql_text not like '%gv$sql%' and sql_text not like '%OPAS60%' and module='DBMS_SCHEDULER' and action like 'ACT%' and elapsed_time > 1e6*600]';
+  --Defaults  select sql_id from gv$sql where (FILTER)
+  def_search_condition constant varchar2(1000) := q'[sql_text not like '%gv$sql%' and sql_text not like '%OPAS60%' and module='DBMS_SCHEDULER' and action like 'ACT%' and elapsed_time > 1e6*600]';
   def_sql_num_limit    constant number := 20;
   def_sql_time_limit   constant number := 3600;
   def_check_interval   constant number := 30;

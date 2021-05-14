@@ -174,7 +174,7 @@ PACKAGE BODY COREOBJ_DB_MONITOR AS
 
     INSERT INTO opas_ot_db_monitor
             ( metric_id, dblink, schedule, call_type, calc_code, convert_code, measure)
-     VALUES ( p_obj_id,  null,   null,     'SQL',     'select<m> 1 from<m> dual', 'declare l_inp varchar2(1000) := :inp; begin :outp := to_number(l_inp); end;', 'parrots');
+     VALUES ( p_obj_id,  null,   null,     'SQL',     'select<m> 1 val from<m> dual', 'declare l_inp varchar2(1000) := :inp; begin :outp := to_number(l_inp); end;', 'parrots');
   end;
 
   procedure edit  (p_obj_id           opas_objects.obj_id%type,

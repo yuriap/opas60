@@ -766,8 +766,8 @@ task_id             number                                           primary key
 priority            number, -- 0 high, 1 medium, 2 low
 db_link_name        varchar2(128),
 qry_type            varchar2(128),
-select_sql          varchar2(4000),
-load_sql            varchar2(4000),
+select_sql          clob,
+load_sql            clob,
 pl_sql              clob,
 col_number          number,
 created             timestamp default systimestamp,

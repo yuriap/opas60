@@ -197,7 +197,7 @@ package body COREOBJ_SQL_CATCHER is
   is
     l_sql_load varchar2(32765) := q'[gv$sql<DBLINK>
        where (<FILTER>)
-         and rownum <= <LIMIT>
+         and rownum <= <LIMIT> and LAST_ACTIVE_TIME is not null
          group by sql_id, substr(sql_text,1,4000)]';
     --l_head_dbl varchar2(1000):='insert into opas_ot_tmp_sqlcatch_sqls(sql_id, sql_text, ACTUAL_EXECS, actual_eo_fetch, last_active) select sql_id, substr(sql_text,1,4000), sum(EXECUTIONS), sum(END_OF_FETCH_COUNT), max(LAST_ACTIVE_TIME)';
     --l_head_sqlp varchar2(1000):=q'<select q'~insert into opas_ot_tmp_sqlcatch_sqls_ext (exec_id, sql_id, sql_text, ACTUAL_EXECS, actual_eo_fetch, last_active)values(<EXECID>,'~'||sql_id||q'~',q'[~'||substr(sql_text,1,4000)||q'~]',~'||sum(EXECUTIONS)||q'~,~'||sum(END_OF_FETCH_COUNT)||q'~,to_date('~'||to_char(max(LAST_ACTIVE_TIME),'YYYY/MM/DD HH24:MI:SS')||q'~','YYYY/MM/DD HH24:MI:SS'));~'>';

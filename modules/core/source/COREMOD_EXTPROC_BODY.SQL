@@ -142,10 +142,10 @@ FROM   <SQLBODY>]';
       end if;
       l_trgcols_java_vals:= l_trgcols_java_vals ||
          case when i.data_type in ('VARCHAR2', 'CHAR', 'RAW') then  ', ' || '?'
-              when i.data_type = 'NUMBER' then  ', ' || 'to_number(?)'
-              when i.data_type = 'DATE' then  ', ' || 'to_date(?)'
-              when i.data_type = 'TIMESTAMP' or i.data_type like 'TIMESTAMP(%)' then  ', ' || 'to_timestamp(?)'
-              when i.data_type like 'TIMESTAMP(%) WITH TIME ZONE' then  ', ' || 'TO_TIMESTAMP_TZ(?)'
+              when i.data_type = 'NUMBER' then  ', ' || 'to_number(? default null on conversion error)'
+              when i.data_type = 'DATE' then  ', ' || 'to_date(? default null on conversion error)'
+              when i.data_type = 'TIMESTAMP' or i.data_type like 'TIMESTAMP(%)' then  ', ' || 'to_timestamp(? default null on conversion error)'
+              when i.data_type like 'TIMESTAMP(%) WITH TIME ZONE' then  ', ' || 'TO_TIMESTAMP_TZ(? default null on conversion error)'
               else '/*<'||i.column_name || '>Unsupported type '||i.data_type||'*/' end;-- || ', ';
     end loop;
     l_trgcols := rtrim(l_trgcols,', ');

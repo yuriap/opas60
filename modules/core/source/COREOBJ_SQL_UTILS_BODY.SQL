@@ -2300,7 +2300,7 @@ USE_FEEDBACK_STATS as'USE_FB_STATS'))where nonshared_value = 'Y'group by inst_id
 
     if p_params.INSTANCE_LIST_C is null then p_params.INSTANCE_LIST_C := '1,2,3,4,5,6,7,8'; end if;
     if p_params.SNAP_START is null then p_params.SNAP_START := 0; end if;
-    if p_params.SNAP_END is null then p_params.SNAP_START := 1e12; end if;
+    if p_params.SNAP_END is null then p_params.SNAP_END := 1e12; end if;
 
     COREMOD_API.lock_resource
                  (p_resource_name => 'update_dblink_db_info_awrsn',
