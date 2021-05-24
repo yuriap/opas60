@@ -1109,12 +1109,12 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_CALCS AS
 
       if gp(pGETSTATS) = 'Y' and gp(pGETSEESTATS) = 'Y' then
         l_sql1 := --insert into opas_ot_tmp_gv$stats (TS_UTC, INST_ID, SID, STATISTIC#, VALUE)
-        q'[(select null ASHARANGE_ID null DBLINK, to_timestamp('<ts_utc>','yyyymmddhh24miss.ff9') TS_UTC, inst_id, sid, statistic#, value from (
+        q'[(select null ASHARANGE_ID, null DBLINK, to_timestamp('<ts_utc>','yyyymmddhh24miss.ff9') TS_UTC, inst_id, sid, statistic#, value from (
         select  inst_id, sid, statistic#, value from gv$sesstat<DBLINK> where value>0 and <STATSLIST> union all select  inst_id, null sid, statistic#, value
         from gv$sysstat<DBLINK> where value>0 and <STATSLIST>))]';
       elsif gp(pGETSTATS) = 'Y' and gp(pGETSEESTATS) = 'N' then
         l_sql1 := --insert into opas_ot_tmp_gv$stats (TS_UTC, INST_ID, SID, STATISTIC#, VALUE)
-        q'[(select null ASHARANGE_ID null DBLINK, to_timestamp('<ts_utc>','yyyymmddhh24miss.ff9') TS_UTC inst_id, sid, statistic#, value from (
+        q'[(select null ASHARANGE_ID, null DBLINK, to_timestamp('<ts_utc>','yyyymmddhh24miss.ff9') TS_UTC, inst_id, sid, statistic#, value from (
         select  inst_id, null sid, statistic#, value from gv$sysstat<DBLINK> where value>0 and <STATSLIST>))]';
       end if;
 

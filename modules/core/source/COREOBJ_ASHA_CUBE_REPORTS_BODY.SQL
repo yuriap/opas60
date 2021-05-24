@@ -25,6 +25,7 @@ PACKAGE BODY COREOBJ_ASHA_CUBE_REPORTS AS
   g_AGG2       varchar2(30) := 'P3003_AGG2';
   g_AGG3       varchar2(30) := 'P3003_AGG3';
   g_WAIT_CLASSES       varchar2(30) := 'P3003_WAIT_CLASSES';
+  g_DBG        varchar2(30) := 'P3003_DEF_DBG_PROJ';
 
   gParams COREOBJ_API.t_params;
 
@@ -306,6 +307,7 @@ stat_ranged as
     set_param(g_AGG2, v(g_AGG2));
     set_param(g_AGG3, v(g_AGG3));
     set_param(g_WAIT_CLASSES, v(g_WAIT_CLASSES));
+    set_param(g_DBG, v(g_DBG));
   end;
 
   function data_exists(p_wait_class varchar2) return boolean is
@@ -639,12 +641,14 @@ select /*+ qb_name(top_segments) */
                                    OPAS_OT_DBG_MONITOR   m
                              where data_object_id = CURRENT_OBJ#
                                and o.VERSION_DP_ID = p.DBGDP_ID
-                               and p.DBG_ID = m.DBG_ID
+                               and p.DBG_ID = m.DBG_ID <DBGFLT>
                                and m.DBLINK = s.dblink)  || '(' || round(100 * sec / tot, 2) || '%)' segment, sec, CURRENT_OBJ# CURRENT_OBJ1
 from (select dblink, CURRENT_OBJ#, sec, sum(sec)over() tot from stats s order by 3 desc) s
 where rownum<=10]';
 
     preprocess_qry(l_sql);
+
+    l_sql := replace(l_sql, '<DBGFLT>', case when get_param(g_DBG) is null then '/*NODBG*/' else ' and m.DBG_ID = '||get_param(g_DBG) end);
 
     RETURN l_sql;
   end;

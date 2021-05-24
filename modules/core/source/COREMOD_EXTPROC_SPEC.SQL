@@ -36,6 +36,7 @@ PACKAGE COREMOD_EXTPROC AS
                                 p_timeout       number default 600);
 
   function GetParentTask return number;
+  function GetCurrentTask return number;
 
 -- *****************************************************************************************************
 -- cleanups

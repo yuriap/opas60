@@ -35,6 +35,7 @@ package body coreobj_db_mon_hist is
     l_sess_id2  opas_ot_db_mon_hist_sess.sess_id%type;
     l_view_sql varchar2(32765);
     l_SELECT_LIST COREMOD_EXTPROC.t_columns;
+    l_lm varchar2(10):='INFO';
   begin
     for i in (select * from opas_ot_db_mon_hist where status=stActive) loop
       DBMS_SCHEDULER.EVALUATE_CALENDAR_STRING(
@@ -42,10 +43,10 @@ package body coreobj_db_mon_hist is
         start_date         => i.start_date,
         return_date_after  => nvl(i.last_exec_ts,i.start_date),
         next_run_date      => l_next_date);
-      coremod_log.log('schedule: '||i.schedule,'DEBUG');
-      coremod_log.log('start_date: '||to_char(i.start_date,'YYYY/MM/DD HH24:MI:SS'),'DEBUG');
-      coremod_log.log('last_exec_ts: '||to_char(i.last_exec_ts,'YYYY/MM/DD HH24:MI:SS'),'DEBUG');
-      coremod_log.log('l_next_date: '||to_char(l_next_date,'YYYY/MM/DD HH24:MI:SS'),'DEBUG');
+      coremod_log.log('schedule: '||i.schedule,l_lm);
+      coremod_log.log('start_date: '||to_char(i.start_date,'YYYY/MM/DD HH24:MI:SS'),l_lm);
+      coremod_log.log('last_exec_ts: '||to_char(i.last_exec_ts,'YYYY/MM/DD HH24:MI:SS'),l_lm);
+      coremod_log.log('l_next_date: '||to_char(l_next_date,'YYYY/MM/DD HH24:MI:SS'),l_lm);
       if l_next_date is not null and l_next_date <= systimestamp then
         begin
           if i.calc_type = ctDelta then
@@ -82,7 +83,7 @@ where d.range#(+) = r.range#
           l_view_sql:=replace(replace(replace(l_view_sql,'<BUCKETS>',i.dbmh_buckets),
                                                          '<STAT>',i.dbmh_stat),
                                                          '<SESS_ID>',l_sess_id);
-
+          coremod_log.log('l_view_sql: '||l_view_sql,l_lm);
           --execute immediate l_view_sql;
           COREMOD_EXTPROC.load_external_data (
               P_TARGET_TABLE => 'OPAS_OT_DB_MON_HIST_DATA',

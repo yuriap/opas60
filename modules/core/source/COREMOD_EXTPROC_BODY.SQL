@@ -10,6 +10,7 @@ PACKAGE BODY COREMOD_EXTPROC AS
   gRowsProcessed number;
 
   gParent_Task_Id number;
+  gCurrent_Task_Id number;
 
   -- *****************************************************************************************************
   -- logging
@@ -41,7 +42,14 @@ PACKAGE BODY COREMOD_EXTPROC AS
     end if;
   end;
 
+  procedure SetCurrentTask
+  is
+  begin
+    gCurrent_Task_Id := seq_opas_extproc_queue_srv.nextval;
+  end;
+
   function GetParentTask return number is begin return gParent_Task_Id; end;
+  function GetCurrentTask return number is begin return gCurrent_Task_Id; end;
 
   procedure load_external_data(p_target_table  varchar2,
                                p_select_list   t_columns,
@@ -191,7 +199,10 @@ FROM   <SQLBODY>]';
         log_debug('load_external_data JAVA p_plsql_body: '||p_plsql_body);
 
         --SQLSELINS
-        l_task_id := seq_opas_extproc_queue_srv.nextval;
+        --l_task_id := seq_opas_extproc_queue_srv.nextval;
+        SetCurrentTask();
+        l_task_id := GetCurrentTask();
+
         SetParentTask(p_is_parent_task, p_parent_task, l_task_id);
         add2queue();
 
@@ -226,7 +237,10 @@ FROM   <SQLBODY>]';
 
       else
         --PLSQL
-        l_task_id := seq_opas_extproc_queue_srv.nextval;
+        --l_task_id := seq_opas_extproc_queue_srv.nextval;
+        SetCurrentTask();
+        l_task_id := GetCurrentTask();
+
         SetParentTask(p_is_parent_task, p_parent_task, l_task_id);
         INSERT INTO opas_extproc_queue_srv (
           TASK_ID, PRIORITY, db_link_name, QRY_TYPE, PL_SQL, STATUS, PARENT_TASK_ID) VALUES (

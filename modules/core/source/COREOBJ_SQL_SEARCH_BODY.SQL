@@ -258,21 +258,28 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
         if gParams('P1411_TEXT_SEARCH_OPTIONS') = 'ORATEXT' then
            l_sql := replace(l_sql, '<SCORE>', ' SCORE(1) score');
            l_sql := replace(l_sql, '<OPAS_FILES>', ', opas_files f');
-           l_sql := l_sql || q'[ and f.file_type='SQL Text' and nvl(d.sql_text, d.sql_text_approx) = f.file_id and CONTAINS(f.file_contentc, ']' || replace(gParams('P1411_CONTAINS'),'_','\_') || q'[', 1) > 0]';
+           l_sql := l_sql || q'[ and f.file_type='SQL Text' and nvl(d.sql_text, d.sql_text_approx) = f.file_id and CONTAINS(f.file_contentc, q'~]' || replace(gParams('P1411_CONTAINS'),'_','\_') || q'[~', 1) > 0]';
         end if;
         if gParams('P1411_TEXT_SEARCH_OPTIONS') like '%REGEXP' then
            l_sql := replace(l_sql, '<OPAS_FILES>', ', opas_files f');
-           l_sql := l_sql || q'[ and f.file_type='SQL Text' and nvl(d.sql_text, d.sql_text_approx) = f.file_id and regexp_like (f.file_contentc, ']' || gParams('P1411_CONTAINS') || q'[', 'in')]';
+           l_sql := l_sql || q'[ and f.file_type='SQL Text' and nvl(d.sql_text, d.sql_text_approx) = f.file_id and regexp_like (f.file_contentc, q'~]' || gParams('P1411_CONTAINS') || q'[~', 'in')]';
         end if;
         if gParams('P1411_TEXT_SEARCH_OPTIONS') = 'NOTREGEXP' then
            l_sql := replace(l_sql,'and regexp_like','and not regexp_like');
         end if;
         if gParams('P1411_TEXT_SEARCH_OPTIONS') like '%LIKE' then
            l_sql := replace(l_sql, '<OPAS_FILES>', ', opas_files f');
-           l_sql := l_sql || q'[ and f.file_type='SQL Text' and nvl(d.sql_text, d.sql_text_approx) = f.file_id and f.file_contentc like ']' || gParams('P1411_CONTAINS') || q'[']';
+           l_sql := l_sql || q'[ and f.file_type='SQL Text' and nvl(d.sql_text, d.sql_text_approx) = f.file_id and f.file_contentc like q'~]' || gParams('P1411_CONTAINS') || q'[~']';
         end if;
         if gParams('P1411_TEXT_SEARCH_OPTIONS') = 'NOTLIKE' then
-           l_sql := replace(l_sql,'file_contentc like','file_contentc not like');
+           l_sql := replace(l_sql,'f.file_contentc like','file_contentc not like');
+        end if;
+        if gParams('P1411_TEXT_SEARCH_OPTIONS') like '%LIKECI' then
+           l_sql := replace(l_sql, '<OPAS_FILES>', ', opas_files f');
+           l_sql := l_sql || q'[ and f.file_type='SQL Text' and nvl(d.sql_text, d.sql_text_approx) = f.file_id and upper(f.file_contentc) like upper(q'~]' || gParams('P1411_CONTAINS') || q'[~')]';
+        end if;
+        if gParams('P1411_TEXT_SEARCH_OPTIONS') = 'NOTLIKECI' then
+           l_sql := replace(l_sql,'upper(f.file_contentc) like','upper(f.file_contentc) not like');
         end if;
       end if;
     end if;
@@ -417,6 +424,12 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
             end if;
             if gParams('P1411_TEXT_SEARCH_OPTIONS') = 'NOTLIKE' then
                l_v_sql := replace(l_v_sql,'and d.sql_fulltext like','and d.sql_fulltext not like');
+            end if;
+            if gParams('P1411_TEXT_SEARCH_OPTIONS') like '%LIKECI' then
+               l_v_sql := l_v_sql || q'[ and upper(d.sql_fulltext) like upper(q'~]' || gParams('P1411_CONTAINS') || q'[~')]';
+            end if;
+            if gParams('P1411_TEXT_SEARCH_OPTIONS') = 'NOTLIKECI' then
+               l_v_sql := replace(l_v_sql,'and upper(d.sql_fulltext) like','and upper(d.sql_fulltext) not like');
             end if;
           end if;
         end if;

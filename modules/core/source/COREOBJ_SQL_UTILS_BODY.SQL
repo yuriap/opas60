@@ -1690,7 +1690,7 @@ USE_FEEDBACK_STATS as'USE_FB_STATS'))where nonshared_value = 'Y'group by inst_id
            q'[ sql_id='<p_sql_id>' and dbid = <p_dbid> and snap_id between <p1> and <p2> and INSTANCE_NUMBER in (<INST_LST>) <CON_FILTER>]';
 
     --l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_DBA_HIST_SQLSTAT'));
-    l_sql := replace(l_sql,'<INST_LST>', p_awr_params.INSTANCE_LIST_C);
+    l_sql := replace(l_sql,'<INST_LST>', nvl(trim(p_awr_params.INSTANCE_LIST_C),'1,2,3,4,5,6,7,8,9'));
 
     if p_awr_params.CON_ID is not null and instr(COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_DBA_HIST_SQLSTAT'),'CON_ID') > 0 then
       l_sql := replace(l_sql,'<CON_FILTER>','and CON_ID = '||p_awr_params.CON_ID);
@@ -1707,8 +1707,8 @@ USE_FEEDBACK_STATS as'USE_FB_STATS'))where nonshared_value = 'Y'group by inst_id
                                  P_KEY_PREF => 'TABCOLLIST',
                                  P_FILTER => replace(replace(replace(replace(l_sql,'<p_sql_id>',p_data.sql_id),
                                                                                    '<p_dbid>',p_awr_params.DBID),
-                                                                                   '<p1>',p_awr_params.SNAP_START),
-                                                                                   '<p2>',p_awr_params.SNAP_END)
+                                                                                   '<p1>',nvl(p_awr_params.SNAP_START,0)),
+                                                                                   '<p2>',nvl(p_awr_params.SNAP_END,1e9))
                               , p_priority=>g_qry_priority, p_timeout=>g_qry_timeout) ;
     l_rows := COREMOD_API.get_last_rowcount;
     --execute immediate l_sql using p_data.sql_id, p_awr_params.DBID, p_awr_params.SNAP_START, p_awr_params.SNAP_END;
@@ -1770,7 +1770,7 @@ USE_FEEDBACK_STATS as'USE_FB_STATS'))where nonshared_value = 'Y'group by inst_id
            q'[ sql_id='<p_sql_id>' and dbid = <p_dbid> and snap_id between <p1> and <p2> and INSTANCE_NUMBER in (<INST_LST>) <CON_FILTER>]';
 
     --l_sql := replace(l_sql,'<SRC_DB_COL_LICT>',COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_DBA_HIST_SQLBIND'));
-    l_sql := replace(l_sql,'<INST_LST>', p_awr_params.INSTANCE_LIST_C);
+    l_sql := replace(l_sql,'<INST_LST>', nvl(trim(p_awr_params.INSTANCE_LIST_C),'1,2,3,4,5,6,7,8,9'));
 
     if p_awr_params.CON_ID is not null and instr(COREMOD_API.get_ora_dblink_cache(P_DB_LINK_NAME => p_data.dblink, P_KEY => 'TABCOLLIST_DBA_HIST_SQLBIND'),'CON_ID') > 0 then
       l_sql := replace(l_sql,'<CON_FILTER>','and CON_ID = '||p_awr_params.CON_ID);
@@ -1789,8 +1789,8 @@ USE_FEEDBACK_STATS as'USE_FB_STATS'))where nonshared_value = 'Y'group by inst_id
                                  P_KEY_PREF => 'TABCOLLIST',
                                  P_FILTER => replace(replace(replace(replace(l_sql,'<p_sql_id>',p_data.sql_id),
                                                                                    '<p_dbid>',p_awr_params.DBID),
-                                                                                   '<p1>',p_awr_params.SNAP_START),
-                                                                                   '<p2>',p_awr_params.SNAP_END)
+                                                                                   '<p1>',nvl(p_awr_params.SNAP_START,0)),
+                                                                                   '<p2>',nvl(p_awr_params.SNAP_END,1e9))
                               , p_priority=>g_qry_priority, p_timeout=>g_qry_timeout) ;
     l_rows := COREMOD_API.get_last_rowcount;
 
@@ -1993,11 +1993,11 @@ USE_FEEDBACK_STATS as'USE_FB_STATS'))where nonshared_value = 'Y'group by inst_id
              sql_plan_options, session_type, con_id, con_dbid,
              CURRENT_OBJ#,CURRENT_FILE#)]';
 
-    l_sql := replace(l_sql,'<INST_LST>', p_awr_params.INSTANCE_LIST_C);
+    l_sql := replace(l_sql,'<INST_LST>', nvl(trim(p_awr_params.INSTANCE_LIST_C),'1,2,3,4,5,6,7,8,9'));
     l_sql := replace(replace(replace(replace(l_sql,'<p_sql_id>',p_data.sql_id),
                                                    '<p_dbid>',p_awr_params.DBID),
-                                                   '<p1>',p_awr_params.SNAP_START),
-                                                   '<p2>',p_awr_params.SNAP_END);
+                                                   '<p1>',nvl(p_awr_params.SNAP_START,0)),
+                                                   '<p2>',nvl(p_awr_params.SNAP_END,1e9));
     --execute immediate l_sql using p_data.sql_id, p_awr_params.DBID, p_awr_params.SNAP_START, p_awr_params.SNAP_END;
     g_SELECT_LIST.delete;
     COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_DBH_ASH',
@@ -2298,7 +2298,7 @@ USE_FEEDBACK_STATS as'USE_FB_STATS'))where nonshared_value = 'Y'group by inst_id
      into p_params.INSTANCE_LIST_C
     from ( select unique INSTANCE_NUMBER from opas_dbl_tmp_awrsnaps);
 
-    if p_params.INSTANCE_LIST_C is null then p_params.INSTANCE_LIST_C := '1,2,3,4,5,6,7,8'; end if;
+    if trim(p_params.INSTANCE_LIST_C) is null then p_params.INSTANCE_LIST_C := '1,2,3,4,5,6,7,8'; end if;
     if p_params.SNAP_START is null then p_params.SNAP_START := 0; end if;
     if p_params.SNAP_END is null then p_params.SNAP_END := 1e12; end if;
 
@@ -2375,7 +2375,7 @@ USE_FEEDBACK_STATS as'USE_FB_STATS'))where nonshared_value = 'Y'group by inst_id
                   where top_level_sql_id='<p_sql_id>' and dbid = <p_dbid> and snap_id between <p1> and <p2> and INSTANCE_NUMBER in (<INST_LST>) and sql_id<>top_level_sql_id
                  group by sql_id
                  having count(1) > <p_limit>)]';
-      l_sql := replace(l_sql,'<INST_LST>', p_awr_params.INSTANCE_LIST_C);
+      l_sql := replace(l_sql,'<INST_LST>', nvl(trim(p_awr_params.INSTANCE_LIST_C),'1,2,3,4,5,6,7,8,9'));
       l_sql := replace(replace(replace(replace(replace(l_sql,'<p_sql_id>',p_data.sql_id),'<p_limit>',l_rec_v$),'<p_dbid>',p_awr_params.DBID),'<p1>',p_awr_params.SNAP_START),'<p2>',p_awr_params.SNAP_END);
       COREMOD_EXTPROC.load_external_data (  P_TARGET_TABLE => 'OPAS_OT_TMP_REC_SQL_IDS',
         P_SELECT_LIST => g_SELECT_LIST, --empty

@@ -129,9 +129,10 @@ package body COREOBJ_SQL_CATCHER is
 
   function get_object_status_to_display (p_obj_id          opas_objects.obj_id%type) return varchar2
   is
-    l_status opas_ot_sqlcatch.status%type;
+    l_status varchar2(512);
   begin
-    select status into l_status from opas_ot_sqlcatch where obj_id = p_obj_id;
+    select o.status || '; ' || (select listagg(st, ', ')within group(order by st) from (select status||': '||count(1) st from OPAS_OT_SQLCATCH_SQLS x where x.OBJ_ID = o.OBJ_ID group by status))
+    into l_status from opas_ot_sqlcatch o where o.obj_id = p_obj_id;
     return l_status;
   end;
 
@@ -253,15 +254,18 @@ package body COREOBJ_SQL_CATCHER is
       L_SELECT_LIST('SQL_TEXT'):='substr(sql_text,1,4000)';
       L_SELECT_LIST('ACTUAL_EO_FETCH'):='sum(END_OF_FETCH_COUNT)';
       L_SELECT_LIST('LAST_ACTIVE'):='to_char(max(LAST_ACTIVE_TIME))';
-
-      COREMOD_EXTPROC.load_external_data (
-        P_TARGET_TABLE => 'OPAS_OT_TMP_SQLCATCH_SQLS',
-        P_SELECT_LIST => L_SELECT_LIST,
-        P_SQL_BODY => l_sql,
-        P_DBLINK => l_ctchr.srcdb,
-        p_priority => 0,
-        P_TIMEOUT => 600) ;
-/*
+      begin
+        COREMOD_EXTPROC.load_external_data (
+          P_TARGET_TABLE => 'OPAS_OT_TMP_SQLCATCH_SQLS',
+          P_SELECT_LIST => L_SELECT_LIST,
+          P_SQL_BODY => l_sql,
+          P_DBLINK => l_ctchr.srcdb,
+          p_priority => 0,
+          P_TIMEOUT => 180) ;
+      exception
+        when others then coremod_tasks.log('Exception while reading SQL list: '||sqlerrm);
+      end;
+/*    exception
       if COREMOD_API.external_mode_javasrv(l_ctchr.srcdb) then
         COREMOD_EXTPROC.wait_result (  P_TASK_ID => l_task,
                                        P_TIMEOUT => 120) ;
