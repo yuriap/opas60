@@ -90,7 +90,7 @@ public class ExternalWorkerImpl  extends ExternalExecutor{
     private void init_worker(int p_work_id) throws Exception, SQLException
     {
 
-        CallableStatement callableStatement = localconn.prepareCall("{ call COREMOD_EXTPROC.init_server_parameters (  P_WORK_ID => ?, P_USERNAME => ?, P_PASSWORD => ?, P_CONNSTR => ?, P_QUERY_NUM => ?, p_logging_mode => ?, p_batch_size => ?) }");
+        CallableStatement callableStatement = localconn.prepareCall("{ call COREMOD_EXTPROC_SRV.init_server_parameters (  P_WORK_ID => ?, P_USERNAME => ?, P_PASSWORD => ?, P_CONNSTR => ?, P_QUERY_NUM => ?, p_logging_mode => ?, p_batch_size => ?) }");
 
         callableStatement.setInt(1, p_work_id);
 
@@ -117,7 +117,7 @@ public class ExternalWorkerImpl  extends ExternalExecutor{
     private void set_work(int p_work_id, int p_stmt_processed, String p_errm) throws Exception, SQLException
     {
         log_info("set_work: p_work_id: " + p_work_id);
-        CallableStatement setwork = localconn.prepareCall("{ call COREMOD_EXTPROC.worker_finished( p_work_id => ?, p_stmt_done => ?, p_errors => ?) }");
+        CallableStatement setwork = localconn.prepareCall("{ call COREMOD_EXTPROC_SRV.worker_finished( p_work_id => ?, p_stmt_done => ?, p_errors => ?) }");
         setwork.setInt(1, p_work_id);
         setwork.setInt(2, p_stmt_processed);
         setwork.setString(3, p_errm);
@@ -127,7 +127,7 @@ public class ExternalWorkerImpl  extends ExternalExecutor{
     }
     private void set_task(int p_task_id, String p_status, String p_errm, int p_rows_processed) throws Exception, SQLException
     {
-        CallableStatement settask = localconn.prepareCall("{ call COREMOD_EXTPROC.set_task_finshed (  P_WORK_ID => ?, P_TASK_ID => ?, p_status => ?, p_errormsg => ?, p_rows_processed => ?) }");
+        CallableStatement settask = localconn.prepareCall("{ call COREMOD_EXTPROC_SRV.set_task_finshed (  P_WORK_ID => ?, P_TASK_ID => ?, p_status => ?, p_errormsg => ?, p_rows_processed => ?) }");
         settask.setInt(1, Worker_Id);
         settask.setInt(2, p_task_id);
         settask.setString(3, p_status);
@@ -139,7 +139,7 @@ public class ExternalWorkerImpl  extends ExternalExecutor{
 
     private void get_task(int p_work_id) throws Exception, SQLException
     {
-        CallableStatement gettask = localconn.prepareCall("{ call COREMOD_EXTPROC.get_next_task (  P_WORK_ID => ?, P_TASK_ID => ?, P_QRY_TYPE => ?, P_QRY1 => ?, P_QRY2 => ?, P_QRY3 => ?, P_NUM_COLS => ?, P_TIMEOUTED => ?) }");
+        CallableStatement gettask = localconn.prepareCall("{ call COREMOD_EXTPROC_SRV.get_next_task (  P_WORK_ID => ?, P_TASK_ID => ?, P_QRY_TYPE => ?, P_QRY1 => ?, P_QRY2 => ?, P_QRY3 => ?, P_NUM_COLS => ?, P_TIMEOUTED => ?) }");
         gettask.setInt(1, p_work_id);
 
         gettask.registerOutParameter(2, java.sql.Types.DECIMAL);
@@ -235,7 +235,7 @@ public class ExternalWorkerImpl  extends ExternalExecutor{
 
     private void set_result_varchar(int p_task_id, int p_ordr_num, String p_result) throws Exception, SQLException
     {
-        CallableStatement setres = localconn.prepareCall("{ call COREMOD_EXTPROC.set_param (  P_TASK_ID => ?, p_ordr_num => ?, p_varchar2 => ?) }");
+        CallableStatement setres = localconn.prepareCall("{ call COREMOD_EXTPROC_SRV.set_param (  P_TASK_ID => ?, p_ordr_num => ?, p_varchar2 => ?) }");
         setres.setInt(1, p_task_id);
         setres.setInt(2, p_ordr_num);
         setres.setString(3, p_result);
@@ -245,7 +245,7 @@ public class ExternalWorkerImpl  extends ExternalExecutor{
 
     private void set_result_number(int p_task_id, int p_ordr_num, Long p_result) throws Exception, SQLException
     {
-        CallableStatement setres = localconn.prepareCall("{ call COREMOD_EXTPROC.set_param (  P_TASK_ID => ?, p_ordr_num => ?, p_number => ?) }");
+        CallableStatement setres = localconn.prepareCall("{ call COREMOD_EXTPROC_SRV.set_param (  P_TASK_ID => ?, p_ordr_num => ?, p_number => ?) }");
         setres.setInt(1, p_task_id);
         setres.setInt(2, p_ordr_num);
         setres.setLong(3, p_result);
@@ -255,7 +255,7 @@ public class ExternalWorkerImpl  extends ExternalExecutor{
 
     private void set_result_date(int p_task_id, int p_ordr_num, Date p_result) throws Exception, SQLException
     {
-        CallableStatement setres = localconn.prepareCall("{ call COREMOD_EXTPROC.set_param (  P_TASK_ID => ?, p_ordr_num => ?, p_date => ?) }");
+        CallableStatement setres = localconn.prepareCall("{ call COREMOD_EXTPROC_SRV.set_param (  P_TASK_ID => ?, p_ordr_num => ?, p_date => ?) }");
         setres.setInt(1, p_task_id);
         setres.setInt(2, p_ordr_num);
         setres.setDate(3, p_result);
@@ -264,7 +264,7 @@ public class ExternalWorkerImpl  extends ExternalExecutor{
     }
     private void set_result_timestamp(int p_task_id, int p_ordr_num, Timestamp p_result) throws Exception, SQLException
     {
-        CallableStatement setres = localconn.prepareCall("{ call COREMOD_EXTPROC.set_param (  P_TASK_ID => ?, p_ordr_num => ?, p_timestamp => ?) }");
+        CallableStatement setres = localconn.prepareCall("{ call COREMOD_EXTPROC_SRV.set_param (  P_TASK_ID => ?, p_ordr_num => ?, p_timestamp => ?) }");
         setres.setInt(1, p_task_id);
         setres.setInt(2, p_ordr_num);
         setres.setTimestamp(3, p_result);
@@ -273,7 +273,7 @@ public class ExternalWorkerImpl  extends ExternalExecutor{
     }
     private void set_result_timestamp_tz(int p_task_id, int p_ordr_num, Timestamp p_result) throws Exception, SQLException
     {
-        CallableStatement setres = localconn.prepareCall("{ call COREMOD_EXTPROC.set_param (  P_TASK_ID => ?, p_ordr_num => ?, p_timestamp_tz => ?) }");
+        CallableStatement setres = localconn.prepareCall("{ call COREMOD_EXTPROC_SRV.set_param (  P_TASK_ID => ?, p_ordr_num => ?, p_timestamp_tz => ?) }");
         setres.setInt(1, p_task_id);
         setres.setInt(2, p_ordr_num);
         setres.setTimestamp(3, p_result);
@@ -360,7 +360,7 @@ public class ExternalWorkerImpl  extends ExternalExecutor{
                             Clob myClob2 = localconn.createClob();
                             String res = clobToString(myClob1);
                             myClob2.setString(1, res); //;
-                            CallableStatement setres = localconn.prepareCall("{ call COREMOD_EXTPROC.set_param (  P_TASK_ID => ?, p_ordr_num => ?, p_clob => ?) }");
+                            CallableStatement setres = localconn.prepareCall("{ call COREMOD_EXTPROC_SRV.set_param (  P_TASK_ID => ?, p_ordr_num => ?, p_clob => ?) }");
                             setres.setInt(1, p_task_id);
                             setres.setInt(2, r_ordr_num);
                             setres.setClob(3, myClob2);

@@ -34,6 +34,7 @@ INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EX
 INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EXTERNAL','WORKERAQCSLEEP',    0.1,    'Interval between iteration of waiting for new query by Worker');
 INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EXTERNAL','COORDAQCITERS',    240,     'Max num of iteration of waiting for new query by Coordinator');
 INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EXTERNAL','COORDAQCSLEEP',    0.5,     'Interval between iteration of waiting for new query by Coordinator');
+INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EXTERNAL','COORDGNSSLEEP',    0.1,     'Interval between iteration of waiting for new work by external server');
 INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EXTERNAL','TIMOUTCREATED',    7200,    'Timeout of waiting result: after request created, seconds');
 INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EXTERNAL','TIMOUTSTARTED',    3600,    'Timeout of waiting result: after , seconds');
 INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EXTERNAL','JDBCBATCHSIZE',    100,     'Batch processing size');

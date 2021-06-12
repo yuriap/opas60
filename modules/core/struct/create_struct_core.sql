@@ -782,7 +782,8 @@ target_table        varchar2(128),
 rows_processed      number,
 duration            interval day to second generated always as (finished - started),
 timeout_secs        number,
-parent_task_id      number
+parent_task_id      number,
+queued              interval day to second generated always as (started - created)
 );
 
 create sequence seq_opas_extproc_queue_srv maxvalue 2147483647 cycle;

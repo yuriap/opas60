@@ -31,6 +31,8 @@ public class ExternalExecutor {
 
     protected String remote_conn_error;
 
+    public int maxRestarts = 1;
+
     public void setProcName(String pProcName) {ProcName = pProcName;}
     public void setWorker_Id(int pWorker_Id) {Worker_Id = pWorker_Id;}
 
@@ -53,6 +55,7 @@ public class ExternalExecutor {
             local_username = prop.getProperty("localdb.user");
             local_password_str = prop.getProperty("localdb.password");
             local_server_connectstr = prop.getProperty("localdb.url");
+            maxRestarts = prop.getProperty("server.max_restart_attempts");
             log_info("Loaded configuration for: " + local_server_connectstr);
         } catch (IOException ex) {
             ex.printStackTrace();
@@ -95,7 +98,7 @@ public class ExternalExecutor {
 
     protected void connect_to_remote() throws Exception, SQLException
     {
-        CallableStatement setconnprob = localconn.prepareCall("{ call COREMOD_EXTPROC.report_connection_problem( p_work_id => ?, p_errormsg => ? ) }");
+        CallableStatement setconnprob = localconn.prepareCall("{ call COREMOD_EXTPROC_SRV.report_connection_problem( p_work_id => ?, p_errormsg => ? ) }");
         try
         {
             log_info("remote connection establishing...");

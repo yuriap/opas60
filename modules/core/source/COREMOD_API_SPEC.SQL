@@ -54,12 +54,13 @@ package COREMOD_API as
    procedure create_dblink(p_db_link_name varchar2, p_recreate boolean default false);
    procedure drop_dblink(p_db_link_name varchar2, p_suspend boolean default false);
    procedure test_dblink(p_db_link_name varchar2);
+   procedure disable_dblink(p_db_link_name varchar2);
    procedure enable_dblink4ext(p_db_link_name varchar2, p_server varchar2);
    function get_ora_dblink(p_db_link_name varchar2) return varchar2;
    function get_dblink_for_query(p_dblink varchar2) return varchar2;
    function get_ora_dblink_cache(p_db_link_name varchar2, p_key varchar2, p_local_tab varchar2 default null) return varchar2;
 
-  function dblink_available(p_db_link_name varchar2, p_since date) return boolean RESULT_CACHE;
+  function dblink_available(p_db_link_name varchar2, p_since date default null) return boolean RESULT_CACHE;
   function external_mode(p_db_link_name varchar2) return varchar2 RESULT_CACHE;
   function external_mode_dblink(p_db_link_name varchar2) return boolean;
   function external_mode_javasrv(p_db_link_name varchar2) return boolean;

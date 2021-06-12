@@ -33,7 +33,7 @@ public class ExternalServerImpl extends ExternalExecutor{
     public void before_server_start() throws Exception, SQLException
     {
 
-        CallableStatement beforestart = localconn.prepareCall("{ call COREMOD_EXTPROC.server_before_start }");
+        CallableStatement beforestart = localconn.prepareCall("{ call COREMOD_EXTPROC_SRV.server_before_start }");
         beforestart.executeUpdate();
         beforestart.close();
     }
@@ -42,7 +42,7 @@ public class ExternalServerImpl extends ExternalExecutor{
         setProcName("Main thread");
         setWorker_Id(0);
         setup_app_info_module_act(localconn, Module, "Getting new server...");
-        CallableStatement getserverid = localconn.prepareCall("{ call COREMOD_EXTPROC.get_next_server (  P_WORK_ID => ?) }");
+        CallableStatement getserverid = localconn.prepareCall("{ call COREMOD_EXTPROC_SRV.get_next_server (  P_WORK_ID => ?) }");
         getserverid.registerOutParameter(1, java.sql.Types.DECIMAL);
         getserverid.executeUpdate();
         int work_id = getserverid.getInt(1);
@@ -55,5 +55,9 @@ public class ExternalServerImpl extends ExternalExecutor{
         } else {
             log_info("init_server: No task in queue");
         }
+    }
+    public void prepare2restart() throws Exception, SQLException
+    {
+        finalize_conn();
     }
 }

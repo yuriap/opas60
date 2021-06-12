@@ -364,18 +364,18 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
   is
     l_rows_found number := 0;
 
-    l_v2_sql varchar2(32765) := q'[      insert /*+ qb_name(OPAS60) */ into opas_ot_sql_search_results
+    l_v2_sql varchar2(32765) := q'[      insert /*+ qb_name(OPAS60EXTSRC) */ into opas_ot_sql_search_results
         (session_id,    search_source, sql_id, sql_text_external, created_by,          first_discovered, first_discovered_at, txt_score)
       select /*+ qb_name(OPAS60) */
          :p_session_id, :p_source,     sql_id, sql_fulltext,      parsing_schema_name, sysdate,          '<DBLINKNM>/V$SQL',          0
       from gv$sql<DBLINK> d where (inst_id, child_number, sql_id) in
         (select inst_id, child_number, sql_id from (select inst_id, child_number, sql_id, row_number()over(partition by sql_id order by child_number) rn from gv$sql<DBLINK> where sql_id in (<SQL_ID_LIST>)) where rn = 1)]' || chr(10); --'
 
-    l_v_sql varchar2(32765) := q'[select /*+ qb_name(OPAS60)  driving_site(d) */ unique sql_id from gv$sql<DBLINK> d where 1=1 ]' || chr(10); --'
+    l_v_sql varchar2(32765) := q'[select /*+ qb_name(OPAS60EXTSRC)  driving_site(d) */ unique sql_id from gv$sql<DBLINK> d where 1=1 ]' || chr(10); --'
 
-    l_awr_sql varchar2(32765) := q'[select /*+ qb_name(OPAS60) driving_site(d) */ unique sql_id from dba_hist_sqltext<DBLINK> d where d.DBID = <DBID>]' || chr(10); --'
+    l_awr_sql varchar2(32765) := q'[select /*+ qb_name(OPAS60EXTSRC) driving_site(d) */ unique sql_id from dba_hist_sqltext<DBLINK> d where d.DBID = <DBID>]' || chr(10); --'
 
-    l_awr2_sql varchar2(32765) := q'[insert /*+ qb_name(OPAS60) */ into opas_ot_sql_search_results
+    l_awr2_sql varchar2(32765) := q'[insert /*+ qb_name(OPAS60EXTSRC) */ into opas_ot_sql_search_results
         (session_id,    search_source, sql_id, sql_text_external, created_by,  first_discovered, first_discovered_at, txt_score)
       select /*+ qb_name(OPAS60) */
          :p_session_id, :p_source,     sql_id, sql_text,          null,        sysdate,          '<DBLINKNM>/AWR',          0
@@ -502,7 +502,7 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
             P_PRIORITY =>    g_qry_priority,
             P_TIMEOUT =>     g_qry_timeout) ;
 
-          for i in ( select SQL_ID from OPAS_OT_TMP_REC_SQL_IDS ) loop
+          for i in ( select unique SQL_ID from OPAS_OT_TMP_REC_SQL_IDS ) loop
             l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY =>
       q'[declare a clob := null; l_sch varchar2(512);
          begin
@@ -546,6 +546,12 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
             end if;
             if gParams('P1411_TEXT_SEARCH_OPTIONS') = 'NOTLIKE' then
                l_awr_sql := replace(l_awr_sql,'and d.sql_text like','and d.sql_text not like');
+            end if;
+            if gParams('P1411_TEXT_SEARCH_OPTIONS') like '%LIKECI' then
+               l_awr_sql := l_awr_sql || q'[ and upper(d.sql_text) like upper(q'~]' || gParams('P1411_CONTAINS') || q'[~')]';
+            end if;
+            if gParams('P1411_TEXT_SEARCH_OPTIONS') = 'NOTLIKECI' then
+               l_awr_sql := replace(l_awr_sql,'and upper(d.sql_text) like','and upper(d.sql_text) not like');
             end if;
           end if;
         end if;
@@ -632,7 +638,7 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
             P_PRIORITY =>    g_qry_priority,
             P_TIMEOUT =>     g_qry_timeout) ;
 
-          for i in ( select SQL_ID from OPAS_OT_TMP_REC_SQL_IDS ) loop
+          for i in ( select unique SQL_ID from OPAS_OT_TMP_REC_SQL_IDS ) loop
             l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY =>
       q'[declare a clob := null;
          begin
@@ -652,7 +658,7 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
             insert /*+ qb_name(OPAS60) */ into opas_ot_sql_search_results
              (session_id,    search_source, sql_id, sql_text_external, created_by,          first_discovered, first_discovered_at, txt_score)
             select /*+ qb_name(OPAS60) */
-             p_session_id, stExternal,   i.SQL_ID, l_sql_fulltext,      null, sysdate,          gParams('P1411_DATABASE')||'/V$SQL',          0 from dual;
+             p_session_id, stExternal,   i.SQL_ID, l_sql_fulltext,      null, sysdate,          gParams('P1411_DATABASE')||'/AWR',          0 from dual;
             l_rows_found := l_rows_found + 1;
           end loop;
         end if;

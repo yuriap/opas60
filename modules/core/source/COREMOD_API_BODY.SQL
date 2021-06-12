@@ -160,7 +160,7 @@ package body COREMOD_API as
   begin
     return external_mode(p_db_link_name) = gemJAVASRV;
   end;
-  function dblink_available(p_db_link_name varchar2, p_since date) return boolean RESULT_CACHE
+  function dblink_available(p_db_link_name varchar2, p_since date default null) return boolean RESULT_CACHE
   is
     l_dblink opas_db_links%rowtype;
   begin
@@ -201,6 +201,12 @@ package body COREMOD_API as
              EXT_HOST = p_server,
              ENABLED = sysdate
        where DB_LINK_NAME = upper(p_db_link_name);
+  end;
+
+  procedure disable_dblink(p_db_link_name varchar2)
+  is
+  begin
+    update opas_db_links set STATUS=dblSUSPENDED, ENABLED = null where DB_LINK_NAME=upper(p_db_link_name);
   end;
 
   procedure edit_dblink    (p_db_link_name varchar2,

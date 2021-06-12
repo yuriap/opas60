@@ -98,6 +98,10 @@ FROM   <SQLBODY>]';
           commit;
         end;
   begin
+    if not COREMOD_API.dblink_available(P_DB_LINK_NAME => p_dblink) then
+      raise_application_error(-20999, 'DB Link <'||p_dblink||'> is not available');
+    end if;
+
     gRowsProcessed := 0;
 
     if p_key_pref = 'TABCOLLIST' then
@@ -230,6 +234,10 @@ FROM   <SQLBODY>]';
     l_PL_SQL  varchar2(32765);
     pragma autonomous_transaction;
   begin
+      if not COREMOD_API.dblink_available(P_DB_LINK_NAME => p_dblink) then
+        raise_application_error(-20999, 'DB Link <'||p_dblink||'> is not available');
+      end if;
+
       l_PL_SQL := replace(p_plsql_body,'<DBLINK>');
 
       if p_generate_only then
@@ -384,96 +392,6 @@ FROM   <SQLBODY>]';
     return l_status;
   end;
 
-  procedure coordinator_proc_local is
-    l_max_workers number;
-    l_threads2created number:=0;
-    l_running_jobs    number;
-    l_dblinks_running t_jobs;
-    l_dblinks2start   t_jobs;
-    l_dblinks2ban     t_jobs;
-    l_dblink          varchar2(128);
-
-    l_work_id number;
-    l_job_name varchar2(128);
-
-    l_iter number := 0;
-    l_maxiter  number := to_number(COREMOD_API.getconf('COORDAQCITERS'));
-    l_sleep    number := to_number(COREMOD_API.getconf('COORDAQCSLEEP'));
-  begin
-    log_debug('coordinator_proc_local started');
-    loop
-      if l_iter = 0 or mod(l_iter,20)=0 then
-        gsrvLoggingLevel := COREMOD_API.getconf('EXTLOGGINGMODE');
-        l_max_workers := to_number(COREMOD_API.getconf('MAXEXTWORKERS'));
-        gsrvQueryPerServerSession := to_number(COREMOD_API.getconf('QRYPERWORKERSESS'));
-      end if;
-
-        for i in (select DB_LINK_NAME, count(1) cnt from OPAS_EXTPROC_QUEUE_SRV where STATUS='NEW' group by DB_LINK_NAME) loop
-
-          l_dblinks2start.delete;
-          l_dblinks_running.delete;
-
-          select count(1) into l_running_jobs from user_scheduler_running_jobs where job_name in (select JOB_NAME from OPAS_EXTPROC_WORK_SRV where FINISHED is null and STARTED is not null);
-          if l_max_workers > l_running_jobs then
-            l_threads2created := l_max_workers - l_running_jobs;
-
-            for i in (select unique DB_LINK_NAME from OPAS_EXTPROC_WORK_SRV where JOB_NAME in (select JOB_NAME from user_scheduler_running_jobs)) loop
-              l_dblinks_running(i.DB_LINK_NAME):=0;
-            end loop;
-          end if;
-
-          if not l_dblinks2ban.exists(i.DB_LINK_NAME) then
-            begin
-              check_connection_problem(i.DB_LINK_NAME);
-              l_dblinks2start(i.DB_LINK_NAME):=i.cnt;
-            exception
-              when others then
-                if not l_dblinks2ban.exists(i.DB_LINK_NAME) then
-                  l_dblinks2ban(i.DB_LINK_NAME) := 20;
-                end if;
-                log_info('coordinator_proc connection problem: '||i.DB_LINK_NAME||': '||sqlerrm);
-            end;
-          else
-            if l_dblinks2ban(i.DB_LINK_NAME)>0 then
-              l_dblinks2ban(i.DB_LINK_NAME):=l_dblinks2ban(i.DB_LINK_NAME)-1;
-            else
-              l_dblinks2ban.delete(i.DB_LINK_NAME);
-            end if;
-          end if;
-        end loop;
-
-        l_dblink := l_dblinks2start.first;
-        loop
-          exit when l_dblink is null or l_threads2created <= 0;
-          if (
-               (not l_dblinks_running.exists(l_dblink)) or
-               (l_dblinks_running.exists(l_dblink) and l_dblinks2start(l_dblink) > 4 ) -- number of tasks in queue to start a new worker rvQueryPerServerSession/2)
-             )
-              and l_threads2created>0 then
-            l_dblinks_running(l_dblink):=0;
-            log_info('coordinator_proc_local job l_dblink, l_threads2created: '||l_dblink||', '||l_threads2created);
-
-            INSERT INTO opas_extproc_work_srv ( work_id, db_link_name, job_name)
-              VALUES (seq_opas_extproc_work_srv.nextval, l_dblink, gshJobName||'_'||DBMS_RANDOM.STRING('X',6)) returning work_id, job_name into l_work_id, l_job_name;
-            commit;
-            dbms_scheduler.create_job(job_name => l_job_name,
-                                      job_type => 'PLSQL_BLOCK',
-                                      job_action => q'{begin COREMOD_EXTPROC.worker_proc(}' || l_work_id || q'{); end;}',
-                                      start_date => systimestamp,
-                                      enabled => true,
-                                      auto_drop=> true);
-            l_threads2created := l_threads2created - 1;
-            log_info('coordinator_proc_local job invoked: '||l_job_name);
-          end if;
-          l_dblink := l_dblinks2start.next(l_dblink);
-        end loop;
-      l_iter := l_iter + 1;
-      exit when l_iter > l_maxiter;
-      dbms_session.sleep(l_sleep);
-    end loop;
-    log_debug('coordinator_proc_local finished');
-  end coordinator_proc_local;
-
   procedure coordinator_proc_standalone_v2 is
     l_max_workers number;
     l_threads2create  number:=0;
@@ -540,20 +458,47 @@ FROM   <SQLBODY>]';
           end if;
         end if;
 
+        if gsrvLoggingLevel = 'DEBUG' then
+          if i.que_length > 0 and i.sess_alive<l_max_workers and i.sess_alive < i.task_active then
+            log_debug('coordinator_proc_standalone_v2 condition 1: i.que_length > 0 and i.sess_alive<l_max_workers and i.sess_alive < i.task_active: '||
+            i.que_length||' > 0 and '||i.sess_alive||'<'||l_max_workers||' and '||i.sess_alive||' < '||i.task_active);
+          end if;
+
+          if i.que_length > 0 and i.sess_alive<l_max_workers+2 and i.task_active = i.sess_alive and i.task_active > 0
+          then
+            log_debug('coordinator_proc_standalone condition 2: i.que_length > 0 and i.sess_alive<l_max_workers+2 and i.task_active = i.sess_alive and i.task_active > 0: '||
+            i.que_length||' > 0 and '||i.sess_alive||'<'||(l_max_workers+2)||' and '||i.sess_alive||' = '||i.task_active||' and '||i.task_active||' > 0');
+          end if;
+
+          if i.total_cnt <= l_max_workers+2
+          then
+            log_debug('coordinator_proc_standalone_v2 condition 3: i.total_cnt <= l_max_workers+2: '||
+            i.total_cnt||'<'||(l_max_workers+2));
+          end if;
+
+          if i.que_length > 0 and i.total_cnt<l_max_workers+2 and i.total_cnt < i.que_length + 1
+          then
+            log_debug('coordinator_proc_standalone condition 4: i.que_length > 0 and i.total_cnt<l_max_workers+2 and i.total_cnt < i.que_length + 1: '||
+            i.que_length||' > 0 and '||i.total_cnt||'<'||(l_max_workers+2)||' and '||i.total_cnt||' < '||(i.que_length + 1));
+          end if;
+        end if;
+
+        --pause to start another worker for the same dblink
         if (i.que_length > 0 and i.sess_alive<l_max_workers and i.sess_alive < i.task_active or
-            i.que_length > 0 and i.sess_alive<l_max_workers+2 and i.task_active = i.sess_alive)
+            i.que_length > 0 and i.sess_alive<l_max_workers+2 and i.task_active = i.sess_alive and i.task_active > 0 or
+            i.que_length > 0 and i.total_cnt<l_max_workers+2 and i.total_cnt < i.que_length + 1)
             and
             i.total_cnt <= l_max_workers+2
         then
           if not l_dblinks2ban.exists(i.DB_LINK_NAME) then
             INSERT INTO opas_extproc_work_srv ( work_id, db_link_name, job_name)
               VALUES (seq_opas_extproc_work_srv.nextval, i.DB_LINK_NAME, gshJobName||'_'||DBMS_RANDOM.STRING('X',6)) returning work_id, job_name into l_work_id, l_job_name;
-            log_debug('coordinator_proc_standalone to start: l_job_name l_dblink: '||l_job_name||', '||i.DB_LINK_NAME);
+            log_debug('coordinator_proc_standalone_v2 to start: l_job_name l_dblink: '||l_job_name||', '||i.DB_LINK_NAME);
           else
-            log_info('coordinator_proc_standalone to banned: l_dblink: '||i.DB_LINK_NAME);
+            log_info('coordinator_proc_standalone_v2 to banned: l_dblink: '||i.DB_LINK_NAME);
           end if;
         else
-          log_debug('coordinator_proc_standalone limit reached: l_dblink: '||i.DB_LINK_NAME);
+          log_debug('coordinator_proc_standalone_v2 limit reached: l_dblink: '||i.DB_LINK_NAME);
         end if;
       end loop;
       commit;
@@ -561,123 +506,16 @@ FROM   <SQLBODY>]';
       l_iter := l_iter + 1;
       exit when l_iter > l_maxiter;
       dbms_session.sleep(l_sleep);
+      log_debug('coordinator_proc_standalone_v2 slept: '||l_sleep);
     end loop;
     log_debug('coordinator_proc_standalone_v2 finished');
   end coordinator_proc_standalone_v2;
-
-  procedure coordinator_proc_standalone is
-    l_max_workers number;
-    l_threads2create  number:=0;
-    l_queued_jobs     number;
-    l_zombie_jobs     number;
-    l_running_jobs    number;
-    l_dblinks_running t_jobs;
-    l_dblinks2start   t_jobs;
-    l_dblinks2ban     t_jobs;
-    l_dblink          varchar2(128);
-
-    l_work_id number;
-    l_job_name varchar2(128);
-
-    l_iter number := 0;
-    l_maxiter  number := to_number(COREMOD_API.getconf('COORDAQCITERS'));
-    l_sleep    number := to_number(COREMOD_API.getconf('COORDAQCSLEEP'));
-  begin
-    log_debug('coordinator_proc_standalone started');
-    loop
-      if l_iter = 0 or mod(l_iter,20)=0 then
-        gsrvLoggingLevel := COREMOD_API.getconf('EXTLOGGINGMODE');
-        l_max_workers := to_number(COREMOD_API.getconf('MAXEXTWORKERS'));
-        gsrvQueryPerServerSession := to_number(COREMOD_API.getconf('QRYPERWORKERSESS'));
-      end if;
-
-      for i in (select DB_LINK_NAME, count(1) cnt from OPAS_EXTPROC_QUEUE_SRV where STATUS='NEW' group by DB_LINK_NAME) loop
-
-        l_dblinks2start.delete;
-        l_dblinks_running.delete;
-
-        if gsrvLoggingLevel = 'DEBUG' then
-          select sum(decode(started, null, 1, 0)), sum(decode(sid, null, 0, 1)) ,
-                 sum(case when started is not null and started>sysdate - 3/(24*60*60) and sid is null then 1 else 0 end)
-            into l_queued_jobs, l_running_jobs, l_zombie_jobs
-            from OPAS_EXTPROC_WORK_SRV, gv$session
-           where FINISHED is null
-            and SESS_SID = sid(+)
-            and SESS_INST_ID = inst_id(+);
-
-        --if l_zombie_jobs>0 then
-          log_debug('coordinator_proc_standalone: l_queued_jobs, l_running_jobs, l_zombie_jobs: '||l_queued_jobs||', '||l_running_jobs||', '||l_zombie_jobs);
-        --end if;
-        end if;
-
-        select count(1)
-          into l_running_jobs
-          from OPAS_EXTPROC_WORK_SRV  where FINISHED is null;-- and DB_LINK_NAME = i.DB_LINK_NAME;
-        log_debug('coordinator_proc_standalone('||i.DB_LINK_NAME||'): l_running_jobs: '|| l_running_jobs);
-
-        if l_max_workers > l_running_jobs then
-          l_threads2create := l_max_workers - l_running_jobs;
-
-          for i in (select unique DB_LINK_NAME
-                      from OPAS_EXTPROC_WORK_SRV
-                     where DB_LINK_NAME in (select DB_LINK_NAME from OPAS_EXTPROC_WORK_SRV where FINISHED is null)
-          )
-          loop
-            l_dblinks_running(i.DB_LINK_NAME):=0;
-          end loop;
-        end if;
-
-        if not l_dblinks2ban.exists(i.DB_LINK_NAME) then
-          begin
-            check_connection_problem(i.DB_LINK_NAME);
-            l_dblinks2start(i.DB_LINK_NAME):=i.cnt;
-          exception
-            when others then
-              if not l_dblinks2ban.exists(i.DB_LINK_NAME) then
-                l_dblinks2ban(i.DB_LINK_NAME) := 20;
-              end if;
-              log_info('coordinator_proc_standalone connection problem: '||i.DB_LINK_NAME||': '||sqlerrm);
-          end;
-        else
-          if l_dblinks2ban(i.DB_LINK_NAME)>0 then
-            l_dblinks2ban(i.DB_LINK_NAME):=l_dblinks2ban(i.DB_LINK_NAME)-1;
-          else
-            l_dblinks2ban.delete(i.DB_LINK_NAME);
-          end if;
-        end if;
-      end loop;
-
-      l_dblink := l_dblinks2start.first;
-      loop
-        exit when l_dblink is null;-- or l_threads2created <= 0;
-        if (not l_dblinks_running.exists(l_dblink)) or
-           (l_dblinks_running.exists(l_dblink) and l_dblinks2start(l_dblink) > 5 and l_threads2create > 0) -- number of tasks in queue to start a new worker rvQueryPerServerSession/2)
-        then
-          l_dblinks_running(l_dblink):=0;
-
-          INSERT INTO opas_extproc_work_srv ( work_id, db_link_name, job_name)
-            VALUES (seq_opas_extproc_work_srv.nextval, l_dblink, gshJobName||'_'||DBMS_RANDOM.STRING('X',6)) returning work_id, job_name into l_work_id, l_job_name;
-          commit;
-
-          log_info('coordinator_proc_standalone to start: l_job_name l_dblink, l_threads2create: '||l_job_name||', '||l_dblink||', '||l_threads2create);
-          l_threads2create := l_threads2create - 1;
-
-        end if;
-        l_dblink := l_dblinks2start.next(l_dblink);
-      end loop;
-
-      l_iter := l_iter + 1;
-      exit when l_iter > l_maxiter;
-      dbms_session.sleep(l_sleep);
-    end loop;
-    log_debug('coordinator_proc_standalone finished');
-  end coordinator_proc_standalone;
 
   procedure get_next_server(p_work_id out number) is
     l_acquired boolean := false;
     l_iterations number := 0;
     l_max_iteration number := to_number(COREMOD_API.getconf('COORDAQCITERS')); --2 minutes
-    l_sleep number := to_number(COREMOD_API.getconf('COORDAQCSLEEP'));
+    l_sleep number := to_number(COREMOD_API.getconf('COORDGNSSLEEP'));
   begin
     log_debug('get_next_server started');
 
@@ -692,7 +530,7 @@ FROM   <SQLBODY>]';
       end loop;
       l_iterations := l_iterations + 1;
 
-      if l_iterations = 0 or mod(l_iterations,20)=0 then
+      if l_iterations = 0 or mod(l_iterations,100)=0 then
         update opas_extproc_work_srv_heartbeat set last_event = systimestamp;
         commit;
       end if;
@@ -709,7 +547,8 @@ FROM   <SQLBODY>]';
   procedure coordinator_proc is
   begin
     if COREMOD_API.getconf('SERVERTYPE') = 'LOCALJVM' then
-      coordinator_proc_local();
+      --coordinator_proc_local();
+      raise_application_error(-20000,'Deprecated server type: <SERVERTYPE>');
     elsif COREMOD_API.getconf('SERVERTYPE') = 'STANDALONE' then
       coordinator_proc_standalone_v2();
     else
@@ -803,10 +642,13 @@ FROM   <SQLBODY>]';
 -- task operations
 -- *****************************************************************************************************
   procedure get_next_task(p_work_id number, p_task_id out number, p_qry_type out varchar2, p_qry1 out varchar2, p_qry2 out varchar2, p_qry3 out varchar2, p_num_cols out number, p_timeouted out number) is
-    l_acquired boolean := false;
-    l_iterations number := 0;
-    l_max_iteration number := to_number(COREMOD_API.getconf('WORKERAQCITERS')); --2 minutes
-    l_sleep number := to_number(COREMOD_API.getconf('WORKERAQCSLEEP'));
+    l_acquired       boolean := false;
+    l_iterations     number := 0;
+    l_max_iteration  number := to_number(COREMOD_API.getconf('WORKERAQCITERS')); --2 minutes
+    l_sleep          number := to_number(COREMOD_API.getconf('WORKERAQCSLEEP'));
+    --l_Parent_Task_Id number;
+    --gParent_Task_Id global - preserves state between calls to peek up the child tasks
+    l_status         OPAS_EXTPROC_QUEUE_SRV.STATUS%type;
   begin
     for i in (select * from opas_extproc_work_srv where work_id=p_work_id) loop
       loop
@@ -824,6 +666,14 @@ FROM   <SQLBODY>]';
             log_info('get_next_task reset parent task: p_work_id, '||p_work_id);
           end if;
 
+           if j.PARENT_TASK_ID is not null then
+            select status into l_status from OPAS_EXTPROC_QUEUE_SRV where TASK_ID = j.PARENT_TASK_ID and PARENT_TASK_ID = TASK_ID;
+            if l_status in ('FAILED', 'TIMEDOUT') then
+              gParent_Task_Id := null;
+              log_info('get_next_task reset parent task ('||l_status||') : p_work_id, '||p_work_id);
+            end if;
+          end if;
+
           p_task_id := j.task_id;
           p_qry_type := j.QRY_TYPE;
           p_qry1 := j.SELECT_SQL;
@@ -837,7 +687,7 @@ FROM   <SQLBODY>]';
         end loop;
         l_iterations := l_iterations + 1;
         exit when gParent_Task_Id is null and (l_acquired or l_iterations>l_max_iteration) or
-                  gParent_Task_Id is not null and (l_acquired or l_iterations>(l_max_iteration+500)) ;
+                  gParent_Task_Id is not null and (l_acquired or l_iterations>(l_max_iteration*1.5)) ;
         dbms_session.sleep(l_sleep);
       end loop;
     end loop;
@@ -886,7 +736,7 @@ FROM   <SQLBODY>]';
 
       if l_timedout1 then set_task_timedout(p_task_id, 'Timeout after (created) '||l_timout_after_task_created|| ' secs'); raise_application_error(-20000, 'Task '||p_task_id||' timed out after (created) '||l_timout_after_task_created|| ' secs.'); end if;
       if l_timedout2 then set_task_timedout(p_task_id, 'Timeout after (started) '||l_timout_after_task_started|| ' secs'); raise_application_error(-20000, 'Task '||p_task_id||' timed out after (started) '||l_timout_after_task_started|| ' secs.'); end if;
-      if l_timedout3 then set_task_timedout(p_task_id, 'Timeout after (specified) '||p_timeout|| ' secs'); raise_application_error(-20000, 'Task '||p_task_id||' timed out after (specified '||p_timeout|| ' secs.'); end if;
+      if l_timedout3 then set_task_timedout(p_task_id, 'Timeout after (specified) '||p_timeout|| ' secs'); raise_application_error(-20000, 'Task '||p_task_id||' timed out after (specified) '||p_timeout|| ' secs.'); end if;
       exit when l_res or l_timedout1 or l_timedout2 or l_timedout3;
       dbms_session.sleep(0.1);
     end loop;
@@ -1048,6 +898,204 @@ begin
   gsrvLoggingLevel := COREMOD_API.getconf('EXTLOGGINGMODE');
   gsrvQueryPerServerSession := to_number(COREMOD_API.getconf('QRYPERWORKERSESS'));
 /*
+  procedure coordinator_proc_local is
+    l_max_workers number;
+    l_threads2created number:=0;
+    l_running_jobs    number;
+    l_dblinks_running t_jobs;
+    l_dblinks2start   t_jobs;
+    l_dblinks2ban     t_jobs;
+    l_dblink          varchar2(128);
+
+    l_work_id number;
+    l_job_name varchar2(128);
+
+    l_iter number := 0;
+    l_maxiter  number := to_number(COREMOD_API.getconf('COORDAQCITERS'));
+    l_sleep    number := to_number(COREMOD_API.getconf('COORDAQCSLEEP'));
+  begin
+    log_debug('coordinator_proc_local started');
+    loop
+      if l_iter = 0 or mod(l_iter,20)=0 then
+        gsrvLoggingLevel := COREMOD_API.getconf('EXTLOGGINGMODE');
+        l_max_workers := to_number(COREMOD_API.getconf('MAXEXTWORKERS'));
+        gsrvQueryPerServerSession := to_number(COREMOD_API.getconf('QRYPERWORKERSESS'));
+      end if;
+
+        for i in (select DB_LINK_NAME, count(1) cnt from OPAS_EXTPROC_QUEUE_SRV where STATUS='NEW' group by DB_LINK_NAME) loop
+
+          l_dblinks2start.delete;
+          l_dblinks_running.delete;
+
+          select count(1) into l_running_jobs from user_scheduler_running_jobs where job_name in (select JOB_NAME from OPAS_EXTPROC_WORK_SRV where FINISHED is null and STARTED is not null);
+          if l_max_workers > l_running_jobs then
+            l_threads2created := l_max_workers - l_running_jobs;
+
+            for i in (select unique DB_LINK_NAME from OPAS_EXTPROC_WORK_SRV where JOB_NAME in (select JOB_NAME from user_scheduler_running_jobs)) loop
+              l_dblinks_running(i.DB_LINK_NAME):=0;
+            end loop;
+          end if;
+
+          if not l_dblinks2ban.exists(i.DB_LINK_NAME) then
+            begin
+              check_connection_problem(i.DB_LINK_NAME);
+              l_dblinks2start(i.DB_LINK_NAME):=i.cnt;
+            exception
+              when others then
+                if not l_dblinks2ban.exists(i.DB_LINK_NAME) then
+                  l_dblinks2ban(i.DB_LINK_NAME) := 20;
+                end if;
+                log_info('coordinator_proc connection problem: '||i.DB_LINK_NAME||': '||sqlerrm);
+            end;
+          else
+            if l_dblinks2ban(i.DB_LINK_NAME)>0 then
+              l_dblinks2ban(i.DB_LINK_NAME):=l_dblinks2ban(i.DB_LINK_NAME)-1;
+            else
+              l_dblinks2ban.delete(i.DB_LINK_NAME);
+            end if;
+          end if;
+        end loop;
+
+        l_dblink := l_dblinks2start.first;
+        loop
+          exit when l_dblink is null or l_threads2created <= 0;
+          if (
+               (not l_dblinks_running.exists(l_dblink)) or
+               (l_dblinks_running.exists(l_dblink) and l_dblinks2start(l_dblink) > 4 ) -- number of tasks in queue to start a new worker rvQueryPerServerSession/2)
+             )
+              and l_threads2created>0 then
+            l_dblinks_running(l_dblink):=0;
+            log_info('coordinator_proc_local job l_dblink, l_threads2created: '||l_dblink||', '||l_threads2created);
+
+            INSERT INTO opas_extproc_work_srv ( work_id, db_link_name, job_name)
+              VALUES (seq_opas_extproc_work_srv.nextval, l_dblink, gshJobName||'_'||DBMS_RANDOM.STRING('X',6)) returning work_id, job_name into l_work_id, l_job_name;
+            commit;
+            dbms_scheduler.create_job(job_name => l_job_name,
+                                      job_type => 'PLSQL_BLOCK',
+                                      job_action => q'{begin COREMOD_EXTPROC.worker_proc(}' || l_work_id || q'{); end;}',
+                                      start_date => systimestamp,
+                                      enabled => true,
+                                      auto_drop=> true);
+            l_threads2created := l_threads2created - 1;
+            log_info('coordinator_proc_local job invoked: '||l_job_name);
+          end if;
+          l_dblink := l_dblinks2start.next(l_dblink);
+        end loop;
+      l_iter := l_iter + 1;
+      exit when l_iter > l_maxiter;
+      dbms_session.sleep(l_sleep);
+    end loop;
+    log_debug('coordinator_proc_local finished');
+  end coordinator_proc_local;
+
+  procedure coordinator_proc_standalone is
+    l_max_workers number;
+    l_threads2create  number:=0;
+    l_queued_jobs     number;
+    l_zombie_jobs     number;
+    l_running_jobs    number;
+    l_dblinks_running t_jobs;
+    l_dblinks2start   t_jobs;
+    l_dblinks2ban     t_jobs;
+    l_dblink          varchar2(128);
+
+    l_work_id number;
+    l_job_name varchar2(128);
+
+    l_iter number := 0;
+    l_maxiter  number := to_number(COREMOD_API.getconf('COORDAQCITERS'));
+    l_sleep    number := to_number(COREMOD_API.getconf('COORDAQCSLEEP'));
+  begin
+    log_debug('coordinator_proc_standalone started');
+    loop
+      if l_iter = 0 or mod(l_iter,20)=0 then
+        gsrvLoggingLevel := COREMOD_API.getconf('EXTLOGGINGMODE');
+        l_max_workers := to_number(COREMOD_API.getconf('MAXEXTWORKERS'));
+        gsrvQueryPerServerSession := to_number(COREMOD_API.getconf('QRYPERWORKERSESS'));
+      end if;
+
+      for i in (select DB_LINK_NAME, count(1) cnt from OPAS_EXTPROC_QUEUE_SRV where STATUS='NEW' group by DB_LINK_NAME) loop
+
+        l_dblinks2start.delete;
+        l_dblinks_running.delete;
+
+        if gsrvLoggingLevel = 'DEBUG' then
+          select sum(decode(started, null, 1, 0)), sum(decode(sid, null, 0, 1)) ,
+                 sum(case when started is not null and started>sysdate - 3/(24*60*60) and sid is null then 1 else 0 end)
+            into l_queued_jobs, l_running_jobs, l_zombie_jobs
+            from OPAS_EXTPROC_WORK_SRV, gv$session
+           where FINISHED is null
+            and SESS_SID = sid(+)
+            and SESS_INST_ID = inst_id(+);
+
+        --if l_zombie_jobs>0 then
+          log_debug('coordinator_proc_standalone: l_queued_jobs, l_running_jobs, l_zombie_jobs: '||l_queued_jobs||', '||l_running_jobs||', '||l_zombie_jobs);
+        --end if;
+        end if;
+
+        select count(1)
+          into l_running_jobs
+          from OPAS_EXTPROC_WORK_SRV  where FINISHED is null;-- and DB_LINK_NAME = i.DB_LINK_NAME;
+        log_debug('coordinator_proc_standalone('||i.DB_LINK_NAME||'): l_running_jobs: '|| l_running_jobs);
+
+        if l_max_workers > l_running_jobs then
+          l_threads2create := l_max_workers - l_running_jobs;
+
+          for i in (select unique DB_LINK_NAME
+                      from OPAS_EXTPROC_WORK_SRV
+                     where DB_LINK_NAME in (select DB_LINK_NAME from OPAS_EXTPROC_WORK_SRV where FINISHED is null)
+          )
+          loop
+            l_dblinks_running(i.DB_LINK_NAME):=0;
+          end loop;
+        end if;
+
+        if not l_dblinks2ban.exists(i.DB_LINK_NAME) then
+          begin
+            check_connection_problem(i.DB_LINK_NAME);
+            l_dblinks2start(i.DB_LINK_NAME):=i.cnt;
+          exception
+            when others then
+              if not l_dblinks2ban.exists(i.DB_LINK_NAME) then
+                l_dblinks2ban(i.DB_LINK_NAME) := 20;
+              end if;
+              log_info('coordinator_proc_standalone connection problem: '||i.DB_LINK_NAME||': '||sqlerrm);
+          end;
+        else
+          if l_dblinks2ban(i.DB_LINK_NAME)>0 then
+            l_dblinks2ban(i.DB_LINK_NAME):=l_dblinks2ban(i.DB_LINK_NAME)-1;
+          else
+            l_dblinks2ban.delete(i.DB_LINK_NAME);
+          end if;
+        end if;
+      end loop;
+
+      l_dblink := l_dblinks2start.first;
+      loop
+        exit when l_dblink is null;-- or l_threads2created <= 0;
+        if (not l_dblinks_running.exists(l_dblink)) or
+           (l_dblinks_running.exists(l_dblink) and l_dblinks2start(l_dblink) > 5 and l_threads2create > 0) -- number of tasks in queue to start a new worker rvQueryPerServerSession/2)
+        then
+          l_dblinks_running(l_dblink):=0;
+
+          INSERT INTO opas_extproc_work_srv ( work_id, db_link_name, job_name)
+            VALUES (seq_opas_extproc_work_srv.nextval, l_dblink, gshJobName||'_'||DBMS_RANDOM.STRING('X',6)) returning work_id, job_name into l_work_id, l_job_name;
+          commit;
+
+          log_info('coordinator_proc_standalone to start: l_job_name l_dblink, l_threads2create: '||l_job_name||', '||l_dblink||', '||l_threads2create);
+          l_threads2create := l_threads2create - 1;
+
+        end if;
+        l_dblink := l_dblinks2start.next(l_dblink);
+      end loop;
+
+      l_iter := l_iter + 1;
+      exit when l_iter > l_maxiter;
+      dbms_session.sleep(l_sleep);
+    end loop;
+    log_debug('coordinator_proc_standalone finished');
+  end coordinator_proc_standalone;
+
   procedure exec_sql(p_dblink varchar2, p_sql varchar2, p_exec_id out number) AS
   BEGIN
     p_exec_id := seq_opas_extproc_queue.nextval;

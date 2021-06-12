@@ -20,6 +20,9 @@ show errors
 @@COREMOD_EXTPROC_SPEC.SQL
 show errors
 
+@@COREMOD_EXTPROC_SRV_SPEC.SQL
+show errors
+
 @@COREMOD_FILE_UTILS_SPEC.SQL
 show errors
 
@@ -129,6 +132,12 @@ show errors
 show errors
 
 @@COREMOD_EXTPROC_BODY.SQL
+show errors
+
+@@COREMOD_EXTPROC_1_BODY.SQL
+show errors
+
+@@COREMOD_EXTPROC_SRV_BODY.SQL
 show errors
 
 @@COREMOD_FILE_UTILS_BODY.SQL
