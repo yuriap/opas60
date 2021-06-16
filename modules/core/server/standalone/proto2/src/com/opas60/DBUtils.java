@@ -92,9 +92,27 @@ public class DBUtils {
     }
 
     private static void finalize_conn() throws Exception, SQLException {
+        //log_info("Local connection closing...");
+        //localconn.close();
+        //log_info("Local connection closed.");
+
+        log_info("Remote connection closing...");
+        if ((remoteconn != null)&&(!remoteconn.isClosed())) {
+            log_info("Remote connection is not closed.");
+            remoteconn.close();
+            log_info("Remote connection closed.");
+        } else {
+            log_info("Remote connection was not established. Nothing to close");
+        }
         log_info("Local connection closing...");
-        localconn.close();
-        log_info("Local connection closed.");
+        if ((localconn != null)&&(!localconn.isClosed())) {
+            log_info("Local connection is not closed.");
+            localconn.close();
+            log_info("Local connection closed.");
+        }
+        else {
+            log_info("Local connection was not established. Nothing to close");
+        }
     }
 
     public static void test_remote_dbs() throws Exception, SQLException {
@@ -148,5 +166,9 @@ public class DBUtils {
         } else {
             log_info("init_server: No task in queue");
         }
+    }
+    public static void prepare2restart() throws Exception, SQLException
+    {
+        finalize_conn();
     }
 }

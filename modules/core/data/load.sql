@@ -39,6 +39,8 @@ INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EX
 INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EXTERNAL','TIMOUTSTARTED',    3600,    'Timeout of waiting result: after , seconds');
 INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EXTERNAL','JDBCBATCHSIZE',    100,     'Batch processing size');
 INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EXTERNAL','SERVERTYPE',       'STANDALONE',     'Server Type: LOCALJVM, STANDALONE');
+INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EXTERNAL','PRELOADEDWRKRS',   '',      'DBLink list comma separated for prestarted workers');
+INSERT INTO opas_config (modname,cgroup,ckey,cvalue,descr) VALUES ('&MODNM.','EXTERNAL','PRELOADEDWRKRSNUM','2',     'Number of prestarted workers per configured DBLink');
 
 
 

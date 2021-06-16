@@ -32,6 +32,7 @@ public class ExternalExecutor {
     protected String remote_conn_error;
 
     public int maxRestarts = 1;
+    public int RestartDelay = 10000;
 
     public void setProcName(String pProcName) {ProcName = pProcName;}
     public void setWorker_Id(int pWorker_Id) {Worker_Id = pWorker_Id;}
@@ -52,10 +53,11 @@ public class ExternalExecutor {
             Properties prop = new Properties();
 
             prop.load(input);
-            local_username = prop.getProperty("localdb.user");
-            local_password_str = prop.getProperty("localdb.password");
+            local_username =          prop.getProperty("localdb.user");
+            local_password_str =      prop.getProperty("localdb.password");
             local_server_connectstr = prop.getProperty("localdb.url");
-            maxRestarts = prop.getProperty("server.max_restart_attempts");
+            maxRestarts =             Integer.parseInt(prop.getProperty("server.max_restart_attempts"));
+            RestartDelay =            Integer.parseInt(prop.getProperty("server.restart_delay"));
             log_info("Loaded configuration for: " + local_server_connectstr);
         } catch (IOException ex) {
             ex.printStackTrace();

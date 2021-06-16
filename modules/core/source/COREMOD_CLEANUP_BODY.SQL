@@ -77,7 +77,7 @@ package body coremod_cleanup as
     end;
 
     begin
-      COREMOD_EXTPROC.Cleanup_queue;
+      COREMOD_EXTPROC_SRV.Cleanup_queue;
     exception
       when others then
         rollback;

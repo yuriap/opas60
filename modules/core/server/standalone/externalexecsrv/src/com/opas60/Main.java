@@ -2,6 +2,7 @@ package com.opas60;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class Main {
 
@@ -29,8 +30,13 @@ public class Main {
                         //exec.shutdown();
                     } catch (Exception e) {
                         server.log_info("Server exception: " + e.getMessage());
-                        server.log_info("Trying to restart: attempt " + server.maxRestarts);
                         server.prepare2restart();
+                        try {
+                            server.log_info("Trying to restart, delay " + server.RestartDelay + " milliseconds: attempt " + cntRestart + " of " + server.maxRestarts);
+                            TimeUnit.MILLISECONDS.sleep(server.RestartDelay);
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                        }
                     }
                 while (cntRestart<=server.maxRestarts);
             }

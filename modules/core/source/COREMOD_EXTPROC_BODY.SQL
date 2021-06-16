@@ -337,7 +337,7 @@ FROM   <SQLBODY>]';
     end;
     log_info('start_coordinator executed');
   end;
-
+/*
   procedure stop_coordinator is
   begin
     for i in (select * from opas_extproc_work_srv where job_name is not null and finished is null) loop
@@ -348,7 +348,7 @@ FROM   <SQLBODY>]';
     begin dbms_scheduler.disable('OPASEXTSQL'); exception when others then coremod_tasks.log('COREMOD_EXTPROC.stop_coordinator disable: '||sqlerrm); end;
     log_info('stop_coordinator executed');
   end;
-
+*/
   procedure check_connection_problem(p_dblink       varchar2)
   is
     l_connect_error_count number;
@@ -511,6 +511,91 @@ FROM   <SQLBODY>]';
     log_debug('coordinator_proc_standalone_v2 finished');
   end coordinator_proc_standalone_v2;
 
+  procedure coordinator_proc_standalone_v3 is
+    l_max_workers number;
+    l_threads2create  number:=0;
+    l_queued_jobs     number;
+    l_zombie_jobs     number;
+    l_running_jobs    number;
+    l_dblinks_running t_jobs;
+    l_dblinks2start   t_jobs;
+    l_dblinks2ban     t_jobs;
+    --l_dblink          varchar2(128);
+
+    l_work_id number;
+    l_job_name varchar2(128);
+
+    l_iter number := 0;
+    l_maxiter  number := to_number(COREMOD_API.getconf('COORDAQCITERS'));
+    l_sleep    number := to_number(COREMOD_API.getconf('COORDAQCSLEEP'));
+  begin
+    log_debug('coordinator_proc_standalone_v3 started');
+    loop
+      if l_iter = 0 or mod(l_iter,20)=0 then
+        gsrvLoggingLevel := COREMOD_API.getconf('EXTLOGGINGMODE');
+        l_max_workers := to_number(COREMOD_API.getconf('MAXEXTWORKERS'));
+        gsrvQueryPerServerSession := to_number(COREMOD_API.getconf('QRYPERWORKERSESS'));
+      end if;
+
+      for i in (SELECT que_actual.DB_LINK_NAME, nvl(new_queue_length,0) new_queue_length, nvl(started_queue_length,0) started_queue_length, nvl(active_workers,0) active_workers--, systimestamp ts
+                  FROM (select DB_LINK_NAME,
+                               sum(case when status = 'NEW' then 1 else 0 end) new_queue_length,
+                               sum(case when status = 'STARTED' then 1 else 0 end) started_queue_length
+                          from OPAS_EXTPROC_QUEUE_SRV que0
+                         where status in ('NEW', 'STARTED')
+                         group by que0.DB_LINK_NAME) que_actual,
+                       (select wrkr.DB_LINK_NAME,
+                               count(1) active_workers
+                          from opas_extproc_work_srv  wrkr
+                         where FINISHED is null
+                         group by wrkr.DB_LINK_NAME) wrkr
+                 where que_actual.DB_LINK_NAME = wrkr.DB_LINK_NAME(+))
+      loop
+        log_debug('coordinator_proc_standalone_v3: DB_LINK_NAME='||i.DB_LINK_NAME||'; new_queue_length='||i.new_queue_length||'; started_queue_length='||i.started_queue_length||'; active_workers='||i.active_workers);
+
+        if not l_dblinks2ban.exists(i.DB_LINK_NAME) then
+          begin
+            check_connection_problem(i.DB_LINK_NAME);
+          exception
+            when others then
+              if not l_dblinks2ban.exists(i.DB_LINK_NAME) then
+                l_dblinks2ban(i.DB_LINK_NAME) := 20;
+              end if;
+              log_info('coordinator_proc_standalone_v3 connection problem: '||i.DB_LINK_NAME||': '||sqlerrm);
+          end;
+        else
+          if l_dblinks2ban(i.DB_LINK_NAME)>0 then
+            l_dblinks2ban(i.DB_LINK_NAME):=l_dblinks2ban(i.DB_LINK_NAME)-1;
+          else
+            l_dblinks2ban.delete(i.DB_LINK_NAME);
+          end if;
+        end if;
+
+        if i.new_queue_length > 0 and i.active_workers<l_max_workers and i.started_queue_length >= i.active_workers
+        then
+          if not l_dblinks2ban.exists(i.DB_LINK_NAME) then
+            for j in 1..i.new_queue_length loop
+              INSERT INTO opas_extproc_work_srv ( work_id, db_link_name, job_name)
+                VALUES (seq_opas_extproc_work_srv.nextval, i.DB_LINK_NAME, gshJobName||'_'||DBMS_RANDOM.STRING('X',6)) returning work_id, job_name into l_work_id, l_job_name;
+              log_debug('coordinator_proc_standalone_v3 to start: l_job_name l_dblink: '||l_job_name||', '||i.DB_LINK_NAME);
+            end loop;
+          else
+            log_info('coordinator_proc_standalone_v3 to banned: l_dblink: '||i.DB_LINK_NAME);
+          end if;
+        else
+          log_debug('coordinator_proc_standalone_v3 limit reached: l_dblink: '||i.DB_LINK_NAME);
+        end if;
+      end loop;
+      commit;
+
+      l_iter := l_iter + 1;
+      exit when l_iter > l_maxiter;
+      dbms_session.sleep(l_sleep);
+      log_debug('coordinator_proc_standalone_v3 slept: '||l_sleep);
+    end loop;
+    log_debug('coordinator_proc_standalone_v3 finished');
+  end coordinator_proc_standalone_v3;
+
   procedure get_next_server(p_work_id out number) is
     l_acquired boolean := false;
     l_iterations number := 0;
@@ -550,7 +635,7 @@ FROM   <SQLBODY>]';
       --coordinator_proc_local();
       raise_application_error(-20000,'Deprecated server type: <SERVERTYPE>');
     elsif COREMOD_API.getconf('SERVERTYPE') = 'STANDALONE' then
-      coordinator_proc_standalone_v2();
+      coordinator_proc_standalone_v3();
     else
       raise_application_error(-20000,'Unsupported server type: <'||COREMOD_API.getconf('SERVERTYPE')||'>');
     end if;
