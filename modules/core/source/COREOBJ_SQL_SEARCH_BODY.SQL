@@ -371,7 +371,12 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
       from gv$sql<DBLINK> d where (inst_id, child_number, sql_id) in
         (select inst_id, child_number, sql_id from (select inst_id, child_number, sql_id, row_number()over(partition by sql_id order by child_number) rn from gv$sql<DBLINK> where sql_id in (<SQL_ID_LIST>)) where rn = 1)]' || chr(10); --'
 
-    l_v_sql varchar2(32765) := q'[select /*+ qb_name(OPAS60EXTSRC)  driving_site(d) */ unique sql_id from gv$sql<DBLINK> d where 1=1 ]' || chr(10); --'
+    l_v_sql varchar2(32765) := q'[select /*+ qb_name(OPAS60EXTSRC) <HINT> */ unique d.sql_id from gv$sqlstats<DBLINK> d]' || chr(10); --'
+    l_v_sql_txt varchar2(32765) := q'[select /*+ materialize */ sql_id from gv$sqlstats<DBLINK> st where 1=1 <GV$SQLSTATS>]';
+    l_v_sql_oth varchar2(32765) := q'[select /*+ materialize */ sql_id from gv$sql<DBLINK> sq where 1=1 <GV$SQL>]';
+
+    l_txtb boolean := false;
+    l_othb boolean := false;
 
     l_awr_sql varchar2(32765) := q'[select /*+ qb_name(OPAS60EXTSRC) driving_site(d) */ unique sql_id from dba_hist_sqltext<DBLINK> d where d.DBID = <DBID>]' || chr(10); --'
 
@@ -412,54 +417,86 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
 --another search among all files
       if gParams.exists('P1411_EXT_SEARCH_OPT') and gParams('P1411_EXT_SEARCH_OPT') in ('VSQL','BOTH') then
         if gParams.exists('P1411_CONTAINS') and gParams('P1411_CONTAINS') is not null then
+          l_txtb := true;
           if gParams.exists('P1411_TEXT_SEARCH_OPTIONS') then
             if gParams('P1411_TEXT_SEARCH_OPTIONS') like '%REGEXP' or gParams('P1411_TEXT_SEARCH_OPTIONS') = 'ORATEXT' then
-               l_v_sql := l_v_sql || q'[ and regexp_like(d.sql_fulltext, q'~]' || gParams('P1411_CONTAINS') || q'[~', 'in')]';
+               --l_v_sql := l_v_sql || q'[ and regexp_like(d.sql_fulltext, q'~]' || gParams('P1411_CONTAINS') || q'[~', 'in')]';
+               l_v_sql_txt := replace(l_v_sql_txt, '<GV$SQLSTATS>', q'[and regexp_like(st.sql_fulltext, q'~]' || gParams('P1411_CONTAINS') || q'[~', 'in') <GV$SQLSTATS>]');
             end if;
             if gParams('P1411_TEXT_SEARCH_OPTIONS') = 'NOTREGEXP' then
-               l_v_sql := replace(l_v_sql,'and regexp_like','and not regexp_like');
+               --l_v_sql := replace(l_v_sql,'and regexp_like','and not regexp_like');
+               l_v_sql_txt := replace(l_v_sql_txt,'and regexp_like','not regexp_like');
             end if;
             if gParams('P1411_TEXT_SEARCH_OPTIONS') like '%LIKE' then
-               l_v_sql := l_v_sql || q'[ and d.sql_fulltext like q'~]' || gParams('P1411_CONTAINS') || q'[~']';
+               --l_v_sql := l_v_sql || q'[ and d.sql_fulltext like q'~]' || gParams('P1411_CONTAINS') || q'[~']';
+               l_v_sql_txt := replace(l_v_sql_txt, '<GV$SQLSTATS>', q'[and st.sql_fulltext like q'~]' || gParams('P1411_CONTAINS') || q'[~' <GV$SQLSTATS>]');
             end if;
             if gParams('P1411_TEXT_SEARCH_OPTIONS') = 'NOTLIKE' then
-               l_v_sql := replace(l_v_sql,'and d.sql_fulltext like','and d.sql_fulltext not like');
+               --l_v_sql := replace(l_v_sql,'and d.sql_fulltext like','and d.sql_fulltext not like');
+               l_v_sql_txt := replace(l_v_sql_txt,'and st.sql_fulltext like','st.sql_fulltext not like');
             end if;
             if gParams('P1411_TEXT_SEARCH_OPTIONS') like '%LIKECI' then
-               l_v_sql := l_v_sql || q'[ and upper(d.sql_fulltext) like upper(q'~]' || gParams('P1411_CONTAINS') || q'[~')]';
+               --l_v_sql := l_v_sql || q'[ and upper(d.sql_fulltext) like upper(q'~]' || gParams('P1411_CONTAINS') || q'[~')]';
+               l_v_sql_txt := replace(l_v_sql_txt, '<GV$SQLSTATS>', q'[and upper(st.sql_fulltext) like upper(q'~]' || gParams('P1411_CONTAINS') || q'[~') <GV$SQLSTATS>]');
             end if;
             if gParams('P1411_TEXT_SEARCH_OPTIONS') = 'NOTLIKECI' then
-               l_v_sql := replace(l_v_sql,'and upper(d.sql_fulltext) like','and upper(d.sql_fulltext) not like');
+               --l_v_sql := replace(l_v_sql,'and upper(d.sql_fulltext) like','and upper(d.sql_fulltext) not like');
+               l_v_sql_txt := replace(l_v_sql_txt,'and upper(st.sql_fulltext) like','upper(st.sql_fulltext) not like');
             end if;
           end if;
+          --l_v_sql := l_v_sql_txt || replace(l_v_sql, '<GV$SQLSTATS>', ', sqltxt ') || ' and d.sql_id = sqltxt.sql_id ';
         end if;
 
         if gParams.exists('P1411_SQL_ID') and gParams('P1411_SQL_ID') is not null then
-          l_v_sql := l_v_sql || q'[ and d.sql_id = q'~]' || gParams('P1411_SQL_ID') || q'[~']' || chr(10);
+          l_txtb := true;
+          --l_v_sql := l_v_sql || q'[ and d.sql_id = q'~]' || gParams('P1411_SQL_ID') || q'[~']' || chr(10);
+          l_v_sql_txt := replace(l_v_sql_txt, '<GV$SQLSTATS>', q'[ and st.sql_id = q'~]' || gParams('P1411_SQL_ID') || q'[~' <GV$SQLSTATS>]');
         end if;
 
         if gParams.exists('P1411_PLAN_HASH') and gParams('P1411_PLAN_HASH') is not null then
-          l_v_sql := l_v_sql || q'[ and d.plan_hash_value = <PLAN_HASH>]' || chr(10);
-          l_v_sql := replace(l_v_sql,'<PLAN_HASH>',gParams('P1411_PLAN_HASH'));
+          l_txtb := true;
+          --l_v_sql := l_v_sql || q'[ and d.plan_hash_value = <PLAN_HASH>]' || chr(10);
+          l_v_sql_txt := replace(l_v_sql_txt, '<GV$SQLSTATS>', q'[ and st.plan_hash_value = <PLAN_HASH> <GV$SQLSTATS>]');
+          --l_v_sql := replace(l_v_sql,'<PLAN_HASH>',gParams('P1411_PLAN_HASH'));
+          l_v_sql_txt := replace(l_v_sql_txt,'<PLAN_HASH>',gParams('P1411_PLAN_HASH'));
         end if;
 
         if gParams.exists('P1411_MODULE') and gParams('P1411_MODULE') is not null then
-          l_v_sql := l_v_sql || q'[ and d.MODULE like q'~<MODULE>~']' || chr(10); --'
-          l_v_sql := replace(l_v_sql,'<MODULE>',gParams('P1411_MODULE'));
+          l_othb := true;
+          --l_v_sql := l_v_sql || q'[ and d.MODULE like q'~<MODULE>~']' || chr(10); --'
+          l_v_sql_oth := replace(l_v_sql_oth, '<GV$SQL>', q'[ and sq.MODULE like q'~<MODULE>~' <GV$SQL>]');
+          --l_v_sql := replace(l_v_sql,'<MODULE>',gParams('P1411_MODULE'));
+          l_v_sql_oth := replace(l_v_sql_oth,'<MODULE>',gParams('P1411_MODULE'));
         end if;
 
         if gParams.exists('P1411_ACTION') and gParams('P1411_ACTION') is not null then
-          l_v_sql := l_v_sql || q'[ and d.ACTION like q'~<ACTION>~']' || chr(10); --'
-          l_v_sql := replace(l_v_sql,'<ACTION>',gParams('P1411_ACTION'));
+          l_othb := true;
+          --l_v_sql := l_v_sql || q'[ and d.ACTION like q'~<ACTION>~']' || chr(10); --'
+          l_v_sql_oth := replace(l_v_sql_oth, '<GV$SQL>', q'[ and sq.ACTION like q'~<ACTION>~' <GV$SQL>]');
+          --l_v_sql := replace(l_v_sql,'<ACTION>',gParams('P1411_ACTION'));
+          l_v_sql_oth := replace(l_v_sql_oth,'<ACTION>',gParams('P1411_ACTION'));
         end if;
 
         if gParams.exists('P1411_EXTERNAL_SQL_EXPRESSION') and gParams('P1411_EXTERNAL_SQL_EXPRESSION') is not null then
-          l_v_sql := l_v_sql || q'[ and d.sql_id in (]' || gParams('P1411_EXTERNAL_SQL_EXPRESSION') || q'[)]' || chr(10);
+          l_othb := true;
+          --l_v_sql := l_v_sql || q'[ and d.sql_id in (]' || gParams('P1411_EXTERNAL_SQL_EXPRESSION') || q'[)]' || chr(10);
+          l_v_sql_oth := replace(l_v_sql_oth, '<GV$SQL>', q'[ and sq.sql_id in (]' || gParams('P1411_EXTERNAL_SQL_EXPRESSION') || q'[) <GV$SQL>]');
         end if;
 
         -- the last one
-        l_v_sql := l_v_sql || q'[ and rownum <= ]' || l_rows || chr(10);
+        l_v_sql := case when l_txtb or l_othb then 'with ' else null end||
+                   case when l_txtb then 's1 as (' || l_v_sql_txt || ')' end || case when l_othb then ',' end || chr(10) ||
+                   case when l_othb then 's2 as (' || l_v_sql_oth || ')' end || chr(10) ||
+                   l_v_sql || case when l_txtb then ', s1' end || case when l_othb then ', s2' end || chr(10) ||
+                   ' where ' || case when not(l_txtb or l_othb) then ' 1=2 ' else ' 1=1 ' end ||
+                   case when l_txtb then 'and d.sql_id = s1.sql_id ' end || chr(10) ||
+                   case when l_othb then 'and d.sql_id = s2.sql_id ' end || chr(10) ||
+                   q'[ and rownum <= ]' || l_rows || chr(10);
+        l_v_sql := replace(l_v_sql, '<HINT>', ' use_nl(d) leading(' || case when l_txtb then 's1 ' end || case when l_othb then 's2 ' end || ')');
 
+        --cleanup
+        l_v_sql := replace(replace(l_v_sql, '<GV$SQLSTATS>', null), '<GV$SQL>', null);
+        --==================================================================================
         if COREMOD_API.external_mode_dblink(gParams('P1411_DATABASE')) then
           l_v_sql := replace(l_v_sql,'<DBLINK>',COREMOD_API.get_dblink_for_query(gParams('P1411_DATABASE')));
           l_v_sql := replace(l_v_sql,'<DBLINKNM>',gParams('P1411_DATABASE'));
@@ -506,7 +543,7 @@ PACKAGE BODY COREOBJ_SQL_SEARCH AS
             l_task := COREMOD_EXTPROC.create_plsql_task(P_PLSQL_BODY =>
       q'[declare a clob := null; l_sch varchar2(512);
          begin
-           begin select sql_fulltext, parsing_schema_name into a, l_sch from gv$sql where SQL_ID=:P_SQL_ID and rownum=1; exception when others then null; end;
+           begin select sql_fulltext, null parsing_schema_name into a, l_sch from gv$sqlstats where SQL_ID=:P_SQL_ID and rownum=1; exception when others then null; end;
            :l_out := a; :l_psch := l_sch;
          end;]',
                                                         P_DBLINK => gParams('P1411_DATABASE'),

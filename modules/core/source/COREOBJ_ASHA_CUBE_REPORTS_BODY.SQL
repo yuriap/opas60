@@ -209,12 +209,13 @@ timeline as (select rownum pnt, trunc(start_dt + (level - 1) * <TIMEXPR>, '<TRUN
                from rng_dt connect by start_dt + (level - 1) * <TIMEXPR> <= end_dt),
 flt_timeline as (select min(pnt) mi_pnt, max(pnt) ma_pnt, min(tim) mi_tim, max(tim) ma_tim from timeline t where t.pnt between <STARTPOINT> and <ENDPOINT>),
 stats_unranged as
-            (select c.*, case when SAMPLE_TP = 'A' then 10 else 1 end tp_time
+            (select /*+ full(c) */ c.*, case when SAMPLE_TP = 'A' then 10 else 1 end tp_time
                from OPAS_OT_ASHACUBE_ASH c, rng_ids
               where c.asharange_id = rng_ids.asharange_id
+                and c.SAMPLE_TIME_UTC between rng_ids.start_time_utc and rng_ids.end_time_utc
                 and DBLINK = :P3003_DBLINK),
 stats_ranged as
-            (select /*+ use_nl(c) */ c.*, case when SAMPLE_TP = 'A' then 10 else 1 end tp_time
+            (select /*+ full(c) */ /* use_nl(c) */ c.*, case when SAMPLE_TP = 'A' then 10 else 1 end tp_time
                from OPAS_OT_ASHACUBE_ASH c, rng_ids, flt_timeline  ft
               where c.asharange_id = rng_ids.asharange_id and c.SAMPLE_TIME_UTC between ft.mi_tim and ft.ma_tim and DBLINK = :P3003_DBLINK)]';
 l_metrics_queries varchar2(32765) := q'[

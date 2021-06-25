@@ -287,7 +287,7 @@ PACKAGE BODY COREMOD_EXTPROC_SRV AS
     l_maxiter  number;
     l_sleep    number;
 
-    l_prestarted_num number;
+    l_prestarted_num number := 0;
     l_prestarted_dblinks varchar2(4000);
   begin
     log_debug('coordinator_proc_standalone_v3 started');
@@ -371,27 +371,29 @@ PACKAGE BODY COREMOD_EXTPROC_SRV AS
         end if;
       end loop;
 
-      for i in (select DB_LINK_NAME, (select count(1) active_workers from opas_extproc_work_srv  wrkr where FINISHED is null and wrkr.DB_LINK_NAME = ol.DB_LINK_NAME) active_workers
-                 from OPAS_DB_LINKS ol
-                where instr('SVT2,OPASATP,OPASAWH',DB_LINK_NAME)>0 and status='EXTENABLED' and dblink_mode='JAVASRV')
-      loop
-        log_debug('coordinator_proc_standalone_v3: prestart: DB_LINK_NAME='||i.DB_LINK_NAME||'; active_workers='||i.active_workers);
+      if l_prestarted_dblinks is not null and l_prestarted_num > 0 then
+        for i in (select DB_LINK_NAME, (select count(1) active_workers from opas_extproc_work_srv  wrkr where FINISHED is null and wrkr.DB_LINK_NAME = ol.DB_LINK_NAME) active_workers
+                   from OPAS_DB_LINKS ol
+                  where instr(l_prestarted_dblinks,DB_LINK_NAME)>0 and status='EXTENABLED' and dblink_mode='JAVASRV')
+        loop
+          log_debug('coordinator_proc_standalone_v3: prestart: DB_LINK_NAME='||i.DB_LINK_NAME||'; active_workers='||i.active_workers);
 
-        if l_prestarted_num > i.active_workers and i.active_workers<l_max_workers and l_prestarted.exists(i.DB_LINK_NAME)
-        then
-          if not l_dblinks2ban.exists(i.DB_LINK_NAME) then
-            for j in 1..l_prestarted_num - i.active_workers loop
-              INSERT INTO opas_extproc_work_srv ( work_id, db_link_name, job_name, ERRMSGS)
-                VALUES (seq_opas_extproc_work_srv.nextval, i.DB_LINK_NAME, gshJobName||'_'||DBMS_RANDOM.STRING('X',6), 'Prestarted') returning work_id, job_name into l_work_id, l_job_name;
-              log_debug('coordinator_proc_standalone_v3 to prestart: l_job_name l_dblink: '||l_job_name||', '||i.DB_LINK_NAME);
-            end loop;
+          if l_prestarted_num > i.active_workers and i.active_workers<l_max_workers and l_prestarted.exists(i.DB_LINK_NAME)
+          then
+            if not l_dblinks2ban.exists(i.DB_LINK_NAME) then
+              for j in 1..l_prestarted_num - i.active_workers loop
+                INSERT INTO opas_extproc_work_srv ( work_id, db_link_name, job_name, ERRMSGS)
+                  VALUES (seq_opas_extproc_work_srv.nextval, i.DB_LINK_NAME, gshJobName||'_'||DBMS_RANDOM.STRING('X',6), 'Prestarted') returning work_id, job_name into l_work_id, l_job_name;
+                log_debug('coordinator_proc_standalone_v3 to prestart: l_job_name l_dblink: '||l_job_name||', '||i.DB_LINK_NAME);
+              end loop;
+            else
+              log_info('coordinator_proc_standalone_v3 to prestart banned: l_dblink: '||i.DB_LINK_NAME);
+            end if;
           else
-            log_info('coordinator_proc_standalone_v3 to prestart banned: l_dblink: '||i.DB_LINK_NAME);
+            log_debug('coordinator_proc_standalone_v3 prestart limit reached: l_dblink: '||i.DB_LINK_NAME);
           end if;
-        else
-          log_debug('coordinator_proc_standalone_v3 prestart limit reached: l_dblink: '||i.DB_LINK_NAME);
-        end if;
-      end loop;
+        end loop;
+      end if;
       commit;
 
       l_iter := l_iter + 1;
@@ -477,9 +479,14 @@ PACKAGE BODY COREMOD_EXTPROC_SRV AS
   procedure server_before_start
   is
   begin
+    log_info('server_before_start: cleaned abandoned workes: '||sql%rowcount);
     update OPAS_EXTPROC_WORK_SRV set FINISHED = systimestamp, ERRMSGS = 'Cleaned up', TASK_ID = null where FINISHED is null;-- and STARTED is not null;
-    log_info('server_before_start finished: cleaned abandoned workes: '||sql%rowcount);
     commit;
+    log_info('server_before_start: compacting tables');
+    execute immediate 'alter table OPAS_EXTPROC_WORK_SRV shrink space cascade';
+    execute immediate 'alter table OPAS_EXTPROC_QUEUE_SRV shrink space cascade';
+    execute immediate 'alter table OPAS_EXTPROC_RESULTS shrink space cascade';
+    log_info('server_before_start finished');
   end;
 
   procedure init_server_parameters(p_work_id number, p_username out varchar2, p_password out varchar2, p_connstr out varchar2, p_query_num out number, p_logging_mode out varchar2, p_batch_size out number) is
