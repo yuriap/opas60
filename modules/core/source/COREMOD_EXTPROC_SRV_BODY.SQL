@@ -455,7 +455,7 @@ PACKAGE BODY COREMOD_EXTPROC_SRV AS
   procedure worker_proc(p_work_id number) is
   begin
     dbms_output.enable(1000000);
-    DBMS_JAVA.SET_OUTPUT(1000000);
+    --DBMS_JAVA.SET_OUTPUT(1000000);
     log_debug('worker_proc started: '||p_work_id);
     start_server_prc(p_work_id => p_work_id);
     log_debug('worker_proc finished: '||p_work_id);
@@ -484,6 +484,8 @@ PACKAGE BODY COREMOD_EXTPROC_SRV AS
     commit;
     log_info('server_before_start: compacting tables');
     execute immediate 'alter table OPAS_EXTPROC_WORK_SRV shrink space cascade';
+    delete from OPAS_EXTPROC_QUEUE_SRV where created<sysdate-1;
+    commit;
     execute immediate 'alter table OPAS_EXTPROC_QUEUE_SRV shrink space cascade';
     execute immediate 'alter table OPAS_EXTPROC_RESULTS shrink space cascade';
     log_info('server_before_start finished');

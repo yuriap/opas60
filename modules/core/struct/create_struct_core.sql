@@ -804,6 +804,11 @@ r_varchar           varchar2(4000)
 
 create index idx_opas_extproc_results on opas_extproc_results(task_id);
 
+
+alter table OPAS_EXTPROC_WORK_SRV enable row movement;
+alter table OPAS_EXTPROC_QUEUE_SRV enable row movement;
+alter table OPAS_EXTPROC_RESULTS enable row movement;
+
 drop table OPAS_OT_TMP_C_SNAPS;
 create global temporary table OPAS_OT_TMP_C_SNAPS as
 select min_snap, dbid from (select min(snap_id) min_snap, min(dbid) dbid from dba_hist_snapshot where 1=2);

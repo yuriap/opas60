@@ -194,7 +194,7 @@ package body COREMOD_API as
         raise_application_error(-20000,'Server host must be specified.');
       end if;
       drop_dblink(p_db_link_name => upper(p_db_link_name), p_suspend => true);
-      sys.get_ext_exec_perm4java(sys_context('USERENV', 'CURRENT_USER'), p_server);
+      --sys.get_ext_exec_perm4java(sys_context('USERENV', 'CURRENT_USER'), p_server);
       update opas_db_links set
              STATUS = dblEXTENABLED,
              DBLINK_MODE = gemJAVASRV,
@@ -910,10 +910,11 @@ order by 1, 2,3
     l_next_date  timestamp;
   begin
     --coremod_log.log('DB Link data update job COREMOD_API.update_dblink_data start.');
-    for i in (select * from OPAS_DB_LINKS where status=dblCREATED) loop
-      if (i.DBLINK_MODE = gemDBLINK and i.STATUS = dblCREATED or
-              i.DBLINK_MODE = gemJAVASRV and i.STATUS = dblEXTENABLED)
-      then
+    for i in (select * from OPAS_DB_LINKS i
+               where (i.DBLINK_MODE = gemDBLINK and i.STATUS = dblCREATED or
+                      i.DBLINK_MODE = gemJAVASRV and i.STATUS = dblEXTENABLED)
+    ) loop
+
         DBMS_SCHEDULER.EVALUATE_CALENDAR_STRING(
             calendar_string    => i.UPDATE_SCHED,
             start_date         => nvl(i.DATA_UPDATED,i.CREATED),
@@ -936,7 +937,6 @@ order by 1, 2,3
           COREMOD_TASKS.set_task_param( p_tq_id => l_tq_id, p_name => COREMOD_TASKS.parNotifyMe, p_num_par => l_nt_id);
           COREMOD_TASKS.queue_task ( p_tq_id => l_tq_id ) ;
         end if;
-      end if;
     end loop;
     commit;
   end;
